@@ -1,104 +1,132 @@
 # Atlas
 
-A local-first explorer for Tree-sitter repository graphs. Python analyzes repositories and exclusively owns the SQLite schema, migrations, and indexing. The Bun/React app reads and registers repositories directly in that same SQLite file. No Python HTTP server, authentication, cloning, or background indexing.
+Atlas maps a local codebase and highlights complex functions and circular imports. Use its CLI for human- or AI-readable findings, or its web UI to explore dependencies and potential change impact.
 
-## CI
+Python parses files with Tree-sitter, resolves repository-local relationships, and builds a code graph. Analysis runs locally, on demand; graphs can be saved to SQLite, which the Bun/React UI reads directly. No cloud service, Python HTTP server, cloning, or background indexing.
 
-Pull requests targeting `main` and pushes to `main` run three independent jobs: Python (pytest, Pyright, Ruff), Dashboard (tests, typecheck, lint, production build), and Atlas (fresh full-repository analysis). Atlas fails unless its JSON report contains zero findings; it uses `--skip-save` to avoid database writes. Dependency installation resolves from manifests because this code-only repository excludes lockfiles. Newer runs cancel older runs on the same ref.
+## Install
 
-## Run locally
-
-From the project root:
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.10+. Install from this checkout:
 
 ```sh
-uv sync --project atlas --group dev
+git clone https://github.com/LeonFelipeCordero/atlas.git
+cd atlas
+uv tool install ./atlas
+atlas report -f /path/to/project --skip-save
+```
+
+If `atlas` is not on your `PATH`, run `uv tool update-shell` and restart your shell. Alternatively, run without installing the CLI:
+
+```sh
+uv run --project atlas atlas report -f /path/to/project --skip-save
+```
+
+## What it analyzes
+
+| Feature | What you get |
+| --- | --- |
+| Code structure | Folders, files, types, functions, and methods in a navigable hierarchy. |
+| Relationships | Imports, calls, callable references, inheritance, and containment; dependency views at module, file, type, and callable levels. |
+| Complexity | Function/method decision points, short-circuit operators, deep-decision penalties, nested-loop penalties, and maximum decision depth. |
+| Circular imports | Groups of files in runtime import cycles, with an example cycle and source evidence; type-only imports do not establish cycles. |
+| Dependency metrics | Fan-in (direct dependents), fan-out (direct dependencies), and transitive change impact (all direct/indirect dependents), counting distinct internal peers. |
+| Parse diagnostics | Parsing failures retained in the graph, alongside unresolved external targets and relationship confidence. |
+
+Reports contain only complexity and circular-import findings. Complexity rules trigger independently when total cyclomatic complexity **> 8**, nested-loop count **> 0**, or decision depth **> 3**. Total complexity is `1 + decisions + short-circuit operators + deep-decision penalties + nested-loop penalties`. Other graph metrics have no report thresholds.
+
+Atlas supports grammars recognized by its pinned Tree-sitter language pack, **except C and C++**. Python, JavaScript/JSX, TypeScript/TSX, Java, Kotlin, Go, Rust, and Elixir have specialized adapters; other supported grammars use generic extraction. Resolution is static and conservative, not compiler/type inference. Unresolved imports cannot establish cycles, and “No findings” does not prove the code is problem-free.
+
+### Exclude files
+
+Atlas honors `.gitignore`. Add `.atlasignore` for analysis-only exclusions:
+
+```gitignore
+*.generated.ts
+/vendor/
+/scratch/
+```
+
+Nested ignore files and Git-style patterns, including `!` exceptions, are supported. Exceptions cannot restore Git-ignored files or files inside an excluded parent. Without a root `.gitignore`, built-in dependency/build/generated-directory exclusions apply. Reanalyze to update saved results.
+
+## Web UI
+
+Requires [Bun](https://bun.sh/). From the checkout root, analyze and save a project, then start the dashboard:
+
+```sh
+uv run --project atlas atlas report -f /path/to/project
 cd dashboard
 bun install
 bun run db:migrate
-bun run dev              # UI server at http://localhost:3000
+bun run dev
 ```
 
-Analyze any local folder and get a findings-only report; the CLI migrates the database and registers or updates the repository automatically:
+Open **http://localhost:3000**. Drill from folders into files and functions, navigate with breadcrumbs, search the contents list, and inspect incoming/outgoing connections, complexity, and dependency metrics. The graph supports pan/zoom and hides test files visually; metrics still use the full index, including tests and type-only dependencies.
+
+Re-run the folder report and refresh the UI after source changes. You can also register a project in the UI, then index it by its unique registered **name**, not ID:
 
 ```sh
-uv run --project atlas atlas report --f /path/to/repository
-# Installed CLI:
-atlas report -f ./
-atlas report -f ./ --skip-save   # Analyze only; no database access
-atlas report --p PROJECT_NAME   # Read saved results without reanalyzing
+uv run --project atlas atlas index /path/to/project --project 'My project'
 ```
 
-Folder reports match existing repositories by resolved location. New projects use the folder name; duplicate names receive a suffix such as `name (2)`. Calling `report` without a folder or project fails, as does supplying both.
+Python owns the SQLite schema and migrations. The default database is `$XDG_DATA_HOME/atlas/atlas.sqlite`, falling back to `~/.local/share/atlas/atlas.sqlite`. Set an absolute `DATABASE_PATH` for both CLI and UI to share a different database; CLI commands also accept `--database PATH`. Folder reports migrate automatically when saving; run `atlas migrate` before using `index` or starting the UI, and back up existing databases before upgrading.
 
-You can still register a repository in the UI and index using its unique registered name, or list saved projects. Names use ASCII case-insensitive matching; IDs are not accepted by `--project`. Quote names containing spaces or shell characters:
+The UI has **no authentication**; keep it on a trusted local network.
+
+## CLI and AI-agent integration
+
+Run against the whole target project, not just changed files:
 
 ```sh
-(cd dashboard && bun run architecture:index /path/to/repository --project 'PROJECT_NAME')
-uv run --project atlas atlas projects
+atlas report -f .                              # Fresh analysis; register/update and save
+atlas report -f . --skip-save                  # Fresh analysis; no database access
+atlas report -f . --skip-save --format json    # Structured findings for scripts
+atlas projects                                # List registered projects as JSON
+atlas report -p 'My project'                   # Read saved findings; no reanalysis
 ```
 
-`projects` returns all registered projects as a JSON array with IDs, names, locations, and registration/index timestamps; `importedAt: null` means not yet indexed.
+Choose exactly one source: a folder (`-f`) or a saved project name (`-p`). Markdown is the default, with file paths, callable line numbers, and explanations. JSON has the shape `{"findings": [...]}`; a clean report returns `{"findings": []}`.
 
-The report shows only what each finding is about, file paths and callable line numbers, and readable explanations. Functions/methods match **any** strict threshold: total cyclomatic complexity > 8, nested-loop count > 0, or maximum decision depth > 3. Circular imports include affected paths and an example cycle. Use `report --format json` for a compact structured findings object. Project reports read the saved graph without reindexing; folder reports analyze fresh source. See [report details](atlas/README.md#human--and-llm-readable-project-report).
+For a shell script or CI gate, check the JSON explicitly: **findings do not cause a nonzero exit code**, but command errors do. This Bash example requires `jq`:
 
-Run Bun commands from `dashboard/` (or use `bun run --cwd dashboard SCRIPT` from the root). Python commands above run from the repository root. Tests use source fixtures and checked-in regression snapshots, not generated repository exports.
-
-The index command prints `repositoryId`, `schemaVersion`, and `stats` as JSON. It analyzes the graph in memory and transactionally replaces the repository's saved graph; it does not create a JSON artifact file. Reindex and refresh the graph in the UI to see new results. The repository URL or path entered during registration is metadata, not a source fetch.
-
-`DATABASE_PATH` selects the shared SQLite database for `db:migrate`, `architecture:index`, and the Bun server; Python CLI commands also accept `--database PATH`. Python and Bun default to `$XDG_DATA_HOME/atlas/atlas.sqlite` (or `~/.local/share/atlas/atlas.sqlite`), independent of the working directory and outside analyzed repositories. Use an absolute `DATABASE_PATH` when overriding it. Existing databases at `data/atlas.sqlite` remain usable by setting `DATABASE_PATH` to their absolute path; the CLI does not move them automatically. Folder reports migrate automatically unless `--skip-save` is set. Run migrations before starting the UI or using `index`: neither general service access nor Bun creates tables or runs migrations. Back up existing databases before upgrading. Migrations preserve stored graphs and backfill the relational analysis tables without reindexing. Keep the UI server on a trusted local network: there is no authentication.
-
-## Exclude files from analysis
-
-Add a `.atlasignore` file at the root of any folder you analyze. It uses `.gitignore` syntax to exclude files from importing, indexing, and fresh reports without removing them from Git:
-
-```gitignore
-# Intentional test fixtures
-/atlas/tests/fixtures/coffee/
-*.generated.ts
-scratch/**
-!scratch/keep.py
+```sh
+set -o pipefail
+atlas report -f . --skip-save --format json | jq -e '.findings == []'
 ```
 
-Nested `.atlasignore` files apply relative to their directory. Patterns support comments, wildcards, directory rules, and `!` exceptions; exceptions cannot restore files excluded by `.gitignore` or built-in fallback rules, or files inside an excluded parent directory. `.atlasignore` works without Git and does not change the existing `.gitignore` behavior. Reindex or run a folder report to update saved results; project reports read the previous index. This repository excludes the coffee fixtures, while tests can still analyze those fixture folders directly.
-
-## Explore
+For an AI coding agent with shell access, add this instruction to its project rules (for example, `AGENTS.md`):
 
 ```text
-Repository → Folders at any depth → File → Functions
+After changes, run `atlas report -f . --skip-save` from the target repository root.
+Review reported complexity and circular imports; fix relevant findings and rerun.
+Analyze the entire project. Do not treat “No findings” as a substitute for tests.
 ```
 
-Use **Explore** or the contents list to enter a node; breadcrumbs navigate up. Select a node to inspect incoming/outgoing relationships, pan and zoom the graph, or search the current list by name/path. Single-child folder chains are compacted visually without losing ancestors. Test files and their dependencies are hidden from graph views, not deleted from the indexed graph. Dependency arrows point from source to target; outside-scope dependencies are dashed. Function and method complexity appears in the sidebar, with a UI-only sum for files. Selecting a folder, file, or callable also shows indexed **fan-in**, **fan-out**, and **transitive change impact**. These count distinct internal peers at the same module/file/type/callable level: direct dependents, direct dependencies, and all direct or indirect dependents, respectively. Counts use the full index (including tests and type-only dependencies), not just visible connections, exclude the selected node and unresolved external targets, and represent potential impact rather than proof that behavior changes. Reindex older repositories to populate these metrics; missing values are not shown as zero.
+The agent uses the same CLI; no native agent plugin or MCP server is provided. Use `--format json` when the agent/tool needs structured output. Reports are findings-only, not a full graph export.
 
-## Architecture and checks
+## Contribute
 
-- `atlas/src/atlas/`: discovery, Tree-sitter extraction, in-memory artifact model, SQLite persistence, and CLI. See [Atlas](atlas/README.md).
-- `atlas/src/atlas/persistence/migrations/`: packaged Alembic revisions defining the SQLite schema, including normalized graph analysis tables. Apply with `bun run --cwd dashboard db:migrate`.
-- `dashboard/`: self-contained Bun/React app, with its package manifest, public assets, and tooling configs. `bun run build` regenerates the ignored route tree before typechecking a fresh checkout.
-- `dashboard/src/routes/` and `dashboard/src/lib/`: web screens and Bun server routes that directly read and register repositories in the shared SQLite database; TypeScript does not own the schema or migrations.
-- `dashboard/src/components/graph/` and `dashboard/src/lib/project-graph.ts`: graph navigation, layout, and projections.
+Keep changes focused, add regression tests for analyzer behavior, and open a pull request against `main`.
 
-```text
-Python index CLI → service → repository → shared SQLite
-                       ↓          ↓
-                    domain     SQLAlchemy
-Python migrate CLI → Alembic ─────────→ same SQLite file
-Bun UI server routes (read/register) ─→ same SQLite file
-```
+`atlas/src/atlas/` contains discovery, language adapters, extraction, graph analysis, CLI, services, and persistence. `dashboard/` contains the Bun/React UI and server routes. Python alone owns database migrations; Bun reads/registers repositories in the shared database.
 
-`domain/repositories.py` defines Pydantic DTOs and application errors; `services/repositories.py` owns validation and indexing orchestration; `persistence/repositories.py` owns queries and transactions. No ORM rows cross into the interface or service.
-
-For schema changes, edit `persistence/models.py`, then generate and review a revision:
+From the repository root:
 
 ```sh
-(cd atlas && uv run alembic revision --autogenerate -m "describe change")
-bun run --cwd dashboard db:migrate
+uv sync --project atlas --group dev
+(cd dashboard && bun install)
+
+(cd atlas && uv run pytest)
+(cd atlas && uv run pyright)
+(cd atlas && uv run ruff check .)
+(cd dashboard && bun run build)
+(cd dashboard && bun test)
+(cd dashboard && bun run typecheck)
+(cd dashboard && bun lint --fix)
+uv run --project atlas atlas report -f . --skip-save
 ```
 
-```sh
-(cd atlas && uv run pytest && uv run pyright && uv run ruff check .)
-cd dashboard
-bun run build
-bun test
-bun run typecheck
-bun lint --fix
-```
+CI runs Python checks, dashboard checks, and a full-project Atlas report requiring zero findings. Production Python modules are limited to 600 lines, with architecture boundaries enforced by tests.
+
+Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity violations and import cycles; do not simplify them. Tests compare graphs and reports with checked-in snapshots. Regenerate graph snapshots only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`; report snapshots are generated separately with `atlas report -f tests/fixtures/coffee/<language> --skip-save` from `atlas/`.
+
+For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then run migrations. Report security issues as described in [SECURITY.md](SECURITY.md).
