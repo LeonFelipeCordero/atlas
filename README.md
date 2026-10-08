@@ -1,6 +1,6 @@
 # Atlas
 
-<img src="assets/atlas.png" alt="Atlas, a friendly cartoon giant holding the world" width="144" height="144" align="right">
+<img src="assets/atlas.png" alt="A geometric Atlas figure supporting a globe of connected nodes" width="144" height="144" align="right">
 
 [![CI](https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-89718e.svg)](LICENSE)
