@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -218,3 +218,26 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Atlas: dependencies, generated output, local data and lockfiles
+node_modules/
+.output/
+.tanstack/
+.playwright-cli/
+.idea/
+.vscode/
+data/
+graphs/
+*.sqlite
+*.sqlite-*
+*.graph.json
+*.tmp
+*.tsbuildinfo
+*.lock
+*.lockb
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+/atlas/coffee.json
+/atlas/tests/coffee-output/
+/dashboard/src/routeTree.gen.ts

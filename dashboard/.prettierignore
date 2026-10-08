@@ -1,0 +1,13 @@
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Local tools and generated caches are not project source.
+**/.venv/**
+**/.pytest_cache/**
+**/.ruff_cache/**
+
+# Build output must not be reformatted.
+.output/**
+dist/**
+src/routeTree.gen.ts
