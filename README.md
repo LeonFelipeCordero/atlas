@@ -142,5 +142,3 @@ CI runs Python checks, dashboard checks, and a full-project Atlas report requiri
 Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity/size/parameter violations and import cycles; do not simplify them or remove their reference-note ledgers. Tests compare graphs and reports with checked-in snapshots. Regenerate both formats only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`.
 
 For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then run migrations. Report security issues as described in [SECURITY.md](SECURITY.md).
-
-Brand assets: [editable mascot](assets/atlas.svg), [128px thumbnail](assets/atlas-thumbnail.png), and [GitHub social preview](assets/github-social-preview.png). To use the preview on shared GitHub links, upload it under **Settings → General → Social preview**.
