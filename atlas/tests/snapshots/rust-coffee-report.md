@@ -6,6 +6,22 @@ Files:
 Findings:
 - Nested-loop count is 1 (limit: 0).
 
+## Complexity: `brewing/brewer.rs::classify`
+
+Files:
+- `brewing/brewer.rs:36`
+
+Findings:
+- Cyclomatic complexity is 9 (limit: 8).
+
+## Complexity: `brewing/brewer.rs::ready`
+
+Files:
+- `brewing/brewer.rs:50`
+
+Findings:
+- Decision nesting depth is 4 (limit: 3).
+
 ## Circular dependency: `Circular imports`
 
 Files:

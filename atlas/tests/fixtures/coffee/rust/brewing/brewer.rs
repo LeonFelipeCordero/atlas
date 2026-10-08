@@ -32,6 +32,34 @@ pub fn score(batches: &[Vec<&str>]) -> i32 {
     result
 }
 
+// Deliberately exceed the cyclomatic-complexity limit without deep nesting.
+pub fn classify(amount: i32) -> i32 {
+    let mut category = 0;
+    if amount > 0 { category += 1; }
+    if amount > 1 { category += 1; }
+    if amount > 2 { category += 1; }
+    if amount > 3 { category += 1; }
+    if amount > 4 { category += 1; }
+    if amount > 5 { category += 1; }
+    if amount > 6 { category += 1; }
+    if amount > 7 { category += 1; }
+    category
+}
+
+// Deliberately exceed the decision-nesting limit without loops.
+pub fn ready(water: i32, beans: i32, cups: i32, temperature: i32) -> bool {
+    if water > 0 {
+        if beans > 0 {
+            if cups > 0 {
+                if temperature > 0 {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn main() {
     println!("{}", brew(&["espresso", "filter", "invalid"]));
 }
