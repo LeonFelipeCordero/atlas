@@ -1,0 +1,2 @@
+# Intentional complexity and import-cycle examples used by deterministic tests.
+/atlas/tests/fixtures/coffee/

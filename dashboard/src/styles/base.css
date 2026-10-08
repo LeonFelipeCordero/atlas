@@ -1,0 +1,310 @@
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--secondary);
+  --color-accent-foreground: var(--primary);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--primary);
+}
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --background: oklch(0.981 0.004 310);
+  --surface: oklch(0.995 0.002 310);
+  --foreground: oklch(0.29 0.022 310);
+  --primary: oklch(0.48 0.108 315);
+  --primary-foreground: oklch(0.99 0.004 310);
+  --secondary: oklch(0.947 0.014 310);
+  --muted-foreground: oklch(0.5 0.022 310);
+  --border: oklch(0.884 0.012 310);
+  --destructive: oklch(0.48 0.16 25);
+  --graph-edge: oklch(0.59 0.064 310);
+  color: var(--foreground);
+  background: var(--background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+body {
+  margin: 0;
+}
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+button,
+input {
+  font: inherit;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 5px;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  font-weight: 620;
+  letter-spacing: -0.055em;
+}
+h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+p {
+  line-height: 1.6;
+}
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.skip-link {
+  position: absolute;
+  top: -60px;
+  left: 20px;
+  z-index: 100;
+  padding: 10px;
+  background: var(--surface);
+}
+.skip-link:focus {
+  top: 10px;
+}
+.app-header {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 44px;
+  padding: 0 4%;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  background: var(--secondary);
+  color: var(--primary);
+  border-radius: 11px;
+}
+.header-link {
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+.header-link:hover,
+.back-link:hover {
+  color: var(--primary);
+}
+.page {
+  margin: 0 auto;
+  padding: 44px 4%;
+}
+.repositories-page {
+  max-width: 1280px;
+  padding-top: 70px;
+}
+.eyebrow {
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+.register-form {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 70px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  background: var(--surface);
+  margin-bottom: 48px;
+}
+.form-intro p {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin-top: 12px;
+  max-width: 40ch;
+}
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.form-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 550;
+}
+.form-fields input {
+  background: var(--background);
+  font-weight: 400;
+  height: 40px;
+}
+.field-help {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.form-fields .field-help {
+  margin-top: -6px;
+}
+.error-message {
+  color: var(--destructive);
+  padding: 18px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: var(--surface);
+}
+.error-message button {
+  margin-top: 8px;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.section-heading h1 {
+  font-size: 1rem;
+}
+.section-heading h1 span {
+  font-weight: 400;
+  color: var(--muted-foreground);
+  margin-left: 8px;
+}
+.repository-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 16px;
+  border-top: 1px solid var(--border);
+  transition: background 160ms;
+}
+.repository-row:last-child {
+  border-bottom: 1px solid var(--border);
+}
+.repository-row:hover {
+  background: var(--secondary);
+}
+.repository-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--secondary);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.repository-info {
+  min-width: 0;
+  flex: 1;
+}
+.repository-info h3 {
+  margin-bottom: 5px;
+}
+.repository-info p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+}
+.repository-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.repository-status > span:last-child {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+}
+.row-arrow {
+  color: var(--primary);
+  margin-left: 16px;
+}
+.empty-repositories {
+  padding: 45px 24px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+.empty-repositories > svg {
+  color: var(--primary);
+  margin: 0 auto 18px;
+}
+.empty-repositories p {
+  margin: 8px auto 20px;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  max-width: 50ch;
+}
+.level-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.level-preview svg {
+  width: 12px;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(0.52 0.074 160);
+  display: inline-block;
+  flex-shrink: 0;
+}

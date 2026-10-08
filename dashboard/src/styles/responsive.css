@@ -1,0 +1,90 @@
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (min-width: 1600px) {
+  .graph-workspace {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+@media (max-width: 1000px) {
+  .graph-workspace {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+  .register-form {
+    gap: 35px;
+  }
+  .waiting-for-import {
+    gap: 30px;
+  }
+}
+@media (max-width: 700px) {
+  .app-header {
+    height: 64px;
+    gap: 28px;
+  }
+  .page {
+    padding: 28px 5%;
+  }
+  .graph-page-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 22px;
+  }
+  h1 {
+    font-size: 1.7rem;
+  }
+  .register-form {
+    grid-template-columns: 1fr;
+    padding: 24px;
+    gap: 24px;
+  }
+  .repository-row {
+    flex-wrap: wrap;
+    padding: 20px 0;
+    gap: 12px;
+  }
+  .repository-status {
+    align-items: flex-start;
+    margin-left: 60px;
+    order: 4;
+    width: calc(100% - 60px);
+  }
+  .row-arrow {
+    margin-left: 0;
+  }
+  .waiting-for-import {
+    grid-template-columns: 1fr;
+    padding-top: 24px;
+  }
+  .graph-actions {
+    flex-wrap: wrap;
+  }
+  .graph-actions button {
+    font-size: 0.75rem;
+  }
+  .explorer-navigation {
+    padding: 14px;
+  }
+  .graph-workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+    max-height: none;
+  }
+  .graph-canvas {
+    height: 440px;
+  }
+  .graph-sidebar {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    max-height: 360px;
+  }
+  .level-preview {
+    gap: 7px;
+    font-size: 0.7rem;
+  }
+}
