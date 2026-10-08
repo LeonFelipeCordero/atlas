@@ -1,5 +1,10 @@
 # Atlas
 
+<img src="assets/atlas.png" alt="Atlas, a friendly cartoon giant holding the world" width="144" height="144" align="right">
+
+[![CI](https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-89718e.svg)](LICENSE)
+
 Atlas maps a local codebase and highlights complex functions, oversized files/functions, excessive parameters, and circular imports. Use its CLI for human- or AI-readable findings, or its web UI to explore dependencies and potential change impact.
 
 Python parses files with Tree-sitter, resolves repository-local relationships, and builds a code graph. Analysis runs locally, on demand; graphs can be saved to SQLite, which the Bun/React UI reads directly. No cloud service, Python HTTP server, cloning, or background indexing.
@@ -133,3 +138,5 @@ CI runs Python checks, dashboard checks, and a full-project Atlas report requiri
 Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity/size/parameter violations and import cycles; do not simplify them or remove their reference-note ledgers. Tests compare graphs and reports with checked-in snapshots. Regenerate both formats only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`.
 
 For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then run migrations. Report security issues as described in [SECURITY.md](SECURITY.md).
+
+Brand assets: [editable mascot](assets/atlas.svg), [128px thumbnail](assets/atlas-thumbnail.png), and [GitHub social preview](assets/github-social-preview.png). To use the preview on shared GitHub links, upload it under **Settings → General → Social preview**.
