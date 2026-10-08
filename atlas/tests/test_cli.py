@@ -10,7 +10,7 @@ from atlas.bootstrap import repository_service
 
 
 class CliTest(unittest.TestCase):
-    def test_help_lists_commands_and_project_is_required(self) -> None:
+    def test_help_lists_commands_and_index_folder_is_required(self) -> None:
         runner = CliRunner()
         result = runner.invoke(main, ["--help"])
         self.assertEqual(result.exit_code, 0)
@@ -19,7 +19,11 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("serve", result.output)
         missing = runner.invoke(main, ["index"])
         self.assertNotEqual(missing.exit_code, 0)
-        self.assertIn("--project", missing.output)
+        self.assertIn("--folder", missing.output)
+        index_help = runner.invoke(main, ["index", "--help"])
+        self.assertIn("-f, --f, --folder", index_help.output)
+        self.assertNotIn("--project", index_help.output)
+        self.assertNotIn("[REPOSITORY]", index_help.output)
 
     def test_migrate_and_index_current_directory_without_json_file(self) -> None:
         runner = CliRunner()
@@ -36,7 +40,7 @@ class CliTest(unittest.TestCase):
                 registered = service.register({"name": "example", "location": str(source)})
             try:
                 os.chdir(source)
-                result = runner.invoke(main, ["index", "--project", "example", "--database", str(database)])
+                result = runner.invoke(main, ["index", "-f", "./", "--database", str(database)])
             finally:
                 os.chdir(original_directory)
             self.assertEqual(result.exit_code, 0, result.output)

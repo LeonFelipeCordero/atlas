@@ -23,6 +23,14 @@ def _required_text(value: Any, field: str, maximum: int) -> str:
     return result
 
 
+def _saved_folder(location: str) -> Path | None:
+    if "://" in location:
+        return None
+    folder = Path(location).expanduser()
+    # Legacy relative locations have no durable base; never match the CLI cwd.
+    return folder.resolve() if folder.is_absolute() else None
+
+
 def analyze_folder(root: Path) -> dict[str, Any]:
     """Analyze entirely in memory, without opening or creating a database."""
     return asdict(analyze_repository(root))
@@ -39,6 +47,8 @@ class RepositoryService:
             raise RepositoryError("Expected an object with name and location", 400)
         name = _required_text(input.get("name"), "name", 200)
         location = _required_text(input.get("location"), "location", 4096)
+        if "://" not in location:
+            location = str(Path(location).expanduser().resolve())
         return self.repository.register(name, location)
 
     def list(self) -> list[RepositoryDTO]:
@@ -63,11 +73,14 @@ class RepositoryService:
     def save_folder(self, root: Path, artifact: dict[str, Any]) -> GraphDTO:
         """Update by canonical location; otherwise register and save atomically."""
         root = root.expanduser().resolve()
-        for project in self.repository.list():
-            if "://" in project.location:
-                continue
-            if Path(project.location).expanduser().resolve() == root:
-                return self.repository.save(project.id, artifact)
+        matches = [
+            project for project in self.repository.list()
+            if _saved_folder(project.location) == root
+        ]
+        if len(matches) > 1:
+            raise RepositoryError("Multiple projects are registered for this folder; use a distinct local checkout for each project", 409)
+        if matches:
+            return self.repository.save(matches[0].id, artifact)
         base = root.name.strip()[:190] or "repository"
         name = base
         suffix = 2

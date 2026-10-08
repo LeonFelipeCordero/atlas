@@ -41,9 +41,9 @@ def test_index_then_report_by_global_and_local_name(database: Path, tmp_path: Pa
     )
     with repository_service(database) as service:
         registered = service.register({"name": "Example", "location": str(root)})
-        other = service.register({"name": "Other", "location": str(root)})
+        other = service.register({"name": "Other", "location": str(tmp_path / "other")})
     runner = CliRunner()
-    indexed = runner.invoke(main, ["--project", "Example", "--database", str(database), "index", str(root)])
+    indexed = runner.invoke(main, ["--database", str(database), "index", "-f", str(root)])
     assert indexed.exit_code == 0, indexed.output
     with repository_service(database) as service:
         original = service.get_architecture(registered.id)

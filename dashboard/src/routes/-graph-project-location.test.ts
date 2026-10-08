@@ -4,17 +4,17 @@ import { createElement } from 'react'
 import { indexCommand } from '@/lib/api'
 
 // Isolate module mocks so route rendering cannot affect other Bun tests.
-function renderRoute(repositoryName: string | null, showImport: boolean) {
+function renderRoute(repositoryLocation: string | null, showImport: boolean) {
   const script = `
     import { mock } from 'bun:test'
     import * as React from 'react'
     import { renderToStaticMarkup } from 'react-dom/server'
-    const name = ${JSON.stringify(repositoryName)}
+    const location = ${JSON.stringify(repositoryLocation)}
     mock.module('react', () => ({ ...React, useState: () => [${showImport}, () => {}] }))
     mock.module('@tanstack/react-query', () => ({
       useQuery: (options) => options.queryKey[0] === 'graph'
         ? { data: null, refetch() {} }
-        : { data: name === null ? undefined : [{ id: 'storage-id', name, location: '/source' }], refetch() {} },
+        : { data: location === null ? undefined : [{ id: 'storage-id', name: 'Registered name', location }], refetch() {} },
     }))
     mock.module('@tanstack/react-router', () => ({
       Link: 'a',
@@ -31,16 +31,16 @@ function renderRoute(repositoryName: string | null, showImport: boolean) {
 }
 
 for (const showImport of [false, true]) {
-  test(`graph instructions use the registered name (expanded=${showImport})`, () => {
-    const name = "Engineer's École $app"
-    const markup = renderRoute(name, showImport)
+  test(`graph instructions use the registered folder (expanded=${showImport})`, () => {
+    const location = "/source/Engineer's École $app"
+    const markup = renderRoute(location, showImport)
     const command = renderToStaticMarkup(
-      createElement('code', null, indexCommand(name)),
+      createElement('code', null, indexCommand(location)),
     )
     expect(markup).toContain(command)
     expect(markup).not.toContain(
       renderToStaticMarkup(
-        createElement('code', null, indexCommand('storage-id')),
+        createElement('code', null, indexCommand('Registered name')),
       ),
     )
     expect(markup.split(command)).toHaveLength(2)

@@ -3,10 +3,11 @@ import {
   mkdirSync,
   mkdtempSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
@@ -110,6 +111,51 @@ test('name uniqueness and validation retain existing API behavior', () => {
   )
 })
 
+test('registration requires local folders and rejects duplicate canonical locations', () => {
+  expect(() =>
+    registerRepository(
+      { name: 'Remote', location: 'https://example.com/project' },
+      database,
+    ),
+  ).toThrow('URLs cannot be indexed')
+  const source = join(directory, 'source')
+  mkdirSync(source)
+  const alias = join(directory, 'alias')
+  symlinkSync(source, alias, 'dir')
+  const repository = registerRepository(
+    { name: 'Local', location: relative(process.cwd(), source) },
+    database,
+  )
+  expect(repository.location).toBe(source)
+  for (const location of [source, alias, join(source, '..', 'source')])
+    expect(() =>
+      registerRepository({ name: 'Duplicate', location }, database),
+    ).toThrow('folder already exists')
+  expect(listRepositories(database)).toEqual([repository])
+})
+
+test('registration follows symlinks before parent segments like Python indexing', () => {
+  const first = join(directory, 'first')
+  const second = join(directory, 'second')
+  mkdirSync(first)
+  mkdirSync(join(second, 'nested'), { recursive: true })
+  symlinkSync(join(second, 'nested'), join(first, 'alias'), 'dir')
+  const location = `${first}/alias/..`
+  const repository = registerRepository(
+    { name: 'Symlink parent', location },
+    database,
+  )
+  expect(repository.location).toBe(second)
+  const summary = JSON.parse(
+    python('index', '-f', location, '--database', path),
+  )
+  expect(summary.repositoryId).toBe(repository.id)
+  expect(listRepositories(database)).toHaveLength(1)
+  expect(() =>
+    registerRepository({ name: 'Duplicate', location: second }, database),
+  ).toThrow('folder already exists')
+})
+
 test('Python indexes repositories registered by the UI, and the UI sees reindex writes', () => {
   const source = join(directory, 'source')
   mkdirSync(source)
@@ -119,16 +165,14 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     { name: 'Shared', location: source },
     database,
   )
-  const summary = JSON.parse(
-    python('index', source, '--project', repository.name, '--database', path),
-  )
+  const summary = JSON.parse(python('index', '-f', source, '--database', path))
   const first = getArchitecture(repository.id, database)!
   expect(summary.repositoryId).toBe(repository.id)
   expect(first.artifact.schemaVersion).toBe(2)
   expect(first.artifact).toMatchObject({ stats: { files: 1 } })
   expect(first.artifact.nodes.some((node) => node.name === 'run')).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('index', source, '--project', 'SHARED', '--database', path)
+  python('index', '--folder', source, '--database', path)
   const replacement = getArchitecture(repository.id, database)!
   expect(
     replacement.artifact.nodes.some((node) => node.name === 'replacement'),
@@ -145,14 +189,16 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     'Repository not found',
   )
 
-  // CLI names may equal an existing ID; API lookups must still use IDs.
+  // Folder selection is independent of names; API lookups still use IDs.
+  const otherSource = join(directory, 'other-source')
+  mkdirSync(otherSource)
   const idNamed = registerRepository(
-    { name: repository.id, location: source },
+    { name: repository.id, location: otherSource },
     database,
   )
-  writeFileSync(file, 'def id_named():\n    return 3\n')
+  writeFileSync(join(otherSource, 'main.py'), 'def id_named():\n    return 3\n')
   const selected = JSON.parse(
-    python('index', source, '--project', idNamed.name, '--database', path),
+    python('index', '-f', otherSource, '--database', path),
   )
   expect(selected.repositoryId).toBe(idNamed.id)
   const idNamedGraph = getArchitecture(idNamed.id, database)!
@@ -209,10 +255,17 @@ test('Python src imports become dashboard arrows even when the report has no fin
     'from app import worker as w\ndef run():\n    w.work()\n',
   )
   writeFileSync(join(app, 'worker.py'), 'def work(): pass\n')
-  expect(python('report', '-f', source, '--database', path)).toBe('No findings.\n')
+  expect(python('report', '-f', source, '--database', path)).toBe(
+    'No findings.\n',
+  )
   const repository = listRepositories(database)[0]
-  const artifact = parseArtifact(getArchitecture(repository.id, database)!.artifact)
-  const graph = buildProjectGraph(artifact, { kind: 'folder', key: 'module:src/app' })
+  const artifact = parseArtifact(
+    getArchitecture(repository.id, database)!.artifact,
+  )
+  const graph = buildProjectGraph(artifact, {
+    kind: 'folder',
+    key: 'module:src/app',
+  })
   expect(graph.edges).toHaveLength(1)
   expect(graph.edges[0]).toMatchObject({
     source: 'file:src/app/main.py',

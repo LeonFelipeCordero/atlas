@@ -1,3 +1,6 @@
+import { realpathSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { isAbsolute } from 'node:path'
 import { getDatabase } from './database.servers'
 import { RepositoryStore } from './repository-store.servers'
 import type { AppDatabase } from './database.servers'
@@ -24,6 +27,29 @@ const requiredText = (value: unknown, field: string, maxLength: number) => {
   return text
 }
 
+const expandHome = (location: string) =>
+  location.replace(/^~(?=\/|$)/, () => homedir())
+
+function canonicalFolder(location: string) {
+  const folder = expandHome(location)
+  const absolute = isAbsolute(folder) ? folder : `${process.cwd()}/${folder}`
+  try {
+    // Resolve each symlink before the next segment can collapse a parent (..).
+    return absolute
+      .split('/')
+      .reduce((parent, part) => realpathSync(`${parent}/${part}`), '/')
+  } catch (error) {
+    if (
+      !['ENOENT', 'ENOTDIR'].includes(
+        (error as NodeJS.ErrnoException).code ?? '',
+      )
+    )
+      throw error
+    // Keep unresolved paths intact for Python's later non-strict resolution.
+    return absolute
+  }
+}
+
 export function registerRepository(
   input: unknown,
   database: AppDatabase = getDatabase(),
@@ -33,10 +59,30 @@ export function registerRepository(
   const data = input as Record<string, unknown>
   const name = requiredText(data.name, 'name', 200)
   const location = requiredText(data.location, 'location', 4096)
-  const repository = new RepositoryStore(database).register(
+  if (location.includes('://'))
+    throw new RepositoryError(
+      'Use a local folder path; URLs cannot be indexed',
+      400,
+    )
+  const store = new RepositoryStore(database)
+  const folder = canonicalFolder(location)
+  if (
+    store
+      .list()
+      .some(
+        (entry) =>
+          isAbsolute(expandHome(entry.location)) &&
+          canonicalFolder(entry.location) === folder,
+      )
+  )
+    throw new RepositoryError(
+      'A repository with this folder already exists',
+      409,
+    )
+  const repository = store.register(
     crypto.randomUUID(),
     name,
-    location,
+    folder,
     Date.now(),
   )
   if (!repository)

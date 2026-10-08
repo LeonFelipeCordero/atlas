@@ -2,12 +2,16 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import click
 
+if TYPE_CHECKING:
+    from ..domain.repositories import GraphDTO
+
+
 @click.group(help="Analyze repositories and store their graphs in SQLite")
-@click.option("--project", metavar="NAME", help="Unique registered project name")
+@click.option("--project", metavar="NAME", help="Unique registered project name (saved reports only)")
 @click.option("--database", type=click.Path(path_type=Path), help="SQLite database path")
 def main(project: str | None, database: Path | None) -> None:
     pass
@@ -37,21 +41,20 @@ def migrate_command(context: click.Context, database: Path | None) -> None:
         raise click.ClickException(str(error)) from error
 
 
-@main.command("index", help="Analyze a repository and save its graph in SQLite")
-@click.argument("repository", default=".", type=click.Path(path_type=Path))
-@click.option("--project", metavar="NAME", help="Unique registered project name")
+@main.command("index", help="Analyze a folder and create or update its saved project graph")
+@click.option("-f", "--f", "--folder", "folder", required=True, type=click.Path(path_type=Path), help="Folder to index; use ./ for the current directory")
 @click.option("--database", type=click.Path(path_type=Path), help="SQLite database path")
 @click.pass_context
-def index_command(
-    context: click.Context, repository: Path, project: str | None, database: Path | None
-) -> None:
-    from ..bootstrap import repository_service
+def index_command(context: click.Context, folder: Path, database: Path | None) -> None:
     from ..domain.repositories import RepositoryError
+    from ..services.repositories import analyze_folder
 
-    reference = _project(context, project)
+    if context.find_root().params["project"] is not None:
+        raise click.UsageError("'--project' is only supported for saved reports; index selects a folder with '-f'.", context)
     try:
-        with repository_service(_database(context, database)) as service:
-            saved = service.index(reference, repository.resolve())
+        root = folder.expanduser().resolve()
+        artifact = analyze_folder(root)
+        saved = _save_folder(root, artifact, _database(context, database))
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps({
@@ -76,6 +79,14 @@ def projects_command(context: click.Context, database: Path | None) -> None:
     click.echo(json.dumps(projects, ensure_ascii=False, indent=2))
 
 
+def _save_folder(root: Path, artifact: dict[str, Any], database: Path | None) -> "GraphDTO":
+    from ..bootstrap import migrate_database, repository_service
+
+    migrate_database(database)
+    with repository_service(database) as service:
+        return service.save_folder(root, artifact)
+
+
 def _folder_report(folder: Path, database: Path | None, skip_save: bool) -> dict[str, Any]:
     from ..domain.report import build_artifact_report
     from ..services.repositories import analyze_folder
@@ -84,11 +95,7 @@ def _folder_report(folder: Path, database: Path | None, skip_save: bool) -> dict
     artifact = analyze_folder(root)
     report = build_artifact_report(artifact)
     if not skip_save:
-        from ..bootstrap import migrate_database, repository_service
-
-        migrate_database(database)
-        with repository_service(database) as service:
-            service.save_folder(root, artifact)
+        _save_folder(root, artifact, database)
     return report
 
 

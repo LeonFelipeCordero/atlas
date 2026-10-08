@@ -67,12 +67,12 @@ function GraphPage() {
         </div>
       </div>
       {showImport && repository && (
-        <ImportHelp repositoryName={repository.name} />
+        <ImportHelp repositoryLocation={repository.location} />
       )}
       <GraphContent
         graph={graph}
         repositoryId={repositoryId}
-        repositoryName={repository?.name}
+        repositoryLocation={repository?.location}
         showImport={showImport}
         refresh={refresh}
       />
@@ -83,13 +83,13 @@ function GraphPage() {
 function GraphContent({
   graph,
   repositoryId,
-  repositoryName,
+  repositoryLocation,
   showImport,
   refresh,
 }: {
   graph: UseQueryResult<ImportedGraph | null>
   repositoryId: string
-  repositoryName: string | undefined
+  repositoryLocation: string | undefined
   showImport: boolean
   refresh: () => void
 }) {
@@ -109,9 +109,9 @@ function GraphContent({
           </Button>
         </div>
       )}
-      {graph.data === null && !graph.error && repositoryName && (
+      {graph.data === null && !graph.error && repositoryLocation && (
         <WaitingForImport
-          repositoryName={repositoryName}
+          repositoryLocation={repositoryLocation}
           showImport={showImport}
         />
       )}
@@ -132,10 +132,10 @@ function GraphContent({
 }
 
 function WaitingForImport({
-  repositoryName,
+  repositoryLocation,
   showImport,
 }: {
-  repositoryName: string
+  repositoryLocation: string
   showImport: boolean
 }) {
   return (
@@ -150,7 +150,7 @@ function WaitingForImport({
           code connects. The graph saves directly to the database.
         </p>
       </div>
-      {!showImport && <ImportHelp repositoryName={repositoryName} />}
+      {!showImport && <ImportHelp repositoryLocation={repositoryLocation} />}
     </section>
   )
 }

@@ -74,13 +74,17 @@ bun run dev
 
 Open **http://localhost:3000**. Drill from folders into files and functions, navigate with breadcrumbs, search the contents list, and inspect incoming/outgoing connections, complexity, line/parameter counts, and dependency metrics. The graph supports pan/zoom and hides test files visually; metrics still use the full index, including tests and type-only dependencies.
 
-Re-run the folder report and refresh the UI after source changes. Reindex older graphs to populate size/parameter metrics; unavailable values are not zero, and this feature needs no schema migration. You can also register a project in the UI, then index it by its unique registered **name**, not ID:
+Re-run the folder report or index command and refresh the UI after source changes. Reindex older graphs to populate size/parameter metrics; unavailable values are not zero, and this feature needs no schema migration. Index a folder directly, with no registration or project parameter required:
 
 ```sh
-uv run --project atlas atlas index /path/to/project --project 'My project'
+uv run --project atlas atlas index -f /path/to/project
 ```
 
-Python owns the SQLite schema and migrations. The default database is `$XDG_DATA_HOME/atlas/atlas.sqlite`, falling back to `~/.local/share/atlas/atlas.sqlite`. Set an absolute `DATABASE_PATH` for both CLI and UI to share a different database; CLI commands also accept `--database PATH`. Folder reports migrate automatically when saving; run `atlas migrate` before using `index` or starting the UI, and back up existing databases before upgrading.
+Indexing updates the project at the same canonical folder location, including projects registered in the UI. Otherwise it creates a project named after the folder, adding a suffix if that name is already taken. `-f ./` indexes the current working directory. `--f` and `--folder` are aliases for `-f`.
+
+UI registration requires a local folder, stores its canonical absolute path, and rejects URLs and duplicate canonical locations. For an older URL-based or relative-location registration, index its local checkout and open the new folder-based project. Legacy relative locations are not matched against the CLI’s working directory. If older registrations share a folder, indexing fails without changing either graph; use a distinct local checkout for each project.
+
+Python owns the SQLite schema and migrations. The default database is `$XDG_DATA_HOME/atlas/atlas.sqlite`, falling back to `~/.local/share/atlas/atlas.sqlite`. Set an absolute `DATABASE_PATH` for both CLI and UI to share a different database; CLI commands also accept `--database PATH`. Indexing and folder reports migrate automatically when saving; run `atlas migrate` before starting the UI if no folder has been saved yet, and back up existing databases before upgrading.
 
 The UI has **no authentication**; keep it on a trusted local network.
 
@@ -89,6 +93,7 @@ The UI has **no authentication**; keep it on a trusted local network.
 Run against the whole target project, not just changed files:
 
 ```sh
+atlas index -f .                               # Register/update and save; JSON graph summary
 atlas report -f .                              # Fresh analysis; register/update and save
 atlas report -f . --skip-save                  # Fresh analysis; no database access
 atlas report -f . --skip-save --format json    # Structured findings for scripts
@@ -96,7 +101,7 @@ atlas projects                                # List registered projects as JSON
 atlas report -p 'My project'                   # Read saved findings; no reanalysis
 ```
 
-Choose exactly one source: a folder (`-f`) or a saved project name (`-p`). Markdown is the default, with file paths, callable line numbers, and explanations. JSON has the shape `{"findings": [...]}`; a clean report returns `{"findings": []}`.
+`index` requires a folder (`-f`) and does not accept a project selector or positional path. For `report`, choose exactly one source: a folder (`-f`) or a saved project name (`-p`). Markdown is the default, with file paths, callable line numbers, and explanations. JSON has the shape `{"findings": [...]}`; a clean report returns `{"findings": []}`.
 
 For a shell script or CI gate, check the JSON explicitly: **findings do not cause a nonzero exit code**, but command errors do. This Bash example requires `jq`:
 

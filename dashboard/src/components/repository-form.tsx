@@ -51,11 +51,11 @@ export function RepositoryForm({ onCreated }: { onCreated: () => void }) {
           />
         </label>
         <label htmlFor="repository-location">
-          URL or local path
+          Local folder path
           <Input
             id="repository-location"
             name="location"
-            placeholder="https://github.com/team/project"
+            placeholder="/path/to/project"
             required
             maxLength={4096}
             value={location}
@@ -64,7 +64,7 @@ export function RepositoryForm({ onCreated }: { onCreated: () => void }) {
           />
         </label>
         <p id="location-help" className="field-help">
-          For reference only. We don’t clone or access this location.
+          Use the folder you will index with -f. URLs are not supported.
         </p>
         {mutation.error && (
           <p className="error-message" role="alert">

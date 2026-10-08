@@ -33,5 +33,5 @@ export const formatDate = (timestamp: number) =>
     timeStyle: 'short',
   })
 
-export const indexCommand = (name: string) =>
-  `bun run architecture:index <repository-path> --project '${name.replaceAll("'", "'\\''")}'`
+export const indexCommand = (location: string) =>
+  `bun run architecture:index -f '${location.replaceAll("'", "'\\''")}'`

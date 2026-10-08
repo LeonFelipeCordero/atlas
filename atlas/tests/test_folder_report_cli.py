@@ -87,22 +87,27 @@ def test_folder_names_are_trimmed_for_project_lookup(tmp_path: Path) -> None:
     assert selected.output == "No findings.\n"
 
 
+@pytest.mark.parametrize("command", ["index", "report"])
 def test_relative_folder_uses_user_database_not_source(
-    source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str,
 ) -> None:
     monkeypatch.chdir(source)
     monkeypatch.delenv("DATABASE_PATH", raising=False)
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "user-data"))
     before = sorted(source.iterdir())
-    result = CliRunner().invoke(main, ["report", "--f", "./"])
+    result = CliRunner().invoke(main, [command, "--f", "./"])
     assert result.exit_code == 0, result.output
-    assert "Circular dependency" in result.output
+    if command == "report":
+        assert "Circular dependency" in result.output
+    else:
+        assert json.loads(result.output)["stats"]["files"] == 2
     assert (tmp_path / "user-data/atlas/atlas.sqlite").exists()
     assert sorted(source.iterdir()) == before
 
 
+@pytest.mark.parametrize("command", ["index", "report"])
 def test_folder_updates_registered_location_not_same_name(
-    source: Path, tmp_path: Path,
+    source: Path, tmp_path: Path, command: str,
 ) -> None:
     database = tmp_path / "db.sqlite"
     migrate_database(database)
@@ -111,7 +116,7 @@ def test_folder_updates_registered_location_not_same_name(
     with repository_service(database) as service:
         registered = service.register({"name": "Custom", "location": str(alias)})
         other = service.register({"name": "example", "location": str(tmp_path / "other")})
-    result = CliRunner().invoke(main, ["report", "-f", str(source), "--database", str(database)])
+    result = CliRunner().invoke(main, [command, "-f", str(source), "--database", str(database)])
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         assert len(service.list()) == 2
@@ -119,12 +124,13 @@ def test_folder_updates_registered_location_not_same_name(
         assert service.get_architecture(other.id) is None
 
 
-def test_same_basename_folders_get_distinct_projects(source: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("command", ["index", "report"])
+def test_same_basename_folders_get_distinct_projects(source: Path, tmp_path: Path, command: str) -> None:
     database = tmp_path / "db.sqlite"
     other = tmp_path / "other/EXAMPLE"
     other.mkdir(parents=True)
     for root in (source, other, source):
-        result = CliRunner().invoke(main, ["report", "-f", str(root), "--database", str(database)])
+        result = CliRunner().invoke(main, [command, "-f", str(root), "--database", str(database)])
         assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         projects = service.list()
@@ -184,10 +190,11 @@ def test_invalid_report_arguments_do_not_create_database(
     assert not database.parent.exists()
 
 
-def test_file_is_not_a_report_folder(source: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("command", ["index", "report"])
+def test_file_is_not_an_analysis_folder(source: Path, tmp_path: Path, command: str) -> None:
     database = tmp_path / "missing/db.sqlite"
     result = CliRunner().invoke(main, [
-        "report", "-f", str(source / "a.py"), "--database", str(database),
+        command, "-f", str(source / "a.py"), "--database", str(database),
     ])
     assert result.exit_code == 1
     assert "Repository does not exist" in result.output
@@ -204,10 +211,11 @@ def test_global_project_conflicts_with_folder(tmp_path: Path) -> None:
     assert not database.parent.exists()
 
 
-def test_failed_update_preserves_saved_graph(source: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("command", ["index", "report"])
+def test_failed_update_preserves_saved_graph(source: Path, tmp_path: Path, command: str) -> None:
     database = tmp_path / "db.sqlite"
     runner = CliRunner()
-    args = ["report", "-f", str(source), "--database", str(database)]
+    args = [command, "-f", str(source), "--database", str(database)]
     result = runner.invoke(main, args)
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
@@ -225,13 +233,14 @@ def test_failed_update_preserves_saved_graph(source: Path, tmp_path: Path) -> No
         assert service.get_architecture(project.id) == original
 
 
-def test_failed_save_rolls_back_registration(source: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("command", ["index", "report"])
+def test_failed_save_rolls_back_registration(source: Path, tmp_path: Path, command: str) -> None:
     database = tmp_path / "db.sqlite"
     migrate_database(database)
     with sqlite3.connect(database) as db:
         db.execute("""CREATE TRIGGER reject_graph BEFORE INSERT ON repository_graphs
             BEGIN SELECT RAISE(ABORT, 'forced write failure'); END""")
-    result = CliRunner().invoke(main, ["report", "-f", str(source), "--database", str(database)])
+    result = CliRunner().invoke(main, [command, "-f", str(source), "--database", str(database)])
     assert result.exit_code == 1
     assert "forced write failure" in result.output
     with repository_service(database) as service:
