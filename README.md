@@ -5,7 +5,9 @@
 <h1 align="center">Atlas</h1>
 
 <p align="center">
-  <a href="https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml"><img src="https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml"><img src="https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml/badge.svg?branch=main" alt="CLI CI status"></a>
+  <a href="https://github.com/LeonFelipeCordero/atlas/actions/workflows/dashboard-ci.yml"><img src="https://github.com/LeonFelipeCordero/atlas/actions/workflows/dashboard-ci.yml/badge.svg?branch=main" alt="Dashboard CI status"></a>
+  <a href="https://github.com/LeonFelipeCordero/atlas/actions/workflows/atlas-ci.yml"><img src="https://github.com/LeonFelipeCordero/atlas/actions/workflows/atlas-ci.yml/badge.svg?branch=main" alt="Atlas CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-89718e.svg" alt="License: MIT"></a>
 </p>
 
@@ -137,7 +139,7 @@ uv sync --project atlas --group dev
 uv run --project atlas atlas report -f . --skip-save
 ```
 
-CI runs Python checks, dashboard checks, and a full-project Atlas report requiring zero findings. Production Python modules are limited to 600 lines, with architecture boundaries enforced by tests.
+CI runs Python checks only for `atlas/` changes and dashboard checks only for `dashboard/` changes. Either folder, `.atlasignore`, or `.gitignore` changes trigger a full-project Atlas report requiring zero findings. Each workflow also runs when its own file changes; docs-only changes skip CI. Production Python modules are limited to 600 lines, with architecture boundaries enforced by tests.
 
 The dashboard uses TypeScript 7 for `tsc` via the `@typescript/native` alias, while ESLint uses the TypeScript 6 compatibility API via the `typescript` alias. This follows Microsoft's [side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0) until typescript-eslint supports the new compiler API.
 
