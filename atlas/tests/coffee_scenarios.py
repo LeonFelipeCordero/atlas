@@ -6,38 +6,38 @@ from typing import Any
 # File order: brewing/Brewer, brewing/Recipe, reporting/Report.
 DECLARATIONS = {
     "java": (
-        "coffee.brewing Brewing Brewing.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score Brewer.main",
+        "coffee.brewing Brewing Brewing.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score Brewer.classify Brewer.ready Brewer.main",
         "coffee.brewing Recipe Recipe.Recipe Recipe.portions Recipe.preview",
         "coffee.reporting Report Report.Report Report.total Report.render Report.render.<anonymous>",
     ),
     "kotlin": (
-        "coffee.brewing CoffeeMaker CoffeeMaker.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score main",
+        "coffee.brewing CoffeeMaker CoffeeMaker.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score Brewer.classify Brewer.ready main",
         "coffee.brewing portions preview",
         "coffee.reporting render render.<anonymous> render.<anonymous>",
     ),
-    "go": ("brew brew.accept retry score Main", "portions preview", "total render"),
+    "go": ("brew brew.accept retry score classify ready Main", "portions preview", "total render"),
     "rust": (
-        "recipe report brew brew.<anonymous> retry score main",
+        "recipe report brew brew.<anonymous> retry score classify ready main",
         "portions preview",
         "total total.<anonymous> render render.<anonymous>",
     ),
     "javascript": (
-        "Brewing Brewing.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score main",
+        "Brewing Brewing.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score Brewer.classify Brewer.ready main",
         "Recipe Recipe.portions Recipe.preview",
         "Report Report.total Report.total.<anonymous> Report.render Report.render.<anonymous>",
     ),
     "typescript": (
-        "Brewing Brewing.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score main",
+        "Brewing Brewing.brew Brewer Brewer.brew Brewer.brew.<anonymous> Brewer.retry Brewer.score Brewer.classify Brewer.ready main",
         "Recipe Recipe.portions Recipe.preview",
         "Report Report.total Report.total.<anonymous> Report.render Report.render.<anonymous>",
     ),
     "elixir": (
-        "Coffee.Brewing.Brewer Coffee.Brewing.Brewer.brew Coffee.Brewing.Brewer.brew Coffee.Brewing.Brewer.brew.<anonymous> Coffee.Brewing.Brewer.retry Coffee.Brewing.Brewer.retry Coffee.Brewing.Brewer.score Coffee.Brewing.Brewer.score.<anonymous> Coffee.Brewing.Brewer.score.<anonymous>.<anonymous> Coffee.Brewing.Brewer.main",
+        "Coffee.Brewing.Brewer Coffee.Brewing.Brewer.brew Coffee.Brewing.Brewer.brew Coffee.Brewing.Brewer.brew.<anonymous> Coffee.Brewing.Brewer.retry Coffee.Brewing.Brewer.retry Coffee.Brewing.Brewer.score Coffee.Brewing.Brewer.score.<anonymous> Coffee.Brewing.Brewer.score.<anonymous>.<anonymous> Coffee.Brewing.Brewer.classify Coffee.Brewing.Brewer.ready Coffee.Brewing.Brewer.main",
         "Coffee.Brewing.Recipe Coffee.Brewing.Recipe.portions Coffee.Brewing.Recipe.preview",
         "Coffee.Reporting.Report Coffee.Reporting.Report.total Coffee.Reporting.Report.total.<anonymous> Coffee.Reporting.Report.render Coffee.Reporting.Report.render.<anonymous>",
     ),
     "python": (
-        "Brewing Brewing.brew Brewer Brewer.brew Brewer.retry Brewer.score import_styles main",
+        "Brewing Brewing.brew Brewer Brewer.brew Brewer.retry Brewer.score Brewer.classify Brewer.ready import_styles main",
         "Recipe Recipe.portions Recipe.preview portions",
         "Report Report.total Report.render render",
     ),
@@ -47,14 +47,14 @@ DECLARATIONS = {
 # internal imports, Recipe→Report / Report→Recipe file-view relationship counts,
 # import-cycle groups. Separate Elixir clauses are real source declarations.
 OBSERVED = {
-    "java": (20, 2, 1, 1, 3, (2, 3), 1),
-    "kotlin": (16, 3, 1, 1, 3, (2, 3), 1),
-    "go": (9, 0, 1, 0, 0, (1, 2), 0),
-    "rust": (13, 3, 1, 0, 4, (2, 3), 1),
-    "javascript": (16, 3, 1, 1, 4, (2, 3), 1),
-    "typescript": (16, 3, 1, 1, 4, (2, 3), 1),
-    "elixir": (18, 5, 1, 0, 4, (2, 3), 1),
-    "python": (16, 0, 1, 2, 12, (2, 3), 1),
+    "java": (22, 2, 1, 1, 3, (2, 3), 1),
+    "kotlin": (18, 3, 1, 1, 3, (2, 3), 1),
+    "go": (11, 0, 1, 0, 0, (1, 2), 0),
+    "rust": (15, 3, 1, 0, 4, (2, 3), 1),
+    "javascript": (18, 3, 1, 1, 4, (2, 3), 1),
+    "typescript": (18, 3, 1, 1, 4, (2, 3), 1),
+    "elixir": (20, 5, 1, 0, 4, (2, 3), 1),
+    "python": (18, 0, 1, 2, 12, (2, 3), 1),
 }
 COMPLEXITY_FIELDS = (
     "baseCyclomaticComplexity",

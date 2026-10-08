@@ -29,6 +29,34 @@ class Brewer : CoffeeMaker {
         }
         return total
     }
+
+    // Deliberately exceed the cyclomatic-complexity limit without deep nesting.
+    fun classify(amount: Int): Int {
+        var category = 0
+        if (amount > 0) category++
+        if (amount > 1) category++
+        if (amount > 2) category++
+        if (amount > 3) category++
+        if (amount > 4) category++
+        if (amount > 5) category++
+        if (amount > 6) category++
+        if (amount > 7) category++
+        return category
+    }
+
+    // Deliberately exceed the decision-nesting limit without loops.
+    fun ready(water: Int, beans: Int, cups: Int, temperature: Int): Boolean {
+        if (water > 0) {
+            if (beans > 0) {
+                if (cups > 0) {
+                    if (temperature > 0) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
 }
 
 fun main() {

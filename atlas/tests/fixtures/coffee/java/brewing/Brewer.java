@@ -34,6 +34,34 @@ public final class Brewer implements Brewing {
         return result;
     }
 
+    // Deliberately exceed the cyclomatic-complexity limit without deep nesting.
+    public int classify(int amount) {
+        int category = 0;
+        if (amount > 0) category++;
+        if (amount > 1) category++;
+        if (amount > 2) category++;
+        if (amount > 3) category++;
+        if (amount > 4) category++;
+        if (amount > 5) category++;
+        if (amount > 6) category++;
+        if (amount > 7) category++;
+        return category;
+    }
+
+    // Deliberately exceed the decision-nesting limit without loops.
+    public boolean ready(int water, int beans, int cups, int temperature) {
+        if (water > 0) {
+            if (beans > 0) {
+                if (cups > 0) {
+                    if (temperature > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public static void main(String[] args) {
         System.out.println(new Brewer().brew(List.of("espresso", "filter", "invalid")));
     }

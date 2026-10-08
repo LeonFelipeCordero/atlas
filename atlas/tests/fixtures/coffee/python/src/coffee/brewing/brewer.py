@@ -45,6 +45,36 @@ class Brewer(Brewing):
                     result += count
         return result
 
+    # Deliberately exceed the cyclomatic-complexity limit without deep nesting.
+    def classify(self, amount: int) -> int:
+        category = 0
+        if amount > 0:
+            category += 1
+        if amount > 1:
+            category += 1
+        if amount > 2:
+            category += 1
+        if amount > 3:
+            category += 1
+        if amount > 4:
+            category += 1
+        if amount > 5:
+            category += 1
+        if amount > 6:
+            category += 1
+        if amount > 7:
+            category += 1
+        return category
+
+    # Deliberately exceed the decision-nesting limit without loops.
+    def ready(self, water: int, beans: int, cups: int, temperature: int) -> bool:
+        if water > 0:
+            if beans > 0:
+                if cups > 0:
+                    if temperature > 0:
+                        return True
+        return False
+
 
 def import_styles(name: str) -> str:
     recipe.portions(name)
