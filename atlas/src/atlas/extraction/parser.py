@@ -123,7 +123,7 @@ def parse_file(source: SourceFile) -> ParsedFile:
     Args:
         source: File path, language identifier, and source bytes to index.
     Returns:
-        Parsed records with a SHA-256 digest; callable symbols get complexity.
+        Parsed records with a SHA-256 digest; callables get complexity and size metrics.
     Raises:
         ValueError: The language is unsupported (including C and C++).
         Exception: Uncaught structure extraction, record validation, or complexity
@@ -164,23 +164,26 @@ def parse_file(source: SourceFile) -> ParsedFile:
     structure = extract_structure(syntax_source, source.language, result.structure)
     for item in structure:
         _add_structure(parsed, item, file_key(source.path), [])
-    _add_complexity(parsed, syntax_source)
+    _add_callable_metrics(parsed, syntax_source)
     return parsed
 
 
-def _add_complexity(file: ParsedFile, syntax_source: bytes) -> None:
+def _add_callable_metrics(file: ParsedFile, syntax_source: bytes) -> None:
     callables = [
         symbol for symbol in file.symbols if symbol.kind in {"function", "method"}
     ]
     if not callables:
         return
     root = get_parser(file.source.language).parse(syntax_source).root_node
+    adapter = get_adapter(file.source.language)
     for symbol in callables:
+        symbol.line_count = max(
+            0, symbol.end_line - symbol.start_line + int(symbol.end_column > 1)
+        )
         node = root.descendant_for_byte_range(symbol.start_byte, symbol.end_byte - 1)
         if node is not None:
-            symbol.complexity = calculate_complexity(
-                node, get_adapter(file.source.language).metrics
-            )
+            symbol.complexity = calculate_complexity(node, adapter.metrics)
+            symbol.parameter_count = adapter.parameter_count(node)
 
 
 def parse_files(files: list[SourceFile]) -> ParsedRepository:

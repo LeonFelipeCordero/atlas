@@ -181,6 +181,7 @@ class LanguageAdapter:
         default_relationship
     )
     metrics: MetricPolicy = DEFAULT_METRICS
+    parameter_count: Callable[[Node], int | None] = lambda node: None
 
     def imports(
         self, source: SourceFile, native: list[tuple[str, int]]

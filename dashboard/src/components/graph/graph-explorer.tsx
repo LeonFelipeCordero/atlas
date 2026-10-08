@@ -3,6 +3,7 @@ import { Network } from 'lucide-react'
 import { GraphSidebar } from './graph-sidebar'
 import { GraphNavigation } from './graph-navigation'
 import { GraphFileComplexity } from './graph-file-complexity'
+import type { ComponentProps } from 'react'
 import type { Artifact } from '@/lib/architecture-artifact'
 import type { GraphNode, GraphScope } from '@/lib/project-graph'
 import { buildProjectGraph, getGraphTrail } from '@/lib/project-graph'
@@ -32,6 +33,29 @@ function EmptyGraph({ isFile, back }: { isFile: boolean; back?: () => void }) {
         </Button>
       )}
     </div>
+  )
+}
+
+function GraphViewport({
+  isFile,
+  back,
+  ...props
+}: ComponentProps<typeof GraphCanvas> & {
+  isFile: boolean
+  back?: () => void
+}) {
+  if (!props.graph.nodes.length)
+    return <EmptyGraph isFile={isFile} back={back} />
+  return (
+    <Suspense
+      fallback={
+        <div className="loading-state" role="status">
+          Drawing your graph…
+        </div>
+      }
+    >
+      <GraphCanvas {...props} />
+    </Suspense>
   )
 }
 
@@ -95,32 +119,19 @@ export function GraphExplorer({ artifact }: { artifact: Artifact }) {
           role="region"
           aria-label={`${current.label} dependency graph`}
         >
-          {graph.nodes.length ? (
-            <Suspense
-              fallback={
-                <div className="loading-state" role="status">
-                  Drawing your graph…
-                </div>
-              }
-            >
-              <GraphCanvas
-                key={JSON.stringify(current.scope)}
-                graph={graph}
-                selected={selected}
-                focusId={focusId}
-                activeCycle={activeCycle}
-                onSelect={select}
-                onOpen={open}
-              />
-            </Suspense>
-          ) : (
-            <EmptyGraph
-              isFile={current.scope.kind === 'file'}
-              back={
-                trail.length > 1 ? () => navigate(trail.length - 2) : undefined
-              }
-            />
-          )}
+          <GraphViewport
+            key={JSON.stringify(current.scope)}
+            graph={graph}
+            selected={selected}
+            focusId={focusId}
+            activeCycle={activeCycle}
+            onSelect={select}
+            onOpen={open}
+            isFile={current.scope.kind === 'file'}
+            back={
+              trail.length > 1 ? () => navigate(trail.length - 2) : undefined
+            }
+          />
         </div>
         <GraphSidebar
           key={JSON.stringify(current.scope)}

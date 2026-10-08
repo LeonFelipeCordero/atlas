@@ -125,7 +125,7 @@ class Complexity:
 
 @dataclass(config=MODEL_CONFIG)
 class Symbol:
-    """Declaration metadata, source span, parent key, and optional complexity."""
+    """Declaration metadata, source span, parent key, and optional callable metrics."""
 
     key: str
     file_path: str
@@ -144,6 +144,8 @@ class Symbol:
     visibility: str | None
     decorators: list[str]
     complexity: Complexity | None = None
+    line_count: int | None = None
+    parameter_count: int | None = None
 
 
 @dataclass(config=MODEL_CONFIG)

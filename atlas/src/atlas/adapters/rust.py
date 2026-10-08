@@ -30,7 +30,10 @@ from .macro_evaluation import (
     payload_unshadowed as payload_unshadowed,
 )
 
-QUERY = "\n(closure_expression) @definition.function\n"
+QUERY = """
+(closure_expression) @definition.function
+(function_signature_item name: (identifier) @name) @definition.function
+"""
 CALLBACK_TYPES = frozenset({"closure_expression"})
 CALL_TYPES = frozenset({"call_expression", "macro_invocation"})
 IMPORT_NODE = "mod_item"

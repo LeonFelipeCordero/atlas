@@ -487,7 +487,6 @@ class CallResolver:
 
     def _matches(
         self,
-        file: ParsedFile,
         node,
         callee,
         receiver,
@@ -496,6 +495,7 @@ class CallResolver:
         call: Call,
         owner: Symbol | None,
     ) -> list[Symbol]:
+        file = self.files[call.file_path]
         if get_resolution_adapter(file.source.language).receiver_rejected(
             receiver, qualifier
         ):
@@ -542,7 +542,7 @@ class CallResolver:
         if scoped and receiver is None:
             qualifier, name = scoped.groups()
         matches = self._matches(
-            file, node, callee, receiver, name, qualifier, call, owner
+            node, callee, receiver, name, qualifier, call, owner
         )
         return self.identity.select(
             file,

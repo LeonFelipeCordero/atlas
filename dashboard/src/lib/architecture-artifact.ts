@@ -6,6 +6,11 @@ export type NodeComplexity = {
   maxDecisionDepth?: number
 }
 
+export type NodeSizeMetrics = {
+  lineCount?: number
+  parameterCount?: number
+}
+
 export type NodeDependencyMetrics = {
   fanIn?: number
   fanOut?: number
@@ -29,7 +34,10 @@ export type ArtifactNode = {
   startColumn?: number | null
   endLine?: number | null
   endColumn?: number | null
-  properties?: Record<string, unknown> & NodeComplexity & NodeDependencyMetrics
+  properties?: Record<string, unknown> &
+    NodeComplexity &
+    NodeDependencyMetrics &
+    NodeSizeMetrics
 }
 
 export type DirectEdge = {
@@ -201,6 +209,8 @@ function validateComplexity(properties: Record<string, unknown>, at: string) {
     'fanIn',
     'fanOut',
     'transitiveChangeImpact',
+    'lineCount',
+    'parameterCount',
   ]) {
     if (properties[key] === undefined) continue
     const minimum = [
