@@ -1,12 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
-  <title id="title">Atlas: a clearer view of your code</title>
-  <desc id="desc">The Atlas mascot holding a globe beside the project name and its code analysis features.</desc>
+  <title id="title">Atlas mascot</title>
+  <desc id="desc">A friendly cartoon giant holding a globe, centered on a light background.</desc>
   <rect width="1280" height="640" fill="#f7f3ef"/>
-  <image href="atlas.svg" x="40" y="38" width="560" height="560"/>
-  <g fill="#443447" font-family="Noto Sans, sans-serif">
-    <text x="638" y="263" font-size="106" font-weight="800" letter-spacing="-4">Atlas</text>
-    <text x="642" y="323" font-size="30" letter-spacing="-0.5">A clearer view of your code.</text>
-    <text x="643" y="391" font-size="21" fill="#79647d">Structure. Dependencies. Complexity.</text>
-    <text x="643" y="555" font-size="18" fill="#79647d">github.com/LeonFelipeCordero/atlas</text>
-  </g>
+  <image href="atlas.svg" x="360" y="40" width="560" height="560"/>
 </svg>
