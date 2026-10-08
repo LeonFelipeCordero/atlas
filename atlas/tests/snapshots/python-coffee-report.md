@@ -22,6 +22,23 @@ Files:
 Findings:
 - Decision nesting depth is 4 (limit: 3).
 
+## Size: `src/coffee/brewing/brewer.py`
+
+Files:
+- `src/coffee/brewing/brewer.py`
+
+Findings:
+- File line count is 601 (limit: 600).
+
+## Size: `src/coffee/brewing/brewer.py::Brewer.calibrate`
+
+Files:
+- `src/coffee/brewing/brewer.py:79`
+
+Findings:
+- Function line count is 105 (limit: 100).
+- Parameter count is 8 (limit: 7).
+
 ## Circular dependency: `Circular imports`
 
 Files:

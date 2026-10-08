@@ -22,6 +22,23 @@ Files:
 Findings:
 - Decision nesting depth is 4 (limit: 3).
 
+## Size: `brewing/Brewer.java`
+
+Files:
+- `brewing/Brewer.java`
+
+Findings:
+- File line count is 601 (limit: 600).
+
+## Size: `brewing/Brewer.java::Brewer.calibrate`
+
+Files:
+- `brewing/Brewer.java:66`
+
+Findings:
+- Function line count is 104 (limit: 100).
+- Parameter count is 8 (limit: 7).
+
 ## Circular dependency: `Circular imports`
 
 Files:

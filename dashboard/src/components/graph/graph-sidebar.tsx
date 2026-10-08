@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { GraphComplexity } from './graph-complexity'
 import { GraphDependencyMetrics } from './graph-dependency-metrics'
+import { GraphSizeMetrics } from './graph-size-metrics'
 import { GraphFileComplexity } from './graph-file-complexity'
 import { GraphCycles } from './graph-cycles'
 import type { CycleProps } from './graph-cycles'
@@ -66,6 +67,7 @@ export function GraphSidebar({
         <div className="sidebar-file-summary">
           <p className="eyebrow">{file.name}</p>
           <GraphFileComplexity artifact={artifact} fileKey={file.stableKey} />
+          <GraphSizeMetrics node={file} />
           <GraphDependencyMetrics node={file} />
         </div>
       )}
@@ -189,6 +191,7 @@ function NodeMetrics({ node }: { node: ArtifactNode | undefined }) {
       {['function', 'method'].includes(node.type) && (
         <GraphComplexity properties={node.properties} />
       )}
+      <GraphSizeMetrics node={node} />
       {['module', 'file', 'type', 'callable'].includes(node.level) && (
         <GraphDependencyMetrics node={node} />
       )}

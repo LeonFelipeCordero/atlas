@@ -1,6 +1,6 @@
 # Atlas
 
-Atlas maps a local codebase and highlights complex functions and circular imports. Use its CLI for human- or AI-readable findings, or its web UI to explore dependencies and potential change impact.
+Atlas maps a local codebase and highlights complex functions, oversized files/functions, excessive parameters, and circular imports. Use its CLI for human- or AI-readable findings, or its web UI to explore dependencies and potential change impact.
 
 Python parses files with Tree-sitter, resolves repository-local relationships, and builds a code graph. Analysis runs locally, on demand; graphs can be saved to SQLite, which the Bun/React UI reads directly. No cloud service, Python HTTP server, cloning, or background indexing.
 
@@ -28,11 +28,14 @@ uv run --project atlas atlas report -f /path/to/project --skip-save
 | Code structure | Folders, files, types, functions, and methods in a navigable hierarchy. |
 | Relationships | Imports, calls, callable references, inheritance, and containment; dependency views at module, file, type, and callable levels. |
 | Complexity | Function/method decision points, short-circuit operators, deep-decision penalties, nested-loop penalties, and maximum decision depth. |
+| Size and parameters | Physical line counts for files and functions/methods, plus declared input parameter counts for supported callable syntax. |
 | Circular imports | Groups of files in runtime import cycles, with an example cycle and source evidence; type-only imports do not establish cycles. |
 | Dependency metrics | Fan-in (direct dependents), fan-out (direct dependencies), and transitive change impact (all direct/indirect dependents), counting distinct internal peers. |
 | Parse diagnostics | Parsing failures retained in the graph, alongside unresolved external targets and relationship confidence. |
 
-Reports contain only complexity and circular-import findings. Complexity rules trigger independently when total cyclomatic complexity **> 8**, nested-loop count **> 0**, or decision depth **> 3**. Total complexity is `1 + decisions + short-circuit operators + deep-decision penalties + nested-loop penalties`. Other graph metrics have no report thresholds.
+Reports contain complexity, size, and circular-import findings. Complexity rules trigger independently when total cyclomatic complexity **> 8**, nested-loop count **> 0**, or decision depth **> 3**. Total complexity is `1 + decisions + short-circuit operators + deep-decision penalties + nested-loop penalties`.
+
+Size rules trigger independently for files **> 600 lines**, functions/methods **> 100 lines**, or functions/methods with **> 7 input parameters**. Lines include comments and blanks; callable counts cover the full declaration. Parameters are declared inputs, not call-site arguments: defaults, destructuring patterns, and variadics each count as one; receivers and type parameters are excluded. Parameter counting supports Python, JavaScript, TypeScript/TSX, Go, Rust, Java, Kotlin, and Elixir. Unsupported syntax/languages leave counts unavailable, not zero. Other graph metrics have no report thresholds.
 
 Atlas supports grammars recognized by its pinned Tree-sitter language pack, **except C and C++**. Python, JavaScript/JSX, TypeScript/TSX, Java, Kotlin, Go, Rust, and Elixir have specialized adapters; other supported grammars use generic extraction. Resolution is static and conservative, not compiler/type inference. Unresolved imports cannot establish cycles, and “No findings” does not prove the code is problem-free.
 
@@ -60,9 +63,9 @@ bun run db:migrate
 bun run dev
 ```
 
-Open **http://localhost:3000**. Drill from folders into files and functions, navigate with breadcrumbs, search the contents list, and inspect incoming/outgoing connections, complexity, and dependency metrics. The graph supports pan/zoom and hides test files visually; metrics still use the full index, including tests and type-only dependencies.
+Open **http://localhost:3000**. Drill from folders into files and functions, navigate with breadcrumbs, search the contents list, and inspect incoming/outgoing connections, complexity, line/parameter counts, and dependency metrics. The graph supports pan/zoom and hides test files visually; metrics still use the full index, including tests and type-only dependencies.
 
-Re-run the folder report and refresh the UI after source changes. You can also register a project in the UI, then index it by its unique registered **name**, not ID:
+Re-run the folder report and refresh the UI after source changes. Reindex older graphs to populate size/parameter metrics; unavailable values are not zero, and this feature needs no schema migration. You can also register a project in the UI, then index it by its unique registered **name**, not ID:
 
 ```sh
 uv run --project atlas atlas index /path/to/project --project 'My project'
@@ -97,7 +100,7 @@ For an AI coding agent with shell access, add this instruction to its project ru
 
 ```text
 After changes, run `atlas report -f . --skip-save` from the target repository root.
-Review reported complexity and circular imports; fix relevant findings and rerun.
+Review reported complexity, size/parameter limits, and circular imports; fix relevant findings and rerun.
 Analyze the entire project. Do not treat “No findings” as a substitute for tests.
 ```
 
@@ -127,6 +130,6 @@ uv run --project atlas atlas report -f . --skip-save
 
 CI runs Python checks, dashboard checks, and a full-project Atlas report requiring zero findings. Production Python modules are limited to 600 lines, with architecture boundaries enforced by tests.
 
-Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity violations and import cycles; do not simplify them. Tests compare graphs and reports with checked-in snapshots. Regenerate graph snapshots only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`; report snapshots are generated separately with `atlas report -f tests/fixtures/coffee/<language> --skip-save` from `atlas/`.
+Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity/size/parameter violations and import cycles; do not simplify them or remove their reference-note ledgers. Tests compare graphs and reports with checked-in snapshots. Regenerate both formats only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`.
 
 For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then run migrations. Report security issues as described in [SECURITY.md](SECURITY.md).

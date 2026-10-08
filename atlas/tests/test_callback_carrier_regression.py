@@ -280,9 +280,7 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
                 callback_node,
                 callback,
                 local,
-                wrapper,
-                start,
-                end,
+                (wrapper, start, end),
             )
 
     def assert_native_endpoint(
@@ -293,10 +291,9 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         callback_node,
         callback,
         local,
-        wrapper,
-        start,
-        end,
+        endpoints,
     ):
+        wrapper, start, end = endpoints
         native_span = replace(
             span(wrapper),
             start_byte=start.start_byte,

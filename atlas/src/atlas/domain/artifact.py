@@ -311,6 +311,8 @@ def _add_file_nodes(
                 "parentStableKey": parent_key,
                 "properties": {
                     "bytes": len(source.source),
+                    "lineCount": source.source.count(b"\n")
+                    + int(bool(source.source) and not source.source.endswith(b"\n")),
                     "sha256": file.content_hash,
                 },
             }
@@ -355,6 +357,14 @@ def _add_symbol_nodes(
                 "properties": {
                     "visibility": symbol.visibility,
                     "decorators": symbol.decorators,
+                    **(
+                        {"lineCount": symbol.line_count}
+                        if symbol.line_count is not None else {}
+                    ),
+                    **(
+                        {"parameterCount": symbol.parameter_count}
+                        if symbol.parameter_count is not None else {}
+                    ),
                     **(
                         asdict(symbol.complexity)
                         if symbol.complexity is not None
