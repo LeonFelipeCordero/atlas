@@ -1,9 +1,13 @@
-# Atlas
+<p align="center">
+  <img src="assets/atlas.png" alt="Atlas, a friendly cartoon giant holding the world" width="200" height="200">
+</p>
 
-<img src="assets/atlas.png" alt="A geometric Atlas figure supporting a globe of connected nodes" width="144" height="144" align="right">
+<h1 align="center">Atlas</h1>
 
-[![CI](https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-89718e.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml"><img src="https://github.com/LeonFelipeCordero/atlas/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-89718e.svg" alt="License: MIT"></a>
+</p>
 
 Atlas maps a local codebase and highlights complex functions, oversized files/functions, excessive parameters, and circular imports. Use its CLI for human- or AI-readable findings, or its web UI to explore dependencies and potential change impact.
 
