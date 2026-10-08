@@ -139,6 +139,8 @@ uv run --project atlas atlas report -f . --skip-save
 
 CI runs Python checks, dashboard checks, and a full-project Atlas report requiring zero findings. Production Python modules are limited to 600 lines, with architecture boundaries enforced by tests.
 
+The dashboard uses TypeScript 7 for `tsc` via the `@typescript/native` alias, while ESLint uses the TypeScript 6 compatibility API via the `typescript` alias. This follows Microsoft's [side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0) until typescript-eslint supports the new compiler API.
+
 Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity/size/parameter violations and import cycles; do not simplify them or remove their reference-note ledgers. Tests compare graphs and reports with checked-in snapshots. Regenerate both formats only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`.
 
 For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then run migrations. Report security issues as described in [SECURITY.md](SECURITY.md).
