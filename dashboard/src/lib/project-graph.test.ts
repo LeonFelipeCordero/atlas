@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeAll, describe, expect, test } from 'bun:test'
 import { parseArtifact } from './architecture-artifact'
 import { getGraphTrail } from './project-graph'
 import { buildProjectGraph, ids } from './project-graph-test.helpers'
@@ -8,9 +8,14 @@ import {
   recordReachableNodes,
 } from './project-graph-projection-test-helpers'
 import { fixtureNodes } from './project-graph-fixture'
-import { artifactFixtures } from './imported-artifact-fixture'
+import { artifactFixtures, importedArtifact } from './imported-artifact-fixture'
 import type { Artifact, DirectEdge } from './architecture-artifact'
 import type { GraphScope, ProjectGraph } from './project-graph'
+
+// This file must also prepare the CLI fixture when run independently.
+beforeAll(() => {
+  importedArtifact()
+}, 30_000)
 
 function fixture(): Artifact {
   const nodes = fixtureNodes()

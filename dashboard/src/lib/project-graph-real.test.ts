@@ -1,7 +1,12 @@
-import { expect, test } from 'bun:test'
+import { beforeAll, expect, test } from 'bun:test'
 import { importedArtifact } from './imported-artifact-fixture'
 import { buildProjectGraph, ids } from './project-graph-test.helpers'
 import type { GraphScope, ProjectGraph } from './project-graph'
+
+// Cold Python/grammar startup belongs to fixture setup, not the five-second tests.
+beforeAll(() => {
+  importedArtifact()
+}, 30_000)
 
 test('CLI-imported Kotlin class methods render in file scope', () => {
   const artifact = importedArtifact()
