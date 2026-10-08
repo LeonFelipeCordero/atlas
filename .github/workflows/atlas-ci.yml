@@ -1,0 +1,44 @@
+name: Atlas CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - atlas/**
+      - dashboard/**
+      - .atlasignore
+      - .gitignore
+      - .github/workflows/atlas-ci.yml
+  push:
+    branches: [main]
+    paths:
+      - atlas/**
+      - dashboard/**
+      - .atlasignore
+      - .gitignore
+      - .github/workflows/atlas-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  atlas:
+    name: Atlas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: atlas/pyproject.toml
+          python-version: "3.14"
+      - run: uv sync --project atlas --no-dev
+      - name: Require zero findings across the entire repository
+        shell: bash
+        run: |
+          uv run --project atlas --no-dev atlas report --f . --skip-save --format json | tee "$RUNNER_TEMP/atlas-report.json"
+          jq -e '.findings == []' "$RUNNER_TEMP/atlas-report.json"

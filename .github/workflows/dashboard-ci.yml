@@ -1,0 +1,44 @@
+name: Dashboard CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - dashboard/**
+      - .github/workflows/dashboard-ci.yml
+  push:
+    branches: [main]
+    paths:
+      - dashboard/**
+      - .github/workflows/dashboard-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: atlas/pyproject.toml
+          python-version: "3.14"
+      - run: uv sync --project ../atlas --no-dev
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.1"
+      - run: bun install --no-save
+      - run: bun run build
+      - run: bun test
+      - run: bun run typecheck
+      - run: bun run lint
