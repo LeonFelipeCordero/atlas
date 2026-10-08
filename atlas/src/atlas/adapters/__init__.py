@@ -7,7 +7,7 @@ not an allowlist, and TSX shares TypeScript/JSX extraction behavior.
 from dataclasses import replace
 from functools import lru_cache
 
-from . import elixir, go, java, kotlin, python, rust, typescript
+from . import elixir, go, java, kotlin, parameters, python, rust, typescript
 from . import javascript as script
 from .base import LanguageAdapter, COMMON_METRICS
 from ..discovery import require_supported_language
@@ -52,6 +52,7 @@ SCRIPT_ADAPTER = LanguageAdapter(
     metadata=script.metadata,
     call_relationship=script.call_relationship,
     metrics=COMMON_METRICS,
+    parameter_count=parameters.script_count,
 )
 TYPESCRIPT_ADAPTER = LanguageAdapter(
     declaration_query=typescript.QUERY,
@@ -63,6 +64,7 @@ TYPESCRIPT_ADAPTER = LanguageAdapter(
     metadata=script.metadata,
     call_relationship=script.call_relationship,
     metrics=COMMON_METRICS,
+    parameter_count=parameters.script_count,
 )
 ADAPTERS = {
     "javascript": SCRIPT_ADAPTER,
@@ -77,6 +79,7 @@ ADAPTERS = {
         inheritance_policy=java.INHERITANCE,
         metadata=java.metadata,
         metrics=COMMON_METRICS,
+        parameter_count=parameters.java_count,
     ),
     "kotlin": LanguageAdapter(
         declaration_query=kotlin.QUERY,
@@ -88,6 +91,7 @@ ADAPTERS = {
         normalize_call=kotlin.normalize_call,
         metadata=kotlin.metadata,
         metrics=KOTLIN_METRICS,
+        parameter_count=parameters.kotlin_count,
     ),
     "go": LanguageAdapter(
         declaration_query=go.QUERY,
@@ -96,6 +100,7 @@ ADAPTERS = {
         call_sites=go.call_sites,
         inheritance_policy=go.INHERITANCE,
         metrics=COMMON_METRICS,
+        parameter_count=parameters.go_count,
     ),
     "rust": LanguageAdapter(
         declaration_query=rust.QUERY,
@@ -108,6 +113,7 @@ ADAPTERS = {
         accept_import=rust.rust_module_import,
         metadata=rust.metadata,
         metrics=RUST_METRICS,
+        parameter_count=parameters.rust_count,
     ),
     "elixir": LanguageAdapter(
         declaration_query=elixir.QUERY,
@@ -117,6 +123,7 @@ ADAPTERS = {
         inheritance_policy=elixir.INHERITANCE,
         normalize_call=elixir.elixir_call_target,
         metrics=ELIXIR_METRICS,
+        parameter_count=parameters.elixir_count,
     ),
     "python": LanguageAdapter(
         declaration_query=python.QUERY,
@@ -125,6 +132,7 @@ ADAPTERS = {
         call_sites=python.call_sites,
         inheritance_policy=python.INHERITANCE,
         metrics=PYTHON_METRICS,
+        parameter_count=parameters.python_count,
     ),
 }
 

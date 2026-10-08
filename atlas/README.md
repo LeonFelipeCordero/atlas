@@ -87,11 +87,11 @@ Findings:
 - Example cycle: src/a.py → src/b.py → src/a.py.
 ```
 
-For structured tooling, use `atlas report --project 'PROJECT_NAME' --format json`. The indented JSON contains only `{"findings": [...]}`. Each finding has `type` (`complexity` or `circular_dependency`), `subject`, `files` (`path` and, when available, `line`), and `details` (readable explanations). Unknown callable locations use `null`; Markdown displays `Unknown file` and omits unavailable lines. Empty reports print `No findings.` in Markdown or `{"findings": []}` in JSON. This replaces the previous metadata-heavy JSON contract.
+For structured tooling, use `atlas report --project 'PROJECT_NAME' --format json`. The indented JSON contains only `{"findings": [...]}`. Each finding has `type` (`complexity`, `size`, or `circular_dependency`), `subject`, `files` (`path` and, when available, `line`), and `details` (readable explanations). Unknown callable locations use `null`; Markdown displays `Unknown file` and omits unavailable lines. Empty reports print `No findings.` in Markdown or `{"findings": []}` in JSON. This replaces the previous metadata-heavy JSON contract.
 
 Project mode does not reindex, change the saved graph, or require the source files to exist. Use folder mode for current results. Missing projects or projects without an index produce an error on stderr and a nonzero exit code; findings themselves do not cause failure. Command-local options override global options; `DATABASE_PATH` remains the database fallback.
 
-Each function/method appears once, showing only exceeded metrics and their limits. Complexity findings sort by path, start line, and stable key. Rules are **independent** and strictly greater than:
+Each function/method appears once per finding category, showing only exceeded metrics and their limits. Complexity findings come first, then size findings, then circular dependencies. Within each metric category, findings sort by path, start line, and stable key. Complexity rules are **independent** and strictly greater than:
 
 | Metric                                                           | Threshold |
 | ---------------------------------------------------------------- | --------- |
@@ -100,6 +100,29 @@ Each function/method appears once, showing only exceeded metrics and their limit
 | `maxDecisionDepth` (decision nesting, not graph hierarchy depth) | 3         |
 
 A nested-loop finding is included even when total complexity is 8 or less. Boundary values do not match. Missing metrics do not trigger a rule; older indexes may require reindexing to obtain metrics. All indexed files, including tests, are considered; UI-only filtering does not apply. Use `.atlasignore` to omit intentional fixtures from fresh analysis and indexing.
+
+Size findings use these independent, strict thresholds:
+
+| Node | Metric | Threshold |
+| ---- | ------ | --------- |
+| Function/method | `lineCount` | 100 |
+| File | `lineCount` | 600 |
+| Function/method | `parameterCount` | 7 |
+
+`lineCount` counts physical lines, including comments and blanks. Callable counts cover the declaration span (signature and body, including nested declarations), not just executable statements. Empty files have zero lines; a final newline does not add another line. `parameterCount` counts declared input parameters, not call-site arguments: defaults, destructuring patterns, and variadics each count as one. Type parameters, receivers, comments, and syntax separators are excluded. Parameter counting has explicit grammar support for Python, JavaScript, TypeScript/TSX, Go, Rust, Java, Kotlin, and Elixir. Other languages, unsupported syntax, and implicit Kotlin lambda inputs leave the metric unavailable rather than zero. Metrics are stored in node properties, so existing databases need no schema migration; reindex to populate older graphs. File findings have a path; callable findings also include the declaration start line.
+
+```markdown
+## Size: `src/app.py::process`
+
+Files:
+
+- `src/app.py:42`
+
+Findings:
+
+- Function line count is 101 (limit: 100).
+- Parameter count is 8 (limit: 7).
+```
 
 Circular dependency findings list all files in each stored import group and a representative closed cycle using paths, not graph IDs. A group is a strongly connected component, not an enumeration of every possible cycle. Legacy snapshots lacking cycle analysis are analyzed from stored import edges without reindexing. Detailed import evidence and parse diagnostics remain in the saved graph, not the report. Resolver and parsing limitations still apply; no findings is not proof that unparsed or unresolved code is problem-free.
 

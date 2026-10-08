@@ -22,10 +22,14 @@ def _node_order(node: dict[str, Any]):
     return node.get("path") or "", node.get("startLine") or 0, node["stableKey"]
 
 
-def _metric_details(properties: dict[str, Any]) -> list[str]:
+def _metric_details(
+    properties: dict[str, Any],
+    thresholds: dict[str, int] = THRESHOLDS,
+    labels: dict[str, str] = METRIC_LABELS,
+) -> list[str]:
     return [
-        f"{METRIC_LABELS[metric]} is {properties[metric]} (limit: {threshold})."
-        for metric, threshold in THRESHOLDS.items()
+        f"{labels[metric]} is {properties[metric]} (limit: {threshold})."
+        for metric, threshold in thresholds.items()
         if properties.get(metric) is not None and properties[metric] > threshold
     ]
 
@@ -46,6 +50,36 @@ def _complexity_finding(node: dict[str, Any]) -> dict[str, Any] | None:
 
 def _complexity_findings(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     findings = map(_complexity_finding, sorted(nodes, key=_node_order))
+    return [finding for finding in findings if finding is not None]
+
+
+def _size_details(node: dict[str, Any]) -> list[str]:
+    file = node["kind"] == "file"
+    thresholds = {"lineCount": 600} if file else {"lineCount": 100, "parameterCount": 7}
+    labels = {"lineCount": "File line count" if file else "Function line count", "parameterCount": "Parameter count"}
+    return _metric_details(node.get("properties", {}), thresholds, labels)
+
+
+def _size_finding(node: dict[str, Any]) -> dict[str, Any] | None:
+    kind = node.get("kind")
+    if kind not in {"file", "function", "method"}:
+        return None
+    details = _size_details(node)
+    if not details:
+        return None
+    location = {"path": node.get("path")}
+    if kind != "file":
+        location["line"] = node.get("startLine")
+    return {
+        "type": "size",
+        "subject": node.get("qualifiedName") or node.get("name") or "Unnamed item",
+        "files": [location],
+        "details": details,
+    }
+
+
+def _size_findings(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    findings = map(_size_finding, sorted(nodes, key=_node_order))
     return [finding for finding in findings if finding is not None]
 
 
@@ -88,7 +122,7 @@ def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:
     cycles = artifact.get("circularDependencies")
     if cycles is None:
         cycles = circular_dependencies(nodes, artifact.get("edges", []))
-    return {"findings": _complexity_findings(nodes) + _cycle_findings(cycles, nodes)}
+    return {"findings": _complexity_findings(nodes) + _size_findings(nodes) + _cycle_findings(cycles, nodes)}
 
 
 def _code(value: str) -> str:
@@ -109,7 +143,7 @@ def _location(file: dict[str, Any]) -> str:
 
 
 def _markdown_section(finding: dict[str, Any]) -> str:
-    title = "Complexity" if finding["type"] == "complexity" else "Circular dependency"
+    title = {"complexity": "Complexity", "size": "Size", "circular_dependency": "Circular dependency"}[finding["type"]]
     locations = map(_location, finding["files"])
     details = (f"- {detail}" for detail in finding["details"])
     return "\n".join([
