@@ -7,6 +7,7 @@ import json
 
 from click.testing import CliRunner
 
+from atlas.bootstrap import repository_service
 from atlas.cli import main
 from atlas.domain.report import build_artifact_report, render_markdown
 from atlas.indexer import analyze_repository
@@ -98,6 +99,5 @@ def test_cli_fresh_and_saved_size_reports_match_without_sources(tmp_path: Path) 
         "Function line count is 101 (limit: 100).", "Parameter count is 8 (limit: 7).",
     ]
     source.unlink()
-    saved = runner.invoke(main, ["report", "-p", "source", "--database", str(database), "--format", "json"])
-    assert saved.exit_code == 0, saved.output
-    assert json.loads(saved.output) == json.loads(fresh.output)
+    with repository_service(database) as service:
+        assert service.report("source") == json.loads(fresh.output)

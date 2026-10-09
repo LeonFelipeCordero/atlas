@@ -1,16 +1,12 @@
 import { expect, test } from 'bun:test'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { createElement } from 'react'
-import { indexCommand } from '@/lib/api'
 
 // Isolate module mocks so route rendering cannot affect other Bun tests.
-function renderRoute(repositoryName: string | null, showImport: boolean) {
+function renderRoute(repositoryName: string | null) {
   const script = `
     import { mock } from 'bun:test'
     import * as React from 'react'
     import { renderToStaticMarkup } from 'react-dom/server'
     const name = ${JSON.stringify(repositoryName)}
-    mock.module('react', () => ({ ...React, useState: () => [${showImport}, () => {}] }))
     mock.module('@tanstack/react-query', () => ({
       useQuery: (options) => options.queryKey[0] === 'graph'
         ? { data: null, refetch() {} }
@@ -30,25 +26,19 @@ function renderRoute(repositoryName: string | null, showImport: boolean) {
   return result.stdout.toString()
 }
 
-for (const showImport of [false, true]) {
-  test(`graph instructions use the registered name (expanded=${showImport})`, () => {
-    const name = "Engineer's École $app"
-    const markup = renderRoute(name, showImport)
-    const command = renderToStaticMarkup(
-      createElement('code', null, indexCommand(name)),
-    )
-    expect(markup).toContain(command)
-    expect(markup).not.toContain(
-      renderToStaticMarkup(
-        createElement('code', null, indexCommand('storage-id')),
-      ),
-    )
-    expect(markup.split(command)).toHaveLength(2)
-  })
+test('registered graph has an empty state without terminal instructions', () => {
+  const markup = renderRoute('My repository')
+  expect(markup).toContain('My repository')
+  expect(markup).toContain('Your repository is registered.')
+  expect(markup).toContain('No graph has been indexed yet.')
+  expect(markup).toContain('Refresh graph')
+  expect(markup).not.toContain('Index instructions')
+  expect(markup).not.toContain('Copy index command')
+  expect(markup).not.toContain('architecture:index')
+  expect(markup).not.toContain('Python indexer')
+})
 
-  test(`graph instructions wait for registered metadata (expanded=${showImport})`, () => {
-    const markup = renderRoute(null, showImport)
-    expect(markup).not.toContain('architecture:index')
-    expect(markup).not.toContain('Your repository is registered.')
-  })
-}
+test('graph empty state waits for registered metadata', () => {
+  const markup = renderRoute(null)
+  expect(markup).not.toContain('Your repository is registered.')
+})

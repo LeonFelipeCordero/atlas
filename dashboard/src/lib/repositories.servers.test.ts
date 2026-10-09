@@ -120,7 +120,7 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     database,
   )
   const summary = JSON.parse(
-    python('index', source, '--project', repository.name, '--database', path),
+    python('index', '-f', source, '--database', path),
   )
   const first = getArchitecture(repository.id, database)!
   expect(summary.repositoryId).toBe(repository.id)
@@ -128,7 +128,7 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
   expect(first.artifact).toMatchObject({ stats: { files: 1 } })
   expect(first.artifact.nodes.some((node) => node.name === 'run')).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('index', source, '--project', 'SHARED', '--database', path)
+  python('index', '-f', source, '--database', path)
   const replacement = getArchitecture(repository.id, database)!
   expect(
     replacement.artifact.nodes.some((node) => node.name === 'replacement'),
@@ -145,14 +145,16 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     'Repository not found',
   )
 
-  // CLI names may equal an existing ID; API lookups must still use IDs.
+  // API lookups must still use IDs, even when a name resembles another ID.
+  const otherSource = join(directory, 'other-source')
+  mkdirSync(otherSource)
   const idNamed = registerRepository(
-    { name: repository.id, location: source },
+    { name: repository.id, location: otherSource },
     database,
   )
-  writeFileSync(file, 'def id_named():\n    return 3\n')
+  writeFileSync(join(otherSource, 'main.py'), 'def id_named():\n    return 3\n')
   const selected = JSON.parse(
-    python('index', source, '--project', idNamed.name, '--database', path),
+    python('index', '-f', otherSource, '--database', path),
   )
   expect(selected.repositoryId).toBe(idNamed.id)
   const idNamedGraph = getArchitecture(idNamed.id, database)!

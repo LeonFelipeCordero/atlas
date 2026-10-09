@@ -1,12 +1,10 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, Network, RefreshCw, Terminal } from 'lucide-react'
+import { ArrowLeft, Network, RefreshCw } from 'lucide-react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ImportedGraph } from '@/lib/api'
 import { api, formatDate, repositoriesQuery } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { ImportHelp } from '@/components/import-help'
 import { GraphExplorer } from '@/components/graph/graph-explorer'
 
 export const Route = createFileRoute('/graph/$repositoryId')({
@@ -27,7 +25,6 @@ function GraphPage() {
   const repository = repositories.data?.find(
     (entry) => entry.id === repositoryId,
   )
-  const [showImport, setShowImport] = useState(false)
   const refresh = () => {
     void graph.refetch()
     void repositories.refetch()
@@ -50,14 +47,6 @@ function GraphPage() {
         <div className="graph-actions">
           <Button
             variant="outline"
-            onClick={() => setShowImport(!showImport)}
-            aria-expanded={showImport}
-          >
-            <Terminal />
-            Index instructions
-          </Button>
-          <Button
-            variant="outline"
             onClick={refresh}
             disabled={graph.isFetching}
           >
@@ -66,14 +55,10 @@ function GraphPage() {
           </Button>
         </div>
       </div>
-      {showImport && repository && (
-        <ImportHelp repositoryName={repository.name} />
-      )}
       <GraphContent
         graph={graph}
         repositoryId={repositoryId}
         repositoryName={repository?.name}
-        showImport={showImport}
         refresh={refresh}
       />
     </main>
@@ -84,13 +69,11 @@ function GraphContent({
   graph,
   repositoryId,
   repositoryName,
-  showImport,
   refresh,
 }: {
   graph: UseQueryResult<ImportedGraph | null>
   repositoryId: string
   repositoryName: string | undefined
-  showImport: boolean
   refresh: () => void
 }) {
   return (
@@ -110,10 +93,7 @@ function GraphContent({
         </div>
       )}
       {graph.data === null && !graph.error && repositoryName && (
-        <WaitingForImport
-          repositoryName={repositoryName}
-          showImport={showImport}
-        />
+        <WaitingForImport />
       )}
       {graph.data && (
         <>
@@ -131,13 +111,7 @@ function GraphContent({
   )
 }
 
-function WaitingForImport({
-  repositoryName,
-  showImport,
-}: {
-  repositoryName: string
-  showImport: boolean
-}) {
+function WaitingForImport() {
   return (
     <section className="waiting-for-import">
       <div>
@@ -145,12 +119,8 @@ function WaitingForImport({
           <Network size={32} />
         </span>
         <h2>Your repository is registered.</h2>
-        <p>
-          Run the Python indexer on your local source directory to see how the
-          code connects. The graph saves directly to the database.
-        </p>
+        <p>No graph has been indexed yet.</p>
       </div>
-      {!showImport && <ImportHelp repositoryName={repositoryName} />}
     </section>
   )
 }
