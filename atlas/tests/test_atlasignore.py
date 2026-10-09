@@ -146,11 +146,7 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     assert migrated.exit_code == 0, migrated.output
     with repository_service(database) as service:
         project = service.register({"name": "example", "location": str(source)})
-    args = (
-        ["index", str(source), "--project", project.name]
-        if command == "index"
-        else ["report", "-f", str(source)]
-    )
+    args = [command, "-f", str(source)]
     args += ["--database", str(database)]
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output

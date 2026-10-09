@@ -7,17 +7,9 @@ from typing import Any
 import click
 
 @click.group(help="Analyze repositories and store their graphs in SQLite")
-@click.option("--project", metavar="NAME", help="Unique registered project name")
 @click.option("--database", type=click.Path(path_type=Path), help="SQLite database path")
-def main(project: str | None, database: Path | None) -> None:
+def main(database: Path | None) -> None:
     pass
-
-
-def _project(context: click.Context, project: str | None) -> str:
-    reference = project if project is not None else context.find_root().params["project"]
-    if reference is None:
-        raise click.UsageError("Missing option '--project'.", context)
-    return reference
 
 
 def _database(context: click.Context, database: Path | None) -> Path | None:
@@ -37,21 +29,22 @@ def migrate_command(context: click.Context, database: Path | None) -> None:
         raise click.ClickException(str(error)) from error
 
 
-@main.command("index", help="Analyze a repository and save its graph in SQLite")
-@click.argument("repository", default=".", type=click.Path(path_type=Path))
-@click.option("--project", metavar="NAME", help="Unique registered project name")
+@main.command("index", help="Analyze a folder and save its graph in SQLite")
+@click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to index")
 @click.option("--database", type=click.Path(path_type=Path), help="SQLite database path")
 @click.pass_context
-def index_command(
-    context: click.Context, repository: Path, project: str | None, database: Path | None
-) -> None:
-    from ..bootstrap import repository_service
+def index_command(context: click.Context, folder: Path, database: Path | None) -> None:
+    from ..bootstrap import migrate_database, repository_service
     from ..domain.repositories import RepositoryError
+    from ..services.repositories import analyze_folder
 
-    reference = _project(context, project)
     try:
-        with repository_service(_database(context, database)) as service:
-            saved = service.index(reference, repository.resolve())
+        root = folder.expanduser().resolve()
+        artifact = analyze_folder(root)
+        path = _database(context, database)
+        migrate_database(path)
+        with repository_service(path) as service:
+            saved = service.save_folder(root, artifact)
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps({
@@ -92,41 +85,21 @@ def _folder_report(folder: Path, database: Path | None, skip_save: bool) -> dict
     return report
 
 
-def _validate_report_source(
-    context: click.Context, folder: Path | None, project: str | None, skip_save: bool
-) -> None:
-    reference = project if project is not None else context.find_root().params["project"]
-    if folder is None and reference is None:
-        raise click.UsageError("Provide either '--folder' (-f) or '--project' (-p).", context)
-    if folder is not None and reference is not None:
-        raise click.UsageError("Use either '--folder' or '--project', not both.", context)
-    if skip_save and folder is None:
-        raise click.UsageError("'--skip-save' requires '--folder'.", context)
-
-
-@main.command("report", help="Analyze a folder or show saved findings as Markdown or JSON")
-@click.option("-f", "--f", "--folder", "folder", type=click.Path(path_type=Path), help="Folder to analyze and save")
-@click.option("-p", "--p", "--project", "project", metavar="NAME", help="Unique registered project name (saved results only)")
+@main.command("report", help="Analyze a folder and show findings as Markdown or JSON")
+@click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to analyze and save")
 @click.option("--skip-save", is_flag=True, help="Analyze a folder without accessing the database")
 @click.option("--database", type=click.Path(path_type=Path), help="SQLite database path")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
 @click.pass_context
 def report_command(
-    context: click.Context, folder: Path | None, project: str | None,
+    context: click.Context, folder: Path,
     skip_save: bool, database: Path | None, output_format: str
 ) -> None:
     from ..domain.report import render_markdown
     from ..domain.repositories import RepositoryError
 
-    _validate_report_source(context, folder, project, skip_save)
     try:
-        if folder is not None:
-            report = _folder_report(folder, _database(context, database), skip_save)
-        else:
-            from ..bootstrap import repository_service
-
-            with repository_service(_database(context, database)) as service:
-                report = service.report(_project(context, project))
+        report = _folder_report(folder, _database(context, database), skip_save)
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps(report, ensure_ascii=False, indent=2) if output_format == "json" else render_markdown(report))

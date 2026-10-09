@@ -21,7 +21,7 @@ def source(tmp_path: Path) -> Path:
 
 
 @pytest.mark.parametrize("flag", ["-f", "--f", "--folder"])
-def test_folder_report_creates_updates_and_reads_saved_project(
+def test_folder_report_creates_and_updates_saved_project(
     source: Path, tmp_path: Path, flag: str,
 ) -> None:
     database = tmp_path / "central/db.sqlite"
@@ -46,34 +46,7 @@ def test_folder_report_creates_updates_and_reads_saved_project(
     with repository_service(database) as service:
         assert [saved.id for saved in service.list()] == [project.id]
         assert service.get_architecture(project.id) != original
-    for file in source.iterdir():
-        file.unlink()
-    source.rmdir()
-    for flag in ("-p", "--p", "--project"):
-        saved = runner.invoke(main, ["report", flag, project.name, "--database", str(database)])
-        assert saved.exit_code == 0, saved.output
-        assert saved.output == "No findings.\n"
-
-
-@pytest.mark.parametrize("flag", ["-p", "--p", "--project"])
-def test_folder_project_aliases_preserve_name_only_lookup(
-    source: Path, tmp_path: Path, flag: str,
-) -> None:
-    database = tmp_path / "db.sqlite"
-    runner = CliRunner()
-    saved = runner.invoke(main, ["report", "-f", str(source), "--database", str(database)])
-    assert saved.exit_code == 0, saved.output
-    with repository_service(database) as service:
-        project = service.list()[0]
-    selected = runner.invoke(main, ["report", flag, "EXAMPLE", "--database", str(database)])
-    assert selected.exit_code == 0, selected.output
-    assert selected.output == saved.output
-    rejected = runner.invoke(main, ["report", flag, project.id, "--database", str(database)])
-    assert rejected.exit_code == 1
-    assert "Repository not found" in rejected.output
-
-
-def test_folder_names_are_trimmed_for_project_lookup(tmp_path: Path) -> None:
+def test_folder_names_are_trimmed_for_registration(tmp_path: Path) -> None:
     source = tmp_path / " source "
     source.mkdir()
     database = tmp_path / "db.sqlite"
@@ -82,9 +55,6 @@ def test_folder_names_are_trimmed_for_project_lookup(tmp_path: Path) -> None:
     assert saved.exit_code == 0, saved.output
     with repository_service(database) as service:
         assert service.list()[0].name == "source"
-    selected = runner.invoke(main, ["report", "-p", "source", "--database", str(database)])
-    assert selected.exit_code == 0, selected.output
-    assert selected.output == "No findings.\n"
 
 
 def test_relative_folder_uses_user_database_not_source(
@@ -169,9 +139,6 @@ def test_skip_save_preserves_existing_graph(source: Path, tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize("args, message", [
-    ([], "Provide either"),
-    (["-f", ".", "-p", "example"], "not both"),
-    (["--skip-save", "-p", "example"], "requires '--folder'"),
     (["-f", "missing"], "Repository does not exist"),
 ])
 def test_invalid_report_arguments_do_not_create_database(
@@ -194,13 +161,14 @@ def test_file_is_not_a_report_folder(source: Path, tmp_path: Path) -> None:
     assert not database.parent.exists()
 
 
-def test_global_project_conflicts_with_folder(tmp_path: Path) -> None:
+def test_global_project_selector_is_rejected(tmp_path: Path) -> None:
     database = tmp_path / "missing/db.sqlite"
     result = CliRunner().invoke(main, [
         "--project", "example", "report", "--f", ".", "--database", str(database),
     ])
     assert result.exit_code == 2
-    assert "not both" in result.output
+    assert "No such option" in result.output
+    assert "--project" in result.output
     assert not database.parent.exists()
 
 

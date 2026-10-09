@@ -38,7 +38,7 @@ def test_projects_lists_indexed_and_unindexed_projects(
     elif options == "environment":
         monkeypatch.setenv("DATABASE_PATH", str(database))
     else:
-        arguments = ["--database", str(tmp_path / "wrong.sqlite"), "--project", "ignored", "projects", "--database", str(database)]
+        arguments = ["--database", str(tmp_path / "wrong.sqlite"), "projects", "--database", str(database)]
     result = CliRunner().invoke(main, arguments)
     assert result.exit_code == 0, result.output
     projects = json.loads(result.output)
