@@ -57,12 +57,7 @@ function CodeGraphNode({ data, selected }: NodeProps<CodeNode>) {
       <Handle type="target" position={Position.Left} />
       <div className="code-node-heading">
         <Icon size={18} />
-        <strong
-          title={`${data.item.role === 'boundary' ? 'Outside scope · ' : ''}${data.item.label}`}
-        >
-          {data.item.role === 'boundary' && 'Outside scope · '}
-          {data.item.label}
-        </strong>
+        <strong title={data.item.label}>{data.item.label}</strong>
       </div>
       <CodeNodeAction item={data.item} open={data.open} />
       <Handle type="source" position={Position.Right} />

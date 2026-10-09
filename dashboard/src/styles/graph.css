@@ -305,6 +305,10 @@
   font-size: 0.8rem;
   font-weight: 550;
 }
+.code-node.is-boundary .code-node-heading strong,
+.code-node.is-boundary .code-node-heading svg {
+  color: var(--muted-foreground);
+}
 .node-open {
   display: flex;
   align-items: center;
