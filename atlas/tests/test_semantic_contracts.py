@@ -1,6 +1,6 @@
 """End-to-end extraction/resolution contracts, with no injected source facts."""
 
-from atlas.domain.resolver import resolve_connections
+from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import ResolutionAssertions, call_edges, repository
 
 

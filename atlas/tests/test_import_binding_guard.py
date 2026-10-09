@@ -2,8 +2,8 @@
 
 import unittest
 
-from atlas.adapters.resolution import _namespace_binding
-from atlas.domain.resolver import resolve_connections
+from atlas.metrics.adapters.resolution import _namespace_binding
+from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import repository
 
 

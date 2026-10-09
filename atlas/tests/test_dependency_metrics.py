@@ -7,8 +7,8 @@ from random import Random
 import pytest
 from pydantic import ValidationError
 
-from atlas.domain.artifact import GraphArtifact, build_artifact
-from atlas.domain.dependency_metrics import METRIC_NAMES, dependency_metrics
+from atlas.metrics.artifact import GraphArtifact, build_artifact
+from atlas.metrics.dependency_metrics import METRIC_NAMES, dependency_metrics
 from atlas.domain.models import (
     GraphNode,
     GraphView,
@@ -18,7 +18,7 @@ from atlas.domain.models import (
     Symbol,
     file_key,
 )
-from atlas.domain.resolver import Connection, ExternalNode, ResolvedGraph
+from atlas.metrics.resolver import Connection, ExternalNode, ResolvedGraph
 from atlas.indexer import analyze_repository
 
 

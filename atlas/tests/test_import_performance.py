@@ -8,11 +8,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from atlas.adapters import get_resolution_adapter
-from atlas.adapters.resolution import ImportBindings, Modules
-from atlas.discovery import SourceFile
-from atlas.extraction.parser import _extract_calls, parse_files
-from atlas.extraction.resolution_syntax import Syntax
+from atlas.metrics.adapters import get_resolution_adapter
+from atlas.metrics.adapters.resolution import ImportBindings, Modules
+from atlas.parsing.discovery import SourceFile
+from atlas.metrics.callables import add_callable_metrics
+from atlas.parsing.parser import _extract_calls, parse_files
+from atlas.metrics.resolution_syntax import Syntax
 from tree_sitter_language_pack import get_parser
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,7 +56,7 @@ print(json.dumps({"stats": artifact.stats,
 
 def test_data_grammars_do_not_parse_or_walk_for_impossible_calls():
     source = SourceFile("data.json", ROOT / "data.json", "json", b'{"call": "run()"}')
-    with patch("atlas.extraction.parser.get_parser") as parser:
+    with patch("atlas.parsing.parser.get_parser") as parser:
         assert _extract_calls(source) == []
     parser.assert_not_called()
 
@@ -80,33 +81,51 @@ def test_file_extraction_reuses_one_syntax_tree(language, code):
     source = SourceFile("sample", ROOT / "sample", language, code.encode())
     parser = Mock(wraps=get_parser(language))
     with (
-        patch("atlas.extraction.parser.get_parser", return_value=parser) as factory,
-        patch("atlas.extraction.structure.get_parser", side_effect=AssertionError("structure reparsed")),
-        patch("atlas.extraction.syntax.get_parser", side_effect=AssertionError("imports reparsed")),
+        patch("atlas.parsing.parser.get_parser", return_value=parser) as factory,
+        patch("atlas.parsing.structure.get_parser", side_effect=AssertionError("structure reparsed")),
+        patch("atlas.parsing.syntax.get_parser", side_effect=AssertionError("imports reparsed")),
+        patch("atlas.metrics.callables.get_parser", side_effect=AssertionError("metrics during parsing")),
     ):
-        file = parse_files([source]).files[0]
+        repository = parse_files([source])
+    file = repository.files[0]
     factory.assert_called_once_with(language)
     parser.parse.assert_called_once_with(source.source)
     assert [call.name for call in file.calls] == ["helper"]
     callables = [symbol for symbol in file.symbols if symbol.kind in {"function", "method"}]
-    assert [(symbol.name, symbol.parameter_count) for symbol in callables] == [("run", 1)]
-    assert callables[0].complexity is not None
-    assert callables[0].complexity.cyclomaticComplexity == 2
+    assert [symbol.name for symbol in callables] == ["run"]
+    assert all(symbol.parameter_count is symbol.line_count is symbol.complexity is None for symbol in callables)
+    _assert_callable_metric_pass(repository, source, callables)
     if language in {"kotlin", "rust"}:
         assert file.imports
+
+
+def _assert_callable_metric_pass(repository, source, callables):
+    metric_parser = Mock(wraps=get_parser(source.language))
+    with patch("atlas.metrics.callables.get_parser", return_value=metric_parser) as metric_factory:
+        add_callable_metrics(repository)
+    metric_factory.assert_called_once_with(source.language)
+    metric_parser.parse.assert_called_once_with(source.source)
+    assert [(symbol.name, symbol.parameter_count) for symbol in callables] == [("run", 1)]
+    assert callables[0].line_count == (3 if source.language == "python" else 1)
+    assert callables[0].complexity is not None
+    assert callables[0].complexity.cyclomaticComplexity == 2
 
 
 def test_data_files_do_not_create_an_extra_syntax_tree():
     source = SourceFile("data.json", ROOT / "data.json", "json", b'{"call": "run()"}')
     with (
-        patch("atlas.extraction.parser.get_parser") as parser,
-        patch("atlas.extraction.structure.get_parser") as structure_parser,
-        patch("atlas.extraction.syntax.get_parser") as import_parser,
+        patch("atlas.parsing.parser.get_parser") as parser,
+        patch("atlas.parsing.structure.get_parser") as structure_parser,
+        patch("atlas.parsing.syntax.get_parser") as import_parser,
+        patch("atlas.metrics.callables.get_parser") as metric_parser,
     ):
-        file = parse_files([source]).files[0]
+        repository = parse_files([source])
+        add_callable_metrics(repository)
+    file = repository.files[0]
     parser.assert_not_called()
     structure_parser.assert_not_called()
     import_parser.assert_not_called()
+    metric_parser.assert_not_called()
     assert file.calls == file.symbols == file.imports == []
 
 
@@ -116,7 +135,7 @@ def test_syntax_tree_reuse_is_local_to_each_file():
         for name in ["first", "second"]
     ]
     parser = Mock(wraps=get_parser("python"))
-    with patch("atlas.extraction.parser.get_parser", return_value=parser):
+    with patch("atlas.parsing.parser.get_parser", return_value=parser):
         repository = parse_files(sources)
     assert [call.args[0] for call in parser.parse.call_args_list] == [
         source.source for source in sources
@@ -130,7 +149,7 @@ def test_syntax_tree_and_binding_scan_are_lazy_and_cached():
     source = SourceFile("main.py", ROOT / "main.py", "python", b"x = 1\nx()\n")
     parsed = parse_files([source]).files[0]
     with patch(
-        "atlas.extraction.resolution_syntax.get_parser", wraps=get_parser
+        "atlas.metrics.resolution_syntax.get_parser", wraps=get_parser
     ) as parser:
         syntax = Syntax(parsed, get_resolution_adapter("python"))
         parser.assert_not_called()

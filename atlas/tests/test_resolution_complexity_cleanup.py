@@ -6,32 +6,33 @@ from pathlib import Path
 import pytest
 from tree_sitter_language_pack import get_parser
 
-from atlas.adapters import get_resolution_adapter
-from atlas.adapters.javascript import export_bindings, unparenthesized
-from atlas.adapters.resolution import ResolutionAdapter
-from atlas.adapters.resolution_policy import ResolutionAdapter as Policy
-from atlas.extraction.complexity import calculate_complexity
-from atlas.extraction.resolution_contract import SCOPES
-from atlas.extraction.resolution_syntax import (
+from atlas.metrics.adapters import get_resolution_adapter
+from atlas.metrics.adapters.javascript import export_bindings
+from atlas.parsing.adapters.javascript import unparenthesized
+from atlas.metrics.adapters.resolution import ResolutionAdapter
+from atlas.metrics.adapters.resolution_policy import ResolutionAdapter as Policy
+from atlas.metrics.complexity import calculate_complexity
+from atlas.metrics.resolution_contract import SCOPES
+from atlas.metrics.resolution_syntax import (
     SCOPES as SYNTAX_SCOPES,
     Syntax,
     names,
 )
-from atlas.extraction.syntax import walk
+from atlas.syntax import walk
 from tests.test_architecture import module_dependencies, module_name
 from tests.test_semantic_resolution import repository
 
 ROOT = Path(__file__).parents[1] / "src" / "atlas"
 OWNED = (
-    "adapters/javascript.py",
-    "adapters/rust.py",
-    "adapters/resolution.py",
-    "adapters/resolution_policy.py",
-    "adapters/resolution_paths.py",
-    "adapters/module_index.py",
-    "adapters/__init__.py",
-    "extraction/resolution_syntax.py",
-    "extraction/resolution_contract.py",
+    "metrics/adapters/javascript.py",
+    "metrics/adapters/rust.py",
+    "metrics/adapters/resolution.py",
+    "metrics/adapters/resolution_policy.py",
+    "metrics/adapters/resolution_paths.py",
+    "metrics/adapters/module_index.py",
+    "metrics/adapters/__init__.py",
+    "metrics/resolution_syntax.py",
+    "metrics/resolution_contract.py",
 )
 
 
@@ -62,25 +63,25 @@ def test_policy_and_scope_reexports_keep_the_same_objects():
 
 def test_registry_relative_imports_target_children_not_itself():
     modules = {module_name(path) for path in ROOT.rglob("*.py")}
-    tree = ast.parse((ROOT / "adapters/__init__.py").read_text())
-    dependencies = module_dependencies(tree, modules, "atlas.adapters")
-    assert "atlas.adapters" not in dependencies
+    tree = ast.parse((ROOT / "metrics/adapters/__init__.py").read_text())
+    dependencies = module_dependencies(tree, modules, "atlas.metrics.adapters")
+    assert "atlas.metrics.adapters" not in dependencies
     assert {
-        "atlas.adapters.javascript",
-        "atlas.adapters.rust",
+        "atlas.metrics.adapters.javascript",
+        "atlas.metrics.adapters.rust",
     } <= dependencies
 
 
 def test_syntax_type_dependency_targets_independent_policy_contract():
-    tree = ast.parse((ROOT / "extraction/resolution_syntax.py").read_text())
+    tree = ast.parse((ROOT / "metrics/resolution_syntax.py").read_text())
     imports = {
         node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     }
     assert "adapters.resolution_policy" in imports
     assert "adapters.resolution" not in imports
-    _assert_no_syntax_dependency("adapters/resolution_policy.py")
-    _assert_no_syntax_dependency("adapters/resolution_paths.py")
-    _assert_no_syntax_dependency("extraction/resolution_contract.py")
+    _assert_no_syntax_dependency("metrics/adapters/resolution_policy.py")
+    _assert_no_syntax_dependency("metrics/adapters/resolution_paths.py")
+    _assert_no_syntax_dependency("metrics/resolution_contract.py")
 
 
 def _assert_no_syntax_dependency(relative):

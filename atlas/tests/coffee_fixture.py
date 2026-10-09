@@ -3,8 +3,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from atlas.domain.artifact import GraphArtifact
-from atlas.discovery import discover_files
+from atlas.metrics.artifact import GraphArtifact
+from atlas.parsing.discovery import discover_files
 from atlas.indexer import analyze_repository
 
 FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures/coffee"

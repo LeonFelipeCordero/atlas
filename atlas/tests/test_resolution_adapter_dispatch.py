@@ -2,8 +2,8 @@
 
 import unittest
 
-from atlas.adapters import get_resolution_adapter
-from atlas.domain.resolver import resolve_connections
+from atlas.metrics.adapters import get_resolution_adapter
+from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import repository
 
 

@@ -4,12 +4,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from atlas.adapters import get_resolution_adapter
-from atlas.adapters.resolution import ImportBindings, _import_path, _namespace_binding
-from atlas.adapters.resolution_paths import import_path, namespace_binding
-from atlas.adapters.resolution_policy import ResolutionAdapter
+from atlas.metrics.adapters import get_resolution_adapter
+from atlas.metrics.adapters.resolution import ImportBindings, _import_path, _namespace_binding
+from atlas.metrics.adapters.resolution_paths import import_path, namespace_binding
+from atlas.metrics.adapters.resolution_policy import ResolutionAdapter
 from atlas.domain.models import Import
-from atlas.domain.resolver import _import_connections
+from atlas.metrics.resolver import _import_connections
 
 
 @pytest.mark.parametrize(
@@ -37,7 +37,7 @@ from atlas.domain.resolver import _import_connections
 )
 def test_primary_import_paths_do_not_use_polyglot_fallback(language, source, expected):
     assert import_path(source) == expected
-    with patch("atlas.adapters.resolution_policy.import_path", side_effect=AssertionError):
+    with patch("atlas.metrics.adapters.resolution_policy.import_path", side_effect=AssertionError):
         assert get_resolution_adapter(language).import_path(source) == expected
 
 
@@ -57,7 +57,7 @@ def test_go_namespace_rules_do_not_use_polyglot_fallback(source, expected):
     assert namespace_binding(source, path) == expected
     ctx = Mock()
     ctx.path_files.return_value = []
-    with patch("atlas.adapters.resolution_policy.namespace_binding", side_effect=AssertionError):
+    with patch("atlas.metrics.adapters.resolution_policy.namespace_binding", side_effect=AssertionError):
         entries = get_resolution_adapter("go").import_item(ctx, Mock(), source, path, None)
     assert entries == ([(expected, [], True)] if expected else [])
 
@@ -127,7 +127,7 @@ def test_missing_required_import_node_dispatches_to_adapter_path_hook():
     file.source.language = "rust"
     resolver = Mock(files={"source": file}, syntax={"source": syntax})
     external = Mock(return_value="external:owned/path")
-    with patch("atlas.domain.resolver.get_resolution_adapter", return_value=adapter):
+    with patch("atlas.metrics.resolver.get_resolution_adapter", return_value=adapter):
         connections = _import_connections(Import("source", "directive", 1), resolver, external)
     external.assert_called_once_with("rust", "module", "owned/path")
     assert connections[0].target_key == "external:owned/path"

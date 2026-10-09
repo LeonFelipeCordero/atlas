@@ -8,13 +8,14 @@ from typing import get_args
 
 from tree_sitter_language_pack import SupportedLanguage, available_languages, get_parser
 
-from atlas.adapters import ADAPTERS, DEFAULT_ADAPTER, get_adapter
-from atlas.extraction.syntax import DeclarationCarrier
-from atlas.discovery import SourceFile, detect_language, discover_files
-from atlas.extraction.parser import parse_file
-from atlas.extraction.syntax import supplement_imports, walk
-from atlas.discovery import EXCLUDED_LANGUAGES, SUPPORTED_LANGUAGES
-from atlas.extraction.structure import _declaration_query, extract_structure
+from atlas.parsing.adapters import ADAPTERS, DEFAULT_ADAPTER, get_adapter
+from atlas.parsing.syntax import DeclarationCarrier
+from atlas.parsing.discovery import SourceFile, detect_language, discover_files
+from atlas.parsing.parser import parse_file
+from atlas.parsing.syntax import supplement_imports
+from atlas.syntax import walk
+from atlas.parsing.discovery import EXCLUDED_LANGUAGES, SUPPORTED_LANGUAGES
+from atlas.parsing.structure import _declaration_query, extract_structure
 
 
 class AdapterContractTest(unittest.TestCase):
@@ -128,7 +129,7 @@ class LanguageSupportTest(unittest.TestCase):
             root = Path(directory)
             (root / "main.py").write_text("pass\n")
             with (
-                patch("atlas.discovery.detect_language_from_path", side_effect=RuntimeError("detection failed")),
+                patch("atlas.parsing.discovery.detect_language_from_path", side_effect=RuntimeError("detection failed")),
                 self.assertRaisesRegex(RuntimeError, "detection failed"),
             ):
                 discover_files(root)
@@ -167,13 +168,13 @@ class LanguageSupportTest(unittest.TestCase):
 
     def test_call_parser_failure_propagates(self):
         source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
-        with patch("atlas.extraction.parser.get_parser", side_effect=RuntimeError("unavailable")):
+        with patch("atlas.parsing.parser.get_parser", side_effect=RuntimeError("unavailable")):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
 
     def test_native_processing_failure_propagates(self):
         source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
-        with patch("atlas.extraction.parser.process", side_effect=RuntimeError("unavailable")):
+        with patch("atlas.parsing.parser.process", side_effect=RuntimeError("unavailable")):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
 
@@ -181,8 +182,8 @@ class LanguageSupportTest(unittest.TestCase):
         for language in ["c", "cpp"]:
             with self.subTest(language=language):
                 file = SourceFile("main", Path("main"), language, b"void run() {}")
-                with patch("atlas.extraction.parser.process") as process:
-                    with patch("atlas.extraction.parser.get_parser") as parser:
+                with patch("atlas.parsing.parser.process") as process:
+                    with patch("atlas.parsing.parser.get_parser") as parser:
                         with self.assertRaisesRegex(
                             ValueError, "Unsupported Python importer"
                         ):
@@ -190,7 +191,7 @@ class LanguageSupportTest(unittest.TestCase):
                         process.assert_not_called()
                         parser.assert_not_called()
                 _declaration_query.cache_clear()
-                with patch("atlas.extraction.structure.get_tags_query") as query:
+                with patch("atlas.parsing.structure.get_tags_query") as query:
                     with self.assertRaisesRegex(
                         ValueError, "Unsupported Python importer"
                     ):

@@ -4,7 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from atlas.bootstrap import repository_service
-from atlas.domain.dependency_metrics import METRIC_NAMES
+from atlas.metrics.dependency_metrics import METRIC_NAMES
 from atlas.persistence.database import migrate_database
 
 

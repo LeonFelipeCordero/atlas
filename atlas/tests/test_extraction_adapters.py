@@ -5,11 +5,11 @@ from pathlib import Path
 
 from tree_sitter_language_pack import get_parser
 
-from atlas.adapters import DEFAULT_ADAPTER, get_adapter
-from atlas.discovery import SourceFile
-from atlas.extraction.parser import parse_file
-from atlas.extraction.syntax import walk
-from atlas.extraction.structure import extract_structure
+from atlas.parsing.adapters import DEFAULT_ADAPTER, get_adapter
+from atlas.parsing.discovery import SourceFile
+from atlas.parsing.parser import parse_file
+from atlas.syntax import walk
+from atlas.parsing.structure import extract_structure
 
 
 class ExtractionAdapterTest(unittest.TestCase):

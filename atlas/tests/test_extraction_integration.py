@@ -1,6 +1,6 @@
 """Grammar facts must reach resolution intact; unsafe syntax stays external."""
 
-from atlas.domain.resolver import resolve_connections
+from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import ResolutionAssertions, call_edges, repository
 
 

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from tree_sitter_language_pack import ProcessConfig, get_tags_query, process
 
-from atlas.extraction.structure import _declaration_query, extract_structure
+from atlas.parsing.structure import _declaration_query, extract_structure
 
 
 class StructureTagsTest(unittest.TestCase):
@@ -29,7 +29,7 @@ class Service {
 }
 """
         with patch(
-            "atlas.extraction.structure.get_tags_query", wraps=get_tags_query
+            "atlas.parsing.structure.get_tags_query", wraps=get_tags_query
         ) as tags:
             structure = extract_structure(source, "kotlin")
             tags.assert_called_once_with("kotlin")
@@ -142,12 +142,12 @@ class Service implements Runner {
     def test_missing_bundled_tags_preserves_native_extraction(self) -> None:
         source = b"class Service { public void Run() {} }"
         native = process(source.decode(), ProcessConfig(language="csharp")).structure
-        with patch("atlas.extraction.structure.get_tags_query", return_value=None):
+        with patch("atlas.parsing.structure.get_tags_query", return_value=None):
             self.assertIs(extract_structure(source, "csharp", native), native)
 
     def test_queries_are_cached_per_language(self) -> None:
         with patch(
-            "atlas.extraction.structure.get_tags_query", wraps=get_tags_query
+            "atlas.parsing.structure.get_tags_query", wraps=get_tags_query
         ) as tags:
             for language in ["kotlin", "java", "kotlin", "java"]:
                 _declaration_query(language)

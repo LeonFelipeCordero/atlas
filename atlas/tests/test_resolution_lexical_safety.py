@@ -3,11 +3,11 @@
 import unittest
 from pathlib import Path
 
-from atlas.adapters import get_resolution_adapter
-from atlas.discovery import SourceFile
-from atlas.extraction.parser import parse_files
-from atlas.extraction.resolution_syntax import Syntax
-from atlas.domain.resolver import resolve_connections
+from atlas.metrics.adapters import get_resolution_adapter
+from atlas.parsing.discovery import SourceFile
+from atlas.parsing.parser import parse_files
+from atlas.metrics.resolution_syntax import Syntax
+from atlas.metrics.resolver import resolve_connections
 
 
 def repository(language, sources):

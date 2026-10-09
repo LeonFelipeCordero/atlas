@@ -4,7 +4,7 @@ import unittest
 
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_parser, process
 
-from atlas.extraction.structure import extract_structure
+from atlas.parsing.structure import extract_structure
 from tests.coffee_fixture import coffee_sources
 from tests.coffee_scenarios import DECLARATIONS
 from tests.test_declaration_callbacks import flatten

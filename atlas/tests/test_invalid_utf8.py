@@ -4,8 +4,8 @@ import hashlib
 import unittest
 from pathlib import Path
 
-from atlas.discovery import SourceFile
-from atlas.extraction.parser import parse_files
+from atlas.parsing.discovery import SourceFile
+from atlas.parsing.parser import parse_files
 
 
 class InvalidUtf8Test(unittest.TestCase):

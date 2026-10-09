@@ -4,9 +4,9 @@ import unittest
 from collections import Counter
 from pathlib import Path
 
-from atlas.discovery import discover_files
-from atlas.extraction.parser import parse_files
-from atlas.domain.resolver import resolve_connections
+from atlas.parsing.discovery import discover_files
+from atlas.parsing.parser import parse_files
+from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import repository
 from tests.coffee_tsx_assertions import (
     assert_component_references,

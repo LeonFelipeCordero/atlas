@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from atlas.domain.report import build_report, render_markdown
+from atlas.metrics.report import build_report, render_markdown
 from atlas.domain.repositories import GraphDTO
 
 

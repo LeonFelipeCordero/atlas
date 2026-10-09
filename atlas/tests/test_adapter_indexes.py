@@ -2,11 +2,11 @@
 
 import unittest
 
-from atlas.adapters.rust import RustModules
-from atlas.adapters import get_resolution_adapter
+from atlas.metrics.adapters.rust import RustModules
+from atlas.metrics.adapters import get_resolution_adapter
 from atlas.domain.models import ParsedRepository
-from atlas.adapters.resolution import Modules
-from atlas.extraction.resolution_syntax import Syntax
+from atlas.metrics.adapters.resolution import Modules
+from atlas.metrics.resolution_syntax import Syntax
 from tests.test_semantic_resolution import repository
 
 

@@ -9,7 +9,7 @@ from click.testing import CliRunner
 
 from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
-from atlas.domain.report import build_artifact_report, render_markdown
+from atlas.metrics.report import build_artifact_report, render_markdown
 from atlas.indexer import analyze_repository
 
 

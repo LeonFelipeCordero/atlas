@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from atlas.discovery import discover_files
-from atlas.extraction.parser import _extract_calls
+from atlas.parsing.discovery import discover_files
+from atlas.parsing.parser import _extract_calls
 from atlas.indexer import analyze_repository
 
 

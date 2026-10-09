@@ -4,7 +4,7 @@ import unittest
 from dataclasses import asdict
 from pathlib import Path
 
-from atlas.discovery import discover_files
+from atlas.parsing.discovery import discover_files
 from atlas.indexer import analyze_repository
 
 

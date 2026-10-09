@@ -1,0 +1,355 @@
+"""Rust metric and resolution policies."""
+
+import ast
+
+import re
+
+
+from dataclasses import replace
+
+from itertools import chain
+
+from pathlib import Path
+
+from tree_sitter import Node
+
+
+from ...domain.models import ParsedFile, ParsedRepository, Symbol
+
+from .resolution import ResolutionAdapter, Binding
+
+from .resolution_paths import quoted_path
+
+from ..resolution_contract import SCOPES
+
+from .base import COMMON_METRICS, MetricAdapter
+
+from .module_index import ModuleIndex, ModuleScope as RustScope
+
+from .parameters import parameter_children, parameter_node
+
+from ...syntax import field, text
+
+
+def match_decision(node: Node) -> bool:
+    pattern = node.child_by_field_name("pattern")
+    return pattern is None or (pattern.text or b"").strip() != b"_"
+
+
+def _path_value(value: Node) -> str | None:
+    if value.type == "raw_string_literal":
+        return text(
+            next((c for c in value.named_children if c.type == "string_content"), None)
+        )
+    try:
+        decoded = ast.literal_eval(text(value))
+    except (SyntaxError, ValueError):
+        return None
+    return decoded if isinstance(decoded, str) else None
+
+
+def _path_attribute(node: Node) -> str | None:
+    attribute = node.named_children[0]
+    value = field(attribute, "value")
+    if text(attribute.named_children[0]) != "path" or value is None:
+        return None
+    return _path_value(value)
+
+
+def path_attributes(node: Node) -> list[str]:
+    """Read direct path attributes, not cfg_attr guesses; skip unrelated attributes."""
+    values = []
+    sibling = node.prev_named_sibling
+    while sibling and sibling.type in {
+        "attribute_item",
+        "line_comment",
+        "block_comment",
+    }:
+        if sibling.type == "attribute_item":
+            decoded = _path_attribute(sibling)
+            if decoded is not None:
+                values.append(decoded)
+        sibling = sibling.prev_named_sibling
+    return values
+
+
+def _relative_identity(identity: str, name: str) -> str | None:
+    parts = identity.split("::")
+    suffix = name.split("::")
+    if suffix and suffix[0] == "self":
+        suffix = suffix[1:]
+    while suffix and suffix[0] == "super":
+        parts = parts[:-1]
+        suffix = suffix[1:]
+    return "::".join(parts + suffix) if parts else None
+
+
+def _entry_files(files: list[ParsedFile]) -> list[ParsedFile]:
+    return [
+        file
+        for file in files
+        if file.source.absolute_path.name in {"lib.rs", "main.rs"}
+    ]
+
+
+def _inline_scopes(
+    scope: RustScope,
+    identity: str,
+    body: Node,
+    attribute_dir: Path,
+    paths: list[str],
+    name: str,
+) -> list[RustScope]:
+    directories = (
+        [attribute_dir / path for path in paths] if paths else [scope.directory / name]
+    )
+    return [
+        RustScope(scope.file, identity, body, directory) for directory in directories
+    ]
+
+
+class RustModules(ModuleIndex):
+    """Index explicit Rust module identities; duplicate names remain ambiguous."""
+
+    def __init__(self, repository: ParsedRepository, syntax: dict):
+        super().__init__()
+        self.repository = repository
+        self.syntax = syntax
+        self._rust_paths: dict[Path, list[ParsedFile]] = {}
+        for file in repository.files:
+            if file.source.language == "rust":
+                self._rust_paths.setdefault(
+                    file.source.absolute_path.resolve(), []
+                ).append(file)
+        self.add_scopes(chain.from_iterable(map(self._walk_rust, self._rust_roots())))
+
+    def _rust_roots(self) -> list[ParsedFile]:
+        """Prefer standard entry files; otherwise infer unreferenced module owners."""
+        files = self._rust_files()
+        standard = _entry_files(files)
+        if standard:
+            return standard
+        candidates = [file for file in files if self._module_owner(file)]
+        referenced: set[str] = set()
+        for root in candidates:
+            referenced.update(self._referenced_files(root))
+        return [file for file in candidates if file.source.path not in referenced]
+
+    def _rust_files(self) -> list[ParsedFile]:
+        return [
+            file for file in self.repository.files if file.source.language == "rust"
+        ]
+
+    def _module_owner(self, file: ParsedFile) -> bool:
+        root = self.syntax[file.source.path].root
+        return bool(
+            root and any(node.type == "mod_item" for node in root.named_children)
+        )
+
+    def _referenced_files(self, root: ParsedFile) -> set[str]:
+        return {
+            scope.file.source.path
+            for scope in self._walk_rust(root)
+            if scope.file.source.path != root.source.path
+        }
+
+    @staticmethod
+    def _module_directory(file: ParsedFile) -> Path:
+        path = file.source.absolute_path
+        return path.parent if path.name == "mod.rs" else path.with_suffix("")
+
+    def _child_scopes(self, scope: RustScope, node: Node) -> list[RustScope]:
+        name = text(field(node, "name"))
+        identity = scope.identity + "::" + name
+        paths = path_attributes(node)
+        attribute_dir = (
+            scope.file.source.absolute_path.parent
+            if scope.body.type == "source_file"
+            else scope.directory
+        )
+        body = field(node, "body")
+        if body:
+            return _inline_scopes(scope, identity, body, attribute_dir, paths, name)
+        locations = (
+            [attribute_dir / path for path in paths]
+            if paths
+            else [scope.directory / (name + ".rs"), scope.directory / name / "mod.rs"]
+        )
+        return self._external_scopes(identity, locations)
+
+    def _external_scopes(self, identity: str, locations: list[Path]) -> list[RustScope]:
+        targets = chain.from_iterable(
+            self._rust_paths.get(path.resolve(), []) for path in locations
+        )
+        return [
+            RustScope(file, identity, root, self._module_directory(file))
+            for file in targets
+            if (root := self.syntax[file.source.path].root)
+        ]
+
+    def _walk_rust(self, root: ParsedFile):
+        body = self.syntax[root.source.path].root
+        if body is None:
+            return
+        scope = RustScope(root, "crate", body, root.source.absolute_path.parent)
+        yield from self.walk_scopes(scope, self._module_children)
+
+    def _module_children(self, scope: RustScope):
+        nodes = [node for node in scope.body.named_children if node.type == "mod_item"]
+        return chain.from_iterable(self._child_scopes(scope, node) for node in nodes)
+
+    def _rust_identities(
+        self, source: ParsedFile, name: str, position: int | None
+    ) -> list[str]:
+        if name == "crate" or name.startswith("crate::"):
+            return [name]
+        scopes = self.scopes_at(source, position)
+        identities = [_relative_identity(scope.identity, name) for scope in scopes]
+        return list(
+            dict.fromkeys(identity for identity in identities if identity is not None)
+        )
+
+    def _rust_target(
+        self, source: ParsedFile, name: str, position: int | None
+    ) -> RustScope | None:
+        # A file mounted at multiple identities has no single relative module context.
+        return self.unique_scope(self._rust_identities(source, name, position))
+
+    def rust_key(
+        self, source: ParsedFile, name: str, position: int | None = None
+    ) -> str | None:
+        return self.scope_key(self._rust_target(source, name, position))
+
+    def rust_import(
+        self, source: ParsedFile, name: str, position: int | None = None
+    ) -> list[ParsedFile]:
+        """External module files. Pass a byte position for inline-relative paths.
+
+        Inline modules cannot be represented as whole files: use rust_symbols for
+        scoped namespace/member bindings rather than top_symbols(rust_import(...)).
+        """
+        scope = self._rust_target(source, name, position)
+        return [scope.file] if scope and scope.body.type == "source_file" else []
+
+    def rust_symbols(
+        self, source: ParsedFile, name: str, position: int | None = None
+    ) -> list[Symbol]:
+        """Direct declarations of exactly one module, including inline namespaces."""
+        return self.scope_symbols(self._rust_target(source, name, position))
+
+    def rust_files(self, name: str) -> list[ParsedFile]:
+        return self.scope_files(name)
+
+
+class RustResolution(ResolutionAdapter):
+    def import_path(self, source: str) -> str:
+        match = re.search(r"\b(?:use|mod)\s+([\w:]+)", source)
+        return quoted_path(source) or (match[1] if match else source.strip())
+
+    family = "rust"
+    scopes = SCOPES | {"declaration_list"}
+    import_nodes = {"use_declaration", "mod_item"}
+    require_import_node = True
+    assignments = {"assignment_expression"}
+    declarations = {"let_declaration"}
+    member_nodes = {"field_expression": (("value",), ("field",))}
+    macro_nodes = {"macro_invocation"}
+    static_nodes = {"static"}
+    static_containers = {"storage_class_specifier", "modifiers"}
+
+    def module_index(self, repository, syntax) -> RustModules:
+        return RustModules(repository, syntax)
+
+    def index(self, ctx) -> RustModules:
+        return ctx.modules.indexes[self.family]
+
+    def import_files(self, ctx, file, path, position):
+        return self.index(ctx).rust_import(file, path, position)
+
+    def import_key(self, ctx, file, source, position):
+        path = self.import_path(source)
+        key = self.index(ctx).rust_key(file, path, position)
+        if not key and "::" in path:
+            module, _, name = path.rpartition("::")
+            targets = ctx._members(file, module, name, position)
+            return targets[0].key if len(targets) == 1 else None
+        return key
+
+    def members(self, ctx, file, path, name, position):
+        return [
+            s
+            for s in self.index(ctx).rust_symbols(file, path, position)
+            if s.name == name
+        ]
+
+    def import_item(self, ctx, file, source, path, position):
+        match = re.search(r"\buse\s+([\w:]+)(?:\s+as\s+(\w+))?", source)
+        if not match:
+            return []
+        path, alias = match.groups()
+        if self.index(ctx).rust_key(file, path, position):
+            return [
+                (
+                    alias or path.rsplit("::", 1)[-1],
+                    self.index(ctx).rust_symbols(file, path, position),
+                    True,
+                )
+            ]
+        module, _, name = path.rpartition("::")
+        return [(alias or name, ctx._members(file, module, name, position), False)]
+
+    def module_bindings(self, ctx, file, syntax, source_length):
+        result = []
+        for node in syntax.nodes:
+            if node.type != "mod_item":
+                continue
+            name = text(field(node, "name"))
+            result.append(
+                Binding(
+                    name,
+                    self.index(ctx).rust_symbols(file, name, node.start_byte),
+                    True,
+                    node.parent.start_byte if node.parent else 0,
+                    node.parent.end_byte if node.parent else source_length,
+                )
+            )
+        return result
+
+    def local_namespace(self, resolver, local):
+        return bool(local) and all(
+            (n := resolver.syntax[s.file_path].node(s.start_byte, s.end_byte))
+            is not None
+            and n.type == "mod_item"
+            for s in local
+        )
+
+    def qualified(self, resolver, file, qualifier, name, call):
+        return [
+            s
+            for s in self.index(resolver).rust_symbols(file, qualifier, call.start_byte)
+            if s.name == name
+        ]
+
+    def receiver_rejected(self, receiver, qualifier):
+        return (
+            receiver is not None
+            and qualifier != "this"
+            and bool(re.fullmatch(r"[\w:]+", qualifier or ""))
+        )
+
+
+def parameter_count(node: Node) -> int | None:
+    parameters = parameter_node(node)
+    if parameters is None or parameters.has_error:
+        return None
+    return sum(
+        child.type not in {"self_parameter", "attribute_item"}
+        and (field(child, "pattern") or child).type != "self"
+        for child in parameter_children(parameters)
+    )
+
+
+METRICS = replace(COMMON_METRICS, decision_overrides={"match_arm": match_decision})
+
+
+ADAPTER = MetricAdapter(metrics=METRICS, parameter_count=parameter_count)

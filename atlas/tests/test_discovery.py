@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from atlas.discovery import _repository_paths
+from atlas.parsing.discovery import _repository_paths
 
 
 class DiscoveryTest(unittest.TestCase):

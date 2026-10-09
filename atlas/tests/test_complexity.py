@@ -5,7 +5,7 @@ from pathlib import Path
 from tree_sitter_language_pack import get_parser
 
 from atlas.domain.models import Complexity
-from atlas.extraction.complexity import calculate_complexity
+from atlas.metrics.complexity import calculate_complexity
 from atlas.indexer import analyze_repository
 
 

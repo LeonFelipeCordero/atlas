@@ -6,8 +6,8 @@ from dataclasses import replace
 from tree_sitter import Node
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_parser, process
 
-from atlas.adapters import get_adapter
-from atlas.extraction.structure import extract_structure
+from atlas.parsing.adapters import get_adapter
+from atlas.parsing.structure import extract_structure
 
 
 def flatten(

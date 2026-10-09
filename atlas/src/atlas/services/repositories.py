@@ -4,7 +4,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from atlas.domain.report import build_report
+from atlas.metrics.report import build_report
 from atlas.domain.repositories import (
     GraphDTO,
     RepositoryDTO,

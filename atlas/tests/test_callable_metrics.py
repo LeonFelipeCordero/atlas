@@ -6,16 +6,19 @@ from pathlib import Path
 import pytest
 from tree_sitter_language_pack import get_parser
 
-from atlas.adapters import get_adapter
+from atlas.metrics.adapters import get_metric_adapter
 from atlas.bootstrap import repository_service
 from atlas.domain.models import ParsedFile, SourceFile, Symbol
-from atlas.extraction.parser import _add_callable_metrics, parse_file
+from atlas.metrics.callables import callable_metrics
+from atlas.parsing.parser import parse_file
 from atlas.indexer import analyze_repository
 from atlas.persistence.database import migrate_database
 
 
 def parsed(language: str, code: str):
-    return parse_file(SourceFile("sample", Path("sample"), language, code.encode()))
+    file = parse_file(SourceFile("sample", Path("sample"), language, code.encode()))
+    callable_metrics(file)
+    return file
 
 
 @pytest.mark.parametrize(
@@ -128,13 +131,13 @@ def test_unknown_counts_are_not_zero():
     assert (
         parsed("kotlin", "val f = { println(it) }").symbols[0].parameter_count is None
     )
-    adapter = get_adapter("python")
+    adapter = get_metric_adapter("python")
     malformed = (
         get_parser("python").parse(b"def f(a,,b): pass").root_node.named_children[0]
     )
     assert adapter.parameter_count(malformed) is None
     assert (
-        get_adapter("ruby").parameter_count(
+        get_metric_adapter("ruby").parameter_count(
             get_parser("ruby").parse(b"def f(x); end").root_node.named_children[0]
         )
         is None
@@ -149,7 +152,7 @@ def test_elixir_clauses_keep_identity_and_counts():
     ]
     assert len({symbol.key for symbol in file.symbols}) == 2
     assert (
-        get_adapter("elixir").parameter_count(
+        get_metric_adapter("elixir").parameter_count(
             get_parser("elixir")
             .parse(b"fn a -> a; a,b -> a end")
             .root_node.named_children[0]
@@ -217,7 +220,7 @@ def test_end_exclusive_column_zero_and_nested_physical_lines():
         None,
         [symbol],
     )
-    _add_callable_metrics(synthetic, synthetic.source.source)
+    callable_metrics(synthetic)
     assert symbol.line_count == 2
 
 

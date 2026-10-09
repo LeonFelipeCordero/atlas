@@ -3,9 +3,9 @@
 import unittest
 from pathlib import Path
 
-from atlas.discovery import SourceFile
-from atlas.extraction.parser import parse_files
-from atlas.domain.resolver import resolve_connections
+from atlas.parsing.discovery import SourceFile
+from atlas.parsing.parser import parse_files
+from atlas.metrics.resolver import resolve_connections
 
 
 def repository(language, sources):

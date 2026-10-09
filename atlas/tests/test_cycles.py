@@ -6,8 +6,8 @@ from pathlib import Path
 
 from dataclasses import asdict
 
-from atlas.domain.artifact import GraphArtifact, validate_artifact
-from atlas.domain.cycles import circular_dependencies
+from atlas.metrics.artifact import GraphArtifact, validate_artifact
+from atlas.metrics.cycles import circular_dependencies
 from atlas.indexer import analyze_repository
 
 

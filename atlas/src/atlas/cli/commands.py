@@ -46,7 +46,7 @@ def projects_command() -> None:
 
 
 def _folder_report(folder: Path, skip_save: bool) -> dict[str, Any]:
-    from ..domain.report import build_artifact_report
+    from ..metrics.report import build_artifact_report
     from ..services.repositories import analyze_folder
 
     root = folder.expanduser().resolve()
@@ -65,7 +65,7 @@ def _folder_report(folder: Path, skip_save: bool) -> dict[str, Any]:
 @click.option("--skip-save", is_flag=True, help="Analyze a folder without accessing the database")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
 def report_command(folder: Path, skip_save: bool, output_format: str) -> None:
-    from ..domain.report import render_markdown
+    from ..metrics.report import render_markdown
     from ..domain.repositories import RepositoryError
 
     try:

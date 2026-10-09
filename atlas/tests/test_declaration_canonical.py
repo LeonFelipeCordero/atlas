@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from tree_sitter_language_pack import ProcessConfig, StructureItem, process
 
-from atlas.extraction.structure import _declaration_query, extract_structure
+from atlas.parsing.structure import _declaration_query, extract_structure
 
 
 def merged(source: str, language: str) -> list[StructureItem]:
@@ -130,7 +130,7 @@ class CanonicalDeclarationTests(unittest.TestCase):
         _declaration_query.cache_clear()
         try:
             with patch(
-                "atlas.extraction.structure.get_tags_query", return_value=None
+                "atlas.parsing.structure.get_tags_query", return_value=None
             ):
                 self.assertIs(extract_structure(b"", "csharp", native), native)
                 self.assertEqual(extract_structure(b"", "csharp"), [])

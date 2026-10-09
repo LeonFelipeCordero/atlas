@@ -3,6 +3,7 @@
 import ast
 import unittest
 from importlib.util import resolve_name
+from itertools import product
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "src" / "atlas"
@@ -106,39 +107,39 @@ class ArchitectureTest(unittest.TestCase):
         source = """\
 from typing import TYPE_CHECKING
 from . import java
-from atlas.adapters.kotlin import KotlinResolution
-import atlas.adapters.go
-from ..domain.models import Symbol
+from atlas.metrics.adapters.kotlin import KotlinResolution
+import atlas.metrics.adapters.go
+from ...domain.models import Symbol
 if TYPE_CHECKING:
     from . import python
 
 def resolve():
     from .rust import RustResolution
 """
-        expected = {f"atlas.adapters.{name}" for name in ("java", "kotlin", "go", "rust")}
+        expected = {f"atlas.metrics.adapters.{name}" for name in ("java", "kotlin", "go", "rust")}
         expected.add("atlas.domain.models")
-        modules = expected | {"atlas.adapters.python"}
+        modules = expected | {"atlas.metrics.adapters.python"}
         self.assertEqual(
             expected,
-            module_dependencies(ast.parse(source), modules, "atlas.adapters"),
+            module_dependencies(ast.parse(source), modules, "atlas.metrics.adapters"),
         )
 
     def test_package_imports_resolve_to_registry_or_child_module(self) -> None:
-        modules = {"atlas.adapters", "atlas.adapters.java"}
+        modules = {"atlas.parsing.adapters", "atlas.parsing.adapters.java"}
         self.assertEqual(
             modules,
             module_dependencies(
-                ast.parse("from ..adapters import get_adapter, java"),
+                ast.parse("from .adapters import get_adapter, java"),
                 modules,
-                "atlas.extraction",
+                "atlas.parsing",
             ),
         )
 
     def test_package_boundaries_exist(self) -> None:
-        for package in ("adapters", "extraction", "domain", "cli"):
+        for package in ("parsing", "parsing/adapters", "metrics", "metrics/adapters", "domain", "cli"):
             self.assertTrue((ROOT / package / "__init__.py").is_file())
         self.assertEqual(
-            {"__init__.py", "__main__.py", "bootstrap.py", "discovery.py", "indexer.py"},
+            {"__init__.py", "__main__.py", "bootstrap.py", "syntax.py", "language_syntax.py", "indexer.py"},
             {path.name for path in ROOT.glob("*.py")},
         )
 
@@ -153,24 +154,41 @@ def resolve():
             "elixir",
             "python",
         }
-        for language in primary:
-            self.assertTrue((ROOT / "adapters" / f"{language}.py").is_file())
-            self.assertEqual([], list((ROOT / "adapters").glob(f"{language}_*.py")))
+        for phase, language in product(("parsing", "metrics"), primary):
+            root = ROOT / phase / "adapters"
+            self.assertTrue((root / f"{language}.py").is_file())
+            self.assertEqual([], list(root.glob(f"{language}_*.py")))
 
     def test_adapters_do_not_depend_on_shared_graph_orchestration(self) -> None:
         forbidden = {
-            "atlas.extraction.parser",
-            "atlas.extraction.structure",
-            "atlas.extraction.complexity",
-            "atlas.domain.resolver",
-            "atlas.domain.artifact",
-            "atlas.domain.cycles",
+            "atlas.parsing.parser",
+            "atlas.parsing.structure",
+            "atlas.metrics.complexity",
+            "atlas.metrics.callables",
+            "atlas.metrics.resolver",
+            "atlas.metrics.artifact",
+            "atlas.metrics.cycles",
             "atlas.indexer",
         }
-        for path in (ROOT / "adapters").rglob("*.py"):
+        for path in ROOT.glob("*/adapters/**/*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"))
             dependencies = module_dependencies(tree, forbidden, module_package(path))
             self.assertFalse(dependencies, str(path.relative_to(ROOT)))
+
+    def test_phase_adapters_and_shared_models_are_independent(self) -> None:
+        files = {module_name(path): path for path in ROOT.rglob("*.py")}
+        for phase, other in (("parsing", "metrics"), ("metrics", "parsing")):
+            self.assert_package_independent(ROOT / phase, files, f"atlas.{other}.adapters")
+        self.assert_package_independent(ROOT / "domain", files, ("atlas.parsing", "atlas.metrics"))
+
+    def assert_package_independent(self, root, files, prefixes):
+        forbidden = {name for name in files if name.startswith(prefixes)}
+        for path in root.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            self.assertFalse(
+                module_dependencies(tree, forbidden, module_package(path)),
+                str(path.relative_to(ROOT)),
+            )
 
     def test_module_size_function_size_and_relative_import_dag(self) -> None:
         files = {module_name(path): path for path in ROOT.rglob("*.py")}

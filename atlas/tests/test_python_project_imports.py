@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from atlas.domain.report import build_artifact_report
+from atlas.metrics.report import build_artifact_report
 from atlas.indexer import analyze_repository
 
 

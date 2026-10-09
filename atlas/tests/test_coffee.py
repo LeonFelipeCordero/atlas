@@ -3,7 +3,7 @@
 import unittest
 from collections import Counter
 
-from atlas.domain.artifact import validate_artifact
+from atlas.metrics.artifact import validate_artifact
 from tests.coffee_fixture import (
     FIXTURE_ROOT,
     LANGUAGES,

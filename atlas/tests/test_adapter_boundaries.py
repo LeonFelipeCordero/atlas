@@ -29,7 +29,10 @@ def language_literals(node):
 
 
 def forbidden_adapter_modules():
-    return LANGUAGES | {f"atlas.adapters.{language}" for language in LANGUAGES}
+    return LANGUAGES | {
+        f"atlas.{phase}.adapters.{language}"
+        for phase in ("parsing", "metrics") for language in LANGUAGES
+    }
 
 
 class AdapterBoundaryTest(unittest.TestCase):
@@ -49,12 +52,13 @@ class AdapterBoundaryTest(unittest.TestCase):
         files = [
             ROOT / name
             for name in (
-                "extraction/parser.py",
-                "extraction/structure.py",
-                "extraction/complexity.py",
-                "extraction/resolution_syntax.py",
-                "domain/resolver.py",
-                "adapters/resolution.py",
+                "parsing/parser.py",
+                "parsing/structure.py",
+                "metrics/complexity.py",
+                "metrics/callables.py",
+                "metrics/resolution_syntax.py",
+                "metrics/resolver.py",
+                "metrics/adapters/resolution.py",
             )
         ]
         for path in files:

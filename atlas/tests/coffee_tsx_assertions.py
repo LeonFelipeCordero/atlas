@@ -1,6 +1,6 @@
 """Focused JSX ownership and source-coordinate assertions."""
 
-from atlas.domain.resolver import resolve_connections
+from atlas.metrics.resolver import resolve_connections
 
 
 def reference_edges(edges):

@@ -14,12 +14,12 @@ from tree_sitter_language_pack import (
     process,
 )
 
-from atlas.adapters import get_adapter
-from atlas.discovery import SourceFile
+from atlas.parsing.adapters import get_adapter
+from atlas.parsing.discovery import SourceFile
 from atlas.domain.models import ParsedRepository
-from atlas.extraction.parser import parse_file
-from atlas.domain.resolver import resolve_connections
-from atlas.extraction.structure import extract_structure
+from atlas.parsing.parser import parse_file
+from atlas.metrics.resolver import resolve_connections
+from atlas.parsing.structure import extract_structure
 
 
 LANGUAGES = ("javascript", "typescript", "tsx")

@@ -5,10 +5,10 @@ from dataclasses import replace
 
 from tree_sitter_language_pack import get_parser
 
-from atlas.adapters import get_adapter
-from atlas.adapters.base import COMMON_METRICS
+from atlas.metrics.adapters import get_metric_adapter
+from atlas.metrics.adapters.base import COMMON_METRICS
 from atlas.domain.models import Complexity
-from atlas.extraction.complexity import calculate_complexity
+from atlas.metrics.complexity import calculate_complexity
 
 
 class MetricAdapterTest(unittest.TestCase):
@@ -31,7 +31,7 @@ class MetricAdapterTest(unittest.TestCase):
     def assert_node_only_policy(self, language, source):
         root = get_parser(language).parse(source.encode()).root_node
         self.assertFalse(root.has_error)
-        adapter = get_adapter(language)
+        adapter = get_metric_adapter(language)
         stack = [root]
         while stack:
             node = stack.pop()

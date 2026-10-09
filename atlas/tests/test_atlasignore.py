@@ -8,7 +8,7 @@ from click.testing import CliRunner
 
 from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
-from atlas.discovery import _repository_paths, discover_files
+from atlas.parsing.discovery import _repository_paths, discover_files
 
 
 def write_files(root: Path, names: list[str]) -> None:

@@ -6,9 +6,9 @@ import pytest
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
-from atlas.adapters.elixir import _call_arity, _clause_signature
-from atlas.adapters.python import irrefutable_pattern
-from atlas.extraction.complexity import calculate_complexity
+from atlas.metrics.adapters.elixir import _call_arity, _clause_signature
+from atlas.metrics.adapters.python import irrefutable_pattern
+from atlas.metrics.complexity import calculate_complexity
 
 
 def nodes(root):
@@ -25,9 +25,10 @@ def node_text(node: Node) -> str:
     return text.decode()
 
 
+@pytest.mark.parametrize("phase", ["parsing", "metrics"])
 @pytest.mark.parametrize("adapter", ["base", "elixir", "go", "kotlin", "python"])
-def test_adapter_callable_complexity_budget(adapter):
-    path = Path(__file__).parents[1] / "src" / "atlas" / "adapters" / f"{adapter}.py"
+def test_adapter_callable_complexity_budget(phase, adapter):
+    path = Path(__file__).parents[1] / "src" / "atlas" / phase / "adapters" / f"{adapter}.py"
     root = get_parser("python").parse(path.read_bytes()).root_node
     assert not root.has_error
     for node in nodes(root):

@@ -2,10 +2,11 @@
 
 from pathlib import Path
 
-from .discovery import discover_files, validate_repository
-from .domain.artifact import GraphArtifact, build_artifact
-from .domain.resolver import resolve_connections
-from .extraction.parser import parse_files
+from .parsing.discovery import discover_files, validate_repository
+from .metrics.artifact import GraphArtifact, build_artifact
+from .metrics.callables import add_callable_metrics
+from .metrics.resolver import resolve_connections
+from .parsing.parser import parse_files
 
 
 def analyze_repository(root: Path) -> GraphArtifact:
@@ -27,5 +28,6 @@ def analyze_repository(root: Path) -> GraphArtifact:
     """
     repository_root = validate_repository(root)
     parsed_repository = parse_files(discover_files(repository_root))
+    add_callable_metrics(parsed_repository)
     graph = resolve_connections(parsed_repository)
     return build_artifact(repository_root, parsed_repository, graph)

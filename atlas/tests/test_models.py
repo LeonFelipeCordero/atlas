@@ -7,11 +7,11 @@ from typing import Any, cast
 
 from pydantic import ValidationError
 
-from atlas.domain.artifact import GraphArtifact, validate_artifact
-from atlas.discovery import SourceFile
+from atlas.metrics.artifact import GraphArtifact, validate_artifact
+from atlas.parsing.discovery import SourceFile
 from atlas.domain.models import ParsedFile
 from atlas.indexer import analyze_repository
-from atlas.domain.resolver import Connection
+from atlas.metrics.resolver import Connection
 
 
 class ModelsTest(unittest.TestCase):

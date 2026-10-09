@@ -1,1 +1,1 @@
-"""Graph records, connection resolution, projections, and dependency metrics."""
+"""Shared source, repository and graph records plus storage contracts."""
