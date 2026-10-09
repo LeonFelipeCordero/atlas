@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from atlas.bootstrap import repository_service
+from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 from atlas.discovery import _repository_paths, discover_files
 
@@ -141,13 +141,11 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     (fixtures / "a.py").write_text("from . import b\n")
     (fixtures / "b.py").write_text("from . import a\n")
     database = tmp_path / "graph.sqlite"
-    runner = CliRunner()
-    migrated = runner.invoke(main, ["migrate", "--database", str(database)])
-    assert migrated.exit_code == 0, migrated.output
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    migrate_database(database)
     with repository_service(database) as service:
         project = service.register({"name": "example", "location": str(source)})
     args = [command, "-f", str(source)]
-    args += ["--database", str(database)]
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output
     if command == "report":

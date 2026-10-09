@@ -88,18 +88,21 @@ class ResolutionAdapter:
     ) -> list[ParsedFile]:
         return ctx.path_files(file, path)
 
+    def import_path(self, source: str) -> str:
+        return import_path(source)
+
     def import_key(
         self, ctx, file: ParsedFile, source: str, position: int | None
     ) -> str | None:
         return path_target_key(
-            self.import_files(ctx, file, import_path(source), position)
+            self.import_files(ctx, file, self.import_path(source), position)
         )
 
     def import_targets(
         self, ctx, file: ParsedFile, source: str, position: int | None
     ) -> list[tuple[str, str | None]]:
         """Keep unresolved imports explicit; adapters may expand child modules."""
-        return [(import_path(source), self.import_key(ctx, file, source, position))]
+        return [(self.import_path(source), self.import_key(ctx, file, source, position))]
 
     def import_type_only(self, node: Node | None) -> bool:
         return False

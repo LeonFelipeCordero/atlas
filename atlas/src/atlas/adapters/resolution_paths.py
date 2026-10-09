@@ -10,6 +10,11 @@ def top_symbols(file: ParsedFile) -> list[Symbol]:
     return [s for s in file.symbols if s.parent_key == file_key(file.source.path)]
 
 
+def quoted_path(source: str) -> str | None:
+    quoted = re.findall(r"['\"]([^'\"]+)['\"]", source)
+    return quoted[-1] if quoted else None
+
+
 def import_path(source: str) -> str:
     include = re.search(r'#\s*include\s*[<"]([^>"]+)[>"]', source)
     if include:

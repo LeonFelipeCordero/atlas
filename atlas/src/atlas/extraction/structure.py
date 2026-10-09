@@ -175,19 +175,25 @@ def _merge_item(native: StructureItem, tagged: StructureItem | None) -> Structur
 
 
 def extract_structure(
-    source: bytes, language: str, existing: list[StructureItem] | None = None
+    source: bytes,
+    language: str,
+    existing: list[StructureItem] | None = None,
+    *,
+    root: Node | None = None,
 ) -> list[StructureItem]:
     """Extract declarations under their nearest declared AST ancestor.
 
     Native metadata wins except AST-backed name/kind/span corrections. Identity
     is the canonical carrier (plus binding for non-callbacks), preserving
-    overloads and separate clauses. No query means the
-    supplied list is returned unchanged. Dependency/parser/query errors propagate.
+    overloads and separate clauses. A supplied root avoids reparsing the source.
+    No query means the supplied list is returned unchanged.
+    Dependency/parser/query errors propagate.
     """
     query = _declaration_query(language)
     if query is None:
         return existing if existing is not None else []
-    root = get_parser(language).parse(source).root_node
+    if root is None:
+        root = get_parser(language).parse(source).root_node
     declarations = _merge_declarations(root, query, language, existing or [])
     return _structure_hierarchy(declarations)
 

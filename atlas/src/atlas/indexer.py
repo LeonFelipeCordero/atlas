@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from .domain.artifact import GraphArtifact, build_artifact
 from .discovery import discover_files, validate_repository
-from .extraction.parser import parse_files
+from .domain.artifact import GraphArtifact, build_artifact
 from .domain.resolver import resolve_connections
+from .extraction.parser import parse_files
 
 
 def analyze_repository(root: Path) -> GraphArtifact:

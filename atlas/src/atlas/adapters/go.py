@@ -1,5 +1,8 @@
 """Go extraction, metrics and resolution policies."""
 
+import re
+from itertools import chain
+
 from tree_sitter import Node
 from ..extraction.syntax import (
     DeclarationCarrier,
@@ -10,7 +13,10 @@ from ..extraction.syntax import (
     text,
     field,
 )
-from .resolution import ResolutionAdapter
+from .resolution import ResolutionAdapter, top_symbols
+from .resolution_paths import quoted_path
+from .base import COMMON_METRICS, LanguageAdapter
+from .parameters import parameter_children, parameter_node
 from ..extraction.resolution_syntax import SCOPES
 
 QUERY = "\n(func_literal) @definition.function\n"
@@ -54,7 +60,47 @@ def call_sites(root: Node):
     return shared_call_sites(root, CALL_TYPES)
 
 
+def parameter_count(node: Node) -> int | None:
+    parameters = parameter_node(node)
+    if parameters is None or parameters.has_error:
+        return None
+    entries = parameter_children(parameters)
+    if any(
+        child.type not in {"parameter_declaration", "variadic_parameter_declaration"}
+        for child in entries
+    ):
+        return None
+    return sum(max(1, len(child.children_by_field_name("name"))) for child in entries)
+
+
+ADAPTER = LanguageAdapter(
+    declaration_query=QUERY,
+    callback_types=CALLBACK_TYPES,
+    normalize_declaration=declaration,
+    call_sites=call_sites,
+    inheritance_policy=INHERITANCE,
+    metrics=COMMON_METRICS,
+    parameter_count=parameter_count,
+)
+
+
 class GoResolution(ResolutionAdapter):
+    def import_path(self, source: str) -> str:
+        return quoted_path(source) or source.strip()
+
+    def import_item(self, ctx, file, source, path, position):
+        if re.match(r"\s*\.\s+['\"]", source):
+            return []
+        alias = re.match(r"\s*([A-Za-z_$][\w$]*)\s+['\"]", source)
+        binding = (
+            alias[1]
+            if alias and alias[1] not in {"import", "require"}
+            else path.replace(".", "/").rstrip("/").rsplit("/", 1)[-1]
+        )
+        targets = self.import_files(ctx, file, path, position)
+        symbols = list(chain.from_iterable(top_symbols(target) for target in targets))
+        return [(binding, symbols, True)] if binding else []
+
     family = "go"
     scopes = SCOPES | {"for_statement"}
     import_nodes = {"import_declaration"}

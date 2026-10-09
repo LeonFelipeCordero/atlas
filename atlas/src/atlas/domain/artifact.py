@@ -208,7 +208,7 @@ def _relationship_counts(edges: list[dict[str, object]], field: str) -> dict[str
 def _view_edges(
     relationships: dict[tuple[str, str], list[dict[str, object]]], level: str
 ) -> list[dict[str, object]]:
-    projected = []
+    projected: list[dict[str, object]] = []
     for (source, target), edges in sorted(relationships.items()):
         projected.append(
             {
@@ -425,7 +425,7 @@ def build_artifact(
         >>> build_artifact(Path("repo"), ParsedRepository([]), ResolvedGraph([], [])).stats["files"]
         0
     """
-    nodes = [
+    nodes: list[dict[str, object]] = [
         {
             "stableKey": "repository",
             "type": "repository",

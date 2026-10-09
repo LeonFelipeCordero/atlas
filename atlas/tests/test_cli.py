@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,13 +15,20 @@ class CliTest(unittest.TestCase):
         runner = CliRunner()
         result = runner.invoke(main, ["--help"])
         self.assertEqual(result.exit_code, 0)
-        for command in ("index", "migrate", "projects", "report"):
+        for command in ("index", "projects", "report"):
             self.assertIn(command, result.output)
+        self.assertNotIn("migrate", result.output)
         self.assertNotIn("serve", result.output)
         self.assertNotIn("--project", result.output)
+        self.assertNotIn("--database", result.output)
 
-    def test_migrate_and_index_current_directory_without_json_file(self) -> None:
-        runner = CliRunner()
+    def test_migrate_is_not_a_cli_command(self) -> None:
+        result = CliRunner().invoke(main, ["migrate"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("No such command", result.output)
+        self.assertIn("migrate", result.output)
+
+    def test_migration_script_and_index_current_directory_without_json_file(self) -> None:
         original_directory = Path.cwd()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -28,13 +36,18 @@ class CliTest(unittest.TestCase):
             source.mkdir()
             (source / "main.py").write_text("def main():\n    return 1\n")
             database = root / "db" / "index.sqlite"
-            migrated = runner.invoke(main, ["migrate", "--database", str(database)])
-            self.assertEqual(migrated.exit_code, 0, migrated.output)
+            runner = CliRunner(env={"DATABASE_PATH": str(database)})
+            migrated = subprocess.run(
+                ["atlas-migrate"],
+                env={**os.environ, "DATABASE_PATH": str(database)},
+                capture_output=True, text=True,
+            )
+            self.assertEqual(migrated.returncode, 0, migrated.stderr)
             with repository_service(database) as service:
                 registered = service.register({"name": "example", "location": str(source)})
             try:
                 os.chdir(source)
-                result = runner.invoke(main, ["index", "--database", str(database)])
+                result = runner.invoke(main, ["index"])
             finally:
                 os.chdir(original_directory)
             self.assertEqual(result.exit_code, 0, result.output)

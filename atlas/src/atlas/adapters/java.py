@@ -14,6 +14,9 @@ from ..extraction.syntax import (
     text,
 )
 from .resolution import ResolutionAdapter
+from .resolution_paths import quoted_path
+from .base import COMMON_METRICS, LanguageAdapter
+from .parameters import count_parameters, parameter_node
 from ..extraction.resolution_syntax import SCOPES
 
 QUERY = """
@@ -46,6 +49,25 @@ def metadata(node: Node) -> tuple[str | None, list[str]]:
     return modifier_metadata(node, frozenset({"public", "private", "protected"}))
 
 
+def parameter_count(node: Node) -> int | None:
+    parameters = parameter_node(node)
+    if parameters is not None and parameters.type == "identifier":
+        return 1
+    return count_parameters(parameters, frozenset({"receiver_parameter"}))
+
+
+ADAPTER = LanguageAdapter(
+    declaration_query=QUERY,
+    callback_types=CALLBACK_TYPES,
+    normalize_declaration=declaration,
+    call_sites=call_sites,
+    inheritance_policy=INHERITANCE,
+    metadata=metadata,
+    metrics=COMMON_METRICS,
+    parameter_count=parameter_count,
+)
+
+
 def package(syntax) -> str:
     node = next(
         (
@@ -60,6 +82,10 @@ def package(syntax) -> str:
 
 
 class JavaResolution(ResolutionAdapter):
+    def import_path(self, source: str) -> str:
+        match = re.search(r"\bimport\s+(?:static\s+)?([\w.]+)", source)
+        return quoted_path(source) or (match[1] if match else source.strip())
+
     family = "java"
     scopes = SCOPES | {"for_statement", "enhanced_for_statement", "catch_clause"}
     import_nodes = {"import_declaration"}
@@ -105,10 +131,8 @@ class JavaResolution(ResolutionAdapter):
         return match[1] if match else path
 
     def import_key(self, ctx, file, source, position):
-        from .resolution import import_path
-
         targets = ctx.modules.declared(
-            file, self.import_name(source, import_path(source))
+            file, self.import_name(source, self.import_path(source))
         )
         return targets[0].key if len(targets) == 1 else None
 

@@ -9,12 +9,13 @@ import hashlib
 from functools import cache
 
 
+from tree_sitter import Node
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_language, get_parser, process
 
-from ..adapters import get_adapter
+from ..adapters import LanguageAdapter, get_adapter
 from .complexity import calculate_complexity
 from ..discovery import SourceFile
-from .structure import extract_structure
+from .structure import _declaration_query, extract_structure
 from .syntax import FALLBACK_CALL_TYPES, call_sites
 
 
@@ -38,12 +39,27 @@ def _has_call_nodes(language: str) -> bool:
     )
 
 
-def _extract_calls(file: SourceFile) -> list[Call]:
-    adapter = get_adapter(file.language)
+def _parse_syntax(file: SourceFile, adapter: LanguageAdapter) -> Node | None:
+    if (
+        adapter.call_sites is not call_sites
+        or _has_call_nodes(file.language)
+        or adapter.import_node is not None
+        or _declaration_query(file.language) is not None
+    ):
+        return get_parser(file.language).parse(file.source).root_node
+    return None
+
+
+def _extract_calls(
+    file: SourceFile, *, root: Node | None = None, adapter: LanguageAdapter | None = None
+) -> list[Call]:
+    adapter = adapter or get_adapter(file.language)
     # Data/markup grammars cannot produce fallback calls; avoid parsing them twice.
     if adapter.call_sites is call_sites and not _has_call_nodes(file.language):
         return []
-    root = get_parser(file.language).parse(file.source).root_node
+    # Standalone tests omit the root; parse_file supplies the shared tree.
+    if root is None:
+        root = get_parser(file.language).parse(file.source).root_node
     calls = []
     for site in adapter.call_sites(root):
         node, offset, _, _ = site
@@ -116,8 +132,8 @@ def _add_structure(
 def parse_file(source: SourceFile) -> ParsedFile:
     """Parse in-memory bytes into graph records; no filesystem reads occur.
 
-    Call extraction runs first. Parser failures are recorded in ``parse_error``;
-    native processing failures return early, retaining the digest and any calls.
+    Calls, imports, structure, and callable metrics share a syntax tree when needed.
+    Native processing runs separately. Parser failures propagate to the caller.
     Text decoding replaces invalid UTF-8; syntax errors need not raise.
 
     Args:
@@ -126,8 +142,8 @@ def parse_file(source: SourceFile) -> ParsedFile:
         Parsed records with a SHA-256 digest; callables get complexity and size metrics.
     Raises:
         ValueError: The language is unsupported (including C and C++).
-        Exception: Uncaught structure extraction, record validation, or complexity
-            parsing failures. Call-parser and native processing errors are caught.
+        Exception: Call extraction, native processing, structure extraction,
+            record validation, or complexity parsing failures.
     Examples:
         >>> from pathlib import Path
         >>> source = SourceFile("main.py", Path("main.py"), "python", b"run()")
@@ -143,15 +159,9 @@ def parse_file(source: SourceFile) -> ParsedFile:
     syntax_file = SourceFile(
         source.path, source.absolute_path, source.language, syntax_source
     )
-    try:
-        parsed.calls = _extract_calls(syntax_file)
-    except Exception as exception:
-        parsed.parse_error = f"Call extraction failed: {exception}"
-    try:
-        result = process(text, ProcessConfig(language=source.language))
-    except Exception as exception:
-        parsed.parse_error = str(exception)
-        return parsed
+    root = _parse_syntax(syntax_file, adapter)
+    parsed.calls = _extract_calls(syntax_file, root=root, adapter=adapter)
+    result = process(text, ProcessConfig(language=source.language))
     native_imports = [
         (item.source, item.span.start_line + 1)
         for item in result.imports
@@ -159,23 +169,32 @@ def parse_file(source: SourceFile) -> ParsedFile:
     ]
     parsed.imports = [
         Import(source.path, value, line)
-        for value, line in adapter.imports(syntax_file, native_imports)
+        for value, line in adapter.imports(syntax_file, native_imports, root=root)
     ]
-    structure = extract_structure(syntax_source, source.language, result.structure)
+    structure = extract_structure(
+        syntax_source, source.language, result.structure, root=root
+    )
     for item in structure:
         _add_structure(parsed, item, file_key(source.path), [])
-    _add_callable_metrics(parsed, syntax_source)
+    _add_callable_metrics(parsed, syntax_source, root=root, adapter=adapter)
     return parsed
 
 
-def _add_callable_metrics(file: ParsedFile, syntax_source: bytes) -> None:
+def _add_callable_metrics(
+    file: ParsedFile,
+    syntax_source: bytes,
+    *,
+    root: Node | None = None,
+    adapter: LanguageAdapter | None = None,
+) -> None:
     callables = [
         symbol for symbol in file.symbols if symbol.kind in {"function", "method"}
     ]
     if not callables:
         return
-    root = get_parser(file.source.language).parse(syntax_source).root_node
-    adapter = get_adapter(file.source.language)
+    if root is None:
+        root = get_parser(file.source.language).parse(syntax_source).root_node
+    adapter = adapter or get_adapter(file.source.language)
     for symbol in callables:
         symbol.line_count = max(
             0, symbol.end_line - symbol.start_line + int(symbol.end_column > 1)

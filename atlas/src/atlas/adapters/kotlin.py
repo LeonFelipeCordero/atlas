@@ -1,8 +1,12 @@
 """Kotlin extraction, metrics and resolution policies."""
 
 import re
+from .resolution_paths import quoted_path
+from dataclasses import replace
 from tree_sitter import Node
 from .java import JavaResolution
+from .base import COMMON_METRICS, LanguageAdapter
+from .parameters import parameter_children, parameter_node
 from ..extraction.syntax import (
     DeclarationCarrier,
     callback_carrier,
@@ -114,7 +118,48 @@ def alternative(node: Node) -> bool:
     )
 
 
+def parameter_count(node: Node) -> int | None:
+    parameters = parameter_node(node, "function_value_parameters", "lambda_parameters")
+    if parameters is None:
+        # An implicit lambda input (it) cannot be inferred without type resolution.
+        return (
+            0
+            if node.type == "lambda_literal"
+            and any(child.type == "->" for child in node.children)
+            else None
+        )
+    if parameters.has_error:
+        return None
+    entries = parameter_children(parameters)
+    return sum(
+        child.type
+        in {"parameter", "variable_declaration", "multi_variable_declaration"}
+        for child in entries
+    )
+
+
+METRICS = replace(
+    COMMON_METRICS, extra_alternative=alternative, body_node="function_body"
+)
+ADAPTER = LanguageAdapter(
+    declaration_query=QUERY,
+    callback_types=CALLBACK_TYPES,
+    normalize_declaration=declaration,
+    call_sites=call_sites,
+    import_node=IMPORT_NODE,
+    inheritance_policy=INHERITANCE,
+    normalize_call=normalize_call,
+    metadata=metadata,
+    metrics=METRICS,
+    parameter_count=parameter_count,
+)
+
+
 class KotlinResolution(JavaResolution):
+    def import_path(self, source: str) -> str:
+        match = re.search(r"\bimport\s+([\w.]+)", source)
+        return quoted_path(source) or (match[1] if match else source.strip())
+
     family = "kotlin"
     scopes = SCOPES | {
         "lambda_literal",

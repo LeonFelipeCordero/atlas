@@ -5,7 +5,7 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 from sqlite3 import Connection as SqliteConnection
-from typing import Iterator, cast
+from typing import Generator, cast
 
 from alembic import command
 from alembic.config import Config
@@ -55,7 +55,7 @@ def migrate_database(path: str | Path | None = None) -> None:
 
 
 @contextmanager
-def repository_session(path: str | Path | None = None) -> Iterator[Session]:
+def repository_session(path: str | Path | None = None) -> Generator[Session, None, None]:
     """Own the session lifecycle and translate storage errors at the boundary."""
     engine = create_engine(path)
     try:

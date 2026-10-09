@@ -21,6 +21,9 @@ from ..extraction.syntax import (
     walk,
 )
 from .resolution import ResolutionAdapter, relative_targets, top_symbols
+from .resolution_paths import quoted_path
+from .base import COMMON_METRICS, LanguageAdapter
+from .parameters import parameter_children, parameter_node
 from ..extraction.resolution_syntax import FUNCTIONS
 
 SCRIPT_CALLBACKS = frozenset(
@@ -108,6 +111,32 @@ def script_declaration(node: Node) -> DeclarationCarrier:
     if node.type in SCRIPT_CALLBACKS:
         return callback_carrier(node, callback_binding(node))
     return named_carrier(node)
+
+
+def parameter_count(node: Node) -> int | None:
+    parameters = parameter_node(node)
+    if parameters is None or parameters.has_error:
+        return None
+    if parameters.type == "identifier":
+        return 1
+    return sum(
+        child.type != "this" and (field(child, "pattern") or child).type != "this"
+        for child in parameter_children(parameters)
+    )
+
+
+ADAPTER = LanguageAdapter(
+    declaration_query=SCRIPT_QUERY,
+    callback_types=SCRIPT_CALLBACKS,
+    normalize_declaration=script_declaration,
+    call_sites=call_sites,
+    inheritance_policy=INHERITANCE,
+    normalize_call=normalize_call,
+    metadata=metadata,
+    call_relationship=call_relationship,
+    metrics=COMMON_METRICS,
+    parameter_count=parameter_count,
+)
 
 
 def _local_export(node: Node) -> bool:
@@ -216,6 +245,9 @@ def _type_only_named_clause(node: Node) -> bool:
 
 
 class JavaScriptResolution(ResolutionAdapter):
+    def import_path(self, source: str) -> str:
+        return quoted_path(source) or source.strip()
+
     family = "javascript"
     import_nodes = {"import_statement"}
     skip_type_scope = True

@@ -118,6 +118,21 @@ class Service {
 
 
 class LanguageSupportTest(unittest.TestCase):
+    def test_unrecognized_filenames_return_none(self):
+        for name in ["main.atlas_unknown_language", "no-extension"]:
+            with self.subTest(name=name):
+                self.assertIsNone(detect_language(Path(name)))
+
+    def test_discovery_propagates_language_detection_errors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "main.py").write_text("pass\n")
+            with (
+                patch("atlas.discovery.detect_language_from_path", side_effect=RuntimeError("detection failed")),
+                self.assertRaisesRegex(RuntimeError, "detection failed"),
+            ):
+                discover_files(root)
+
     def test_discovery_excludes_c_and_cpp_without_narrowing_other_grammars(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -150,12 +165,17 @@ class LanguageSupportTest(unittest.TestCase):
             self.assertEqual(len(files), 11)
             self.assertFalse({"c", "cpp"} & {file.language for file in files})
 
-    def test_call_parser_failure_is_diagnostic_not_silent(self):
+    def test_call_parser_failure_propagates(self):
         source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
         with patch("atlas.extraction.parser.get_parser", side_effect=RuntimeError("unavailable")):
-            parsed = parse_file(source)
-        self.assertEqual(parsed.calls, [])
-        self.assertEqual(parsed.parse_error, "Call extraction failed: unavailable")
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                parse_file(source)
+
+    def test_native_processing_failure_propagates(self):
+        source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
+        with patch("atlas.extraction.parser.process", side_effect=RuntimeError("unavailable")):
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                parse_file(source)
 
     def test_direct_extraction_rejects_c_cpp_before_parsing_or_queries(self):
         for language in ["c", "cpp"]:

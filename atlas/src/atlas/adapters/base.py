@@ -184,9 +184,11 @@ class LanguageAdapter:
     parameter_count: Callable[[Node], int | None] = lambda node: None
 
     def imports(
-        self, source: SourceFile, native: list[tuple[str, int]]
+        self, source: SourceFile, native: list[tuple[str, int]], *, root: Node | None = None
     ) -> list[tuple[str, int]]:
-        return supplement_imports(source, native, self.import_node, self.accept_import)
+        return supplement_imports(
+            source, native, self.import_node, self.accept_import, root=root
+        )
 
     def inheritance(self, language: str, kind: str, signature: str) -> list[str]:
         return inheritance_names(language, kind, signature, self.inheritance_policy)

@@ -7,7 +7,7 @@ import json
 
 from click.testing import CliRunner
 
-from atlas.bootstrap import repository_service
+from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 from atlas.domain.report import build_artifact_report, render_markdown
 from atlas.indexer import analyze_repository
@@ -89,8 +89,9 @@ def test_cli_fresh_and_saved_size_reports_match_without_sources(tmp_path: Path) 
     source = root / "app.py"
     source.write_text("def wide(a, b, c, d, e, f, g, h):\n" + "    pass\n" * 100 + "\n" * 500)
     database = tmp_path / "atlas.sqlite"
-    runner = CliRunner()
-    fresh = runner.invoke(main, ["report", "-f", str(root), "--database", str(database), "--format", "json"])
+    migrate_database(database)
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    fresh = runner.invoke(main, ["report", "-f", str(root), "--format", "json"])
     assert fresh.exit_code == 0, fresh.output
     findings = json.loads(fresh.output)["findings"]
     assert len(findings) == 2

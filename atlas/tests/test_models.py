@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any, cast
 
 from pydantic import ValidationError
 
@@ -41,9 +42,9 @@ class ModelsTest(unittest.TestCase):
 
     def test_strict_constructor_and_assignment_validation(self):
         with self.assertRaises(ValidationError):
-            SourceFile("example.py", Path("example.py"), "python", "not bytes")  # pyright: ignore[reportArgumentType]
+            SourceFile("example.py", Path("example.py"), "python", cast(Any, "not bytes"))
         with self.assertRaises(ValidationError):
-            Connection("a", "b", "UNKNOWN", "INFERRED", "example.py", 1, None)  # pyright: ignore[reportArgumentType]
+            Connection("a", "b", cast(Any, "UNKNOWN"), "INFERRED", "example.py", 1, None)
         source = SourceFile("example.py", Path("example.py"), "python", b"")
         with self.assertRaises(ValidationError):
             setattr(source, "language", 123)
@@ -60,18 +61,19 @@ class ModelsTest(unittest.TestCase):
                 self.subTest(field=field, value=value),
                 self.assertRaises(ValidationError),
             ):
-                GraphArtifact(**{**original, field: value})
+                data: dict[str, Any] = {**original, field: value}
+                GraphArtifact(**data)
         for field, value in [("level", "unknown"), ("depth", -1), ("unexpected", True)]:
             with self.subTest(field=field), self.assertRaises(ValidationError):
-                GraphArtifact(
-                    **{**original, "nodes": [{**original["nodes"][0], field: value}]}
-                )
+                data = {**original, "nodes": [{**original["nodes"][0], field: value}]}
+                GraphArtifact(**data)
 
     def test_reference_validation_runs_at_construction(self):
         original = asdict(self.artifact())
         invalid_nodes = [*original["nodes"], original["nodes"][0]]
         with self.assertRaisesRegex(ValidationError, "duplicate stable node keys"):
-            GraphArtifact(**{**original, "nodes": invalid_nodes})
+            data: dict[str, Any] = {**original, "nodes": invalid_nodes}
+            GraphArtifact(**data)
         for field, message in [
             ("parentStableKey", "missing parent"),
             ("sourceStableKey", "missing source"),

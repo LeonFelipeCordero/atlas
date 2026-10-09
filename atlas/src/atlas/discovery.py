@@ -157,18 +157,15 @@ def detect_language(path: Path) -> str | None:
     Args:
         path: Path whose basename is passed to the language pack.
     Returns:
-        Language identifier, or None if detection fails or is unsupported.
-    Raises:
-        None: Detection exceptions are suppressed.
+        Language identifier, or None if the filename is unrecognized or unsupported.
+
+    Language-pack detection errors propagate.
 
     Example:
         language = detect_language(Path("src/main.py"))  # "python"
     """
-    try:
-        language = detect_language_from_path(path.name)
-        return language if is_supported_language(language) else None
-    except Exception:
-        return None
+    language = detect_language_from_path(path.name)
+    return language if is_supported_language(language) else None
 
 
 def discover_files(root: Path) -> list[SourceFile]:

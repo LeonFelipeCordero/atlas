@@ -11,7 +11,7 @@
     "lint": "eslint",
     "format": "prettier",
     "check": "prettier --write . && eslint --fix",
-    "db:migrate": "uv run --project ../atlas atlas migrate",
+    "db:migrate": "uv run --project ../atlas atlas-migrate",
     "architecture:index": "uv run --project ../atlas atlas index",
     "typecheck": "tsc --noEmit"
   },

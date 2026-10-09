@@ -25,8 +25,9 @@ def test_folder_report_creates_and_updates_saved_project(
     source: Path, tmp_path: Path, flag: str,
 ) -> None:
     database = tmp_path / "central/db.sqlite"
-    runner = CliRunner()
-    args = ["report", flag, str(source), "--database", str(database), "--format", "json"]
+    migrate_database(database)
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    args = ["report", flag, str(source), "--format", "json"]
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output
     report = json.loads(first.output)
@@ -50,8 +51,9 @@ def test_folder_names_are_trimmed_for_registration(tmp_path: Path) -> None:
     source = tmp_path / " source "
     source.mkdir()
     database = tmp_path / "db.sqlite"
-    runner = CliRunner()
-    saved = runner.invoke(main, ["report", "-f", str(source), "--database", str(database)])
+    migrate_database(database)
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    saved = runner.invoke(main, ["report", "-f", str(source)])
     assert saved.exit_code == 0, saved.output
     with repository_service(database) as service:
         assert service.list()[0].name == "source"
@@ -63,6 +65,7 @@ def test_relative_folder_uses_user_database_not_source(
     monkeypatch.chdir(source)
     monkeypatch.delenv("DATABASE_PATH", raising=False)
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "user-data"))
+    migrate_database()
     before = sorted(source.iterdir())
     result = CliRunner().invoke(main, ["report", "--f", "./"])
     assert result.exit_code == 0, result.output
@@ -81,7 +84,7 @@ def test_folder_updates_registered_location_not_same_name(
     with repository_service(database) as service:
         registered = service.register({"name": "Custom", "location": str(alias)})
         other = service.register({"name": "example", "location": str(tmp_path / "other")})
-    result = CliRunner().invoke(main, ["report", "-f", str(source), "--database", str(database)])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(source)])
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         assert len(service.list()) == 2
@@ -91,10 +94,11 @@ def test_folder_updates_registered_location_not_same_name(
 
 def test_same_basename_folders_get_distinct_projects(source: Path, tmp_path: Path) -> None:
     database = tmp_path / "db.sqlite"
+    migrate_database(database)
     other = tmp_path / "other/EXAMPLE"
     other.mkdir(parents=True)
     for root in (source, other, source):
-        result = CliRunner().invoke(main, ["report", "-f", str(root), "--database", str(database)])
+        result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(root)])
         assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         projects = service.list()
@@ -113,8 +117,8 @@ def test_skip_save_never_accesses_database(
     monkeypatch.setattr(bootstrap, "repository_service", fail)
     monkeypatch.setattr(bootstrap, "migrate_database", fail)
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [
-        "report", "-f", str(source), "--skip-save", "--database", str(database), "--format", "json",
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [
+        "report", "-f", str(source), "--skip-save", "--format", "json",
     ])
     assert result.exit_code == 0, result.output
     assert json.loads(result.output)["findings"]
@@ -123,8 +127,9 @@ def test_skip_save_never_accesses_database(
 
 def test_skip_save_preserves_existing_graph(source: Path, tmp_path: Path) -> None:
     database = tmp_path / "db.sqlite"
-    runner = CliRunner()
-    args = ["report", "-f", str(source), "--database", str(database)]
+    migrate_database(database)
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    args = ["report", "-f", str(source)]
     saved = runner.invoke(main, args)
     assert saved.exit_code == 0, saved.output
     with repository_service(database) as service:
@@ -145,7 +150,7 @@ def test_invalid_report_arguments_do_not_create_database(
     tmp_path: Path, args: list[str], message: str,
 ) -> None:
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, ["report", *args, "--database", str(database)])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", *args])
     assert result.exit_code != 0
     assert message in result.output
     assert not database.parent.exists()
@@ -153,8 +158,8 @@ def test_invalid_report_arguments_do_not_create_database(
 
 def test_file_is_not_a_report_folder(source: Path, tmp_path: Path) -> None:
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [
-        "report", "-f", str(source / "a.py"), "--database", str(database),
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [
+        "report", "-f", str(source / "a.py"),
     ])
     assert result.exit_code == 1
     assert "Repository does not exist" in result.output
@@ -163,8 +168,8 @@ def test_file_is_not_a_report_folder(source: Path, tmp_path: Path) -> None:
 
 def test_global_project_selector_is_rejected(tmp_path: Path) -> None:
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [
-        "--project", "example", "report", "--f", ".", "--database", str(database),
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [
+        "--project", "example", "report", "--f", ".",
     ])
     assert result.exit_code == 2
     assert "No such option" in result.output
@@ -174,8 +179,9 @@ def test_global_project_selector_is_rejected(tmp_path: Path) -> None:
 
 def test_failed_update_preserves_saved_graph(source: Path, tmp_path: Path) -> None:
     database = tmp_path / "db.sqlite"
-    runner = CliRunner()
-    args = ["report", "-f", str(source), "--database", str(database)]
+    migrate_database(database)
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    args = ["report", "-f", str(source)]
     result = runner.invoke(main, args)
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
@@ -199,7 +205,7 @@ def test_failed_save_rolls_back_registration(source: Path, tmp_path: Path) -> No
     with sqlite3.connect(database) as db:
         db.execute("""CREATE TRIGGER reject_graph BEFORE INSERT ON repository_graphs
             BEGIN SELECT RAISE(ABORT, 'forced write failure'); END""")
-    result = CliRunner().invoke(main, ["report", "-f", str(source), "--database", str(database)])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(source)])
     assert result.exit_code == 1
     assert "forced write failure" in result.output
     with repository_service(database) as service:

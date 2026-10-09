@@ -1,6 +1,7 @@
 """Elixir extraction, metrics and resolution policies."""
 
 import re
+from dataclasses import replace
 from collections.abc import Iterator
 from tree_sitter import Node
 from ..extraction.syntax import (
@@ -16,7 +17,10 @@ from ..extraction.syntax import (
     text,
     walk,
 )
-from .resolution import ResolutionAdapter, import_path
+from .resolution import ResolutionAdapter
+from .resolution_paths import quoted_path
+from .base import COMMON_METRICS, LanguageAdapter
+from .parameters import count_parameters
 
 QUERY = "\n(anonymous_function) @definition.function\n"
 CALLBACK_TYPES = frozenset({"anonymous_function"})
@@ -194,6 +198,59 @@ def arguments(node):
     )
 
 
+def parameter_count(node: Node) -> int | None:
+    if node.type == "anonymous_function":
+        return _elixir_anonymous_count(node)
+    if node.type != "call" or target(node) not in DECLARATIONS:
+        return None
+    head = _declaration_head(node)
+    if head is None or head.has_error:
+        return None
+    return _elixir_head_count(head)
+
+
+def _elixir_head_count(head: Node) -> int | None:
+    if head.type == "identifier":
+        return 0
+    return count_parameters(arguments(head)) if head.type == "call" else None
+
+
+def _elixir_anonymous_count(node: Node) -> int | None:
+    clauses = [child for child in node.named_children if child.type == "stab_clause"]
+    counts = {_elixir_clause_count(clause) for clause in clauses}
+    return counts.pop() if len(counts) == 1 else None
+
+
+def _elixir_clause_count(clause: Node) -> int | None:
+    inputs = field(clause, "left")
+    if inputs is None:
+        return 0
+    if inputs.type == "binary_operator":
+        inputs = field(inputs, "left")
+    return count_parameters(inputs) if inputs is not None and inputs.type == "arguments" else None
+
+
+METRICS = replace(
+    COMMON_METRICS,
+    decision_overrides={
+        "call": call_decision,
+        "stab_clause": clause_decision,
+        "binary_operator": guard_decision,
+    },
+    extra_scope=scope,
+)
+ADAPTER = LanguageAdapter(
+    declaration_query=QUERY,
+    callback_types=CALLBACK_TYPES,
+    normalize_declaration=declaration,
+    call_sites=elixir_call_sites,
+    inheritance_policy=INHERITANCE,
+    normalize_call=elixir_call_target,
+    metrics=METRICS,
+    parameter_count=parameter_count,
+)
+
+
 def arity(node) -> int | None:
     args = arguments(node)
     return (
@@ -259,6 +316,10 @@ def _clause_matches(symbol, clauses, count, call) -> bool:
 
 
 class ElixirResolution(ResolutionAdapter):
+    def import_path(self, source: str) -> str:
+        match = re.search(r"\b(?:import|alias|require|use)\s+([\w.:/]+)", source)
+        return quoted_path(source) or (match[1] if match else source.strip())
+
     family = "elixir"
     member_nodes = {"dot": (("left",), ("right",))}
     receiver_names = {"alias"}
@@ -277,7 +338,7 @@ class ElixirResolution(ResolutionAdapter):
         )
 
     def import_key(self, ctx, file, source, position):
-        targets = ctx.modules.declared(file, import_path(source))
+        targets = ctx.modules.declared(file, self.import_path(source))
         return targets[0].key if len(targets) == 1 else None
 
     def import_item(self, ctx, file, source, path, position):

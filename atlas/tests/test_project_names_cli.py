@@ -11,8 +11,8 @@ from atlas.cli import main
 @pytest.mark.parametrize("command", ["index", "report", "projects"])
 def test_root_project_selector_is_rejected(command: str, tmp_path: Path) -> None:
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [
-        "--project", "example", command, "--database", str(database),
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [
+        "--project", "example", command,
     ])
     assert result.exit_code == 2
     assert "No such option" in result.output
@@ -28,9 +28,7 @@ def test_root_project_selector_is_rejected(command: str, tmp_path: Path) -> None
 ])
 def test_command_project_selectors_are_rejected(command: str, flag: str, tmp_path: Path) -> None:
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [
-        command, flag, "example", "--database", str(database),
-    ])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [command, flag, "example"])
     assert result.exit_code == 2
     assert "No such option" in result.output
     assert flag in result.output
@@ -40,7 +38,7 @@ def test_command_project_selectors_are_rejected(command: str, flag: str, tmp_pat
 @pytest.mark.parametrize("command", ["index", "report"])
 def test_positional_folder_is_rejected(command: str, tmp_path: Path) -> None:
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [command, str(tmp_path), "--database", str(database)])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [command, str(tmp_path)])
     assert result.exit_code == 2
     assert "unexpected extra argument" in result.output
     assert not database.parent.exists()

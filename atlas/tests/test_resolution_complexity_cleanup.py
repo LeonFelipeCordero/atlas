@@ -28,7 +28,7 @@ OWNED = (
     "adapters/resolution.py",
     "adapters/resolution_policy.py",
     "adapters/resolution_paths.py",
-    "adapters/macro_evaluation.py",
+    "adapters/module_index.py",
     "adapters/__init__.py",
     "extraction/resolution_syntax.py",
     "extraction/resolution_contract.py",

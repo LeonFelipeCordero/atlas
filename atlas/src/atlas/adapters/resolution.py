@@ -170,7 +170,7 @@ class ImportBindings:
         scope = syntax.import_scope(item.line, item.source)
         start, end = (scope.start_byte, scope.end_byte) if scope else (0, source_length)
         position = directive.start_byte if directive is not None else None
-        path = import_path(item.source)
+        path = adapter.import_path(item.source)
         entries = adapter.import_item(self, file, item.source, path, position)
         return [
             self._binding(file, path, entry, start, end, scope) for entry in entries

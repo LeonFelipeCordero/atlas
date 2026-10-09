@@ -1,6 +1,7 @@
 """Python extraction, metrics and resolution policies."""
 
 import re
+from dataclasses import replace
 from pathlib import PurePosixPath
 from typing import cast
 
@@ -16,7 +17,10 @@ from ..extraction.syntax import (
     text,
     field,
 )
-from .resolution import ResolutionAdapter, top_symbols, import_path, path_target_key
+from .resolution import ResolutionAdapter, top_symbols, path_target_key
+from .resolution_paths import quoted_path
+from .base import COMMON_METRICS, LanguageAdapter
+from .parameters import count_parameters, parameter_children, parameter_node
 
 QUERY = "\n(lambda) @definition.function\n"
 CALLBACK_TYPES = frozenset({"lambda"})
@@ -97,6 +101,67 @@ def case_decision(node: Node) -> bool:
         (child for child in node.named_children if child.type == "case_pattern"), None
     )
     return pattern is None or not irrefutable_pattern(pattern)
+
+
+def parameter_count(node: Node) -> int | None:
+    parameters = parameter_node(node)
+    if parameters is None:
+        return 0 if node.type == "lambda" else None
+    count = count_parameters(parameters, frozenset({"positional_separator", "keyword_separator"}))
+    entries = parameter_children(parameters)
+    if count is None or not entries:
+        return count
+    return count - int(_python_method(node) and _python_receiver(entries[0]))
+
+
+def _python_owner(node: Node) -> tuple[Node | None, list[Node]]:
+    owner = node.parent
+    decorators: list[Node] = []
+    if owner is not None and owner.type == "decorated_definition":
+        decorators = [
+            child for child in owner.named_children if child.type == "decorator"
+        ]
+        owner = owner.parent
+    return owner, decorators
+
+
+def _python_method(node: Node) -> bool:
+    owner, decorators = _python_owner(node)
+    if any(_python_static(decorator) for decorator in decorators):
+        return False
+    return (
+        owner is not None
+        and owner.type == "block"
+        and owner.parent is not None
+        and owner.parent.type == "class_definition"
+    )
+
+
+def _python_static(decorator: Node) -> bool:
+    expression = next(iter(parameter_children(decorator)), None)
+    return text(expression) == "staticmethod"
+
+
+def _python_receiver(first: Node) -> bool:
+    if first.type == "typed_parameter":
+        first = next(iter(first.named_children), first)
+    return first.type in {
+        "identifier",
+        "default_parameter",
+        "typed_default_parameter",
+    }
+
+
+METRICS = replace(COMMON_METRICS, decision_overrides={"case_clause": case_decision})
+ADAPTER = LanguageAdapter(
+    declaration_query=QUERY,
+    callback_types=CALLBACK_TYPES,
+    normalize_declaration=declaration,
+    call_sites=call_sites,
+    inheritance_policy=INHERITANCE,
+    metrics=METRICS,
+    parameter_count=parameter_count,
+)
 
 
 COMPREHENSIONS = {
@@ -245,6 +310,11 @@ def _import_node(ctx, file, position):
 
 
 class PythonResolution(ResolutionAdapter):
+    def import_path(self, source: str) -> str:
+        match = re.search(r"\bfrom\s+([\w.]+)|\bimport\s+([\w.]+)", source)
+        path = next((part for part in match.groups() if part), "") if match else source.strip()
+        return quoted_path(source) or path
+
     family = "python"
     scopes = {"function_definition", "lambda", "class_definition"} | COMPREHENSIONS
     import_nodes = {"import_statement", "import_from_statement"}
@@ -367,7 +437,7 @@ class PythonResolution(ResolutionAdapter):
         return super().static(syntax, symbol)
 
     def import_targets(self, ctx, file, source, position):
-        path = import_path(source)
+        path = self.import_path(source)
         node = _import_node(ctx, file, position)
         if node is None:
             return super().import_targets(ctx, file, source, position)

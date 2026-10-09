@@ -28,14 +28,16 @@ let path: string
 let database: AppDatabase
 
 function python(...args: Array<string>) {
-  const result = Bun.spawnSync([
-    'uv',
-    'run',
-    '--project',
-    fileURLToPath(new URL('../../../atlas', import.meta.url)),
-    'atlas',
-    ...args,
-  ])
+  const result = Bun.spawnSync(
+    [
+      'uv',
+      'run',
+      '--project',
+      fileURLToPath(new URL('../../../atlas', import.meta.url)),
+      ...args,
+    ],
+    { env: { ...process.env, DATABASE_PATH: path } },
+  )
   if (result.exitCode !== 0) throw new Error(result.stderr.toString())
   return result.stdout.toString()
 }
@@ -43,7 +45,7 @@ function python(...args: Array<string>) {
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'shared-graph-database-'))
   path = join(directory, 'nested', 'test.sqlite')
-  python('migrate', '--database', path)
+  python('atlas-migrate')
   database = openDatabase(path)
 })
 
@@ -119,16 +121,14 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     { name: 'Shared', location: source },
     database,
   )
-  const summary = JSON.parse(
-    python('index', '-f', source, '--database', path),
-  )
+  const summary = JSON.parse(python('atlas', 'index', '-f', source))
   const first = getArchitecture(repository.id, database)!
   expect(summary.repositoryId).toBe(repository.id)
   expect(first.artifact.schemaVersion).toBe(2)
   expect(first.artifact).toMatchObject({ stats: { files: 1 } })
   expect(first.artifact.nodes.some((node) => node.name === 'run')).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('index', '-f', source, '--database', path)
+  python('atlas', 'index', '-f', source)
   const replacement = getArchitecture(repository.id, database)!
   expect(
     replacement.artifact.nodes.some((node) => node.name === 'replacement'),
@@ -153,9 +153,7 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     database,
   )
   writeFileSync(join(otherSource, 'main.py'), 'def id_named():\n    return 3\n')
-  const selected = JSON.parse(
-    python('index', '-f', otherSource, '--database', path),
-  )
+  const selected = JSON.parse(python('atlas', 'index', '-f', otherSource))
   expect(selected.repositoryId).toBe(idNamed.id)
   const idNamedGraph = getArchitecture(idNamed.id, database)!
   expect(
@@ -180,9 +178,7 @@ test('folder reports register and update graphs visible to the UI', () => {
   mkdirSync(source)
   const file = join(source, 'main.py')
   writeFileSync(file, 'def first():\n    return 1\n')
-  expect(python('report', '-f', source, '--database', path)).toBe(
-    'No findings.\n',
-  )
+  expect(python('atlas', 'report', '-f', source)).toBe('No findings.\n')
   const repository = listRepositories(database)[0]
   expect(repository.name).toBe('source')
   expect(repository.location).toBe(source)
@@ -192,7 +188,7 @@ test('folder reports register and update graphs visible to the UI', () => {
     ),
   ).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('report', '--f', source, '--database', path)
+  python('atlas', 'report', '--f', source)
   expect(listRepositories(database)).toHaveLength(1)
   expect(
     getArchitecture(repository.id, database)!.artifact.nodes.some(
@@ -211,7 +207,7 @@ test('Python src imports become dashboard arrows even when the report has no fin
     'from app import worker as w\ndef run():\n    w.work()\n',
   )
   writeFileSync(join(app, 'worker.py'), 'def work(): pass\n')
-  expect(python('report', '-f', source, '--database', path)).toBe('No findings.\n')
+  expect(python('atlas', 'report', '-f', source)).toBe('No findings.\n')
   const repository = listRepositories(database)[0]
   const artifact = parseArtifact(getArchitecture(repository.id, database)!.artifact)
   const graph = buildProjectGraph(artifact, { kind: 'folder', key: 'module:src/app' })
@@ -235,7 +231,7 @@ test('indexed metrics survive Python/Bun storage and keep hidden test dependents
     join(source, 'test_main.py'),
     'from main import main\ndef test_main():\n    return main()\n',
   )
-  python('report', '-f', source, '--database', path)
+  python('atlas', 'report', '-f', source)
   const repository = listRepositories(database)[0]
   const artifact = parseArtifact(
     getArchitecture(repository.id, database)!.artifact,

@@ -234,10 +234,22 @@ def supplement_imports(
     imports: list[tuple[str, int]],
     node_type: str | None,
     accept: Callable[[Node], bool] | None = None,
+    *,
+    root: Node | None = None,
 ) -> list[tuple[str, int]]:
     if node_type is None:
         return imports
-    root = get_parser(source.language).parse(source.source).root_node
+    if root is None:
+        root = get_parser(source.language).parse(source.source).root_node
+    return _merge_imports(root, imports, node_type, accept)
+
+
+def _merge_imports(
+    root: Node,
+    imports: list[tuple[str, int]],
+    node_type: str,
+    accept: Callable[[Node], bool] | None,
+) -> list[tuple[str, int]]:
     seen = {(value.strip(), line) for value, line in imports}
     result = imports.copy()
     for node in walk(root):

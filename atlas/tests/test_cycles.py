@@ -54,7 +54,7 @@ class CyclesTest(unittest.TestCase):
         self.assertTrue(all(pair in pairs for pair in zip(cycle, cycle[1:])))
 
     def test_projection_preserves_evidence_without_mutation(self) -> None:
-        nodes = [
+        nodes: list[dict[str, object]] = [
             file("a"),
             file("b"),
             {"stableKey": "s", "type": "class", "parentStableKey": "a"},
@@ -68,7 +68,7 @@ class CyclesTest(unittest.TestCase):
         self.assertEqual((nodes, edges), original)
 
     def test_only_genuine_file_self_import(self) -> None:
-        nodes = [
+        nodes: list[dict[str, object]] = [
             file("a"),
             {"stableKey": "s", "type": "function", "parentStableKey": "a"},
         ]
@@ -80,7 +80,7 @@ class CyclesTest(unittest.TestCase):
         self.assertEqual(group["edges"], [edge("a", "a")])
 
     def test_external_missing_and_non_import_edges_ignored(self) -> None:
-        nodes = [
+        nodes: list[dict[str, object]] = [
             file("a"),
             file("b"),
             {"stableKey": "x", "type": "external", "parentStableKey": "a"},

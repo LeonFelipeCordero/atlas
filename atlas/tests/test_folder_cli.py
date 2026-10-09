@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from atlas.bootstrap import repository_service
+from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 
 
@@ -23,7 +23,9 @@ def test_folder_default_and_aliases(
     cwd.mkdir(exist_ok=True)
     monkeypatch.chdir(cwd)
     database = tmp_path / "central/db.sqlite"
-    arguments = [command, "--database", str(database)]
+    migrate_database(database)
+    monkeypatch.setenv("DATABASE_PATH", str(database))
+    arguments = [command]
     if flag is not None:
         arguments += [flag, str(source)]
     if command == "report":
@@ -53,9 +55,8 @@ def test_report_default_cwd_skip_save(tmp_path: Path, monkeypatch: pytest.Monkey
     (tmp_path / "a.py").write_text("import b\n")
     (tmp_path / "b.py").write_text("import a\n")
     database = tmp_path / "missing/db.sqlite"
-    result = CliRunner().invoke(main, [
-        "report", "--skip-save", "--database", str(database), "--format", "json",
-    ])
+    monkeypatch.setenv("DATABASE_PATH", str(database))
+    result = CliRunner().invoke(main, ["report", "--skip-save", "--format", "json"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.output)["findings"][0]["type"] == "circular_dependency"
     assert not database.parent.exists()

@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 atlas = "atlas.cli:main"
+atlas-migrate = "atlas.bootstrap:migrate_database"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/atlas"]

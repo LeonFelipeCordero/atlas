@@ -1,6 +1,7 @@
-"""Report CLI analyzes folders freshly and supports database option placement."""
+"""Report CLI analyzes folders freshly using the configured database."""
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,9 @@ from atlas.domain.repositories import RepositoryError
 
 
 @pytest.fixture
-def database(tmp_path: Path) -> Path:
+def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     path = tmp_path / "db.sqlite"
+    monkeypatch.setenv("DATABASE_PATH", str(path))
     migrate_database(path)
     return path
 
@@ -43,11 +45,11 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
         registered = service.register({"name": "Example", "location": str(root)})
         other = service.register({"name": "Other", "location": str(root)})
     runner = CliRunner()
-    indexed = runner.invoke(main, ["--database", str(database), "index", "-f", str(root)])
+    indexed = runner.invoke(main, ["index", "-f", str(root)])
     assert indexed.exit_code == 0, indexed.output
     with repository_service(database) as service:
         original = service.get_architecture(registered.id)
-    result = runner.invoke(main, ["report", "-f", str(root), "--database", str(database)])
+    result = runner.invoke(main, ["report", "-f", str(root)])
     assert result.exit_code == 0, result.output
     assert "## Complexity:" in result.output
     assert "## Circular dependency:" in result.output
@@ -57,12 +59,7 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     assert "Decision nesting depth is 4 (limit: 3)." in result.output
     assert "a.py → b.py → a.py" in result.output
     assert "repositoryId" not in result.output
-    local = runner.invoke(main, ["--database", str(database), "report", "-f", str(root)])
-    assert local.exit_code == 0, local.output
-    assert local.output == result.output
-    structured = runner.invoke(main, [
-        "report", "-f", str(root), "--database", str(database), "--format", "json",
-    ])
+    structured = runner.invoke(main, ["report", "-f", str(root), "--format", "json"])
     assert structured.exit_code == 0, structured.output
     report = json.loads(structured.output)
     assert set(report) == {"findings"}
@@ -74,7 +71,7 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     assert len(report["findings"]) == 4
     for source in root.iterdir():
         source.unlink()
-    fresh = runner.invoke(main, ["report", "-f", str(root), "--database", str(database)])
+    fresh = runner.invoke(main, ["report", "-f", str(root)])
     assert fresh.exit_code == 0, fresh.output
     assert fresh.output == "No findings.\n"
     with repository_service(database) as service:
@@ -88,29 +85,24 @@ def test_service_report_requires_project_name(database: Path) -> None:
             service.report(" ")
 
 
-def test_report_local_options_override_global_and_environment(database: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "wrong.sqlite"))
+def test_report_empty_findings_formats(database: Path, tmp_path: Path) -> None:
     root = tmp_path / "empty"
     root.mkdir()
-    result = CliRunner().invoke(main, [
-        "--database", str(tmp_path / "wrong.sqlite"),
-        "report", "-f", str(root), "--database", str(database),
-    ])
+    result = CliRunner().invoke(main, ["report", "-f", str(root)])
     assert result.exit_code == 0, result.output
     assert result.output == "No findings.\n"
-    structured = CliRunner().invoke(main, [
-        "report", "-f", str(root), "--database", str(database), "--format", "json",
-    ])
+    structured = CliRunner().invoke(main, ["report", "-f", str(root), "--format", "json"])
     assert structured.exit_code == 0, structured.output
     assert json.loads(structured.output) == {"findings": []}
 
 
-def test_report_migrates_new_database(tmp_path: Path) -> None:
+@pytest.mark.parametrize("command", ["index", "report"])
+def test_saving_does_not_migrate_database(tmp_path: Path, command: str) -> None:
     root = tmp_path / "source"
     root.mkdir()
     database = tmp_path / "new.sqlite"
-    result = CliRunner().invoke(main, ["report", "-f", str(root), "--database", str(database)])
-    assert result.exit_code == 0, result.output
-    assert result.output == "No findings.\n"
-    with repository_service(database) as service:
-        assert service.get_architecture(service.list()[0].id) is not None
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [command, "-f", str(root)])
+    assert result.exit_code == 1
+    assert "no such table" in result.output
+    with sqlite3.connect(database) as db:
+        assert db.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall() == []

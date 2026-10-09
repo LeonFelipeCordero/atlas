@@ -30,7 +30,6 @@ from .models import (
     Symbol,
     file_key,
 )
-from ..adapters.resolution import _import_path
 
 
 @dataclass(config=MODEL_CONFIG)
@@ -160,7 +159,7 @@ def _import_connections(
     adapter = get_resolution_adapter(file.source.language)
     targets = adapter.import_targets(resolver.imports, file, item.source, position)
     if adapter.require_import_node and directive is None:
-        targets = [(_import_path(item.source), None)]
+        targets = [(adapter.import_path(item.source), None)]
     return [
         Connection(
             file_key(item.file_path),

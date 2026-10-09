@@ -60,21 +60,14 @@ export function importedArtifact(): Artifact {
       'run',
       '--project',
       fileURLToPath(new URL('../../../atlas', import.meta.url)),
-      'atlas',
     ]
     for (const args of [
-      ['migrate', '--database', databasePath],
-      [
-        'report',
-        '--folder',
-        source,
-        '--database',
-        databasePath,
-        '--format',
-        'json',
-      ],
+      ['atlas-migrate'],
+      ['atlas', 'report', '--folder', source, '--format', 'json'],
     ]) {
-      const result = Bun.spawnSync([...command, ...args])
+      const result = Bun.spawnSync([...command, ...args], {
+        env: { ...process.env, DATABASE_PATH: databasePath },
+      })
       if (result.exitCode !== 0) throw new Error(result.stderr.toString())
     }
     const database = new Database(databasePath, { readonly: true })
