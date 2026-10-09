@@ -1,6 +1,5 @@
 """Physical source spans and grammar-backed declared input counts."""
 
-import sqlite3
 from pathlib import Path
 
 import pytest
@@ -224,7 +223,7 @@ def test_end_exclusive_column_zero_and_nested_physical_lines():
     assert symbol.line_count == 2
 
 
-def test_metrics_survive_snapshot_and_normalized_persistence(tmp_path):
+def test_metrics_survive_snapshot_persistence(tmp_path):
     root = tmp_path / "source"
     root.mkdir()
     (root / "sample.py").write_text(
@@ -247,17 +246,3 @@ def test_metrics_survive_snapshot_and_normalized_persistence(tmp_path):
     with repository_service(path) as service:
         saved = service.get_architecture(repository.id)
         assert saved is not None and saved.artifact == graph.artifact
-    with sqlite3.connect(path) as db:
-        rows = db.execute(
-            "SELECT node_stable_key, name, number_value FROM graph_node_properties WHERE name IN ('lineCount', 'parameterCount') ORDER BY node_stable_key, name"
-        ).fetchall()
-    assert rows == _metric_rows(expected)
-
-
-def _metric_rows(properties_by_key):
-    return sorted(
-        (key, metric, float(properties[metric]))
-        for key, properties in properties_by_key.items()
-        for metric in ("lineCount", "parameterCount")
-        if metric in properties
-    )

@@ -12,7 +12,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .models import RepositoryGraphRow, RepositoryRow
-from .normalized import replace_graph
 
 
 def _repository_dto(row: RepositoryRow, imported_at: int | None) -> RepositoryDTO:
@@ -106,7 +105,6 @@ class RepositoryStore:
         )
         try:
             self.session.execute(statement)
-            replace_graph(self.session, identifier, artifact)
             self.session.commit()
         except Exception:
             self.session.rollback()

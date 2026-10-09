@@ -3,8 +3,6 @@
 from sqlalchemy import ForeignKey, Index, Integer, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from .normalized_schema import TABLES
-
 
 class Base(DeclarativeBase):
     pass
@@ -32,8 +30,3 @@ class RepositoryGraphRow(Base):
     )
     artifact: Mapped[str] = mapped_column(Text, nullable=False)
     imported_at: Mapped[int] = mapped_column(Integer, nullable=False)
-
-
-# Expose the relational tables to Alembic's metadata inspection as well.
-for table in TABLES:
-    table.to_metadata(Base.metadata)

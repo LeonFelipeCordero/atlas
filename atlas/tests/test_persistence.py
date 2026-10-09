@@ -28,7 +28,10 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
     migrate_database(path)
     migrate_database(path)
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0002_normalized_graphs",)
+        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001_initial",)
+        assert db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall() == [
+            ("alembic_version",), ("repositories",), ("repository_graphs",),
+        ]
         assert db.execute("PRAGMA table_info('repositories')").fetchall() == [
             (0, "id", "TEXT", 1, None, 1),
             (1, "name", "TEXT", 1, None, 0),
@@ -62,7 +65,7 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
         engine.dispose()
     migrate_database(path)
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0002_normalized_graphs",)
+        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001_initial",)
 
 
 def test_service_requires_explicit_migration(tmp_path: Path) -> None:

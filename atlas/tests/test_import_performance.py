@@ -49,7 +49,7 @@ print(json.dumps({"stats": artifact.stats,
     assert {
         "atlas/src/atlas/indexer.py",
         "dashboard/src/routes/index.tsx",
-        "atlas/src/atlas/persistence/normalized_schema.py",
+        "atlas/src/atlas/persistence/repositories.py",
     } <= set(analysis["files"])
     assert {"CALLS", "IMPORTS", "CONTAINS"} <= set(analysis["relationships"])
 

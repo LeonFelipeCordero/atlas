@@ -70,7 +70,16 @@ test('UI opens a Python-migrated database without owning migrations', () => {
   expect(listRepositories(database)).toEqual([repository])
   expect(
     database.query('SELECT version_num FROM alembic_version').get(),
-  ).toEqual({ version_num: '0002_normalized_graphs' })
+  ).toEqual({ version_num: '0001_initial' })
+  expect(
+    database
+      .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all(),
+  ).toEqual([
+    { name: 'alembic_version' },
+    { name: 'repositories' },
+    { name: 'repository_graphs' },
+  ])
 })
 
 test('missing or unmigrated databases fail without creating a schema', () => {
