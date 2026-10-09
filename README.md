@@ -64,13 +64,13 @@ Nested ignore files and Git-style patterns, including `!` exceptions, are suppor
 
 ## Web UI
 
-Requires [Bun](https://bun.sh/). From the checkout root, analyze and save a project, then start the dashboard:
+Requires [Bun](https://bun.sh/). From the checkout root, apply migrations before analyzing and saving a project, then start the dashboard:
 
 ```sh
+uv run --project atlas atlas-migrate
 uv run --project atlas atlas report -f /path/to/project
 cd dashboard
 bun install
-bun run db:migrate
 bun run dev
 ```
 
@@ -82,7 +82,9 @@ Re-run the folder report and refresh the UI after source changes. Reindex older 
 uv run --project atlas atlas index /path/to/project --project 'My project'
 ```
 
-Python owns the SQLite schema and migrations. The default database is `$XDG_DATA_HOME/atlas/atlas.sqlite`, falling back to `~/.local/share/atlas/atlas.sqlite`. Set an absolute `DATABASE_PATH` for both CLI and UI to share a different database; CLI commands also accept `--database PATH`. Folder reports migrate automatically when saving; run `atlas migrate` before using `index` or starting the UI, and back up existing databases before upgrading.
+Python owns the SQLite schema and migrations. The default database is `$XDG_DATA_HOME/atlas/atlas.sqlite`, falling back to `~/.local/share/atlas/atlas.sqlite`. Set the same absolute `DATABASE_PATH` for migrations, CLI, and UI to share a different database.
+
+Migrations are explicit: CLI commands and the UI do not apply them automatically. After installation or upgrades, run `atlas-migrate` before saving reports, indexing, listing projects, or starting the UI. From the checkout root, use `uv run --project atlas atlas-migrate`; from `dashboard/`, `bun run db:migrate` runs the same migration command. `atlas migrate` is no longer a CLI command. Back up existing databases before upgrading. Reports with `--skip-save` need no database or migrations.
 
 The UI has **no authentication**; keep it on a trusted local network.
 
@@ -91,6 +93,7 @@ The UI has **no authentication**; keep it on a trusted local network.
 Run against the whole target project, not just changed files:
 
 ```sh
+atlas-migrate                                 # Apply migrations before database-backed commands
 atlas report -f .                              # Fresh analysis; register/update and save
 atlas report -f . --skip-save                  # Fresh analysis; no database access
 atlas report -f . --skip-save --format json    # Structured findings for scripts
@@ -145,4 +148,4 @@ The dashboard uses TypeScript 7 for `tsc` via the `@typescript/native` alias, wh
 
 Coffee samples in `atlas/tests/fixtures/coffee/` intentionally contain complexity/size/parameter violations and import cycles; do not simplify them or remove their reference-note ledgers. Tests compare graphs and reports with checked-in snapshots. Regenerate both formats only after reviewing fixture/analyzer changes: `(cd atlas && uv run python -m tests.update_coffee_snapshots)`.
 
-For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then run migrations. Report security issues as described in [SECURITY.md](SECURITY.md).
+For schema changes, edit `atlas/src/atlas/persistence/models.py`, generate a revision with `(cd atlas && uv run alembic revision --autogenerate -m "describe change")`, review it, then apply it with `(cd atlas && uv run atlas-migrate)`. Report security issues as described in [SECURITY.md](SECURITY.md).
