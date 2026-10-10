@@ -6,7 +6,8 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 
-from atlas.bootstrap import migrate_database, repository_service
+from atlas.bootstrap import migrate_database, navigation_service, repository_service
+from tests.graph_storage_fixture import graph_artifact
 from atlas.domain.repositories import RepositoryError
 from atlas.persistence import database
 
@@ -36,6 +37,19 @@ def test_service_preserves_domain_errors(tmp_path: Path) -> None:
         with repository_service(path):
             raise error
     assert caught.value is error
+
+
+def test_service_factories_do_not_expose_storage_handles(tmp_path: Path) -> None:
+    path = tmp_path / "services.sqlite"
+    migrate_database(path)
+    with repository_service(path) as service:
+        assert not any(hasattr(service, name) for name in ("repository", "reader", "session", "connection", "engine"))
+        saved = service.save_folder(tmp_path, graph_artifact())
+        facts = service.get_report_facts(saved.repositoryId)
+        assert facts is not None and facts.graphRevision == saved.graphRevision
+    with navigation_service(saved.repositoryId, path=path) as navigation:
+        assert not any(hasattr(navigation, name) for name in ("repository", "reader", "session", "connection", "engine"))
+        assert navigation.overview()["graphRevision"] == saved.graphRevision
 
 
 def test_migration_translates_storage_error_and_disposes(

@@ -10,20 +10,27 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, spyOn, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
-import { openDatabase } from './database.servers'
 import {
-  getArchitecture,
-  listRepositories,
-  registerRepository,
+  createRepositoryService,
   repositoryErrorResponse,
 } from './repositories.servers'
+import type { RepositoryService } from './repositories.servers'
 import type { GraphView } from './graph-data'
 import type { GraphScope } from './project-graph-types'
-import type { AppDatabase } from './database.servers'
 
 let directory: string
 let path: string
-let database: AppDatabase
+let database: Database
+let service: RepositoryService
+
+// Raw connections belong to test fixtures/assertions only, never the service API.
+const openDatabase = (file: string) =>
+  new Database(file, { readwrite: true, create: false, strict: true })
+const registerRepository = (input: unknown, _fixture: Database) =>
+  service.registerRepository(input)
+const listRepositories = (_fixture: Database) => service.listRepositories()
+const getArchitecture = (id: string, _fixture: Database, scope?: GraphScope) =>
+  service.getArchitecture(id, scope)
 
 function ready(
   id: string,
@@ -58,9 +65,11 @@ beforeEach(() => {
   path = join(directory, 'nested', 'test.sqlite')
   python('atlas-migrate')
   database = openDatabase(path)
+  service = createRepositoryService(path)
 })
 
 afterEach(() => {
+  service.close()
   database.close()
   rmSync(directory, { recursive: true, force: true })
 })
@@ -76,8 +85,8 @@ test('UI opens a Python-migrated database without owning migrations', () => {
   expect(repository.importedAt).toBeNull()
   expect(listRepositories(database)).toEqual([repository])
   expect(getArchitecture(repository.id, database)).toBeNull()
-  database.close()
-  database = openDatabase(path)
+  service.close()
+  service = createRepositoryService(path)
   expect(listRepositories(database)).toEqual([repository])
   expect(
     database.query('SELECT version_num FROM alembic_version').get(),
@@ -102,13 +111,15 @@ test('UI opens a Python-migrated database without owning migrations', () => {
 
 test('missing or unmigrated databases fail without creating a schema', () => {
   const missing = join(directory, 'missing.sqlite')
-  expect(() => openDatabase(missing)).toThrow()
+  expect(() => createRepositoryService(missing)).toThrow()
   expect(existsSync(missing)).toBe(false)
   const emptyPath = join(directory, 'empty.sqlite')
   const empty = new Database(emptyPath, { create: true })
   empty.close()
   const check = openDatabase(emptyPath)
-  expect(() => listRepositories(check)).toThrow('no such table')
+  const emptyService = createRepositoryService(emptyPath)
+  expect(() => emptyService.listRepositories()).toThrow('no such table')
+  emptyService.close()
   expect(
     check.query('SELECT name FROM sqlite_master WHERE type = ?').all('table'),
   ).toEqual([])
@@ -310,19 +321,24 @@ test('one read transaction keeps metadata and nodes on one WAL snapshot', () => 
   const repository = listRepositories(database)[0]
   const before = fileView(repository.id)
   writeFileSync(file, 'def after(): return 2\n')
-  const original = database.query.bind(database)
+  const original = Database.prototype.prepare
   let interleaved = false
-  const spy = spyOn(database, 'query').mockImplementation((sql: string) => {
-    expect(database.inTransaction).toBe(true)
+  let connection: Database | undefined
+  const spy = spyOn(Database.prototype, 'prepare').mockImplementation(function (
+    this: Database,
+    sql: string,
+  ) {
+    expect(this.inTransaction).toBe(true)
+    connection = this
     if (
       !interleaved &&
-      sql.includes('FROM graph_nodes n LEFT JOIN graph_symbols')
+      sql.includes('from "graph_nodes" left join "graph_symbols"')
     ) {
       interleaved = true
       python('atlas', 'index', '-f', source)
     }
-    return original(sql)
-  })
+    return original.call(this, sql)
+  } as typeof original)
   try {
     expect(fileView(repository.id)).toEqual(before)
     expect(interleaved).toBe(true)
@@ -332,7 +348,7 @@ test('one read transaction keeps metadata and nodes on one WAL snapshot', () => 
   const after = fileView(repository.id)
   expect(after.graphRevision).not.toBe(before.graphRevision)
   expect(after.graph.nodes.map((node) => node.label)).toEqual(['after'])
-  expect(database.inTransaction).toBe(false)
+  expect(connection?.inTransaction).toBe(false)
 })
 
 test('error responses remain JSON with the expected status', async () => {

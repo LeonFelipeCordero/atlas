@@ -10,6 +10,7 @@ from atlas.domain.repositories import (
     RepositoryDTO,
     RepositoryError,
     RepositoryProtocol,
+    ReportFactsDTO,
 )
 from atlas.indexer import analyze_repository
 
@@ -32,30 +33,37 @@ class RepositoryService:
     """Accepts a repository implementation; exposes domain DTOs, never ORM objects."""
 
     def __init__(self, repository: RepositoryProtocol) -> None:
-        self.repository = repository
+        self._repository = repository
 
     def register(self, input: Any) -> RepositoryDTO:
         if not isinstance(input, dict):
             raise RepositoryError("Expected an object with name and location", 400)
         name = _required_text(input.get("name"), "name", 200)
         location = _required_text(input.get("location"), "location", 4096)
-        return self.repository.register(name, location)
+        return self._repository.register(name, location)
 
     def list(self) -> list[RepositoryDTO]:
-        return self.repository.list()
+        return self._repository.list()
 
     def get_architecture(self, identifier: str) -> GraphDTO | None:
         identifier = _required_text(identifier, "repositoryId", 200)
-        if not self.repository.exists(identifier):
+        if not self._repository.exists(identifier):
             raise RepositoryError("Repository not found", 404)
-        return self.repository.graph(identifier)
+        return self._repository.graph(identifier)
+
+    def get_report_facts(self, identifier: str) -> ReportFactsDTO | None:
+        """Return normalized report DTOs without exposing the repository port."""
+        identifier = _required_text(identifier, "repositoryId", 200)
+        if not self._repository.exists(identifier):
+            raise RepositoryError("Repository not found", 404)
+        return self._repository.report_facts(identifier)
 
     def report(self, project_name: str) -> dict[str, Any]:
         name = _required_text(project_name, "project name", 200)
-        identifier = self.repository.resolve(name)
+        identifier = self._repository.resolve(name)
         if identifier is None:
             raise RepositoryError("Repository not found", 404)
-        graph = self.repository.report_facts(identifier)
+        graph = self._repository.report_facts(identifier)
         if graph is None:
             raise RepositoryError("Repository has no indexed graph; run atlas index first", 409)
         return build_report(graph)
@@ -63,24 +71,24 @@ class RepositoryService:
     def save_folder(self, root: Path, artifact: dict[str, Any]) -> GraphDTO:
         """Update by canonical location; otherwise register and save atomically."""
         root = root.expanduser().resolve()
-        for project in self.repository.list():
+        for project in self._repository.list():
             if "://" in project.location:
                 continue
             if Path(project.location).expanduser().resolve() == root:
-                return self.repository.save(project.id, artifact)
+                return self._repository.save(project.id, artifact)
         base = root.name.strip()[:190] or "repository"
         name = base
         suffix = 2
-        while self.repository.resolve(name) is not None:
+        while self._repository.resolve(name) is not None:
             name = f"{base} ({suffix})"
             suffix += 1
-        return self.repository.save_new(name, str(root), artifact)
+        return self._repository.save_new(name, str(root), artifact)
 
     def index(self, project_name: str, root: Path) -> GraphDTO:
         name = _required_text(project_name, "project name", 200)
-        identifier = self.repository.resolve(name)
+        identifier = self._repository.resolve(name)
         if identifier is None:
             raise RepositoryError("Repository not found", 404)
         # Analyze first. Failed analysis cannot overwrite the previous graph.
         artifact = analyze_folder(Path(root))
-        return self.repository.save(identifier, artifact)
+        return self._repository.save(identifier, artifact)

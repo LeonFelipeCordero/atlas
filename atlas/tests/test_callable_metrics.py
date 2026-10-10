@@ -241,7 +241,7 @@ def test_metrics_survive_snapshot_persistence(tmp_path):
     with repository_service(path) as service:
         saved = service.get_architecture(repository.id)
         assert saved == graph
-        facts = service.repository.report_facts(repository.id)
+        facts = service.get_report_facts(repository.id)
         assert facts is not None
         for node in facts.nodes:
             assert node.lineCount == expected[node.stableKey].get("lineCount")

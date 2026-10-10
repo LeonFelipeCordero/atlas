@@ -18,11 +18,7 @@ export const Route = createFileRoute('/api/architecture')({
           )
         try {
           return Response.json(
-            getArchitecture(
-              repositoryId,
-              undefined,
-              architectureScope(parameters),
-            ),
+            getArchitecture(repositoryId, architectureScope(parameters)),
           )
         } catch (error) {
           return repositoryErrorResponse(error)
