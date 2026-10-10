@@ -1,7 +1,4 @@
-import { useMemo } from 'react'
-import type { Artifact } from '@/lib/architecture-artifact'
 import type { FileComplexitySum } from '@/lib/file-complexity'
-import { sumFileComplexity } from '@/lib/file-complexity'
 
 function complexityHint(
   sum: FileComplexitySum,
@@ -16,18 +13,12 @@ function complexityHint(
 }
 
 export function GraphFileComplexity({
-  artifact,
-  fileKey,
+  sum,
   compact = false,
 }: {
-  artifact: Artifact
-  fileKey: string
+  sum: FileComplexitySum
   compact?: boolean
 }) {
-  const sum = useMemo(
-    () => sumFileComplexity(artifact, fileKey),
-    [artifact, fileKey],
-  )
   const unavailable = sum.functions > 0 && sum.measured === 0
   const partial = sum.measured < sum.functions
   return (

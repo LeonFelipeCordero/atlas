@@ -1,10 +1,7 @@
 import { isTestPath } from './graph-test-path'
-import type {
-  Artifact,
-  ArtifactNode,
-  DirectEdge,
-} from './architecture-artifact'
+import type { ArtifactNode, DirectEdge } from './architecture-artifact'
 import type { GraphNode, GraphScope } from './project-graph-types'
+import type { GraphStructure } from './graph-data'
 
 const isFolder = (node: ArtifactNode) =>
   ['directory', 'folder'].includes(node.kind)
@@ -73,7 +70,7 @@ function isBoundaryEdge(edge: DirectEdge, local: Map<string, string>) {
 
 /** Only original local sources can introduce boundary targets. */
 export function addBoundaryDependencies(
-  artifact: Artifact,
+  artifact: GraphStructure,
   scope: GraphScope,
   local: Map<string, string>,
   nodes: Array<GraphNode>,

@@ -1,5 +1,6 @@
 import { hideTestFiles } from './graph-visibility'
-import type { Artifact, CircularDependency } from './architecture-artifact'
+import type { CircularDependency } from './architecture-artifact'
+import type { CycleStructure, GraphStructure } from './graph-data'
 import type { GraphNode, GraphScope, ProjectGraph } from './project-graph'
 
 export type ProjectedCycle = {
@@ -12,7 +13,7 @@ export type ProjectedCycle = {
 
 /** File ownership only, never evidence that a callable participates in imports. */
 export function owningFile(
-  artifact: Artifact,
+  artifact: Pick<GraphStructure, 'nodes'>,
   key: string,
 ): string | undefined {
   const lookup = new Map(artifact.nodes.map((node) => [node.stableKey, node]))
@@ -23,7 +24,7 @@ export function owningFile(
 }
 
 export function cycleContainsNode(
-  artifact: Artifact,
+  artifact: Pick<GraphStructure, 'nodes'>,
   cycle: CircularDependency,
   node: GraphNode,
 ): boolean {
@@ -37,7 +38,7 @@ export function cycleContainsNode(
 }
 
 export function containingCycleScope(
-  artifact: Artifact,
+  artifact: Pick<GraphStructure, 'nodes'>,
   group: CircularDependency,
 ): GraphScope {
   const members = group.nodeStableKeys.map((key) =>
@@ -61,7 +62,7 @@ export function containingCycleScope(
 
 /** Project exported groups only. A hidden member removes the whole group, not a subcycle. */
 export function projectCycles(
-  artifact: Artifact,
+  artifact: CycleStructure,
   graph: ProjectGraph,
   scope: GraphScope,
 ): Array<ProjectedCycle> | undefined {

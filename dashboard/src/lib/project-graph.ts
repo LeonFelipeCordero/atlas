@@ -1,6 +1,7 @@
 import { addBoundaryDependencies } from './project-graph-boundary'
 import { pushChildren } from './graph-traversal'
-import type { Artifact, ArtifactNode } from './architecture-artifact'
+import type { ArtifactNode } from './architecture-artifact'
+import type { GraphHierarchy, GraphStructure } from './graph-data'
 import type {
   GraphEdge,
   GraphNode,
@@ -15,6 +16,8 @@ export type {
   ProjectGraph,
 } from './project-graph-types'
 
+export class GraphScopeError extends Error {}
+
 type Children = Map<string | null, Array<ArtifactNode>>
 const isExternal = (node: ArtifactNode) =>
   node.level === 'external' || node.type === 'external'
@@ -22,7 +25,7 @@ const isFolder = (node: ArtifactNode) =>
   node.kind === 'directory' || node.kind === 'folder'
 const isFile = (node: ArtifactNode) => node.level === 'file'
 
-function indexChildren(artifact: Artifact): Children {
+function indexChildren(artifact: GraphStructure): Children {
   const children: Children = new Map()
   for (const node of artifact.nodes) {
     const siblings = children.get(node.parentStableKey)
@@ -65,10 +68,10 @@ function rootNodes(children: Children): Array<ArtifactNode> {
   return visible
 }
 
-function scopeNode(artifact: Artifact, scope: GraphScope) {
+function scopeNode(artifact: Pick<GraphStructure, 'nodes'>, scope: GraphScope) {
   if (scope.kind === 'repository') return null
   if (!['folder', 'file'].includes(scope.kind))
-    throw new Error('Invalid graph scope')
+    throw new GraphScopeError('Invalid graph scope')
   const parent = artifact.nodes.find((node) => node.stableKey === scope.key)
   const byKey = new Map(artifact.nodes.map((node) => [node.stableKey, node]))
   const external =
@@ -78,16 +81,16 @@ function scopeNode(artifact: Artifact, scope: GraphScope) {
       return node && isExternal(node)
     })
   if (!parent || external)
-    throw new Error(`Unknown graph scope: "${scope.key}"`)
+    throw new GraphScopeError(`Unknown graph scope: "${scope.key}"`)
   if (scope.kind === 'file' ? !isFile(parent) : !isFolder(parent))
-    throw new Error(
+    throw new GraphScopeError(
       `Invalid ${scope.kind} scope: "${scope.key}" must be a ${scope.kind}`,
     )
   return parent
 }
 
 function visibleNodes(
-  artifact: Artifact,
+  artifact: GraphStructure,
   scope: GraphScope,
   children: Children,
 ) {
@@ -179,7 +182,7 @@ function projectNodes(children: Children, visible: Map<string, string>) {
 }
 
 function aggregateEdges(
-  artifact: Artifact,
+  artifact: GraphStructure,
   projected: Map<string, string>,
   targets: Map<string, string>,
 ): Array<GraphEdge> {
@@ -213,7 +216,7 @@ function aggregateEdges(
  * Unknown/mismatched scopes throw; valid empty scopes return an empty graph.
  */
 export function buildProjectGraph(
-  artifact: Artifact,
+  artifact: GraphStructure,
   scope: GraphScope,
 ): ProjectGraph {
   const children = indexChildren(artifact)
@@ -243,7 +246,7 @@ export function buildProjectGraph(
 
 /** Actual ancestors, including folders hidden by compaction. */
 export function getGraphTrail(
-  artifact: Artifact,
+  artifact: GraphHierarchy,
   scope: GraphScope,
 ): Array<{ label: string; scope: GraphScope }> {
   const node = scopeNode(artifact, scope)

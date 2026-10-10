@@ -2,8 +2,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Database } from 'bun:sqlite'
-import { parseArtifact } from './architecture-artifact'
 import type { Artifact, ArtifactNode } from './architecture-artifact'
 
 const samples = {
@@ -43,12 +41,11 @@ export function run() { return helper() }
 
 let imported: Artifact | undefined
 
-/** Exercise the real renamed CLI without saved exports or touching source projects. */
+/** Projection-only fixture from the real in-memory analyzer; no persisted JSON export. */
 export function importedArtifact(): Artifact {
   if (imported) return imported
   const directory = mkdtempSync(join(tmpdir(), 'atlas-language-fixture-'))
   const source = join(directory, 'source')
-  const databasePath = join(directory, 'atlas.sqlite')
   try {
     for (const [path, content] of Object.entries(samples)) {
       const file = join(source, path)
@@ -61,27 +58,16 @@ export function importedArtifact(): Artifact {
       '--project',
       fileURLToPath(new URL('../../../atlas', import.meta.url)),
     ]
-    for (const args of [
-      ['atlas-migrate'],
-      ['atlas', 'report', '--folder', source, '--format', 'json'],
-    ]) {
-      const result = Bun.spawnSync([...command, ...args], {
-        env: { ...process.env, DATABASE_PATH: databasePath },
-      })
-      if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-    }
-    const database = new Database(databasePath, { readonly: true })
-    try {
-      const row = database
-        .query('SELECT artifact FROM repository_graphs')
-        .get() as {
-        artifact: string
-      }
-      imported = parseArtifact(JSON.parse(row.artifact))
-      return imported
-    } finally {
-      database.close()
-    }
+    const result = Bun.spawnSync([
+      ...command,
+      'python',
+      '-c',
+      'import json, sys; from pathlib import Path; from dataclasses import asdict; from atlas.indexer import analyze_repository; print(json.dumps(asdict(analyze_repository(Path(sys.argv[1])))))',
+      source,
+    ])
+    if (result.exitCode !== 0) throw new Error(result.stderr.toString())
+    imported = JSON.parse(result.stdout.toString()) as Artifact
+    return imported
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
@@ -148,7 +134,11 @@ export function largeArtifact(): Artifact {
   return artifact
 }
 
-type AddNode = (key: string, kind: string, parent?: ArtifactNode) => ArtifactNode
+type AddNode = (
+  key: string,
+  kind: string,
+  parent?: ArtifactNode,
+) => ArtifactNode
 
 function addFiles(parent: ArtifactNode, add: AddNode) {
   for (let file = 0; file < 20; file++)

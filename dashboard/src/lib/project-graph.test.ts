@@ -1,5 +1,4 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
-import { parseArtifact } from './architecture-artifact'
 import { getGraphTrail } from './project-graph'
 import { buildProjectGraph, ids } from './project-graph-test.helpers'
 import {
@@ -58,13 +57,13 @@ function fixture(): Artifact {
   link('direct-fn', 'run')
   link('run', 'root-fn')
   link('root-fn', 'run')
-  return parseArtifact({
+  return {
     schemaVersion: 2,
     repository: { name: 'synthetic' },
     nodes,
     edges,
     views: { ignored: true },
-  })
+  }
 }
 
 function tree(rows: Array<[string, string, string | null]>): Artifact {
@@ -88,7 +87,7 @@ function tree(rows: Array<[string, string, string | null]>): Artifact {
       depth: owner ? owner.depth + 1 : 0,
     })
   }
-  return parseArtifact(artifact)
+  return artifact
 }
 
 const relation = (graph: ProjectGraph, source: string, target: string) =>
@@ -255,7 +254,7 @@ test('supports roots without synthetic wrappers and unsorted imports without mut
     (edge) => keys.has(edge.sourceStableKey) && keys.has(edge.targetStableKey),
   )
   const before = structuredClone(artifact)
-  const graph = buildProjectGraph(parseArtifact(artifact), {
+  const graph = buildProjectGraph(artifact, {
     kind: 'repository',
   })
   expect(ids(graph)).toEqual(['app', 'lib', 'root-file'])
@@ -281,7 +280,7 @@ test('does not cap large graphs; aggregates prototype-like relationship names sa
     type: '__proto__',
     confidence: 'INFERRED',
   })
-  const graph = buildProjectGraph(parseArtifact(artifact), {
+  const graph = buildProjectGraph(artifact, {
     kind: 'repository',
   })
   expect(graph.nodes).toHaveLength(1503)
@@ -294,7 +293,7 @@ test('does not cap large graphs; aggregates prototype-like relationship names sa
 
 for (const [name, createArtifact] of Object.entries(artifactFixtures)) {
   test(`${name}: every file and callable is reachable with exact direct-edge counts`, () => {
-    const artifact = parseArtifact(createArtifact())
+    const artifact = createArtifact()
     const expected =
       name === 'CLI language samples'
         ? { nodes: 35, edges: 39, files: 7, callables: 12 }

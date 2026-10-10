@@ -1,6 +1,7 @@
 import { isTestPath } from './graph-test-path'
 import { pushChildren } from './graph-traversal'
-import type { Artifact, ArtifactNode } from './architecture-artifact'
+import type { ArtifactNode } from './architecture-artifact'
+import type { GraphStructure } from './graph-data'
 
 export { isTestPath } from './graph-test-path'
 
@@ -26,7 +27,7 @@ function hideEmptyFolder(
 }
 
 /** Derive a display artifact; never modify the imported snapshot. */
-export function hideTestFiles(artifact: Artifact): Artifact {
+export function hideTestFiles<T extends GraphStructure>(artifact: T): T {
   const children = new Map<string | null, Array<ArtifactNode>>()
   for (const node of artifact.nodes) {
     const siblings = children.get(node.parentStableKey) ?? []

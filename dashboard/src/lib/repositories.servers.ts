@@ -1,5 +1,8 @@
 import { getDatabase } from './database.servers'
 import { RepositoryStore } from './repository-store.servers'
+import { GraphStore } from './graph-store.servers'
+import { GraphScopeError } from './project-graph'
+import type { GraphScope } from './project-graph-types'
 import type { AppDatabase } from './database.servers'
 
 export class RepositoryError extends Error {
@@ -50,14 +53,26 @@ export const listRepositories = (database: AppDatabase = getDatabase()) =>
 export function getArchitecture(
   repositoryId: string,
   database: AppDatabase = getDatabase(),
+  scope: GraphScope = { kind: 'repository' },
 ) {
   const id = requiredText(repositoryId, 'repositoryId', 200)
-  const store = new RepositoryStore(database)
-  if (!store.exists(id)) throw new RepositoryError('Repository not found', 404)
-  return store.graph(id)
+  const graph = new GraphStore(database).view(id, scope)
+  if (graph === undefined)
+    throw new RepositoryError('Repository not found', 404)
+  return graph
+}
+
+export function architectureScope(parameters: URLSearchParams): GraphScope {
+  const kind = parameters.get('kind') ?? 'repository'
+  if (kind === 'repository') return { kind }
+  if (kind !== 'folder' && kind !== 'file')
+    throw new RepositoryError('Invalid graph scope', 400)
+  return { kind, key: requiredText(parameters.get('key'), 'key', 4096) }
 }
 
 export const repositoryErrorResponse = (error: unknown) => {
+  if (error instanceof GraphScopeError)
+    return Response.json({ error: error.message }, { status: 400 })
   if (error instanceof RepositoryError)
     return Response.json({ error: error.message }, { status: error.status })
   console.error(error)

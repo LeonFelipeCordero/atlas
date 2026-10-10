@@ -1,4 +1,4 @@
-import type { Artifact } from './architecture-artifact'
+import type { Architecture } from './graph-data'
 
 export type Repository = {
   id: string
@@ -8,11 +8,7 @@ export type Repository = {
   importedAt: number | null
 }
 
-export type ImportedGraph = {
-  repositoryId: string
-  importedAt: number
-  artifact: Artifact
-}
+export type ImportedGraph = Architecture
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, options)

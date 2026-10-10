@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { GraphSidebar } from './graph-sidebar'
 import { GraphSizeMetrics } from './graph-size-metrics'
 import type { Artifact, NodeSizeMetrics } from '@/lib/architecture-artifact'
-import { parseArtifact } from '@/lib/architecture-artifact'
+import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { buildProjectGraph } from '@/lib/project-graph'
 import { fixtureNodes } from '@/lib/project-graph-fixture'
 
@@ -14,14 +14,14 @@ function fixture(key: string, properties?: NodeSizeMetrics): Artifact {
 }
 
 function sidebar(key: string, properties?: NodeSizeMetrics, selected = true) {
-  const artifact = parseArtifact(fixture(key, properties))
+  const artifact = fixture(key, properties)
   const scope =
     key === 'run'
       ? { kind: 'file' as const, key: 'service' }
       : { kind: 'folder' as const, key: 'acme' }
   return renderToStaticMarkup(
     <GraphSidebar
-      artifact={artifact}
+      details={fixtureDetails(artifact)}
       graph={buildProjectGraph(artifact, scope)}
       scope={scope}
       selected={selected ? key : null}
@@ -65,30 +65,3 @@ test('folders do not display size metrics', () => {
   const node = artifact.nodes.find((item) => item.stableKey === 'app')!
   expect(renderToStaticMarkup(<GraphSizeMetrics node={node} />)).toBe('')
 })
-
-test('artifact validation preserves size metrics and rejects invalid counts', () => {
-  const artifact = fixture('run', { lineCount: 12, parameterCount: 0 })
-  const index = artifact.nodes.findIndex((node) => node.stableKey === 'run')
-  expect(parseArtifact(artifact).nodes[index].properties).toEqual({
-    lineCount: 12,
-    parameterCount: 0,
-  })
-  for (const key of ['lineCount', 'parameterCount']) {
-    expectInvalidCounts(artifact, index, key)
-  }
-})
-
-function expectInvalidCounts(artifact: Artifact, index: number, key: string) {
-  for (const value of [
-    -1,
-    0.5,
-    '2',
-    null,
-    NaN,
-    Infinity,
-    Number.MAX_SAFE_INTEGER + 1,
-  ]) {
-    artifact.nodes[index].properties = { [key]: value }
-    expect(() => parseArtifact(artifact)).toThrow(`properties.${key}`)
-  }
-}

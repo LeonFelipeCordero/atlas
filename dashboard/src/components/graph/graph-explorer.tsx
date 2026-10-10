@@ -1,15 +1,14 @@
-import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Network } from 'lucide-react'
 import { GraphSidebar } from './graph-sidebar'
 import { GraphNavigation } from './graph-navigation'
 import { GraphFileComplexity } from './graph-file-complexity'
 import type { ComponentProps } from 'react'
-import type { Artifact } from '@/lib/architecture-artifact'
+import type { Architecture, GraphView, ViewCycle } from '@/lib/graph-data'
 import type { GraphNode, GraphScope } from '@/lib/project-graph'
-import { buildProjectGraph, getGraphTrail } from '@/lib/project-graph'
+import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { projectCycles } from '@/lib/graph-cycles'
-import { hideTestFiles } from '@/lib/graph-visibility'
 
 const GraphCanvas = lazy(() => import('./graph-canvas'))
 
@@ -59,57 +58,29 @@ function GraphViewport({
   )
 }
 
-export function GraphExplorer({ artifact }: { artifact: Artifact }) {
-  const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
-  const visibleArtifact = useMemo(() => hideTestFiles(artifact), [artifact])
-  const trail = useMemo(
-    () => getGraphTrail(visibleArtifact, scope),
-    [visibleArtifact, scope],
-  )
-  const [selected, setSelected] = useState<string | null>(null)
-  const [cycleId, setCycleId] = useState<string | null>(null)
-  const [focusId, setFocusId] = useState<string | null>(null)
+function GraphWorkspace({
+  view,
+  navigate,
+  ...actions
+}: {
+  view: GraphView
+  navigate: (index: number) => void
+  selected: string | null
+  focusId: string | null
+  activeCycle: ViewCycle | null
+  onSelect: (id: string | null) => void
+  onOpen: (node: GraphNode) => void
+  onCycle: (cycle: ViewCycle) => void
+  onCycleScope: (cycle: ViewCycle) => void
+}) {
+  const { trail, graph, cycles, details } = view
   const current = trail[trail.length - 1]
-  const graph = useMemo(
-    () => buildProjectGraph(visibleArtifact, current.scope),
-    [visibleArtifact, current.scope],
-  )
-  const cycles = useMemo(
-    () => projectCycles(artifact, graph, current.scope),
-    [artifact, graph, current.scope],
-  )
-  const activeCycle =
-    cycles?.find((cycle) => cycle.group.id === cycleId) ?? null
-  const select = (id: string | null) => {
-    setCycleId(null)
-    setSelected(id)
-    setFocusId(id)
-  }
-  const open = useCallback(
-    (node: GraphNode) => {
-      const destination = node.destination
-      const nextScope = destination?.scope ?? node.scope
-      if (!nextScope) return
-      setCycleId(null)
-      setScope(nextScope)
-      setSelected(destination?.focusId ?? null)
-      setFocusId(destination?.focusId ?? null)
-    },
-    [setScope],
-  )
-  const navigate = (index: number) => {
-    setCycleId(null)
-    setScope(trail[index].scope)
-    setSelected(null)
-    setFocusId(null)
-  }
   return (
     <section className="explorer" aria-label="Project graph">
       <GraphNavigation trail={trail} navigate={navigate} />
       {current.scope.kind === 'file' && (
         <GraphFileComplexity
-          artifact={artifact}
-          fileKey={current.scope.key}
+          sum={details.fileComplexities[current.scope.key]}
           compact
         />
       )}
@@ -122,11 +93,11 @@ export function GraphExplorer({ artifact }: { artifact: Artifact }) {
           <GraphViewport
             key={JSON.stringify(current.scope)}
             graph={graph}
-            selected={selected}
-            focusId={focusId}
-            activeCycle={activeCycle}
-            onSelect={select}
-            onOpen={open}
+            selected={actions.selected}
+            focusId={actions.focusId}
+            activeCycle={actions.activeCycle}
+            onSelect={actions.onSelect}
+            onOpen={actions.onOpen}
             isFile={current.scope.kind === 'file'}
             back={
               trail.length > 1 ? () => navigate(trail.length - 2) : undefined
@@ -136,25 +107,109 @@ export function GraphExplorer({ artifact }: { artifact: Artifact }) {
         <GraphSidebar
           key={JSON.stringify(current.scope)}
           graph={graph}
-          artifact={artifact}
-          selected={selected}
+          details={details}
           scope={current.scope}
           cycles={cycles}
-          activeCycle={activeCycle}
-          onCycle={(cycle) => {
-            setCycleId(cycle.group.id)
-            setFocusId(null)
-          }}
-          onCycleScope={(cycle) => {
-            setScope(cycle.scope)
-            setSelected(null)
-            setFocusId(null)
-            setCycleId(cycle.group.id)
-          }}
-          onSelect={select}
-          onOpen={open}
+          {...actions}
         />
       </div>
     </section>
+  )
+}
+
+export function GraphExplorer({ initial }: { initial: GraphView }) {
+  const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
+  const [selected, setSelected] = useState<string | null>(null)
+  const [cycleId, setCycleId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const view = useQuery({
+    queryKey: [
+      'graph-view',
+      initial.repositoryId,
+      initial.graphRevision,
+      scope,
+    ],
+    queryFn: () => {
+      const parameters = new URLSearchParams({
+        repositoryId: initial.repositoryId,
+        kind: scope.kind,
+      })
+      if (scope.kind !== 'repository') parameters.set('key', scope.key)
+      return api<Architecture | null>(`/api/architecture?${parameters}`)
+    },
+    initialData: scope.kind === 'repository' ? initial : undefined,
+    retry: false,
+  })
+  if (
+    view.error ||
+    (view.data && view.data.state !== 'ready') ||
+    view.data === null
+  )
+    return (
+      <div className="error-message" role="alert">
+        <p>{view.error?.message ?? 'This graph needs to be re-indexed.'}</p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            void view.refetch()
+          }}
+        >
+          Try again
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setScope({ kind: 'repository' })}
+        >
+          Back to repository
+        </Button>
+      </div>
+    )
+  if (!view.data || view.data.state !== 'ready')
+    return (
+      <div className="loading-state" role="status">
+        Loading the repository graph…
+      </div>
+    )
+  const data = view.data
+  const activeCycle =
+    data.cycles.find((cycle) => cycle.group.id === cycleId) ?? null
+  const select = (id: string | null) => {
+    setCycleId(null)
+    setSelected(id)
+    setFocusId(id)
+  }
+  const open = (node: GraphNode) => {
+    const destination = node.destination
+    const nextScope = destination?.scope ?? node.scope
+    if (!nextScope) return
+    setScope(nextScope)
+    setCycleId(null)
+    setSelected(destination?.focusId ?? null)
+    setFocusId(destination?.focusId ?? null)
+  }
+  const navigate = (index: number) => {
+    setScope(data.trail[index].scope)
+    select(null)
+  }
+  return (
+    <GraphWorkspace
+      view={data}
+      navigate={navigate}
+      selected={selected}
+      focusId={focusId}
+      activeCycle={activeCycle}
+      onSelect={select}
+      onOpen={open}
+      onCycle={(cycle) => {
+        setCycleId(cycle.group.id)
+        setFocusId(null)
+      }}
+      onCycleScope={(cycle) => {
+        setScope(cycle.scope)
+        setSelected(null)
+        setFocusId(null)
+        setCycleId(cycle.group.id)
+      }}
+    />
   )
 }

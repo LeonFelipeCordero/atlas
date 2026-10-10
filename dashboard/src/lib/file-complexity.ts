@@ -1,4 +1,4 @@
-import type { Artifact } from './architecture-artifact'
+import type { GraphStructure } from './graph-data'
 
 export type FileComplexitySum = {
   total: number
@@ -8,7 +8,7 @@ export type FileComplexitySum = {
 
 /** Sum each owned function/method once, including class methods and nested functions. */
 export function sumFileComplexity(
-  artifact: Artifact,
+  artifact: Pick<GraphStructure, 'nodes'>,
   fileKey: string,
 ): FileComplexitySum {
   const summary = { total: 0, measured: 0, functions: 0 }

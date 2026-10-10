@@ -4,7 +4,7 @@ import { GraphFileComplexity } from './graph-file-complexity'
 import { GraphSidebar } from './graph-sidebar'
 import type { Artifact, ArtifactNode } from '@/lib/architecture-artifact'
 import type { GraphScope, ProjectGraph } from '@/lib/project-graph'
-import { parseArtifact } from '@/lib/architecture-artifact'
+import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { sumFileComplexity } from '@/lib/file-complexity'
 import { buildProjectGraph } from '@/lib/project-graph'
 
@@ -46,7 +46,7 @@ function fixture(): Artifact {
   add('other-file', 'file', 'repo')
   add('outside', 'function', 'other-file', 50)
   add('empty', 'file', 'repo')
-  return parseArtifact({
+  return {
     schemaVersion: 2,
     repository: { name: 'Example' },
     nodes,
@@ -58,14 +58,13 @@ function fixture(): Artifact {
         confidence: 'EXTRACTED',
       },
     ],
-  })
+  }
 }
 
 function summary(artifact: Artifact, fileKey = 'file', compact = false) {
   return renderToStaticMarkup(
     <GraphFileComplexity
-      artifact={artifact}
-      fileKey={fileKey}
+      sum={sumFileComplexity(artifact, fileKey)}
       compact={compact}
     />,
   )
@@ -79,7 +78,7 @@ function selectedFile(
 ) {
   return renderToStaticMarkup(
     <GraphSidebar
-      artifact={artifact}
+      details={fixtureDetails(artifact)}
       graph={graph}
       selected={selected}
       scope={scope}

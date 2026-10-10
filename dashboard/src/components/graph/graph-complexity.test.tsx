@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { GraphSidebar } from './graph-sidebar'
 import type { Artifact, NodeComplexity } from '@/lib/architecture-artifact'
-import { parseArtifact } from '@/lib/architecture-artifact'
+import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { buildProjectGraph } from '@/lib/project-graph'
 
 const metrics = {
@@ -38,7 +38,7 @@ function fixture(properties?: NodeComplexity): Artifact {
     ancestorStableKeys: ['repo'],
     depth: 1,
   }
-  return parseArtifact({
+  return {
     schemaVersion: 2,
     repository: { name: 'Example' },
     edges: [],
@@ -58,7 +58,7 @@ function fixture(properties?: NodeComplexity): Artifact {
         properties: properties ? { ...properties } : undefined,
       },
     ],
-  })
+  }
 }
 
 function sidebar(artifact: Artifact, selected = 'run', file = true) {
@@ -68,7 +68,7 @@ function sidebar(artifact: Artifact, selected = 'run', file = true) {
   )
   return renderToStaticMarkup(
     <GraphSidebar
-      artifact={artifact}
+      details={fixtureDetails(artifact)}
       graph={graph}
       selected={selected}
       onSelect={() => {}}
@@ -122,32 +122,4 @@ test('containers and constructors do not show complexity', () => {
   )
   artifact.nodes[2].type = artifact.nodes[2].kind = 'constructor'
   expect(sidebar(artifact)).not.toContain('Cyclomatic complexity')
-})
-
-function expectInvalidMetricValues(artifact: Artifact, key: string) {
-  for (const value of [
-    -1,
-    1.5,
-    '8',
-    null,
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-  ]) {
-    const invalid = structuredClone(artifact)
-    invalid.nodes[2].properties = { [key]: value }
-    expect(() => parseArtifact(invalid)).toThrow(`properties.${key}`)
-  }
-}
-
-test('import validates complexity numbers without dropping other properties', () => {
-  const artifact = fixture(metrics)
-  artifact.nodes[2].properties!.custom = 'kept'
-  expect(parseArtifact(artifact).nodes[2].properties!.custom).toBe('kept')
-  for (const key of Object.keys(metrics))
-    expectInvalidMetricValues(artifact, key)
-  for (const key of ['cyclomaticComplexity', 'baseCyclomaticComplexity']) {
-    const invalid = structuredClone(artifact)
-    invalid.nodes[2].properties = { [key]: 0 }
-    expect(() => parseArtifact(invalid)).toThrow(`properties.${key}`)
-  }
 })
