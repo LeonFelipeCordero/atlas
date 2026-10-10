@@ -19,7 +19,7 @@ def main() -> None:
         )
         print(path.name)
         report = CliRunner().invoke(cli, [
-            "report", "--folder", str(FIXTURE_ROOT / language), "--skip-save",
+            "report", "--folder", str(FIXTURE_ROOT / language),
         ])
         if report.exit_code != 0:
             raise RuntimeError(f"{language} report failed: {report.output}")

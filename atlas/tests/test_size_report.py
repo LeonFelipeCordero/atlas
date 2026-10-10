@@ -66,7 +66,7 @@ def test_cli_fresh_and_saved_measurements_match_without_sources(tmp_path: Path) 
     database = tmp_path / "atlas.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
-    fresh = runner.invoke(main, ["report", "-f", str(root), "--format", "json"])
+    fresh = runner.invoke(main, ["report", "-f", str(root), "--save", "--format", "json"])
     assert fresh.exit_code == 0, fresh.output
     report = json.loads(fresh.output)
     measurements = {node["subject"]: node["metrics"] for node in report["nodes"]}
