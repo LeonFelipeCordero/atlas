@@ -7,7 +7,7 @@ import click
 
 from atlas.bootstrap import navigation_service
 from atlas.domain.models import Relationship
-from atlas.domain.navigation import NavigationError, Record
+from atlas.domain.navigation import NavigationError, PathRequest, Record, TraversalRequest
 
 
 @click.group("graph", help="Read an indexed graph as JSON; external nodes may be unresolved or ambiguous.")
@@ -34,10 +34,19 @@ def emit(ctx: click.Context, command: str, **options: Any) -> None:
                 "children": service.children, "context": service.context,
                 "source": service.source, "path": service.path,
             }
-            payload = commands[command](**options)
+            payload = commands[command](**command_options(command, options))
     except (NavigationError, OSError, ValueError) as error:
         raise GraphError(str(error)) from error
     click.echo(json.dumps(payload, ensure_ascii=False))
+
+
+def command_options(command: str, options: Record) -> Record:
+    if command == "context":
+        return {"request": TraversalRequest(**options)}
+    if command == "path":
+        start, target, depth = options.pop("start"), options.pop("target"), options.pop("max_depth")
+        return {"request": PathRequest(target, TraversalRequest(key=start, depth=depth, **options))}
+    return options
 
 
 @graph.command("overview")
@@ -66,8 +75,8 @@ def show(ctx: click.Context, key: str) -> None:
 @click.option("--limit", default=30, show_default=True, type=click.IntRange(1, 100))
 @click.option("--offset", default=0, show_default=True, type=click.IntRange(0))
 @click.pass_context
-def children(ctx: click.Context, key: str, limit: int, offset: int) -> None:
-    emit(ctx, "children", key=key, limit=limit, offset=offset)
+def children(ctx: click.Context, **options: Any) -> None:
+    emit(ctx, "children", **options)
 
 
 def relation_list(_ctx: click.Context, _param: click.Parameter, value: str) -> list[str]:
@@ -99,8 +108,8 @@ def context(ctx: click.Context, **options: Any) -> None:
 @click.option("--max-lines", default=80, show_default=True, type=click.IntRange(1, 500))
 @click.option("--start-line", type=click.IntRange(1), help="Absolute 1-based line; clamped to the symbol start.")
 @click.pass_context
-def source(ctx: click.Context, key: str, max_lines: int, start_line: int | None) -> None:
-    emit(ctx, "source", key=key, max_lines=max_lines, start_line=start_line)
+def source(ctx: click.Context, **options: Any) -> None:
+    emit(ctx, "source", **options)
 
 
 @graph.command("path")

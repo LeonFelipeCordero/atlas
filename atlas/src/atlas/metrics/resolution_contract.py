@@ -1,4 +1,49 @@
-"""Acyclic lexical-syntax contract shared by syntax caches and language policies."""
+"""Acyclic requests shared by syntax caches and language-resolution policies."""
+
+from dataclasses import dataclass
+
+from tree_sitter import Node
+
+from ..domain.models import Call, ParsedFile, Symbol
+
+
+@dataclass(frozen=True)
+class ImportRequest:
+    """One import directive or member lookup at its lexical location."""
+
+    file: ParsedFile
+    path: str
+    position: int | None = None
+    source: str = ""
+
+
+@dataclass(frozen=True)
+class ResolutionRequest:
+    """A name lookup in the lexical context of a parsed call."""
+
+    file: ParsedFile
+    call: Call
+    owner: Symbol | None
+    name: str
+    qualifier: str | None = None
+
+
+@dataclass(frozen=True)
+class CallTarget:
+    """Normalized syntax and spelling of a callable target."""
+
+    callee: Node | None
+    receiver: Node | None
+    name: str
+    qualifier: str | None
+
+
+@dataclass(frozen=True)
+class DeclarationLookup:
+    name: str
+    node: Node
+    position: int
+
 
 FUNCTIONS = {
     "function_definition",

@@ -1,7 +1,7 @@
 """Parenthesized callback bindings have one carrier in parsing and resolution."""
 
 import unittest
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from itertools import product
 
@@ -20,6 +20,8 @@ from atlas.domain.models import ParsedRepository
 from atlas.parsing.parser import parse_file
 from atlas.metrics.resolver import resolve_connections
 from atlas.parsing.structure import extract_structure
+from atlas.parsing.syntax import ParsedSyntax
+from tests.parsing_fixture import parsing_syntax
 
 
 LANGUAGES = ("javascript", "typescript", "tsx")
@@ -65,6 +67,22 @@ def span(node: Node) -> Span:
         end_line=node.end_point.row,
         end_column=node.end_point.column,
     )
+
+
+@dataclass(frozen=True)
+class BindingCase:
+    syntax: ParsedSyntax
+    name: str
+    callback_text: str
+
+
+@dataclass(frozen=True)
+class WrapperContext:
+    syntax: ParsedSyntax
+    name: str
+    callback_node: Node
+    callback: StructureItem
+    local: StructureItem
 
 
 class CallbackCarrierRegressionTests(unittest.TestCase):
@@ -175,24 +193,25 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         for callback_text in CALLBACKS:
             source = template % callback_text
             native = process(source, ProcessConfig(language=language)).structure
-            self.assert_binding_structure(source, language, name, callback_text, native)
+            case = BindingCase(ParsedSyntax(SourceFile("main.js", Path("main.js"), language, source.encode())), name, callback_text)
+            self.assert_binding_structure(case, native)
             self.assert_binding_graph(source, language, name)
 
-    def assert_binding_structure(self, source, language, name, callback_text, native):
+    def assert_binding_structure(self, case: BindingCase, native):
         for existing in ([], native):
-            self.assert_binding_item(source, language, name, callback_text, existing)
+            self.assert_binding_item(case, existing)
 
-    def assert_binding_item(self, source, language, name, callback_text, existing):
-        items = extract_structure(source.encode(), language, existing)
-        self.assertEqual([item.name for item in items], [name])
+    def assert_binding_item(self, case: BindingCase, existing):
+        items = extract_structure(case.syntax, existing)
+        self.assertEqual([item.name for item in items], [case.name])
         callback = items[0]
         self.assertEqual([child.name for child in callback.children], ["local"])
-        start = source.index(callback_text)
+        start = case.syntax.source.source.index(case.callback_text.encode())
         self.assertIsNotNone(callback.span)
         assert callback.span is not None
         self.assertEqual(
             (callback.span.start_byte, callback.span.end_byte),
-            (start, start + len(callback_text)),
+            (start, start + len(case.callback_text)),
         )
 
     def assert_binding_graph(self, source, language, name):
@@ -247,7 +266,7 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         callback_node = next(
             node for node in nodes if node.type in get_adapter(language).callback_types
         )
-        tagged = extract_structure(source.encode(), language)
+        tagged = extract_structure(parsing_syntax(source, language))
         callback = tagged[0]
         local = callback.children[0]
         wrappers = []
@@ -260,39 +279,21 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         }:
             wrappers.append(parent)
             parent = parent.parent
+        context = WrapperContext(ParsedSyntax(SourceFile("main.js", Path("main.js"), language, source.encode())), name, callback_node, callback, local)
         for wrapper in wrappers:
-            self.assert_wrapper_endpoints(
-                source, language, name, callback_node, callback, local, wrapper
-            )
+            self.assert_wrapper_endpoints(context, wrapper)
 
-    def assert_wrapper_endpoints(
-        self, source, language, name, callback_node, callback, local, wrapper
-    ):
+    def assert_wrapper_endpoints(self, context: WrapperContext, wrapper):
+        callback_node = context.callback_node
         for start, end in (
             (wrapper, wrapper),
             (wrapper, callback_node),
             (callback_node, wrapper),
         ):
-            self.assert_native_endpoint(
-                source,
-                language,
-                name,
-                callback_node,
-                callback,
-                local,
-                (wrapper, start, end),
-            )
+            self.assert_native_endpoint(context, (wrapper, start, end))
 
-    def assert_native_endpoint(
-        self,
-        source,
-        language,
-        name,
-        callback_node,
-        callback,
-        local,
-        endpoints,
-    ):
+    def assert_native_endpoint(self, context: WrapperContext, endpoints):
+        callback_node, callback, local = context.callback_node, context.callback, context.local
         wrapper, start, end = endpoints
         native_span = replace(
             span(wrapper),
@@ -315,10 +316,10 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
             children=[],
         )
         original = repr(native)
-        items = extract_structure(source.encode(), language, [native])
+        items = extract_structure(context.syntax, [native])
         self.assertEqual(len(items), 1)
         merged = items[0]
-        self.assertEqual(merged.name, name)
+        self.assertEqual(merged.name, context.name)
         self.assertEqual(merged.span, span(callback_node))
         self.assertEqual(
             merged.signature,
@@ -345,7 +346,7 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
                 self.assert_unresolved_binding(source, language)
 
     def assert_unresolved_binding(self, source, language):
-        tagged = extract_structure(source.encode(), language)[0]
+        tagged = extract_structure(parsing_syntax(source, language))[0]
         native = replace(
             tagged,
             name="native callback",
@@ -353,8 +354,7 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
             children=[],
         )
         items = extract_structure(
-            source.encode(),
-            language,
+            parsing_syntax(source, language),
             [
                 native,
                 replace(native, name=None),
@@ -379,7 +379,7 @@ consume(((function explicit() {})), ((function* generator() {})), (() => 0));
                 self.assert_transparent_parentheses(source, language)
 
     def assert_transparent_parentheses(self, source, language):
-        items = extract_structure(source.encode(), language)
+        items = extract_structure(parsing_syntax(source, language))
         self.assertEqual(
             [item.name for item in items],
             ["f", None, None, None, None, "explicit", "generator", None],

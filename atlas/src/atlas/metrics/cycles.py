@@ -8,6 +8,7 @@ cycle enumeration. Each group includes one representative closed cycle.
 import hashlib
 import json
 from collections import deque
+from dataclasses import dataclass
 from typing_extensions import TypedDict
 
 
@@ -60,16 +61,9 @@ def _file_owners(nodes: list[dict[str, object]]) -> dict[str, str | None]:
     owners: dict[str, str | None] = {}
     for key in sorted(by_key):
         owner, trail = _find_file_owner(key, by_key, owners)
-        _cache_file_owner(key, trail, owner, owners)
+        owners[key] = owner
+        owners.update(dict.fromkeys(trail, owner))
     return owners
-
-
-def _cache_file_owner(
-    key: str, trail: set[str], owner: str | None, owners: dict[str, str | None]
-) -> None:
-    owners[key] = owner
-    for ancestor in trail:
-        owners[ancestor] = owner
 
 
 def _import_edges(
@@ -134,8 +128,9 @@ def _enqueue_unvisited(
 
 
 def _finish_from(
-    root: str, adjacency: dict[str, list[str]], visited: set[str], finished: list[str]
-) -> None:
+    root: str, adjacency: dict[str, list[str]], visited: set[str]
+) -> list[str]:
+    finished = []
     stack = [(root, iter(adjacency[root]))]
     while stack:
         node, targets = stack[-1]
@@ -146,6 +141,7 @@ def _finish_from(
         elif target not in visited:
             visited.add(target)
             stack.append((target, iter(adjacency[target])))
+    return finished
 
 
 def _add_reverse_edges(
@@ -169,7 +165,7 @@ def _finish_order(adjacency: dict[str, list[str]]) -> list[str]:
         if root in visited:
             continue
         visited.add(root)
-        _finish_from(root, adjacency, visited, finished)
+        finished.extend(_finish_from(root, adjacency, visited))
     return finished
 
 
@@ -208,22 +204,23 @@ def _path_to_start(start: str, parents: dict[str, str | None]) -> list[str]:
     return [start, *reversed(path)]
 
 
-def _cycle_neighbors(
-    node: str,
-    targets: list[str],
-    members: set[str],
-    start: str,
-    parents: dict[str, str | None],
-    pending: deque[str],
-) -> bool:
-    for target in targets:
-        if target not in members or target in parents:
-            continue
-        parents[target] = node
-        if target == start:
-            return True
-        pending.append(target)
-    return False
+@dataclass
+class _CycleSearch:
+    adjacency: dict[str, list[str]]
+    members: set[str]
+    start: str
+    parents: dict[str, str | None]
+    pending: deque[str]
+
+    def visit_neighbors(self, node: str) -> bool:
+        for target in self.adjacency[node]:
+            if target not in self.members or target in self.parents:
+                continue
+            self.parents[target] = node
+            if target == self.start:
+                return True
+            self.pending.append(target)
+        return False
 
 
 def _example_cycle(group: list[str], adjacency: dict[str, list[str]]) -> list[str]:
@@ -234,12 +231,11 @@ def _example_cycle(group: list[str], adjacency: dict[str, list[str]]) -> list[st
     first = next(
         target for target in adjacency[start] if target in members and target != start
     )
-    parents: dict[str, str | None] = {first: None}
-    pending = deque([first])
-    while pending:
-        node = pending.popleft()
-        if _cycle_neighbors(node, adjacency[node], members, start, parents, pending):
-            return _path_to_start(start, parents)
+    search = _CycleSearch(adjacency, members, start, {first: None}, deque([first]))
+    while search.pending:
+        node = search.pending.popleft()
+        if search.visit_neighbors(node):
+            return _path_to_start(start, search.parents)
     raise ValueError("Strongly connected component has no return path")
 
 

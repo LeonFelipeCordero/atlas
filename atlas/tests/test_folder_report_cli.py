@@ -31,7 +31,7 @@ def test_folder_report_creates_and_updates_saved_project(
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output
     report = json.loads(first.output)
-    assert report["findings"][0]["type"] == "circular_dependency"
+    assert report["summary"]["circularImportGroups"] == 1
     with repository_service(database) as service:
         projects = service.list()
         assert len(projects) == 1
@@ -43,7 +43,7 @@ def test_folder_report_creates_and_updates_saved_project(
     (source / "b.py").write_text("value = 1\n")
     updated = runner.invoke(main, args)
     assert updated.exit_code == 0, updated.output
-    assert json.loads(updated.output) == {"findings": []}
+    assert json.loads(updated.output)["summary"]["circularImportGroups"] == 0
     with repository_service(database) as service:
         assert [saved.id for saved in service.list()] == [project.id]
         assert service.get_architecture(project.id) != original
@@ -69,7 +69,7 @@ def test_relative_folder_uses_user_database_not_source(
     before = sorted(source.iterdir())
     result = CliRunner().invoke(main, ["report", "--f", "./"])
     assert result.exit_code == 0, result.output
-    assert "Circular dependency" in result.output
+    assert "## Circular imports" in result.output
     assert (tmp_path / "user-data/atlas/atlas.sqlite").exists()
     assert sorted(source.iterdir()) == before
 
@@ -121,7 +121,7 @@ def test_skip_save_never_accesses_database(
         "report", "-f", str(source), "--skip-save", "--format", "json",
     ])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["findings"]
+    assert json.loads(result.output)["circularImports"]
     assert not database.parent.exists()
 
 
@@ -138,7 +138,8 @@ def test_skip_save_preserves_existing_graph(source: Path, tmp_path: Path) -> Non
     (source / "b.py").write_text("value = 1\n")
     fresh = runner.invoke(main, [*args, "--skip-save"])
     assert fresh.exit_code == 0, fresh.output
-    assert fresh.output == "No findings.\n"
+    assert "circularImportGroups: 0" in fresh.output
+    assert "## Circular imports" not in fresh.output
     with repository_service(database) as service:
         assert service.get_architecture(project.id) == original
 

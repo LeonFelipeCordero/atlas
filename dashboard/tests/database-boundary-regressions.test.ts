@@ -24,16 +24,11 @@ function fixtureProgram(fixtures: Record<string, string>) {
   )
   const host = ts.createCompilerHost(options)
   const original = host.getSourceFile.bind(host)
-  host.getSourceFile = (
-    name,
-    languageVersion,
-    onError,
-    shouldCreateNewSourceFile,
-  ) => {
-    const text = files.get(name)
+  host.getSourceFile = (...args: Parameters<typeof original>) => {
+    const text = files.get(args[0])
     return text === undefined
-      ? original(name, languageVersion, onError, shouldCreateNewSourceFile)
-      : ts.createSourceFile(name, text, ts.ScriptTarget.Latest, true)
+      ? original(...args)
+      : ts.createSourceFile(args[0], text, ts.ScriptTarget.Latest, true)
   }
   const originalExists = host.fileExists.bind(host)
   const originalRead = host.readFile.bind(host)
@@ -125,7 +120,7 @@ test('typed port receivers, aliases and constructor fields are guarded regardles
 })
 
 const structuralPort = `type Port = {
-  register(id: string, name: string, location: string, at: number): unknown
+  register(input: { id: string; name: string; location: string; at: number }): unknown
   list(): unknown[]
   view(id: string, scope: unknown): unknown
   close(): void

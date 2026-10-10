@@ -41,23 +41,126 @@ test('dependency counts deduplicate peers and diamond reachability while countin
   expect(metrics.get('d')).toEqual({
     fanIn: 3,
     fanOut: 1,
+    instability: 0.25,
     transitiveChangeImpact: 4,
   })
   expect(metrics.get('e')).toEqual({
     fanIn: 1,
     fanOut: 1,
+    instability: 0.5,
     transitiveChangeImpact: 4,
   })
   expect(metrics.get('a')).toEqual({
     fanIn: 0,
     fanOut: 2,
+    instability: 1,
     transitiveChangeImpact: 0,
   })
   expect(metrics.get('isolated')).toEqual({
     fanIn: 0,
     fanOut: 0,
+    instability: null,
     transitiveChangeImpact: 0,
   })
+})
+
+function hierarchyFixture(): Array<ArtifactNode> {
+  const nodes: Array<ArtifactNode> = []
+  const add = (key: string, level: string, parent: string | null) => {
+    const owner = nodes.find((entry) => entry.stableKey === parent)
+    nodes.push({
+      ...node(key),
+      type: level,
+      kind: level,
+      level,
+      parentStableKey: parent,
+      ancestorStableKeys: owner
+        ? [...owner.ancestorStableKeys, owner.stableKey]
+        : [],
+      depth: owner ? owner.depth + 1 : 0,
+    })
+  }
+  add('repo', 'repository', null)
+  for (const [module, file, type, callable] of [
+    ['app', 'a.ts', 'A', 'run'],
+    ['lib', 'b.ts', 'B', 'work'],
+    ['tests', 'tests/test.ts', 'Test', 'check'],
+  ]) {
+    add(module, 'module', 'repo')
+    add(file, 'file', module)
+    add(type, 'type', file)
+    add(callable, 'callable', type)
+  }
+  add('helper', 'callable', 'A')
+  add('isolated.ts', 'file', 'app')
+  add('Quiet', 'type', 'isolated.ts')
+  add('quiet', 'callable', 'Quiet')
+  add('external', 'external', 'repo')
+  add('external-module', 'module', 'external')
+  add('external-file', 'file', 'external-module')
+  add('External', 'type', 'external-file')
+  add('external-run', 'callable', 'External')
+  return nodes
+}
+
+test('instability uses distinct internal peers at each level, including hidden tests and type-only relations', () => {
+  const nodes = hierarchyFixture()
+  const snapshot = structuredClone(nodes)
+  const edges: Array<DirectEdge> = [
+    edge('run', 'work'),
+    edge('run', 'work'),
+    { ...edge('run', 'work'), confidence: 'INFERRED' },
+    edge('helper', 'work'),
+    { ...edge('check', 'run'), typeOnly: true },
+    edge('helper', 'run'),
+    edge('run', 'run'),
+    edge('quiet', 'quiet'),
+    edge('run', 'external'),
+    edge('run', 'external-run'),
+    edge('external-run', 'run'),
+    edge('run', 'missing'),
+  ]
+  const metrics = dependencyMetrics(nodes, edges)
+  for (const key of ['app', 'a.ts', 'A'])
+    expect(metrics.get(key)).toEqual({
+      fanIn: 1,
+      fanOut: 1,
+      instability: 0.5,
+      transitiveChangeImpact: 1,
+    })
+  for (const key of ['lib', 'b.ts', 'B'])
+    expect(metrics.get(key)).toEqual({
+      fanIn: 1,
+      fanOut: 0,
+      instability: 0,
+      transitiveChangeImpact: 2,
+    })
+  expect(metrics.get('run')).toEqual({
+    fanIn: 2,
+    fanOut: 1,
+    instability: 1 / 3,
+    transitiveChangeImpact: 2,
+  })
+  expect(metrics.get('work')).toEqual({
+    fanIn: 2,
+    fanOut: 0,
+    instability: 0,
+    transitiveChangeImpact: 3,
+  })
+  for (const key of ['tests', 'tests/test.ts', 'Test', 'check', 'helper'])
+    expect(metrics.get(key)?.instability).toBe(1)
+  for (const key of ['isolated.ts', 'Quiet', 'quiet'])
+    expect(metrics.get(key)?.instability).toBeNull()
+  for (const key of [
+    'repo',
+    'external',
+    'external-module',
+    'external-file',
+    'External',
+    'external-run',
+  ])
+    expect(metrics.has(key)).toBe(false)
+  expect(nodes).toEqual(snapshot)
 })
 
 test('SCC traversal is iterative for deep graphs', () => {

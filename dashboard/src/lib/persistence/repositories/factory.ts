@@ -9,8 +9,7 @@ export function createRepositoryContext(path?: string): RepositoryPort {
   const repositories = new RepositoryStore(connection.database)
   const graphs = new GraphStore(connection.database)
   return {
-    register: (id, name, location, createdAt) =>
-      repositories.register(id, name, location, createdAt),
+    register: (input) => repositories.register(input),
     list: () => repositories.list(),
     view: (id, scope) => graphs.view(id, scope),
     close: () => connection.close(),

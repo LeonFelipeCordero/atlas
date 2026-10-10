@@ -15,7 +15,7 @@ def owned_references(references, symbols, name):
     ]
 
 
-def assert_component_references(test, repo, symbols, edges):
+def assert_component_references(test, symbols, edges):
     references = reference_edges(edges)
     owned = owned_references(references, symbols, "App")
     test.assertEqual(len(owned), 2)
@@ -28,10 +28,10 @@ def assert_component_references(test, repo, symbols, edges):
     preview = owned_references(references, symbols, "Preview")
     test.assertEqual(len(preview), 1)
     test.assertTrue(preview[0].target_key.startswith("external:"))
-    assert_normal_calls(test, repo, symbols, edges)
+    assert_normal_calls(test, symbols, edges)
 
 
-def assert_normal_calls(test, repo, symbols, edges):
+def assert_normal_calls(test, symbols, edges):
     label_calls = [
         edge
         for edge in edges
@@ -41,7 +41,6 @@ def assert_normal_calls(test, repo, symbols, edges):
     test.assertTrue(
         all(symbols[edge.target_key].name == "label" for edge in label_calls)
     )
-    test.assertFalse(any(call.name in {"main", "article"} for call in repo.calls))
 
 
 def assert_file_call_coordinates(test, file):

@@ -1,14 +1,22 @@
 import tempfile
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 
 from atlas.indexer import analyze_repository
 
 
+@dataclass(frozen=True)
+class NamespaceCase:
+    extension: str
+    definition: str
+    usage: str
+    folder: bool = False
+
+
 class ImportResolutionTest(unittest.TestCase):
-    def check_namespace(
-        self, extension: str, definition: str, usage: str, folder: bool = False
-    ) -> None:
+    def check_namespace(self, case: NamespaceCase) -> None:
+        extension, definition, usage, folder = case.extension, case.definition, case.usage, case.folder
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             target = root / (
@@ -65,7 +73,7 @@ class ImportResolutionTest(unittest.TestCase):
         ]
         for case in cases:
             with self.subTest(extension=case[0], usage=case[2]):
-                self.check_namespace(*case)
+                self.check_namespace(NamespaceCase(*case))
 
     def test_package_import_with_multiple_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

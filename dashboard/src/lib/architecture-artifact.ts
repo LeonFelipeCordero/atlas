@@ -10,6 +10,7 @@ export type NodeSizeMetrics = { lineCount?: number; parameterCount?: number }
 export type NodeDependencyMetrics = {
   fanIn?: number
   fanOut?: number
+  instability?: number | null
   transitiveChangeImpact?: number
 }
 export type ArtifactNode = {

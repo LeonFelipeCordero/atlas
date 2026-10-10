@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 
 from atlas.parsing.discovery import discover_files
@@ -41,6 +42,13 @@ SAMPLES = {
 }
 
 
+@dataclass(frozen=True)
+class CollisionSource:
+    extension: str
+    declaration: str
+    usage: str
+
+
 class CallResolutionTest(unittest.TestCase):
     def test_member_collisions_never_use_local_or_global_name_fallback(self) -> None:
         for extension, (declaration, usage) in SAMPLES.items():
@@ -49,11 +57,10 @@ class CallResolutionTest(unittest.TestCase):
     def check_collision_locations(self, extension, declaration, usage) -> None:
         for local in (False, True):
             with self.subTest(extension=extension, local=local):
-                self.check_collision(extension, declaration, usage, local)
+                self.check_collision(CollisionSource(extension, declaration, usage), local)
 
-    def check_collision(
-        self, extension: str, declaration: str, usage: str, local: bool
-    ) -> None:
+    def check_collision(self, source: CollisionSource, local: bool) -> None:
+        extension, declaration, usage = source.extension, source.declaration, source.usage
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             # Go requires just one package declaration in a combined source file.

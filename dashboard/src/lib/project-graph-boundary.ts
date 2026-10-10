@@ -68,14 +68,22 @@ function isBoundaryEdge(edge: DirectEdge, local: Map<string, string>) {
   )
 }
 
+type BoundaryProjection = {
+  artifact: GraphStructure
+  scope: GraphScope
+  local: Map<string, string>
+  nodes: Array<GraphNode>
+  render: (node: ArtifactNode) => GraphNode
+}
+
 /** Only original local sources can introduce boundary targets. */
-export function addBoundaryDependencies(
-  artifact: GraphStructure,
-  scope: GraphScope,
-  local: Map<string, string>,
-  nodes: Array<GraphNode>,
-  render: (node: ArtifactNode) => GraphNode,
-): Map<string, string> {
+export function addBoundaryDependencies({
+  artifact,
+  scope,
+  local,
+  nodes,
+  render,
+}: BoundaryProjection): Map<string, string> {
   const targets = new Map(local)
   const byKey = new Map(artifact.nodes.map((node) => [node.stableKey, node]))
   const visible = new Set(nodes.map((node) => node.id))

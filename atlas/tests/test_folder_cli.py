@@ -1,6 +1,8 @@
 """Index and report use the current directory unless a folder is supplied."""
 
 import json
+from dataclasses import dataclass
+from itertools import product
 from pathlib import Path
 
 import pytest
@@ -10,11 +12,20 @@ from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 
 
-@pytest.mark.parametrize("command", ["index", "report"])
-@pytest.mark.parametrize("flag", [None, "-f", "--f", "--folder"])
+@dataclass(frozen=True)
+class FolderCase:
+    command: str
+    flag: str | None
+
+
+@pytest.mark.parametrize("case", [
+    FolderCase(command, flag)
+    for command, flag in product(("index", "report"), (None, "-f", "--f", "--folder"))
+])
 def test_folder_default_and_aliases(
-    command: str, flag: str | None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    case: FolderCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    command, flag = case.command, case.flag
     source = tmp_path / "source"
     source.mkdir()
     (source / "a.py").write_text("import b\n")
@@ -46,7 +57,7 @@ def test_folder_default_and_aliases(
             assert output["repositoryId"] == project.id
             assert output["stats"] == saved.stats.model_dump()
         else:
-            assert output["findings"][0]["type"] == "circular_dependency"
+            assert output["summary"]["circularImportGroups"] == 1
     assert sorted(path.name for path in source.iterdir()) == ["a.py", "b.py"]
 
 
@@ -58,5 +69,5 @@ def test_report_default_cwd_skip_save(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setenv("DATABASE_PATH", str(database))
     result = CliRunner().invoke(main, ["report", "--skip-save", "--format", "json"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["findings"][0]["type"] == "circular_dependency"
+    assert json.loads(result.output)["summary"]["circularImportGroups"] == 1
     assert not database.parent.exists()

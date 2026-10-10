@@ -54,8 +54,8 @@ def _change_impact(adjacency: dict[str, list[str]]) -> dict[str, int]:
     return impact
 
 
-def dependency_metrics(view: GraphView) -> dict[str, dict[str, int]]:
-    """Count peers in a DEPENDS_ON projection, including isolated nodes.
+def dependency_metrics(view: GraphView) -> dict[str, dict[str, int | float | None]]:
+    """Count peers and instability in a DEPENDS_ON projection, including isolated nodes.
 
     Edges point from dependent to dependency. All relationship kinds (including
     type-only imports) are already aggregated by the artifact's internal view.
@@ -71,6 +71,10 @@ def dependency_metrics(view: GraphView) -> dict[str, dict[str, int]]:
             "fanIn": fan_in[key],
             "fanOut": len(targets),
             "transitiveChangeImpact": impact[key],
+            "instability": (
+                len(targets) / (fan_in[key] + len(targets))
+                if targets or fan_in[key] else None
+            ),
         }
         for key, targets in adjacency.items()
     }

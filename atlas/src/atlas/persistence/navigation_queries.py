@@ -1,5 +1,7 @@
 """Mapped ORM projections for navigation; transport records contain no ORM objects."""
 
+from dataclasses import dataclass
+
 from sqlalchemy import Select, select
 
 from .models import GraphEdgeRow, GraphNodeMetricRow, GraphNodeRow, GraphSymbolRow
@@ -29,10 +31,19 @@ def metrics(repository_id: str, key: str) -> Select:
     ).where(metric.repository_id == repository_id, metric.node_key == key)
 
 
-def adjacency(repository_id: str, key: str, outgoing: bool, relation: str, limit: int) -> Select:
+@dataclass(frozen=True)
+class AdjacencyRequest:
+    repository_id: str
+    key: str
+    outgoing: bool
+    relation: str
+    limit: int
+
+
+def adjacency(request: AdjacencyRequest) -> Select:
     edge = GraphEdgeRow
-    endpoint = edge.source_key if outgoing else edge.target_key
-    index = "graph_edges_source" if outgoing else "graph_edges_target"
+    endpoint = edge.source_key if request.outgoing else edge.target_key
+    index = "graph_edges_source" if request.outgoing else "graph_edges_target"
     # Each endpoint/relation equality uses the first three index columns. LIMIT
     # streams ordinal order without scanning/sorting unrelated or high-degree edges.
     return select(
@@ -40,5 +51,5 @@ def adjacency(repository_id: str, key: str, outgoing: bool, relation: str, limit
         edge.relationship.label("type"), edge.confidence, edge.path, edge.evidence,
         edge.line, edge.type_only.label("typeOnly"),
     ).with_hint(edge, index, dialect_name="sqlite").where(
-        edge.repository_id == repository_id, endpoint == key, edge.relationship == relation,
-    ).order_by(edge.ordinal).limit(limit)
+        edge.repository_id == request.repository_id, endpoint == request.key, edge.relationship == request.relation,
+    ).order_by(edge.ordinal).limit(request.limit)

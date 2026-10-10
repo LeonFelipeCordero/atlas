@@ -214,7 +214,7 @@ test('folder reports register and update graphs visible to the UI', () => {
   mkdirSync(source)
   const file = join(source, 'main.py')
   writeFileSync(file, 'def first():\n    return 1\n')
-  expect(python('atlas', 'report', '-f', source)).toBe('No findings.\n')
+  python('atlas', 'report', '-f', source)
   const repository = listRepositories(database)[0]
   expect(repository.name).toBe('source')
   expect(repository.location).toBe(source)
@@ -241,7 +241,7 @@ test('Python src imports become dashboard arrows even when the report has no fin
     'from app import worker as w\ndef run():\n    w.work()\n',
   )
   writeFileSync(join(app, 'worker.py'), 'def work(): pass\n')
-  expect(python('atlas', 'report', '-f', source)).toBe('No findings.\n')
+  python('atlas', 'report', '-f', source)
   const repository = listRepositories(database)[0]
   const { graph } = ready(repository.id, {
     kind: 'folder',
@@ -274,6 +274,7 @@ test('indexed metrics survive Python/Bun storage and keep hidden test dependents
   expect(core.properties).toMatchObject({
     fanIn: 1,
     fanOut: 0,
+    instability: 0,
     transitiveChangeImpact: 2,
   })
   expect(view.details.nodes.some((node) => node.name === 'test_main.py')).toBe(

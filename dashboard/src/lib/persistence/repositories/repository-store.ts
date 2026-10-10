@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm'
 import { repositories, repositoryGraphs } from './schema'
 import type { AppDatabase } from './connection'
+import type { Repository } from '../../api'
 
 /** Shared-file access only; schema and graph writes belong to Python. */
 export class RepositoryStore {
   constructor(private readonly database: AppDatabase) {}
 
-  register(id: string, name: string, location: string, createdAt: number) {
+  register({ id, name, location, createdAt }: Omit<Repository, 'importedAt'>) {
     const row = this.database
       .insert(repositories)
       .values({ id, name, location, createdAt })

@@ -21,6 +21,36 @@ class GraphSnapshot:
         return {"repositoryId": self.repository_id, "graphRevision": self.revision, "indexedAt": self.indexed_at}
 
 
+@dataclass(frozen=True)
+class EdgeRequest:
+    key: str
+    direction: str
+    relations: list[str]
+    limit: int
+
+
+@dataclass(frozen=True)
+class TraversalRequest:
+    key: str
+    direction: str
+    relations: list[str]
+    depth: int
+    max_nodes: int
+    max_edges: int
+
+
+@dataclass(frozen=True)
+class PathRequest:
+    target: str
+    traversal: TraversalRequest
+
+
+@dataclass(frozen=True)
+class SourceOptions:
+    max_lines: int
+    start_line: int | None
+
+
 class NavigationReader(Protocol):
     snapshot: GraphSnapshot
 
@@ -28,6 +58,6 @@ class NavigationReader(Protocol):
     def find(self, query: str, limit: int) -> list[Record]: ...
     def node(self, key: str) -> Record: ...
     def children(self, key: str, limit: int, offset: int) -> list[Record]: ...
-    def edges(self, key: str, direction: str, relations: list[str], limit: int) -> list[Record]: ...
+    def edges(self, request: EdgeRequest) -> list[Record]: ...
     def diagnostics(self, paths: list[str], limit: int) -> list[Record]: ...
     def file(self, path: str) -> list[Record]: ...

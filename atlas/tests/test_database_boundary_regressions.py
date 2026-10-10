@@ -3,6 +3,7 @@
 import pytest
 
 from tests.database_boundary_policy import INFRASTRUCTURE, REVISIONS
+from tests.database_boundary_syntax import CHECK_LIMIT_LOOKUP
 from tests.test_database_boundaries import violations
 
 
@@ -35,11 +36,12 @@ def test_raw_expression_alternatives_are_not_mapped_queries(source: str) -> None
     "self.other = repository\nreturn self.other",
 ])
 @pytest.mark.parametrize("annotation", ["Port", "'Port'"])
-@pytest.mark.parametrize("protocol, slot", [
+@pytest.mark.parametrize("dependency", [
     ("atlas.domain.repositories.RepositoryProtocol", "_repository"),
     ("atlas.domain.navigation.NavigationReader", "_reader"),
 ])
-def test_annotated_constructor_parameters_cannot_escape(body: str, annotation: str, protocol: str, slot: str) -> None:
+def test_annotated_constructor_parameters_cannot_escape(body: str, annotation: str, dependency: tuple[str, str]) -> None:
+    protocol, slot = dependency
     module, name = protocol.rsplit(".", 1)
     source = f"""from {module} import {name} as Port
 class Service:
@@ -117,6 +119,31 @@ def test_infrastructure_is_never_a_domain_orm_repository(module: str, source: st
 ])
 def test_revision_filename_is_not_a_data_or_text_query_exemption(module: str, source: str) -> None:
     assert violations(module, source)
+
+
+def test_exact_public_check_config_lookup_is_allowed() -> None:
+    source = "from .config import CheckConfig\n" + CHECK_LIMIT_LOOKUP
+    assert not violations("atlas.metrics.check", source)
+    assert violations("atlas.metrics.other", source)
+
+
+@pytest.mark.parametrize("change", [
+    ("getattr(config, rule)", "getattr(config, '_reader')"),
+    ("getattr(config, rule)", "getattr(config, '_session')"),
+    ("getattr(config, rule)", "getattr(service, rule)"),
+    ("maxFileLines", "_repository"),
+    ("config: CheckConfig", "config: NavigationReader"),
+    ("getattr(config, rule)", "getattr(config, computed_name)"),
+])
+def test_public_config_exception_cannot_extract_private_handles(change: tuple[str, str]) -> None:
+    source = "from .config import CheckConfig\n" + CHECK_LIMIT_LOOKUP.replace(*change)
+    assert violations("atlas.metrics.check", source)
+
+
+def test_public_config_exception_does_not_allow_other_reflection() -> None:
+    source = "from .config import CheckConfig\n" + CHECK_LIMIT_LOOKUP
+    assert violations("atlas.metrics.check", source + "\ngetattr(service, '_repository')")
+    assert violations("atlas.metrics.check", source + "\nRULES = private_rules")
 
 
 def test_schema_ddl_and_existing_index_collation_remain_allowed() -> None:

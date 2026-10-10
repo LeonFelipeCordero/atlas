@@ -4,7 +4,9 @@ import unittest
 
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_parser, process
 
+from atlas.parsing.discovery import SourceFile
 from atlas.parsing.structure import extract_structure
+from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_fixture import coffee_sources
 from tests.coffee_scenarios import DECLARATIONS
 from tests.test_declaration_callbacks import flatten
@@ -36,28 +38,26 @@ class CoffeeDeclarationTests(unittest.TestCase):
             native = process(
                 source.decode(), ProcessConfig(language=language)
             ).structure
-            self.assert_inventory(source, language, file.path, inventory, native)
+            self.assert_inventory(file, inventory, native)
 
     def assert_inventory(
         self,
-        source: bytes,
-        language: str,
-        filename: str,
+        file: SourceFile,
         inventory: str,
         native: list[StructureItem],
     ) -> None:
         for existing in ([], native):
             with self.subTest(
-                language=language, filename=filename, native=bool(existing)
+                language=file.language, filename=file.path, native=bool(existing)
             ):
-                self.assert_inventory_variant(source, language, inventory, existing)
+                self.assert_inventory_variant(file, inventory, existing)
 
-    def assert_inventory_variant(self, source, language, inventory, existing):
-        items = extract_structure(source, language, existing)
+    def assert_inventory_variant(self, file, inventory, existing):
+        items = extract_structure(ParsedSyntax(file), existing)
         self.assertEqual(
             [name for name, _ in qualified_items(items)], inventory.split()
         )
-        self.assert_ast_spans(source, language, items)
+        self.assert_ast_spans(file.source, file.language, items)
 
     def assert_ast_spans(
         self, source: bytes, language: str, items: list[StructureItem]
@@ -102,7 +102,7 @@ class CoffeeDeclarationTests(unittest.TestCase):
             native = process(
                 source.decode(), ProcessConfig(language=language)
             ).structure
-            entries.extend(qualified_items(extract_structure(source, language, native)))
+            entries.extend(qualified_items(extract_structure(ParsedSyntax(file), native)))
         self.assert_corrections(language, dict(entries))
 
     def assert_corrections(

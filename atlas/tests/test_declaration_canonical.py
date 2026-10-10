@@ -7,12 +7,12 @@ from unittest.mock import patch
 from tree_sitter_language_pack import ProcessConfig, StructureItem, process
 
 from atlas.parsing.structure import _declaration_query, extract_structure
+from tests.parsing_fixture import parsing_syntax
 
 
 def merged(source: str, language: str) -> list[StructureItem]:
     return extract_structure(
-        source.encode(),
-        language,
+        parsing_syntax(source, language),
         process(source, ProcessConfig(language=language)).structure,
     )
 
@@ -29,7 +29,7 @@ class CanonicalDeclarationTests(unittest.TestCase):
             native[0], doc_comment="native docs", decorators=["native annotation"]
         )
         original = repr(native)
-        items = extract_structure(source.encode(), "kotlin", native)
+        items = extract_structure(parsing_syntax(source, "kotlin"), native)
         self.assertEqual(names(items), ["élève", "élève", "Owner"])
         self.assertEqual(names(items[0].children), ["helper"])
         self.assertEqual(names(items[2].children), ["élève"])
@@ -101,7 +101,7 @@ class CanonicalDeclarationTests(unittest.TestCase):
         source = "@register('café')\nclass Owner:\n @staticmethod\n @annotate(level=1)\n def run():\n  def inner(): pass\n"
         for items in (
             merged(source, "python"),
-            extract_structure(source.encode(), "python"),
+            extract_structure(parsing_syntax(source, "python")),
         ):
             self.assertEqual(items[0].decorators, ["@register('café')"])
             run = items[0].children[0]
@@ -118,7 +118,7 @@ class CanonicalDeclarationTests(unittest.TestCase):
             span=replace(native.span, start_byte=0, start_line=0, start_column=0),
             doc_comment="class docs",
         )
-        items = extract_structure(source.encode(), "python", [wrapper])
+        items = extract_structure(parsing_syntax(source, "python"), [wrapper])
         self.assertEqual(names(items), ["Owner"])
         self.assertEqual(items[0].span, native.span)
         self.assertEqual(items[0].decorators, ["@register"])
@@ -132,8 +132,8 @@ class CanonicalDeclarationTests(unittest.TestCase):
             with patch(
                 "atlas.parsing.structure.get_tags_query", return_value=None
             ):
-                self.assertIs(extract_structure(b"", "csharp", native), native)
-                self.assertEqual(extract_structure(b"", "csharp"), [])
+                self.assertIs(extract_structure(parsing_syntax(b"", "csharp"), native), native)
+                self.assertEqual(extract_structure(parsing_syntax(b"", "csharp")), [])
         finally:
             _declaration_query.cache_clear()
         items = merged("module Demo\n class Owner\n  def run\n  end\n end\nend", "ruby")

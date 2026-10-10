@@ -93,12 +93,19 @@ function tree(rows: Array<[string, string, string | null]>): Artifact {
 const relation = (graph: ProjectGraph, source: string, target: string) =>
   graph.edges.find((edge) => edge.source === source && edge.target === target)
 
-function expectRelations(
-  graph: ProjectGraph,
-  source: string,
-  target: string,
-  relationships: Record<string, number>,
-) {
+type ExpectedRelation = {
+  graph: ProjectGraph
+  source: string
+  target: string
+  relationships: Record<string, number>
+}
+
+function expectRelations({
+  graph,
+  source,
+  target,
+  relationships,
+}: ExpectedRelation) {
   expect(relation(graph, source, target)).toEqual({
     id: JSON.stringify([source, target]),
     source,
@@ -123,10 +130,30 @@ describe('adaptive graph scopes', () => {
       kind: 'file',
       key: 'root-file',
     })
-    expectRelations(graph, 'app', 'lib', { CALLS: 2, IMPORTS: 1 })
-    expectRelations(graph, 'lib', 'app', { CALLS: 1 })
-    expectRelations(graph, 'app', 'root-file', { CALLS: 1 })
-    expectRelations(graph, 'root-file', 'app', { CALLS: 1 })
+    expectRelations({
+      graph,
+      source: 'app',
+      target: 'lib',
+      relationships: { CALLS: 2, IMPORTS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'lib',
+      target: 'app',
+      relationships: { CALLS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'app',
+      target: 'root-file',
+      relationships: { CALLS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'root-file',
+      target: 'app',
+      relationships: { CALLS: 1 },
+    })
     expect(graph.edges).toHaveLength(4)
   })
   test('immediate packages alongside module direct files', () => {
@@ -143,11 +170,29 @@ describe('adaptive graph scopes', () => {
       kind: 'file',
       key: 'direct',
     })
-    expectRelations(graph, 'pkg', 'other', { CALLS: 1, IMPORTS: 1 })
-    expectRelations(graph, 'pkg', 'direct', { CALLS: 1 })
-    expectRelations(graph, 'direct', 'pkg', { CALLS: 1 })
+    expectRelations({
+      graph,
+      source: 'pkg',
+      target: 'other',
+      relationships: { CALLS: 1, IMPORTS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'pkg',
+      target: 'direct',
+      relationships: { CALLS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'direct',
+      target: 'pkg',
+      relationships: { CALLS: 1 },
+    })
     expect(graph.edges).toHaveLength(3)
   })
+})
+
+describe('adaptive graph scopes: compacted folders and files', () => {
   test('compacts deep folder chains without flattening files', () => {
     const artifact = fixture()
     const graph = buildProjectGraph(artifact, { kind: 'folder', key: 'pkg' })
@@ -158,8 +203,18 @@ describe('adaptive graph scopes', () => {
       detail: '1 file',
       scope: { kind: 'folder', key: 'acme' },
     })
-    expectRelations(graph, 'acme', 'helper', { CALLS: 2 })
-    expectRelations(graph, 'helper', 'acme', { CALLS: 1 })
+    expectRelations({
+      graph,
+      source: 'acme',
+      target: 'helper',
+      relationships: { CALLS: 2 },
+    })
+    expectRelations({
+      graph,
+      source: 'helper',
+      target: 'acme',
+      relationships: { CALLS: 1 },
+    })
     expect(graph.edges).toHaveLength(2)
     expect(
       ids(buildProjectGraph(artifact, { kind: 'folder', key: 'acme' })),
@@ -184,10 +239,30 @@ describe('adaptive graph scopes', () => {
       detail: 'method · app/pkg/java/com/acme/Service.java:10–20',
       scope: null,
     })
-    expectRelations(graph, 'run', 'stop', { CALLS: 2, READS: 1 })
-    expectRelations(graph, 'nested', 'stop', { CALLS: 1 })
-    expectRelations(graph, 'stop', 'run', { WRITES: 1 })
-    expectRelations(graph, 'run', 'nested', { CALLS: 1 })
+    expectRelations({
+      graph,
+      source: 'run',
+      target: 'stop',
+      relationships: { CALLS: 2, READS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'nested',
+      target: 'stop',
+      relationships: { CALLS: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'stop',
+      target: 'run',
+      relationships: { WRITES: 1 },
+    })
+    expectRelations({
+      graph,
+      source: 'run',
+      target: 'nested',
+      relationships: { CALLS: 1 },
+    })
     expect(graph.edges).toHaveLength(4)
   })
 })
@@ -309,7 +384,7 @@ for (const [name, createArtifact] of Object.entries(artifactFixtures)) {
       levels.add(scope.kind)
       expectDirectProjection(artifact, graph, scope)
       expect(new Set(ids(graph)).size).toBe(graph.nodes.length)
-      recordReachableNodes(graph, seenFiles, seenFunctions, pending)
+      recordReachableNodes({ graph, seenFiles, seenFunctions, pending })
     }
     expect([...levels].sort()).toEqual(['file', 'folder', 'repository'])
     expect(seenFiles.size).toBe(expected.files)
@@ -377,8 +452,18 @@ test('root chains compact, preserve wrapper relations and disconnected folders',
   expect(graph.nodes.find((node) => node.id === 'isolated')?.detail).toBe(
     '0 files',
   )
-  expectRelations(graph, 'src/main/java', 'target', { IMPORTS: 4 })
-  expectRelations(graph, 'target', 'src/main/java', { USES: 1 })
+  expectRelations({
+    graph,
+    source: 'src/main/java',
+    target: 'target',
+    relationships: { IMPORTS: 4 },
+  })
+  expectRelations({
+    graph,
+    source: 'target',
+    target: 'src/main/java',
+    relationships: { USES: 1 },
+  })
   expectDirectProjection(artifact, graph)
   expect(artifact).toEqual(before)
 })

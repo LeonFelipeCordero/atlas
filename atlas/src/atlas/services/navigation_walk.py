@@ -3,15 +3,7 @@
 from collections import deque
 from dataclasses import dataclass, field
 
-from atlas.domain.navigation import NavigationReader, Record
-
-
-@dataclass(frozen=True)
-class Expansion:
-    direction: str
-    relations: list[str]
-    max_nodes: int
-    max_edges: int
+from atlas.domain.navigation import EdgeRequest, NavigationReader, Record, TraversalRequest
 
 
 @dataclass
@@ -31,46 +23,53 @@ class Walk:
         }
 
 
-def traverse(reader: NavigationReader, key: str, direction: str, relations: list[str], depth: int, max_nodes: int, max_edges: int) -> Walk:
-    walk = Walk(nodes={key: reader.node(key)})
-    options = Expansion(direction, relations, max_nodes, max_edges)
-    frontier = deque([(key, 0)])
-    while frontier:
-        current, distance = frontier.popleft()
-        if walk.nodes[current]["external"]:
-            walk.external.add(current)
-            continue
-        if distance >= depth:
-            walk.cutoffs[current] = "depth"
-            continue
-        expand(reader, walk, frontier, current, distance, options)
-    return walk
+class Traversal:
+    def __init__(self, reader: NavigationReader, request: TraversalRequest) -> None:
+        self._reader = reader
+        self.request = request
+        self.walk = Walk(nodes={request.key: reader.node(request.key)})
+        self.frontier = deque([(request.key, 0)])
+
+    def run(self) -> Walk:
+        while self.frontier:
+            current, distance = self.frontier.popleft()
+            if self.walk.nodes[current]["external"]:
+                self.walk.external.add(current)
+                continue
+            if distance >= self.request.depth:
+                self.walk.cutoffs[current] = "depth"
+                continue
+            self.expand(current, distance)
+        return self.walk
+
+    def expand(self, key: str, distance: int) -> None:
+        remaining = self.request.max_edges - len(self.walk.edges)
+        rows = self._reader.edges(EdgeRequest(key, self.request.direction, self.request.relations, remaining + 1))
+        for edge in rows:
+            if edge["ordinal"] in self.walk.edges:
+                continue
+            if len(self.walk.edges) >= self.request.max_edges:
+                self.walk.cutoffs[key] = "maxEdges"
+                break
+            self.add_edge((key, distance), edge)
+        if len(rows) > remaining:
+            self.walk.cutoffs.setdefault(key, "edgeFetchLimit")
+
+    def add_edge(self, position: tuple[str, int], edge: Record) -> None:
+        key, distance = position
+        neighbor = edge["targetStableKey"] if edge["sourceStableKey"] == key else edge["sourceStableKey"]
+        if neighbor not in self.walk.nodes:
+            if len(self.walk.nodes) >= self.request.max_nodes:
+                self.walk.cutoffs[key] = "maxNodes"
+                return
+            self.walk.nodes[neighbor] = self._reader.node(neighbor)
+            self.walk.parents[neighbor] = (key, edge["ordinal"])
+            self.frontier.append((neighbor, distance + 1))
+        self.walk.edges[edge["ordinal"]] = edge
 
 
-def expand(reader: NavigationReader, walk: Walk, frontier: deque[tuple[str, int]], key: str, distance: int, options: Expansion) -> None:
-    remaining = options.max_edges - len(walk.edges)
-    rows = reader.edges(key, options.direction, options.relations, remaining + 1)
-    for edge in rows:
-        if edge["ordinal"] in walk.edges:
-            continue
-        if len(walk.edges) >= options.max_edges:
-            walk.cutoffs[key] = "maxEdges"
-            break
-        add_edge(reader, walk, frontier, key, distance, edge, options.max_nodes)
-    if len(rows) > remaining:
-        walk.cutoffs.setdefault(key, "edgeFetchLimit")
-
-
-def add_edge(reader: NavigationReader, walk: Walk, frontier: deque[tuple[str, int]], key: str, distance: int, edge: Record, max_nodes: int) -> None:
-    neighbor = edge["targetStableKey"] if edge["sourceStableKey"] == key else edge["sourceStableKey"]
-    if neighbor not in walk.nodes:
-        if len(walk.nodes) >= max_nodes:
-            walk.cutoffs[key] = "maxNodes"
-            return
-        walk.nodes[neighbor] = reader.node(neighbor)
-        walk.parents[neighbor] = (key, edge["ordinal"])
-        frontier.append((neighbor, distance + 1))
-    walk.edges[edge["ordinal"]] = edge
+def traverse(reader: NavigationReader, request: TraversalRequest) -> Walk:
+    return Traversal(reader, request).run()
 
 
 def route(walk: Walk, start: str, target: str) -> Record:

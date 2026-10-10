@@ -299,11 +299,12 @@ def test_service_constructor_must_use_domain_protocol(annotation: str) -> None:
     assert violations("atlas.services.repositories", source)
 
 
-@pytest.mark.parametrize("protocol, port, argument, method", [
+@pytest.mark.parametrize("dependency", [
     ("atlas.domain.repositories.RepositoryProtocol", "_repository", "repository", "list"),
     ("atlas.domain.navigation.NavigationReader", "_reader", "reader", "overview"),
 ])
-def test_service_private_domain_protocol_composition_is_allowed(protocol: str, port: str, argument: str, method: str) -> None:
+def test_service_private_domain_protocol_composition_is_allowed(dependency: tuple[str, str, str, str]) -> None:
+    protocol, port, argument, method = dependency
     module, name = protocol.rsplit(".", 1)
     source = f"""from {module} import {name} as Port
 class Service:
@@ -376,7 +377,11 @@ def test_policy_helpers_fit_architecture_limits() -> None:
     for path in (ROOT.parents[1] / "tests").glob("*database_boundar*.py"):
         source = path.read_text(encoding="utf-8")
         assert len(source.splitlines()) <= 600, path
-        for node in ast.walk(ast.parse(source)):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                assert (node.end_lineno or node.lineno) - node.lineno + 1 <= 100, (path, node.name)
-                assert control_depth(node) <= 3, (path, node.name)
+        assert_policy_function_limits(path, source, control_depth)
+
+
+def assert_policy_function_limits(path, source, control_depth) -> None:
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            assert (node.end_lineno or node.lineno) - node.lineno + 1 <= 100, (path, node.name)
+            assert control_depth(node) <= 3, (path, node.name)

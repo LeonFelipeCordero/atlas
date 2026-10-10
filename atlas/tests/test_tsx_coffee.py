@@ -24,7 +24,8 @@ class TsxCoffeeTest(unittest.TestCase):
         self.assertTrue(all(file.parse_error is None for file in repo.files))
         symbols = {symbol.key: symbol for symbol in repo.symbols}
         edges = resolve_connections(repo).connections
-        assert_component_references(self, repo, symbols, edges)
+        assert_component_references(self, symbols, edges)
+        self.assertFalse(any(call.name in {"main", "article"} for call in repo.calls))
 
     def test_fixture_references_and_attribute_calls_retain_source_and_owner(self):
         repo = parse_files(discover_files(FIXTURE))

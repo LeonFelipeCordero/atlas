@@ -74,14 +74,16 @@ with repository_session() as session:
     name,
   ).trim()
 }
+type FixtureNode = {
+  key: string
+  type: string
+  level: string
+  parent: string | null
+}
+
 function fixture(): Artifact {
   const nodes: Array<ArtifactNode> = []
-  const add = (
-    key: string,
-    type: string,
-    level: string,
-    parent: string | null,
-  ) => {
+  const add = ({ key, type, level, parent }: FixtureNode) => {
     const owner = nodes.find((node) => node.stableKey === parent)
     const node: ArtifactNode = {
       stableKey: key,
@@ -100,12 +102,17 @@ function fixture(): Artifact {
     nodes.push(node)
     return node
   }
-  add('repo', 'repository', 'repository', null)
-  add('a.py', 'file', 'file', 'repo')
-  add('b.py', 'file', 'file', 'repo')
-  add('test_a.py', 'file', 'file', 'repo')
-  add('C', 'class', 'type', 'a.py')
-  const run = add('run', 'method', 'callable', 'C')
+  add({ key: 'repo', type: 'repository', level: 'repository', parent: null })
+  add({ key: 'a.py', type: 'file', level: 'file', parent: 'repo' })
+  add({ key: 'b.py', type: 'file', level: 'file', parent: 'repo' })
+  add({ key: 'test_a.py', type: 'file', level: 'file', parent: 'repo' })
+  add({ key: 'C', type: 'class', level: 'type', parent: 'a.py' })
+  const run = add({
+    key: 'run',
+    type: 'method',
+    level: 'callable',
+    parent: 'C',
+  })
   run.signature = 'run(self)'
   run.startLine = 3
   run.startColumn = 0
@@ -119,8 +126,13 @@ function fixture(): Artifact {
     decorators: ['second', 'first'],
     visibility: 'public',
   }
-  add('nested', 'function', 'callable', 'run')
-  add('constructor', 'constructor', 'callable', 'C').properties = {
+  add({ key: 'nested', type: 'function', level: 'callable', parent: 'run' })
+  add({
+    key: 'constructor',
+    type: 'constructor',
+    level: 'callable',
+    parent: 'C',
+  }).properties = {
     cyclomaticComplexity: 9,
   }
   const dependency: DirectEdge = {
@@ -183,10 +195,17 @@ function expectPartialDetails(view: GraphView) {
       parameterCount: 0,
       cyclomaticComplexity: 1,
       nestedCyclomaticComplexity: 0,
+      instability: null,
       decorators: ['second', 'first'],
       visibility: 'public',
     },
   })
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'a.py')!.properties,
+  ).toMatchObject({ fanIn: 1, fanOut: 2, instability: 2 / 3 })
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'b.py')!.properties,
+  ).toMatchObject({ fanIn: 1, fanOut: 1, instability: 0.5 })
   expect(
     view.details.nodes.find((node) => node.stableKey === 'nested')!.properties,
   ).not.toHaveProperty('cyclomaticComplexity')
@@ -206,6 +225,7 @@ function expectMetrics(node: ArtifactNode, original: ArtifactNode) {
   for (const key of [
     'fanIn',
     'fanOut',
+    'instability',
     'transitiveChangeImpact',
     'lineCount',
     'parameterCount',

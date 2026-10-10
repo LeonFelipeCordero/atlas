@@ -36,7 +36,7 @@ def test_legacy_graph_needs_reindex_and_keeps_registration(tmp_path: Path) -> No
         saved = service.index("Local", tmp_path)
         assert saved.repositoryId == "legacy"
         assert service.get_architecture("legacy") == saved
-        assert service.report("Local") == {"findings": []}
+        assert service.report("Local")["summary"]["circularImportGroups"] == 0
     with sqlite3.connect(path) as connection:
         assert "artifact" not in [row[1] for row in connection.execute("PRAGMA table_info(repository_graphs)")]
 
@@ -73,8 +73,9 @@ def test_repository_multi_query_response_uses_one_revision(tmp_path: Path, query
     changed = False
 
     @event.listens_for(reader_engine, "before_cursor_execute")
-    def replace_after_header(_connection, _cursor, statement, _parameters, _context, _many):
+    def replace_after_header(*cursor_event):
         nonlocal changed
+        statement = cursor_event[2]
         if changed or "FROM graph_nodes" not in statement:
             return
         changed = True
@@ -148,7 +149,8 @@ def test_failed_drop_rolls_back_revision_and_column(tmp_path: Path, monkeypatch:
         connection.exec_driver_sql("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('legacy', 'invalid JSON', 9)")
 
     @event.listens_for(engine, "before_cursor_execute")
-    def fail_after_drop(_connection, _cursor, statement, _parameters, _context, _many):
+    def fail_after_drop(*cursor_event):
+        statement = cursor_event[2]
         if statement.startswith("UPDATE alembic_version"):
             raise RuntimeError("forced revision failure")
 

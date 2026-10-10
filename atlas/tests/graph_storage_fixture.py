@@ -1,6 +1,7 @@
 """Small ordered/unordered graph fixtures and isolated storage helpers."""
 
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,15 @@ GRAPH_TABLES = (
 )
 
 
-def _node(key: str, level: str, parent: str | None, properties: dict[str, Any]) -> dict[str, Any]:
+@dataclass(frozen=True)
+class NodeIdentity:
+    key: str
+    level: str
+    parent: str | None
+
+
+def _node(identity: NodeIdentity, properties: dict[str, Any]) -> dict[str, Any]:
+    key, level, parent = identity.key, identity.level, identity.parent
     return {
         "stableKey": key, "parentStableKey": parent, "type": level, "kind": level,
         "level": level, "language": "python", "name": key, "qualifiedName": key,
@@ -22,18 +31,18 @@ def _node(key: str, level: str, parent: str | None, properties: dict[str, Any]) 
 
 
 def graph_artifact() -> dict[str, Any]:
-    run = _node("run", "callable", "file", {
+    run = _node(NodeIdentity("run", "callable", "file"), {
         "visibility": None, "decorators": ["@trace", "@trace"],
         "lineCount": 0, "parameterCount": 0, "baseCyclomaticComplexity": 1,
         "nestedCyclomaticComplexity": 0, "loopNestedComplexity": 0,
         "cyclomaticComplexity": 1, "maxDecisionDepth": 0, "futureMetric": [None, 2],
     })
     run.update(type="function", kind="function", startLine=1, startColumn=1, endLine=3, endColumn=2, signature="def run():")
-    worker = _node("worker", "callable", "file", {"visibility": None, "decorators": []})
+    worker = _node(NodeIdentity("worker", "callable", "file"), {"visibility": None, "decorators": []})
     worker.update(type="function", kind="function", signature=None)
-    file = _node("file", "file", "repository", {"bytes": 40, "sha256": "a" * 64})
-    root = _node("repository", "repository", None, {"absolutePath": "/unavailable"})
-    external = _node("external", "external", "repository", {})
+    file = _node(NodeIdentity("file", "file", "repository"), {"bytes": 40, "sha256": "a" * 64})
+    root = _node(NodeIdentity("repository", "repository", None), {"absolutePath": "/unavailable"})
+    external = _node(NodeIdentity("external", "external", "repository"), {})
     external.update(path=None, name="")
     call = {
         "sourceStableKey": "run", "targetStableKey": "worker", "type": "CALLS",

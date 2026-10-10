@@ -1,9 +1,16 @@
 import type { ArtifactNode } from './architecture-artifact'
 
+type FixtureNode = {
+  id: string
+  kind: string
+  parent: string | null
+  path?: string
+}
+
 export function fixtureNodes(): Array<ArtifactNode> {
   const nodes: Array<ArtifactNode> = []
   const byKey = new Map<string, ArtifactNode>()
-  const add = (id: string, kind: string, parent: string | null, path = id) => {
+  const add = ({ id, kind, parent, path = id }: FixtureNode) => {
     const owner = parent === null ? undefined : byKey.get(parent)
     const level =
       (
@@ -33,36 +40,46 @@ export function fixtureNodes(): Array<ArtifactNode> {
     byKey.set(id, node)
     return node
   }
-  add('repo', 'repository', null, '.')
-  add('root', 'directory', 'repo', '.')
-  add('app', 'directory', 'root')
-  add('lib', 'directory', 'root')
-  add('pkg', 'directory', 'app')
-  add('other', 'directory', 'app')
-  add('empty', 'directory', 'app')
-  add('java', 'directory', 'pkg')
-  add('com', 'directory', 'java')
-  add('acme', 'directory', 'com')
-  add('service', 'file', 'acme', 'app/pkg/java/com/acme/Service.java')
-  add('helper', 'file', 'pkg', 'app/pkg/helper.ts')
-  add('other-file', 'file', 'other')
-  add('direct', 'file', 'app')
-  add('lib-file', 'file', 'lib')
-  add('root-file', 'file', 'root')
-  add('Service', 'class', 'service')
+  add({ id: 'repo', kind: 'repository', parent: null, path: '.' })
+  add({ id: 'root', kind: 'directory', parent: 'repo', path: '.' })
+  add({ id: 'app', kind: 'directory', parent: 'root' })
+  add({ id: 'lib', kind: 'directory', parent: 'root' })
+  add({ id: 'pkg', kind: 'directory', parent: 'app' })
+  add({ id: 'other', kind: 'directory', parent: 'app' })
+  add({ id: 'empty', kind: 'directory', parent: 'app' })
+  add({ id: 'java', kind: 'directory', parent: 'pkg' })
+  add({ id: 'com', kind: 'directory', parent: 'java' })
+  add({ id: 'acme', kind: 'directory', parent: 'com' })
+  add({
+    id: 'service',
+    kind: 'file',
+    parent: 'acme',
+    path: 'app/pkg/java/com/acme/Service.java',
+  })
+  add({ id: 'helper', kind: 'file', parent: 'pkg', path: 'app/pkg/helper.ts' })
+  add({ id: 'other-file', kind: 'file', parent: 'other' })
+  add({ id: 'direct', kind: 'file', parent: 'app' })
+  add({ id: 'lib-file', kind: 'file', parent: 'lib' })
+  add({ id: 'root-file', kind: 'file', parent: 'root' })
+  add({ id: 'Service', kind: 'class', parent: 'service' })
   Object.assign(
-    add('run', 'method', 'Service', 'app/pkg/java/com/acme/Service.java'),
+    add({
+      id: 'run',
+      kind: 'method',
+      parent: 'Service',
+      path: 'app/pkg/java/com/acme/Service.java',
+    }),
     { startLine: 10, endLine: 20 },
   )
-  add('stop', 'method', 'Service')
-  add('nested', 'function', 'run')
-  add('variable', 'property', 'run')
-  add('helper-fn', 'function', 'helper')
-  add('other-fn', 'function', 'other-file')
-  add('direct-fn', 'function', 'direct')
-  add('lib-fn', 'function', 'lib-file')
-  add('root-fn', 'function', 'root-file')
-  add('external', 'external', 'repo')
-  add('external-child', 'function', 'external')
+  add({ id: 'stop', kind: 'method', parent: 'Service' })
+  add({ id: 'nested', kind: 'function', parent: 'run' })
+  add({ id: 'variable', kind: 'property', parent: 'run' })
+  add({ id: 'helper-fn', kind: 'function', parent: 'helper' })
+  add({ id: 'other-fn', kind: 'function', parent: 'other-file' })
+  add({ id: 'direct-fn', kind: 'function', parent: 'direct' })
+  add({ id: 'lib-fn', kind: 'function', parent: 'lib-file' })
+  add({ id: 'root-fn', kind: 'function', parent: 'root-file' })
+  add({ id: 'external', kind: 'external', parent: 'repo' })
+  add({ id: 'external-child', kind: 'function', parent: 'external' })
   return nodes
 }

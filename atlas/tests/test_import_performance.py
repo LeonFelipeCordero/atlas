@@ -82,8 +82,7 @@ def test_file_extraction_reuses_one_syntax_tree(language, code):
     parser = Mock(wraps=get_parser(language))
     with (
         patch("atlas.parsing.parser.get_parser", return_value=parser) as factory,
-        patch("atlas.parsing.structure.get_parser", side_effect=AssertionError("structure reparsed")),
-        patch("atlas.parsing.syntax.get_parser", side_effect=AssertionError("imports reparsed")),
+        patch("atlas.parsing.syntax.get_parser", side_effect=AssertionError("structure/imports reparsed")),
         patch("atlas.metrics.callables.get_parser", side_effect=AssertionError("metrics during parsing")),
     ):
         repository = parse_files([source])
@@ -115,7 +114,6 @@ def test_data_files_do_not_create_an_extra_syntax_tree():
     source = SourceFile("data.json", ROOT / "data.json", "json", b'{"call": "run()"}')
     with (
         patch("atlas.parsing.parser.get_parser") as parser,
-        patch("atlas.parsing.structure.get_parser") as structure_parser,
         patch("atlas.parsing.syntax.get_parser") as import_parser,
         patch("atlas.metrics.callables.get_parser") as metric_parser,
     ):
@@ -123,7 +121,6 @@ def test_data_files_do_not_create_an_extra_syntax_tree():
         add_callable_metrics(repository)
     file = repository.files[0]
     parser.assert_not_called()
-    structure_parser.assert_not_called()
     import_parser.assert_not_called()
     metric_parser.assert_not_called()
     assert file.calls == file.symbols == file.imports == []

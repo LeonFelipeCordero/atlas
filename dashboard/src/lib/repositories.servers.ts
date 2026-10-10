@@ -34,12 +34,12 @@ function register(store: RepositoryPort, input: unknown) {
   const data = input as Record<string, unknown>
   const name = requiredText(data.name, 'name', 200)
   const location = requiredText(data.location, 'location', 4096)
-  const repository = store.register(
-    crypto.randomUUID(),
+  const repository = store.register({
+    id: crypto.randomUUID(),
     name,
     location,
-    Date.now(),
-  )
+    createdAt: Date.now(),
+  })
   if (!repository)
     throw new RepositoryError('A repository with this name already exists', 409)
   return repository

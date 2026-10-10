@@ -11,6 +11,7 @@ from typing import cast
 from tree_sitter import Node
 
 from ...domain.models import ParsedFile, Symbol
+from ..resolution_contract import DeclarationLookup, ImportRequest, ResolutionRequest
 
 from .resolution import ResolutionAdapter, top_symbols, path_target_key
 
@@ -207,15 +208,12 @@ def _index_modules(index: dict[str, list[ParsedFile]], file: ParsedFile, roots) 
             index.setdefault(name, []).append(file)
 
 
-def _import_attribute(syntax, node: Node, name: str, excluded: int | None) -> bool:
+def _import_attributes(syntax, node: Node, excluded: int | None) -> set[str]:
     if node.type not in syntax.adapter.import_nodes or node.start_byte == excluded:
-        return False
+        return set()
     if syntax.scope(node) != syntax.root:
-        return False
-    return any(
-        (alias or imported.split(".")[0]) == name
-        for imported, alias in _import_names(node)
-    )
+        return set()
+    return {alias or imported.split(".")[0] for imported, alias in _import_names(node)}
 
 
 def _runtime_assignment(node: Node) -> bool:
@@ -248,28 +246,24 @@ def _absolute_module_files(
     return matches if len(matches) == 1 else []
 
 
-def _module_attribute(ctx, file, path: str, name: str, position: int | None) -> bool:
-    modules = ctx.files(file, path)
+def _module_attribute(ctx, request: ImportRequest, name: str) -> bool:
+    modules = ctx.files(request.file, request.path)
     if len(modules) != 1:
         return False
     syntax = ctx.syntax[modules[0].source.path]
     assigned = _assigned_attribute(syntax, name)
-    excluded = position if modules[0].source.path == file.source.path else None
+    excluded = request.position if modules[0].source.path == request.file.source.path else None
     return assigned or any(
-        _import_attribute(syntax, node, name, excluded) for node in syntax.nodes
+        name in _import_attributes(syntax, node, excluded) for node in syntax.nodes
     )
 
 
-def _child_module_files(
-    ctx, file, path: str, name: str, position: int | None
-) -> list[ParsedFile]:
-    if not _package_parent(ctx.files(file, path)):
+def _child_module_files(ctx, request: ImportRequest, name: str) -> list[ParsedFile]:
+    if not _package_parent(ctx.files(request.file, request.path)):
         return []
-    if ctx._members(file, path, name) or _module_attribute(
-        ctx, file, path, name, position
-    ):
+    if ctx._members(replace(request, position=None), name) or _module_attribute(ctx, request, name):
         return []
-    return ctx.files(file, _child_path(path, name))
+    return ctx.files(request.file, _child_path(request.path, name))
 
 
 def _child_path(path: str, name: str) -> str:
@@ -329,7 +323,8 @@ class PythonResolution(ResolutionAdapter):
             _index_modules(index, file, roots)
         return index
 
-    def import_files(self, ctx, file, path, position):
+    def import_files(self, ctx, request: ImportRequest):
+        file, path = request.file, request.path
         if path.startswith("."):
             return ctx.path_files(file, path)
         index = cast(
@@ -405,9 +400,9 @@ class PythonResolution(ResolutionAdapter):
             parent = parent.parent
         return True
 
-    def declaration_allowed(self, syntax, name: str, node: Node, position: int) -> bool:
-        return node.type == "class_definition" and not any(
-            alias == name and syntax._visible(scope, position)
+    def declaration_allowed(self, syntax, lookup: DeclarationLookup) -> bool:
+        return lookup.node.type == "class_definition" and not any(
+            alias == lookup.name and syntax._visible(scope, lookup.position)
             for alias, scope in syntax.imports
         )
 
@@ -431,47 +426,44 @@ class PythonResolution(ResolutionAdapter):
             )
         return super().static(syntax, symbol)
 
-    def import_targets(self, ctx, file, source, position):
-        path = self.import_path(source)
+    def import_targets(self, ctx, request: ImportRequest):
+        file, position = request.file, request.position
         node = _import_node(ctx, file, position)
         if node is None:
-            return super().import_targets(ctx, file, source, position)
+            return super().import_targets(ctx, request)
         if node.type == "import_statement":
             return [
                 (name, path_target_key(ctx.files(file, name)))
                 for name, _ in _import_names(node)
             ]
         result = [
-            self._from_import_target(ctx, file, source, path, name, position)
+            self._from_import_target(ctx, request, name)
             for name, _ in _import_names(node)
         ]
-        return list(dict.fromkeys(result)) or super().import_targets(
-            ctx, file, source, position
-        )
+        return list(dict.fromkeys(result)) or super().import_targets(ctx, request)
 
-    def _from_import_target(self, ctx, file, source, path, name, position):
-        members = ctx._members(file, path, name)
-        child_path = _child_path(path, name)
-        child_files = _child_module_files(ctx, file, path, name, position)
-        if _bare_relative_import(source, path):
+    def _from_import_target(self, ctx, request: ImportRequest, name):
+        members = ctx._members(replace(request, position=None), name)
+        child_path = _child_path(request.path, name)
+        child_files = _child_module_files(ctx, request, name)
+        if _bare_relative_import(request.source, request.path):
             target = (
                 members[0].key if len(members) == 1 else path_target_key(child_files)
             )
             return child_path, target
         if child_files:
             return child_path, path_target_key(child_files)
-        return path, self.import_key(ctx, file, source, position)
+        return request.path, self.import_key(ctx, request)
 
-    def import_item(
-        self, ctx, file: ParsedFile, source: str, path: str, position: int | None
-    ):
-        node = _import_node(ctx, file, position)
+    def import_item(self, ctx, request: ImportRequest):
+        file = request.file
+        node = _import_node(ctx, file, request.position)
         if node is None:
             return []
         if node.type == "import_from_statement":
             return [
-                self._from_import_item(ctx, file, path, name, alias, position)
-                for name, alias in _import_names(node)
+                self._from_import_item(ctx, request, imported)
+                for imported in _import_names(node)
             ]
         return [
             (alias or name, self._module_symbols(ctx, file, name), True)
@@ -479,15 +471,16 @@ class PythonResolution(ResolutionAdapter):
         ]
 
     def _from_import_item(
-        self, ctx, file, path, name, alias, position
+        self, ctx, request: ImportRequest, imported: tuple[str, str]
     ) -> tuple[str, list[Symbol], bool]:
-        members = ctx._members(file, path, name)
+        name, alias = imported
+        members = ctx._members(replace(request, position=None), name)
         if members:
             return alias or name, members, False
-        child_path = _child_path(path, name)
-        if not _child_module_files(ctx, file, path, name, position):
+        child_path = _child_path(request.path, name)
+        if not _child_module_files(ctx, request, name):
             return alias or name, [], False
-        return alias or name, self._module_symbols(ctx, file, child_path), True
+        return alias or name, self._module_symbols(ctx, request.file, child_path), True
 
     def _module_symbols(self, ctx, file, path) -> list[Symbol]:
         symbols = []
@@ -495,10 +488,11 @@ class PythonResolution(ResolutionAdapter):
             symbols.extend(top_symbols(module))
         return symbols
 
-    def implicit_receiver(self, resolver, file, qualifier, call, ancestors, method):
-        if qualifier != "self":
+    def implicit_receiver(self, resolver, request: ResolutionRequest, method):
+        if request.qualifier != "self":
             return True
-        syntax = resolver.syntax[file.source.path]
+        call = request.call
+        syntax = resolver.syntax[request.file.source.path]
         node = syntax.node(method.start_byte, method.end_byte)
         parameters = field(node, "parameters") if node else None
         if not _self_parameter(parameters):

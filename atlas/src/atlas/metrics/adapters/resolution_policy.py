@@ -3,7 +3,9 @@
 from tree_sitter import Node
 
 from ...domain.models import ParsedFile, Symbol
-from ..resolution_contract import SCOPES
+from ..resolution_contract import (
+    SCOPES, CallTarget, DeclarationLookup, ImportRequest, ResolutionRequest,
+)
 from ...syntax import field, text
 from .resolution_paths import (
     import_path,
@@ -56,7 +58,7 @@ class ResolutionAdapter:
     def visible(self, syntax, scope: Node, position: int) -> bool:
         return True
 
-    def declaration_allowed(self, syntax, name: str, node: Node, position: int) -> bool:
+    def declaration_allowed(self, syntax, lookup: DeclarationLookup) -> bool:
         return False
 
     def import_shadowed(self, syntax, name: str, position: int) -> bool:
@@ -80,54 +82,40 @@ class ResolutionAdapter:
         self, source: ParsedFile, name: str, files: list[ParsedFile]
     ) -> list[ParsedFile]:
         if name.startswith(".") and "/" in name:
-            return relative_targets(source, name, files)
+            return relative_targets(ImportRequest(source, name), files)
         return package_targets(name, files)
 
-    def import_files(
-        self, ctx, file: ParsedFile, path: str, position: int | None
-    ) -> list[ParsedFile]:
-        return ctx.path_files(file, path)
+    def import_files(self, ctx, request: ImportRequest) -> list[ParsedFile]:
+        return ctx.path_files(request.file, request.path)
 
     def import_path(self, source: str) -> str:
         return import_path(source)
 
-    def import_key(
-        self, ctx, file: ParsedFile, source: str, position: int | None
-    ) -> str | None:
-        return path_target_key(
-            self.import_files(ctx, file, self.import_path(source), position)
-        )
+    def import_key(self, ctx, request: ImportRequest) -> str | None:
+        return path_target_key(self.import_files(ctx, request))
 
-    def import_targets(
-        self, ctx, file: ParsedFile, source: str, position: int | None
-    ) -> list[tuple[str, str | None]]:
+    def import_targets(self, ctx, request: ImportRequest) -> list[tuple[str, str | None]]:
         """Keep unresolved imports explicit; adapters may expand child modules."""
-        return [
-            (self.import_path(source), self.import_key(ctx, file, source, position))
-        ]
+        return [(request.path, self.import_key(ctx, request))]
 
     def import_type_only(self, node: Node | None) -> bool:
         return False
 
-    def import_item(
-        self, ctx, file: ParsedFile, source: str, path: str, position: int | None
-    ):
-        binding = namespace_binding(source, path)
-        targets = self.import_files(ctx, file, path, position)
+    def import_item(self, ctx, request: ImportRequest):
+        binding = namespace_binding(request.source, request.path)
+        targets = self.import_files(ctx, request)
         return [(binding, _import_symbols(targets), True)] if binding else []
 
     def namespace_members(
-        self, ctx, file, path, targets
+        self, ctx, request: ImportRequest, targets
     ) -> dict[str, list[Symbol]] | None:
         return None
 
-    def module_bindings(self, ctx, file, syntax, source_length):
+    def module_bindings(self, ctx, file, source_length):
         return []
 
-    def members(
-        self, ctx, file: ParsedFile, path: str, name: str, position: int | None
-    ):
-        targets = self.import_files(ctx, file, path, position)
+    def members(self, ctx, request: ImportRequest, name: str):
+        targets = self.import_files(ctx, request)
         return (
             [s for s in top_symbols(targets[0]) if s.name == name]
             if len(targets) == 1
@@ -141,13 +129,11 @@ class ResolutionAdapter:
         return []
 
     def qualify_class(
-        self, resolver, file: ParsedFile, name: str, matches: list[Symbol]
+        self, resolver, request: ResolutionRequest, matches: list[Symbol]
     ) -> list[Symbol]:
         return matches
 
-    def qualified(
-        self, resolver, file: ParsedFile, qualifier: str, name: str, call
-    ) -> list[Symbol]:
+    def qualified(self, resolver, request: ResolutionRequest) -> list[Symbol]:
         return []
 
     def local_namespace(self, resolver, local: list[Symbol]) -> bool:
@@ -174,11 +160,9 @@ class ResolutionAdapter:
             callee = field(member, *callee_fields)
         return callee, receiver
 
-    def normalized_call(self, node, call, callee, receiver):
-        return (
-            callee,
-            receiver,
-            text(callee) or call.name,
+    def normalized_call(self, call, callee, receiver) -> CallTarget:
+        return CallTarget(
+            callee, receiver, text(callee) or call.name,
             text(receiver) if receiver else call.qualifier,
         )
 
@@ -188,44 +172,41 @@ class ResolutionAdapter:
     def receiver_rejected(self, receiver, qualifier: str | None) -> bool:
         return False
 
-    def implicit_receiver(
-        self,
-        resolver,
-        file: ParsedFile,
-        qualifier: str,
-        call,
-        ancestors: list[Symbol],
-        method: Symbol,
-    ) -> bool:
+    def implicit_receiver(self, resolver, request: ResolutionRequest, method: Symbol) -> bool:
         return True
 
     def clauses(self, repository, syntax):
         return {}
 
     def select(
-        self, identity, file: ParsedFile, call, matches: list[Symbol]
+        self, identity, request: ResolutionRequest, matches: list[Symbol]
     ) -> list[Symbol]:
         return matches if len(matches) == 1 else []
 
     def inheritance(
-        self, resolver, file: ParsedFile, name: str, call, owner, matches: list[Symbol]
+        self, resolver, request: ResolutionRequest, matches: list[Symbol]
     ) -> list[Symbol]:
-        if "." in name:
-            qualifier, _, terminal = name.rpartition(".")
-            binding = resolver.imports.get(file, qualifier, call.start_byte)
-            if _inheritance_namespace(resolver, file, qualifier, call, owner, binding):
-                return [symbol for symbol in binding.targets if symbol.name == terminal]
-        if "::" in name:
-            return resolver.class_named(file, name, call, owner)
+        if "." in request.name:
+            inherited = _namespace_inheritance(resolver, request)
+            if inherited is not None:
+                return inherited
+        if "::" in request.name:
+            return resolver.class_named(request)
         return matches
 
 
-def _inheritance_namespace(resolver, file, qualifier, call, owner, binding) -> bool:
-    return bool(
-        binding
-        and binding.namespace
-        and not resolver.lexical(file, qualifier, owner)
-        and not resolver.syntax[file.source.path].shadowed(qualifier, call.start_byte)
+def _namespace_inheritance(resolver, request: ResolutionRequest) -> list[Symbol] | None:
+    qualifier, _, terminal = request.name.rpartition(".")
+    binding = resolver.imports.get(request.file, qualifier, request.call.start_byte)
+    if binding and binding.namespace and _inheritance_namespace(resolver, request, qualifier):
+        return [symbol for symbol in binding.targets if symbol.name == terminal]
+    return None
+
+
+def _inheritance_namespace(resolver, request: ResolutionRequest, qualifier: str) -> bool:
+    return (
+        not resolver.lexical(request.file, qualifier, request.owner)
+        and not resolver.syntax[request.file.source.path].shadowed(qualifier, request.call.start_byte)
     )
 
 

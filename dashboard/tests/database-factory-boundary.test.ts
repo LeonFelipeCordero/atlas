@@ -54,15 +54,10 @@ test('inferred service exports cannot forward factory, context, class, ORM or co
   ).options
   const host = ts.createCompilerHost(options)
   const original = host.getSourceFile.bind(host)
-  host.getSourceFile = (
-    name,
-    languageVersion,
-    onError,
-    shouldCreateNewSourceFile,
-  ) =>
-    name === file
+  host.getSourceFile = (...args: Parameters<typeof original>) =>
+    args[0] === file
       ? ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
-      : original(name, languageVersion, onError, shouldCreateNewSourceFile)
+      : original(...args)
   const program = ts.createProgram([file], options, host)
   const errors = auditServiceExports(program, program.getSourceFile(file)!)
   for (const name of [

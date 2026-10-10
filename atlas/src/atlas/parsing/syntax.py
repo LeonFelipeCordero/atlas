@@ -205,33 +205,42 @@ def callback_binding(node: Node) -> str | None:
     return text(name.child_by_field_name("property") or name)
 
 
+@dataclass(frozen=True)
+class ParsedSyntax:
+    """Source and its reusable syntax tree; standalone extraction may omit the tree."""
+
+    source: SourceFile
+    root: Node | None = None
+
+    def tree(self) -> Node:
+        return self.root if self.root is not None else get_parser(
+            self.source.language
+        ).parse(self.source.source).root_node
+
+
+@dataclass(frozen=True)
+class ImportPolicy:
+    node_type: str | None
+    accept: Callable[[Node], bool] | None = None
+
+
 def supplement_imports(
-    source: SourceFile,
-    imports: list[tuple[str, int]],
-    node_type: str | None,
-    accept: Callable[[Node], bool] | None = None,
-    *,
-    root: Node | None = None,
+    syntax: ParsedSyntax, imports: list[tuple[str, int]], policy: ImportPolicy
 ) -> list[tuple[str, int]]:
-    if node_type is None:
+    if policy.node_type is None:
         return imports
-    if root is None:
-        root = get_parser(source.language).parse(source.source).root_node
-    return _merge_imports(root, imports, node_type, accept)
+    return _merge_imports(syntax.tree(), imports, policy)
 
 
 def _merge_imports(
-    root: Node,
-    imports: list[tuple[str, int]],
-    node_type: str,
-    accept: Callable[[Node], bool] | None,
+    root: Node, imports: list[tuple[str, int]], policy: ImportPolicy
 ) -> list[tuple[str, int]]:
     seen = {(value.strip(), line) for value, line in imports}
     result = imports.copy()
     for node in walk(root):
-        if node.type != node_type:
+        if node.type != policy.node_type:
             continue
-        if accept is not None and not accept(node):
+        if policy.accept is not None and not policy.accept(node):
             continue
         value, line = text(node).rstrip(), node.start_point.row + 1
         if (value.strip(), line) in seen:
@@ -356,19 +365,23 @@ def _clause_names(node: Node, policy: InheritancePolicy) -> list[str]:
     return names
 
 
+@dataclass(frozen=True)
+class DeclarationHeader:
+    language: str
+    kind: str
+    signature: str
+
+
 def inheritance_names(
-    language: str,
-    kind: str,
-    signature: str,
-    policy: InheritancePolicy = DEFAULT_POLICY,
+    header: DeclarationHeader, policy: InheritancePolicy = DEFAULT_POLICY
 ) -> list[str]:
-    if kind not in {"class", "interface", "struct", "trait"} or not signature:
+    if header.kind not in {"class", "interface", "struct", "trait"} or not header.signature:
         return []
     try:
-        root = get_parser(language).parse(signature.encode()).root_node
+        root = get_parser(header.language).parse(header.signature.encode()).root_node
         if root.has_error and policy.complete_header:
             completed = (
-                get_parser(language).parse((signature + " {}").encode()).root_node
+                get_parser(header.language).parse((header.signature + " {}").encode()).root_node
             )
             if not completed.has_error:
                 root = completed

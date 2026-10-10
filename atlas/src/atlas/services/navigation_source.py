@@ -6,13 +6,13 @@ import stat
 from contextlib import ExitStack
 from pathlib import Path
 
-from atlas.domain.navigation import NavigationReader, Record
+from atlas.domain.navigation import NavigationReader, Record, SourceOptions
 
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_EXCERPT_BYTES = 16 * 1024
 
 
-def source_excerpt(reader: NavigationReader, node: Record, max_lines: int, start_line: int | None) -> Record:
+def source_excerpt(reader: NavigationReader, node: Record, options: SourceOptions) -> Record:
     path = node["path"]
     if not path or node["level"] == "external":
         return {"status": "unavailable"}
@@ -24,17 +24,18 @@ def source_excerpt(reader: NavigationReader, node: Record, max_lines: int, start
         return source_status(status, path)
     if hashlib.sha256(data).hexdigest() != files[0]["sha256"]:
         return {"status": "changed", "path": path}
-    return verified_excerpt(node, data, path, max_lines, start_line)
+    return verified_excerpt(node, data, options)
 
 
-def verified_excerpt(node: Record, data: bytes, path: str, max_lines: int, start_line: int | None) -> Record:
+def verified_excerpt(node: Record, data: bytes, options: SourceOptions) -> Record:
+    path = node["path"]
     try:
         lines = source_lines(data)
     except UnicodeDecodeError:
         return {"status": "unsupported_encoding", "path": path}
     if node["level"] != "file" and (node["startLine"] is None or node["endLine"] is None):
         return {"status": "span_unavailable", "path": path}
-    excerpt = excerpt_lines(node, lines, path, max_lines, start_line)
+    excerpt = excerpt_lines(node, lines, options)
     if sum(len(line.encode("utf-8")) for line in excerpt["lines"]) > MAX_EXCERPT_BYTES:
         return source_status("too_large", path)
     return excerpt
@@ -93,13 +94,13 @@ def contained_bytes(root: Path, target: Path) -> tuple[str, bytes]:
         return ("too_large", b"") if len(data) > MAX_FILE_BYTES else ("ok", data)
 
 
-def excerpt_lines(node: Record, lines: list[str], path: str, max_lines: int, start_line: int | None) -> Record:
+def excerpt_lines(node: Record, lines: list[str], options: SourceOptions) -> Record:
     first = node["startLine"] or 1
     last = node["endLine"] or len(lines)
     if node["level"] == "file":
         first, last = 1, len(lines)
-    start = max(first, start_line or first)
-    stop = min(last, len(lines), start + max_lines - 1)
+    start = max(first, options.start_line or first)
+    stop = min(last, len(lines), start + options.max_lines - 1)
     excerpt = lines[start - 1:stop] if start <= stop else []
-    return {"status": "ok", "path": path, "startLine": start, "endLine": stop,
+    return {"status": "ok", "path": node["path"], "startLine": start, "endLine": stop,
             "lines": excerpt, "truncated": stop < last, "nextStartLine": stop + 1 if stop < last else None}

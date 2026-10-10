@@ -1,6 +1,6 @@
 """Agent-facing graph navigation orchestration over a private domain read port."""
 
-from atlas.domain.navigation import NavigationReader, Record
+from atlas.domain.navigation import NavigationReader, PathRequest, Record, SourceOptions, TraversalRequest
 from atlas.services.navigation_source import source_excerpt
 from atlas.services.navigation_walk import route, traverse
 
@@ -46,18 +46,22 @@ class NavigationService:
         return self.response({"nodes": rows[:limit], "truncated": truncated, "nextOffset": offset + limit if truncated else None},
                              {"key": key, "limit": limit, "offset": offset}, [node, *rows[:limit]])
 
-    def context(self, key: str, direction: str, relations: list[str], depth: int, max_nodes: int, max_edges: int) -> Record:
-        walk = traverse(self._reader, key, direction, relations, depth, max_nodes, max_edges)
-        filters = {"key": key, "direction": direction, "relations": relations, "depth": depth, "maxNodes": max_nodes, "maxEdges": max_edges}
+    def context(self, request: TraversalRequest) -> Record:
+        walk = traverse(self._reader, request)
+        filters = {"key": request.key, "direction": request.direction, "relations": request.relations,
+                   "depth": request.depth, "maxNodes": request.max_nodes, "maxEdges": request.max_edges}
         return self.response(walk.output(), filters, list(walk.nodes.values()))
 
-    def path(self, start: str, target: str, direction: str, relations: list[str], max_depth: int, max_nodes: int, max_edges: int) -> Record:
-        self._reader.node(target)
-        walk = traverse(self._reader, start, direction, relations, max_depth, max_nodes, max_edges)
-        filters = {"from": start, "to": target, "direction": direction, "relations": relations, "maxDepth": max_depth, "maxNodes": max_nodes, "maxEdges": max_edges}
-        return self.response({**walk.output(), **route(walk, start, target)}, filters, list(walk.nodes.values()))
+    def path(self, request: PathRequest) -> Record:
+        self._reader.node(request.target)
+        options = request.traversal
+        walk = traverse(self._reader, options)
+        filters = {"from": options.key, "to": request.target, "direction": options.direction,
+                   "relations": options.relations, "maxDepth": options.depth,
+                   "maxNodes": options.max_nodes, "maxEdges": options.max_edges}
+        return self.response({**walk.output(), **route(walk, options.key, request.target)}, filters, list(walk.nodes.values()))
 
     def source(self, key: str, max_lines: int, start_line: int | None) -> Record:
         node = self._reader.node(key)
-        payload = source_excerpt(self._reader, node, max_lines, start_line)
+        payload = source_excerpt(self._reader, node, SourceOptions(max_lines, start_line))
         return self.response({"source": payload}, {"key": key, "maxLines": max_lines, "startLine": start_line}, [node])

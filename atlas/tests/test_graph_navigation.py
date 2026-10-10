@@ -14,10 +14,10 @@ from click.testing import CliRunner
 
 from atlas.bootstrap import navigation_service
 from atlas.cli.commands import main
-from atlas.domain.navigation import NavigationError
+from atlas.domain.navigation import EdgeRequest, NavigationError, TraversalRequest
 from atlas.persistence.database import migrate_database, repository_session
 from atlas.persistence.navigation import GraphReader, navigation_reader
-from atlas.persistence.navigation_queries import adjacency
+from atlas.persistence.navigation_queries import AdjacencyRequest, adjacency
 from atlas.persistence.repositories import RepositoryStore
 from atlas.services.navigation import NavigationService
 from tests.graph_storage_fixture import graph_artifact
@@ -101,8 +101,9 @@ def test_directions_cycles_and_evidence(graph, direction) -> None:
         assert payload["edges"][0]["sourceStableKey"] == "worker"
 
 
-@pytest.mark.parametrize("option,value,reason", [("--depth", "0", "depth"), ("--max-nodes", "1", "maxNodes"), ("--max-edges", "1", "maxEdges")])
-def test_context_cutoffs(graph, option, value, reason) -> None:
+@pytest.mark.parametrize("cutoff", [("--depth", "0", "depth"), ("--max-nodes", "1", "maxNodes"), ("--max-edges", "1", "maxEdges")])
+def test_context_cutoffs(graph, cutoff) -> None:
+    option, value, reason = cutoff
     payload = command("context", "run", option, value)
     assert payload["truncated"]
     assert reason in {boundary["reason"] for boundary in payload["boundaries"]}
@@ -125,7 +126,7 @@ def test_frontier_edge_queries_are_scoped_and_bounded(graph) -> None:
     with navigation_reader("Local", None) as reader:
         statements: list[str] = []
         driver(reader).set_trace_callback(statements.append)
-        NavigationService(reader).context("run", "both", ["CALLS"], 4, 3, 2)
+        NavigationService(reader).context(TraversalRequest("run", "both", ["CALLS"], 4, 3, 2))
     edges = [sql for sql in statements if "FROM graph_edges" in sql]
     assert edges
     assert all(f"graph_edges.repository_id = '{graph[1]}'" in sql for sql in edges)
@@ -137,7 +138,7 @@ def test_frontier_edge_queries_are_scoped_and_bounded(graph) -> None:
 @pytest.mark.parametrize("column,index", [("source_key", "graph_edges_source"), ("target_key", "graph_edges_target")])
 def test_adjacency_plan_streams_endpoint_relation_index(graph, column, index) -> None:
     with navigation_reader("Local", None) as reader:
-        statement = adjacency(graph[1], "run", column == "source_key", "CALLS", 2)
+        statement = adjacency(AdjacencyRequest(graph[1], "run", column == "source_key", "CALLS", 2))
         sql = str(statement.compile(dialect=reader._session.get_bind().dialect, compile_kwargs={"literal_binds": True}))
         assert f"INDEXED BY {index}" in sql
         plan = driver(reader).execute(f"EXPLAIN QUERY PLAN {sql}").fetchall()
@@ -157,7 +158,7 @@ def test_adjacency_work_ignores_unrelated_edges(graph, direction) -> None:
             return 0
 
         driver(reader).set_progress_handler(count_steps, 100)
-        assert reader.edges("repository", direction, ["CALLS", "REFERENCES"], 1) == []
+        assert reader.edges(EdgeRequest("repository", direction, ["CALLS", "REFERENCES"], 1)) == []
     assert len(steps) < 10
 
 
@@ -185,7 +186,7 @@ def test_repository_isolation(graph) -> None:
     assert [row["message"] for row in command("show", "run")["diagnostics"]] == ["local warning"]
     with navigation_service(other.repositoryId) as service:
         assert service.show("run")["node"]["name"] == "other-only"
-        assert service.context("run", "out", ["CALLS"], 2, 30, 100)["repositoryId"] != identifier
+        assert service.context(TraversalRequest("run", "out", ["CALLS"], 2, 30, 100))["repositoryId"] != identifier
 
 
 def test_read_snapshot_and_revision(graph) -> None:

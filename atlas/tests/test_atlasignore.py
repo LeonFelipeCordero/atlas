@@ -149,24 +149,24 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output
     if command == "report":
-        assert "Circular dependency" in first.output
+        assert "## Circular imports" in first.output
     with repository_service(database) as service:
         original = service.get_architecture(project.id)
         assert original is not None
         assert original.stats.files == 3
-        assert service.report(project.name)["findings"]
+        assert service.report(project.name)["circularImports"]
     (source / ".atlasignore").write_text("/fixtures/\n")
     second = runner.invoke(main, args)
     assert second.exit_code == 0, second.output
     if command == "report":
-        assert second.output == "No findings.\n"
+        assert "circularImportGroups: 0" in second.output
     else:
         assert json.loads(second.output)["stats"]["files"] == 1
     with repository_service(database) as service:
         saved = service.get_architecture(project.id)
         assert saved is not None
         assert saved.stats.files == 1
-        assert service.report(project.name)["findings"] == []
+        assert service.report(project.name)["circularImports"] == []
         facts = service.get_report_facts(project.id)
         assert facts is not None
         assert not any((node.path or "").startswith("fixtures/") for node in facts.nodes)

@@ -8,13 +8,13 @@ from typing import Generator
 from sqlalchemy import Select, case, func, or_, select
 from sqlalchemy.orm import Session
 
-from atlas.domain.navigation import GraphSnapshot, NavigationError, Record
+from atlas.domain.navigation import EdgeRequest, GraphSnapshot, NavigationError, Record
 from .models import (
     GraphDiagnosticRow, GraphEdgeRow, GraphFileRow, GraphNodeDecoratorRow,
     GraphNodeRow, RepositoryGraphRow, RepositoryRow,
 )
 from .navigation_database import readonly_session
-from .navigation_queries import adjacency, metrics, nodes
+from .navigation_queries import AdjacencyRequest, adjacency, metrics, nodes
 
 
 @contextmanager
@@ -102,12 +102,13 @@ class GraphReader:
             node.ordinal, node.node_key,
         ).limit(limit).offset(offset))
 
-    def edges(self, key: str, direction: str, relations: list[str], limit: int) -> list[Record]:
-        directions = [True, False] if direction == "both" else [direction == "out"]
-        batches = (self._rows(adjacency(self.snapshot.repository_id, key, outgoing, relation, limit))
-                   for outgoing, relation in product(directions, relations))
+    def edges(self, request: EdgeRequest) -> list[Record]:
+        directions = [True, False] if request.direction == "both" else [request.direction == "out"]
+        batches = (self._rows(adjacency(AdjacencyRequest(
+            self.snapshot.repository_id, request.key, outgoing, relation, request.limit,
+        ))) for outgoing, relation in product(directions, request.relations))
         selected = {row["ordinal"]: row for row in chain.from_iterable(batches)}
-        return [selected[ordinal] for ordinal in sorted(selected)[:limit]]
+        return [selected[ordinal] for ordinal in sorted(selected)[:request.limit]]
 
     def diagnostics(self, paths: list[str], limit: int) -> list[Record]:
         diagnostic = GraphDiagnosticRow

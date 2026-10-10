@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 from typing import Callable
+from dataclasses import replace
+from .resolution_contract import CallTarget, ImportRequest, ResolutionRequest
 from .adapters.resolution import (
     Binding,
     ImportBindings,
@@ -157,7 +159,8 @@ def _import_connections(
     directive = resolver.syntax[item.file_path].import_node(item.line, item.source)
     position = directive.start_byte if directive is not None else None
     adapter = get_resolution_adapter(file.source.language)
-    targets = adapter.import_targets(resolver.imports, file, item.source, position)
+    request = ImportRequest(file, adapter.import_path(item.source), position, item.source)
+    targets = adapter.import_targets(resolver.imports, request)
     if adapter.require_import_node and directive is None:
         targets = [(adapter.import_path(item.source), None)]
     return [
@@ -219,9 +222,10 @@ def _inheritance_targets(
         inheritance.evidence,
         True,
     )
-    matches = resolver.named(file, name, call, owner)
+    request = ResolutionRequest(file, call, owner, name)
+    matches = resolver.named(request)
     matches = get_resolution_adapter(file.source.language).inheritance(
-        resolver, file, name, call, owner, matches
+        resolver, request, matches
     )
     return [
         symbol
@@ -321,16 +325,10 @@ class CallResolver:
             return []
         return [s for s in file.symbols if s.name == name and s.parent_key == scope]
 
-    def named(
-        self,
-        file: ParsedFile,
-        name: str,
-        call: Call,
-        owner: Symbol | None,
-        fallback: bool = False,
-    ) -> list[Symbol]:
+    def named(self, request: ResolutionRequest, fallback: bool = False) -> list[Symbol]:
+        file, name, call = request.file, request.name, request.call
         binding = self.imports.get(file, name, call.start_byte)
-        local = self.lexical(file, name, owner)
+        local = self.lexical(file, name, request.owner)
         if self.syntax[file.source.path].shadowed(name, call.start_byte, local):
             return []
         if local:
@@ -355,20 +353,17 @@ class CallResolver:
             and s.kind in CALLABLES - TYPES
         ]
 
-    def class_named(
-        self, file: ParsedFile, name: str, call: Call, owner: Symbol | None
-    ) -> list[Symbol]:
-        matches = self.named(file, name, call, owner)
-        matches = get_resolution_adapter(file.source.language).qualify_class(
-            self, file, name, matches
+    def class_named(self, request: ResolutionRequest) -> list[Symbol]:
+        matches = self.named(request)
+        matches = get_resolution_adapter(request.file.source.language).qualify_class(
+            self, request, matches
         )
         return [s for s in matches if s.kind in TYPES]
 
-    def _receiver_class(
-        self, file: ParsedFile, receiver, call: Call, owner: Symbol | None, member: str
-    ) -> list[Symbol]:
+    def _receiver_class(self, request: ResolutionRequest, receiver) -> list[Symbol]:
         if receiver is None:
             return []
+        file = request.file
         adapter = get_resolution_adapter(file.source.language)
         if receiver.type not in adapter.receiver_class_nodes:
             return []
@@ -376,21 +371,20 @@ class CallResolver:
         if nested is not None:
             return []
         syntax = self.syntax[file.source.path]
-        if not adapter.receiver_class_allowed(syntax, callee, member):
+        if not adapter.receiver_class_allowed(syntax, callee, request.name):
             return []
-        return self.class_named(file, text(callee), call, owner)
+        return self.class_named(replace(request, name=text(callee)))
 
-    def _self_class(
-        self, file: ParsedFile, qualifier: str, call: Call, owner: Symbol | None
-    ) -> list[Symbol]:
-        ancestors = self.ancestors(owner)
+    def _self_class(self, request: ResolutionRequest) -> list[Symbol]:
+        file = request.file
+        ancestors = self.ancestors(request.owner)
         parent, method = _enclosing_method(ancestors)
         if parent is None or method is None:
             return []
         if self.syntax[file.source.path].static(method):
             return []
         if not get_resolution_adapter(file.source.language).implicit_receiver(
-            self, file, qualifier, call, ancestors, method
+            self, request, method
         ):
             return []
         return [parent]
@@ -426,75 +420,57 @@ class CallResolver:
             or get_resolution_adapter(parent.language).static_member(parent)
         ]
 
-    def _namespace_member(
-        self,
-        file: ParsedFile,
-        qualifier: str,
-        name: str,
-        call: Call,
-        owner: Symbol | None,
-        binding: Binding,
-    ) -> list[Symbol]:
-        local = self.lexical(file, qualifier, owner)
+    def _namespace_member(self, request: ResolutionRequest, binding: Binding) -> list[Symbol]:
+        file, qualifier, name = request.file, request.qualifier or "", request.name
+        local = self.lexical(file, qualifier, request.owner)
         module = get_resolution_adapter(file.source.language).local_namespace(
             self, local
         )
         if local and not module:
             return self.members(
-                self.class_named(file, qualifier, call, owner), name, True
+                self.class_named(replace(request, name=qualifier)), name, True
             )
         return binding.member(name)
 
-    def qualified(
-        self,
-        file: ParsedFile,
-        name: str,
-        qualifier: str,
-        call: Call,
-        owner: Symbol | None,
-    ) -> list[Symbol]:
+    def qualified(self, request: ResolutionRequest) -> list[Symbol]:
+        file, name, qualifier = request.file, request.name, request.qualifier or ""
+        call = request.call
         if self.syntax[file.source.path].member_rebound(qualifier, name):
             return []
         if qualifier in get_resolution_adapter(file.source.language).self_qualifiers:
             return self.members(
-                self._self_class(file, qualifier, call, owner), name, False
+                self._self_class(request), name, False
             )
         if self.syntax[file.source.path].shadowed(
             qualifier.split(".")[0], call.start_byte
         ):
             return []
-        binding = self.imports.get(file, qualifier, call.start_byte)
+        return self._qualified_binding(request)
+
+    def _qualified_binding(self, request: ResolutionRequest) -> list[Symbol]:
+        file, name, qualifier = request.file, request.name, request.qualifier or ""
+        binding = self.imports.get(file, qualifier, request.call.start_byte)
         if binding and binding.namespace:
-            return self._namespace_member(file, qualifier, name, call, owner, binding)
-        types = self.class_named(file, qualifier, call, owner)
+            return self._namespace_member(request, binding)
+        types = self.class_named(replace(request, name=qualifier))
         if types:
             return self.members(types, name, True)
         if binding:
             return self.members(binding.targets, name, True)
         return get_resolution_adapter(file.source.language).qualified(
-            self, file, qualifier, name, call
+            self, request
         )
 
-    def _bare(
-        self, file: ParsedFile, name: str, node, call: Call, owner: Symbol | None
-    ) -> list[Symbol]:
+    def _bare(self, request: ResolutionRequest, node) -> list[Symbol]:
         constructor = (
             node is not None
-            and node.type in get_resolution_adapter(file.source.language).constructors
+            and node.type in get_resolution_adapter(request.file.source.language).constructors
         )
-        return self.named(file, name, call, owner, fallback=not constructor)
+        return self.named(request, fallback=not constructor)
 
-    def _matches(
-        self,
-        node,
-        callee,
-        receiver,
-        name: str,
-        qualifier: str | None,
-        call: Call,
-        owner: Symbol | None,
-    ) -> list[Symbol]:
-        file = self.files[call.file_path]
+    def _matches(self, request: ResolutionRequest, node, target: CallTarget) -> list[Symbol]:
+        file = request.file
+        receiver, qualifier = target.receiver, request.qualifier
         if get_resolution_adapter(file.source.language).receiver_rejected(
             receiver, qualifier
         ):
@@ -505,26 +481,18 @@ class CallResolver:
             not in IDENTIFIERS
             | get_resolution_adapter(file.source.language).receiver_names
         ):
-            return self._receiver_matches(file, receiver, name, qualifier, call, owner)
+            return self._receiver_matches(request, receiver)
         if qualifier:
-            return self.qualified(file, name, qualifier, call, owner)
-        if _is_bare_target(call, callee):
-            return self._bare(file, name, node, call, owner)
+            return self.qualified(request)
+        if _is_bare_target(request.call, target.callee):
+            return self._bare(request, node)
         return []
 
-    def _receiver_matches(
-        self,
-        file: ParsedFile,
-        receiver,
-        name: str,
-        qualifier: str | None,
-        call: Call,
-        owner: Symbol | None,
-    ) -> list[Symbol]:
-        if re.fullmatch(r"[\w$]+(?:\.|::)[\w.$:]+", qualifier or ""):
-            return self.qualified(file, name, qualifier or "", call, owner)
+    def _receiver_matches(self, request: ResolutionRequest, receiver) -> list[Symbol]:
+        if re.fullmatch(r"[\w$]+(?:\.|::)[\w.$:]+", request.qualifier or ""):
+            return self.qualified(request)
         return self.members(
-            self._receiver_class(file, receiver, call, owner, name), name, False
+            self._receiver_class(request, receiver), request.name, False
         )
 
     def resolve(self, call: Call, owner: Symbol | None) -> list[Symbol]:
@@ -534,15 +502,13 @@ class CallResolver:
         if node and node.type in adapter.macro_nodes:
             return []
         callee, receiver = adapter.call_target(node)
-        callee, receiver, name, qualifier = adapter.normalized_call(
-            node, call, callee, receiver
-        )
-        scoped = re.fullmatch(r"([\w.:]+)(?:\.|::)([\w$!?]+)", name)
-        if scoped and receiver is None:
+        target = adapter.normalized_call(call, callee, receiver)
+        request = ResolutionRequest(file, call, owner, target.name, target.qualifier)
+        scoped = re.fullmatch(r"([\w.:]+)(?:\.|::)([\w$!?]+)", target.name)
+        if scoped and target.receiver is None:
             qualifier, name = scoped.groups()
-        matches = self._matches(
-            node, callee, receiver, name, qualifier, call, owner
-        )
+            request = replace(request, name=name, qualifier=qualifier)
+        matches = self._matches(request, node, target)
         return self.identity.select(
             file,
             call,
