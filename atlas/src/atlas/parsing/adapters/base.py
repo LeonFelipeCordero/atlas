@@ -6,9 +6,11 @@ from typing import Literal
 
 from tree_sitter import Node
 
-from ...domain.models import SourceFile
 from ..syntax import (
     DeclarationCarrier,
+    DeclarationHeader,
+    ImportPolicy,
+    ParsedSyntax,
     CallSite,
     CallTarget,
     InheritancePolicy,
@@ -39,15 +41,11 @@ class LanguageAdapter:
     )
 
     def imports(
-        self,
-        source: SourceFile,
-        native: list[tuple[str, int]],
-        *,
-        root: Node | None = None,
+        self, syntax: ParsedSyntax, native: list[tuple[str, int]]
     ) -> list[tuple[str, int]]:
         return supplement_imports(
-            source, native, self.import_node, self.accept_import, root=root
+            syntax, native, ImportPolicy(self.import_node, self.accept_import)
         )
 
-    def inheritance(self, language: str, kind: str, signature: str) -> list[str]:
-        return inheritance_names(language, kind, signature, self.inheritance_policy)
+    def inheritance(self, header: DeclarationHeader) -> list[str]:
+        return inheritance_names(header, self.inheritance_policy)

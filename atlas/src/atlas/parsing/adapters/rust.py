@@ -3,6 +3,7 @@
 import re
 
 from collections.abc import Iterator
+from dataclasses import dataclass, replace
 
 
 from itertools import chain
@@ -77,34 +78,41 @@ def rust_call_target(site: CallSite) -> CallTarget:
     return name, bare_target, qualifier
 
 
-def rust_call_sites(
-    root: Node,
-    offset: int = 0,
-    opaque: bool = False,
-    origin: Node | None = None,
-    parents: tuple[Node, ...] = (),
-) -> Iterator[CallSite]:
-    origin = origin if origin is not None else root
-    for node in walk(root):
+@dataclass(frozen=True)
+class _RustTraversal:
+    """Track original-source offsets and scopes while descending synthetic payloads."""
+
+    root: Node
+    origin: Node
+    offset: int = 0
+    opaque: bool = False
+    parents: tuple[Node, ...] = ()
+
+
+def rust_call_sites(root: Node) -> Iterator[CallSite]:
+    yield from _rust_call_sites(_RustTraversal(root, root))
+
+
+def _rust_call_sites(traversal: _RustTraversal) -> Iterator[CallSite]:
+    for node in walk(traversal.root):
         if node.type == "macro_invocation":
-            yield node, offset, opaque, parents
-            yield from _macro_sites(node, root, origin, parents, offset, opaque)
+            yield node, traversal.offset, traversal.opaque, traversal.parents
+            yield from _macro_sites(node, traversal)
             continue
         if node.type in CALL_TYPES:
-            yield node, offset, opaque, parents
+            yield node, traversal.offset, traversal.opaque, traversal.parents
 
 
-def _macro_sites(
-    node: Node,
-    root: Node,
-    origin: Node,
-    parents: tuple[Node, ...],
-    offset: int,
-    opaque: bool,
-) -> Iterator[CallSite]:
-    for payload, shift in macro_payloads(node, origin, parents):
-        enclosing = (root, *parents) if opaque else parents
-        yield from rust_call_sites(payload, offset + shift, True, origin, enclosing)
+def _macro_sites(node: Node, traversal: _RustTraversal) -> Iterator[CallSite]:
+    for payload, shift in macro_payloads(node, traversal.origin, traversal.parents):
+        enclosing = (
+            (traversal.root, *traversal.parents)
+            if traversal.opaque else traversal.parents
+        )
+        yield from _rust_call_sites(replace(
+            traversal, root=payload, offset=traversal.offset + shift,
+            opaque=True, parents=enclosing,
+        ))
 
 
 EXPRESSION_MACROS = {

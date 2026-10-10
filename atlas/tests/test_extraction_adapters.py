@@ -1,6 +1,7 @@
 """Focused extraction-policy tests independent of graph resolution."""
 
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 
 from tree_sitter_language_pack import get_parser
@@ -10,6 +11,16 @@ from atlas.parsing.discovery import SourceFile
 from atlas.parsing.parser import parse_file
 from atlas.syntax import walk
 from atlas.parsing.structure import extract_structure
+from atlas.parsing.syntax import DeclarationHeader, ParsedSyntax
+from tests.parsing_fixture import parsing_syntax
+
+
+@dataclass(frozen=True)
+class MetadataCase:
+    syntax: ParsedSyntax
+    node_type: str
+    visibility: str | None
+    decorators: list[str]
 
 
 class ExtractionAdapterTest(unittest.TestCase):
@@ -31,14 +42,12 @@ class ExtractionAdapterTest(unittest.TestCase):
         ]:
             with self.subTest(language=language):
                 self.assertEqual(
-                    get_adapter(language).inheritance(language, "class", signature),
+                    get_adapter(language).inheritance(DeclarationHeader(language, "class", signature)),
                     expected,
                 )
         self.assertEqual(
             get_adapter("typescript").inheritance(
-                "typescript",
-                "interface",
-                "interface Child extends pkg.Base, Service {}",
+                DeclarationHeader("typescript", "interface", "interface Child extends pkg.Base, Service {}"),
             ),
             ["pkg.Base", "Service"],
         )
@@ -84,23 +93,20 @@ class ExtractionAdapterTest(unittest.TestCase):
         ]:
             with self.subTest(language=language):
                 self.assert_declaration_metadata(
-                    language, code, node_type, visibility, decorators
+                    MetadataCase(parsing_syntax(code, language), node_type, visibility, decorators)
                 )
         for language, code, expected in [
             ("kotlin", b"import demo.Service\n", [("import demo.Service", 1)]),
             ("rust", b"mod external;\nmod inline {}", [("mod external;", 1)]),
         ]:
             source = SourceFile("sample", Path("sample"), language, code)
-            self.assertEqual(get_adapter(language).imports(source, []), expected)
+            self.assertEqual(get_adapter(language).imports(ParsedSyntax(source), []), expected)
 
-    def assert_declaration_metadata(
-        self, language, code, node_type, visibility, decorators
-    ):
-        root = get_parser(language).parse(code).root_node
-        node = next(node for node in walk(root) if node.type == node_type)
-        actual_visibility, actual_decorators = get_adapter(language).metadata(node)
-        self.assertEqual(actual_visibility, visibility)
-        self.assertEqual(actual_decorators, decorators)
+    def assert_declaration_metadata(self, case: MetadataCase):
+        node = next(node for node in walk(case.syntax.tree()) if node.type == case.node_type)
+        actual_visibility, actual_decorators = get_adapter(case.syntax.source.language).metadata(node)
+        self.assertEqual(actual_visibility, case.visibility)
+        self.assertEqual(actual_decorators, case.decorators)
 
     def test_rust_macro_payload_remains_rust_only(self):
         code = b'fn run() { println!("{}", helper()); }'
@@ -111,7 +117,7 @@ class ExtractionAdapterTest(unittest.TestCase):
             [rust.normalize_call(site)[0] for site in sites], ["println!", "helper"]
         )
         self.assertEqual([site[2] for site in sites], [False, True])
-        self.assertTrue(extract_structure(b"def run():\n pass\n", "python"))
+        self.assertTrue(extract_structure(parsing_syntax(b"def run():\n pass\n", "python")))
 
 
 if __name__ == "__main__":

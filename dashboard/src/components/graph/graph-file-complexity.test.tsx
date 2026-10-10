@@ -8,14 +8,16 @@ import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { sumFileComplexity } from '@/lib/file-complexity'
 import { buildProjectGraph } from '@/lib/project-graph'
 
+type ComplexityNode = {
+  id: string
+  type: string
+  parent: string | null
+  value?: number
+}
+
 function fixture(): Artifact {
   const nodes: Array<ArtifactNode> = []
-  function add(
-    id: string,
-    type: string,
-    parent: string | null,
-    value?: number,
-  ) {
+  function add({ id, type, parent, value }: ComplexityNode) {
     const owner = nodes.find((node) => node.stableKey === parent)
     nodes.push({
       stableKey: id,
@@ -36,16 +38,16 @@ function fixture(): Artifact {
         value === undefined ? undefined : { cyclomaticComplexity: value },
     })
   }
-  add('repo', 'repository', null)
-  add('file', 'file', 'repo')
-  add('class', 'class', 'file', 900)
-  add('method', 'method', 'class', 8)
-  add('nested', 'function', 'method', 2)
-  add('function', 'function', 'file', 3)
-  add('constructor', 'constructor', 'class', 100)
-  add('other-file', 'file', 'repo')
-  add('outside', 'function', 'other-file', 50)
-  add('empty', 'file', 'repo')
+  add({ id: 'repo', type: 'repository', parent: null })
+  add({ id: 'file', type: 'file', parent: 'repo' })
+  add({ id: 'class', type: 'class', parent: 'file', value: 900 })
+  add({ id: 'method', type: 'method', parent: 'class', value: 8 })
+  add({ id: 'nested', type: 'function', parent: 'method', value: 2 })
+  add({ id: 'function', type: 'function', parent: 'file', value: 3 })
+  add({ id: 'constructor', type: 'constructor', parent: 'class', value: 100 })
+  add({ id: 'other-file', type: 'file', parent: 'repo' })
+  add({ id: 'outside', type: 'function', parent: 'other-file', value: 50 })
+  add({ id: 'empty', type: 'file', parent: 'repo' })
   return {
     schemaVersion: 2,
     repository: { name: 'Example' },
@@ -70,12 +72,19 @@ function summary(artifact: Artifact, fileKey = 'file', compact = false) {
   )
 }
 
-function selectedFile(
-  artifact: Artifact,
-  selected: string | null,
-  scope: GraphScope = { kind: 'repository' },
-  graph: ProjectGraph = buildProjectGraph(artifact, scope),
-) {
+type SidebarSelection = {
+  artifact: Artifact
+  selected: string | null
+  scope?: GraphScope
+  graph?: ProjectGraph
+}
+
+function selectedFile({
+  artifact,
+  selected,
+  scope = { kind: 'repository' },
+  graph = buildProjectGraph(artifact, scope),
+}: SidebarSelection) {
   return renderToStaticMarkup(
     <GraphSidebar
       details={fixtureDetails(artifact)}
@@ -114,21 +123,33 @@ test('sums owned functions and methods once, not classes, constructors, or depen
 test('selected file and inside-file summary show the same sum', () => {
   const artifact = fixture()
   for (const html of [
-    selectedFile(artifact, 'file'),
+    selectedFile({ artifact, selected: 'file' }),
     summary(artifact, 'file', true),
   ]) {
-    expect(html).toContain('Function complexity sum')
+    expect(html).toContain('aria-label="File weighted complexity sum"')
+    expect(html).toContain('<h4>Weighted complexity sum</h4>')
     expect(html).toContain('<strong>13</strong>')
-    expect(html).toContain('3 functions/methods in this file')
+    expect(html).toContain(
+      'Sum of weighted complexity across 3 functions/methods in this file',
+    )
+    expect(html).not.toContain('Sum of total complexity')
   }
   expect(summary(artifact, 'file', true)).toContain('file-complexity-bar')
-  expect(selectedFile(artifact, 'empty')).toContain('<strong>0</strong>')
-  expect(selectedFile(artifact, 'empty')).toContain('0 functions/methods')
+  expect(selectedFile({ artifact, selected: 'empty' })).toContain(
+    '<strong>0</strong>',
+  )
+  expect(selectedFile({ artifact, selected: 'empty' })).toContain(
+    '0 functions/methods',
+  )
 })
 
 test('unselected inside-file sidebar shows the current file sum', () => {
-  const html = selectedFile(fixture(), null, { kind: 'file', key: 'file' })
-  expect(html).toContain('Function complexity sum')
+  const html = selectedFile({
+    artifact: fixture(),
+    selected: null,
+    scope: { kind: 'file', key: 'file' },
+  })
+  expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
   expect(html).toContain('In this view')
 })
@@ -136,11 +157,18 @@ test('unselected inside-file sidebar shows the current file sum', () => {
 test('single local file preview ignores boundary nodes, multiple files have no implicit sum', () => {
   const artifact = fixture()
   const graph = buildProjectGraph(artifact, { kind: 'repository' })
-  expect(selectedFile(artifact, null)).not.toContain('Function complexity sum')
+  expect(selectedFile({ artifact, selected: null })).not.toContain(
+    'Weighted complexity sum',
+  )
   graph.nodes = graph.nodes.filter((node) => node.id !== 'empty')
   graph.nodes.find((node) => node.id === 'other-file')!.role = 'boundary'
-  const html = selectedFile(artifact, null, { kind: 'repository' }, graph)
-  expect(html).toContain('Function complexity sum')
+  const html = selectedFile({
+    artifact,
+    selected: null,
+    scope: { kind: 'repository' },
+    graph,
+  })
+  expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
   expect(html).not.toContain('<strong>50</strong>')
 })
@@ -152,7 +180,9 @@ test('outside-scope file inspector uses the target file sum', () => {
     'boundary',
   )
   // In a folder view the same target is represented by its owning file.
-  expect(selectedFile(artifact, 'other-file')).toContain('<strong>50</strong>')
+  expect(selectedFile({ artifact, selected: 'other-file' })).toContain(
+    '<strong>50</strong>',
+  )
 })
 
 test('partial and legacy data are not presented as a complete sum or zero', () => {

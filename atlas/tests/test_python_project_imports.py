@@ -28,7 +28,7 @@ def test_package_imports_resolve_independently_of_analysis_root(tmp_path, prefix
     edges = [edge for edge in artifact.edges if edge["type"] == relationship]
     assert edges
     assert all(prefix + "app/worker.py" in edge["targetStableKey"] for edge in edges)
-    assert build_artifact_report(asdict(artifact))["findings"] == []
+    assert build_artifact_report(asdict(artifact))["summary"]["circularImportGroups"] == 0
 
 
 def test_src_namespace_package(tmp_path):
@@ -160,6 +160,6 @@ def test_absolute_src_import_cycle_is_reported(tmp_path):
         "src/app/a.py": "from app import b\n",
         "src/app/b.py": "from app import a\n",
     })
-    findings = build_artifact_report(asdict(artifact))["findings"]
-    assert len(findings) == 1
-    assert findings[0]["type"] == "circular_dependency"
+    report = build_artifact_report(asdict(artifact))
+    assert report["summary"]["circularImportGroups"] == 1
+    assert report["circularImports"][0]["groupSize"] == 2

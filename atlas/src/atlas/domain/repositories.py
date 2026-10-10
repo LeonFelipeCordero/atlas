@@ -2,7 +2,7 @@
 
 from typing import Any, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RepositoryError(Exception):
@@ -54,6 +54,8 @@ class ReportNodeDTO(BaseModel):
     startLine: int | None = None
     lineCount: int | None = None
     parameterCount: int | None = None
+    baseCyclomaticComplexity: int | None = None
+    nestedCyclomaticComplexity: int | None = None
     cyclomaticComplexity: int | None = None
     loopNestedComplexity: int | None = None
     maxDecisionDepth: int | None = None
@@ -74,6 +76,8 @@ class ReportFactsDTO(BaseModel):
     graphRevision: str
     nodes: list[ReportNodeDTO]
     imports: list[ReportImportDTO]
+    edges: list[ReportImportDTO] = Field(default_factory=list)
+    diagnostics: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RepositoryProtocol(Protocol):

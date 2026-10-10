@@ -9,7 +9,7 @@ function complexityHint(
     return 'Re-index and import this repository to include complexity.'
   if (partial)
     return `${sum.measured} of ${sum.functions} functions/methods measured. Re-index and import for a complete sum.`
-  return `Sum of total complexity across ${sum.functions} ${sum.functions === 1 ? 'function/method' : 'functions/methods'} in this file.`
+  return `Sum of weighted complexity across ${sum.functions} ${sum.functions === 1 ? 'function/method' : 'functions/methods'} in this file.`
 }
 
 export function GraphFileComplexity({
@@ -24,9 +24,9 @@ export function GraphFileComplexity({
   return (
     <section
       className={`file-complexity ${compact ? 'file-complexity-bar' : 'node-complexity'}`}
-      aria-label="File function complexity sum"
+      aria-label="File weighted complexity sum"
     >
-      <h4>Function complexity sum</h4>
+      <h4>Weighted complexity sum</h4>
       <p className="file-complexity-value">
         <strong>{unavailable ? 'Not available' : sum.total}</strong>
         {!unavailable && partial && <span>Partial sum</span>}

@@ -18,12 +18,14 @@ export function compareKeys(a: string, b: string): number {
   return left.length - right.length
 }
 
-function finishFrom(
-  root: string,
-  adjacency: Adjacency,
-  visited: Set<string>,
-  finished: Array<string>,
-) {
+type FinishTraversal = {
+  root: string
+  adjacency: Adjacency
+  visited: Set<string>
+  finished: Array<string>
+}
+
+function finishFrom({ root, adjacency, visited, finished }: FinishTraversal) {
   const pending: Array<[string, number]> = [[root, 0]]
   while (pending.length) {
     const entry = pending[pending.length - 1]
@@ -46,7 +48,7 @@ function finishOrder(adjacency: Adjacency): Array<string> {
   for (const root of adjacency.keys()) {
     if (visited.has(root)) continue
     visited.add(root)
-    finishFrom(root, adjacency, visited, finished)
+    finishFrom({ root, adjacency, visited, finished })
   }
   return finished
 }
@@ -173,12 +175,16 @@ function addLevelMetrics(
   const impact = impactCounts(adjacency)
   const incoming = new Map<string, number>()
   for (const targets of adjacency.values()) countIncoming(targets, incoming)
-  for (const [key, targets] of adjacency)
+  for (const [key, targets] of adjacency) {
+    const fanIn = incoming.get(key) ?? 0
+    const fanOut = targets.length
     metrics.set(key, {
-      fanIn: incoming.get(key) ?? 0,
-      fanOut: targets.length,
+      fanIn,
+      fanOut,
+      instability: fanIn + fanOut === 0 ? null : fanOut / (fanIn + fanOut),
       transitiveChangeImpact: impact.get(key)!,
     })
+  }
 }
 
 /** Full internal topology, including hidden test dependents and type-only imports. */
@@ -187,7 +193,18 @@ export function dependencyMetrics(
   edges: Array<Pick<DirectEdge, 'sourceStableKey' | 'targetStableKey'>>,
 ): Map<string, NodeDependencyMetrics> {
   const metrics = new Map<string, NodeDependencyMetrics>()
+  const external = new Set(
+    nodes
+      .filter((node) => node.type === 'external' || node.level === 'external')
+      .map((node) => node.stableKey),
+  )
+  const internal = nodes.filter(
+    (node) =>
+      ![node.stableKey, ...node.ancestorStableKeys].some((key) =>
+        external.has(key),
+      ),
+  )
   for (const level of ['module', 'file', 'type', 'callable'])
-    addLevelMetrics(levelAdjacency(nodes, edges, level), metrics)
+    addLevelMetrics(levelAdjacency(internal, edges, level), metrics)
   return metrics
 }

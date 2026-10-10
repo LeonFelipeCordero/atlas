@@ -13,12 +13,11 @@ from tree_sitter_language_pack import (
     Span,
     StructureItem,
     get_language,
-    get_parser,
     get_tags_query,
 )
 
 from .adapters import get_adapter
-from .syntax import DeclarationCarrier
+from .syntax import DeclarationCarrier, ParsedSyntax
 
 DEFINITION_KINDS = {
     "definition.class": "class",
@@ -41,11 +40,12 @@ def _declaration_query(language: str) -> Query | None:
 
 
 def _structure_item(
-    node: Node, kind: str, name: str | None, language: str
+    carrier: DeclarationCarrier, kind: str, language: str
 ) -> StructureItem:
+    node = carrier.node
     visibility, decorators = get_adapter(language).metadata(node)
     return StructureItem(
-        name=name,
+        name=carrier.name,
         kind=kind,
         signature=(node.text or b"").decode("utf-8", errors="replace"),
         visibility=visibility,
@@ -93,7 +93,9 @@ def _add_captured_match(
             continue
         declarations[node.id] = (
             node,
-            _structure_item(node, DEFINITION_KINDS[definition], name, language),
+            _structure_item(
+                DeclarationCarrier(node, name), DEFINITION_KINDS[definition], language
+            ),
         )
 
 
@@ -123,9 +125,8 @@ def _carrier_metadata(
     carrier: DeclarationCarrier, item: StructureItem, language: str
 ) -> StructureItem:
     return _structure_item(
-        carrier.node,
+        replace(carrier, name=carrier.name or item.name or None),
         carrier.kind or str(item.kind),
-        carrier.name or item.name or None,
         language,
     )
 
@@ -175,11 +176,7 @@ def _merge_item(native: StructureItem, tagged: StructureItem | None) -> Structur
 
 
 def extract_structure(
-    source: bytes,
-    language: str,
-    existing: list[StructureItem] | None = None,
-    *,
-    root: Node | None = None,
+    syntax: ParsedSyntax, existing: list[StructureItem] | None = None
 ) -> list[StructureItem]:
     """Extract declarations under their nearest declared AST ancestor.
 
@@ -189,18 +186,17 @@ def extract_structure(
     No query means the supplied list is returned unchanged.
     Dependency/parser/query errors propagate.
     """
-    query = _declaration_query(language)
+    query = _declaration_query(syntax.source.language)
     if query is None:
         return existing if existing is not None else []
-    if root is None:
-        root = get_parser(language).parse(source).root_node
-    declarations = _merge_declarations(root, query, language, existing or [])
+    declarations = _merge_declarations(syntax, query, existing or [])
     return _structure_hierarchy(declarations)
 
 
 def _merge_declarations(
-    root: Node, query: Query, language: str, existing: list[StructureItem]
+    syntax: ParsedSyntax, query: Query, existing: list[StructureItem]
 ) -> dict[tuple[int, str | None], tuple[Node, StructureItem]]:
+    root, language = syntax.tree(), syntax.source.language
     declarations: dict[tuple[int, str | None], tuple[Node, StructureItem]] = {}
     for node, item in _captured_declarations(root, query, language).values():
         declaration = _canonical_declaration(node, item, language)

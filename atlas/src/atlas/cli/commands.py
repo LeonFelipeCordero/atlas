@@ -1,4 +1,4 @@
-"""Command-line entry points for projects, indexing and reports."""
+"""Command-line entry points for projects, measurements and configured checks."""
 
 import json
 from pathlib import Path
@@ -60,7 +60,7 @@ def _folder_report(folder: Path, skip_save: bool) -> dict[str, Any]:
     return report
 
 
-@main.command("report", help="Analyze a folder and show findings as Markdown or JSON")
+@main.command("report", help="Analyze a folder and show quantitative metrics as Markdown or JSON")
 @click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to analyze and save")
 @click.option("--skip-save", is_flag=True, help="Analyze a folder without accessing the database")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
@@ -73,6 +73,33 @@ def report_command(folder: Path, skip_save: bool, output_format: str) -> None:
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps(report, ensure_ascii=False, indent=2) if output_format == "json" else render_markdown(report))
+
+
+@main.command("check", help=(
+    "Check current sources against atlas.json in the analyzed folder, without saving. "
+    "Missing keys inherit defaults: maxFileLines=600, maxFunctionLines=100, "
+    "maxParameters=3, maxWeightedComplexity=8, maxDecisionDepth=3, "
+    "maxNestedLoops=0, maxCircularImportGroups=0. maxChangeImpact and "
+    "maxInstability are disabled by default and apply to files/modules. "
+    "Null disables a check. Equality passes; violations exit 1."
+))
+@click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to analyze and check")
+@click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
+@click.pass_context
+def check_command(context: click.Context, folder: Path, output_format: str) -> None:
+    from ..metrics.check import build_check, render_check
+    from ..metrics.config import load_config
+    from ..domain.repositories import RepositoryError
+
+    try:
+        root = folder.expanduser().resolve()
+        config = load_config(root)
+        result = build_check(_folder_report(root, skip_save=True), config)
+    except (OSError, ValueError, RuntimeError, RepositoryError) as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(json.dumps(result, ensure_ascii=False, indent=2) if output_format == "json" else render_check(result))
+    if result["findings"]:
+        context.exit(1)
 
 
 if __name__ == "__main__":

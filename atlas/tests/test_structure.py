@@ -5,6 +5,7 @@ from unittest.mock import patch
 from tree_sitter_language_pack import ProcessConfig, get_tags_query, process
 
 from atlas.parsing.structure import _declaration_query, extract_structure
+from tests.parsing_fixture import parsing_syntax
 
 
 class StructureTagsTest(unittest.TestCase):
@@ -31,7 +32,7 @@ class Service {
         with patch(
             "atlas.parsing.structure.get_tags_query", wraps=get_tags_query
         ) as tags:
-            structure = extract_structure(source, "kotlin")
+            structure = extract_structure(parsing_syntax(source, "kotlin"))
             tags.assert_called_once_with("kotlin")
 
         self.assertEqual([item.name for item in structure], ["demo", "Service"])
@@ -54,7 +55,7 @@ class Service {
     def test_unnamed_companion_is_a_container_without_duplicate_declarations(
         self,
     ) -> None:
-        structure = extract_structure(
+        structure = extract_structure(parsing_syntax(
             b"""class Service {
     companion object {
         fun create(): Service = Service()
@@ -62,7 +63,7 @@ class Service {
 }
 """,
             "kotlin",
-        )
+        ))
         self.assertEqual(len(structure), 1)
         self.assertEqual([item.name for item in structure[0].children], ["Companion"])
         self.assertEqual(
@@ -81,7 +82,7 @@ class Service implements Runner {
 }
 """
         native = process(source.decode(), ProcessConfig(language="java")).structure
-        structure = extract_structure(source, "java", native)
+        structure = extract_structure(parsing_syntax(source, "java"), native)
         self.assertEqual(
             [item.name for item in structure], ["demo", "Runner", "Service"]
         )
@@ -115,7 +116,7 @@ class Service implements Runner {
     def assert_language_nesting(self, source, language):
         native = process(source.decode(), ProcessConfig(language=language)).structure
         self.decorate_python_native(native, language)
-        structure = extract_structure(source, language, native)
+        structure = extract_structure(parsing_syntax(source, language), native)
         service = structure[0].children[0] if language == "ruby" else structure[0]
         self.assertEqual(service.name, "Service")
         self.assertEqual([item.name for item in service.children], ["run"])
@@ -143,7 +144,7 @@ class Service implements Runner {
         source = b"class Service { public void Run() {} }"
         native = process(source.decode(), ProcessConfig(language="csharp")).structure
         with patch("atlas.parsing.structure.get_tags_query", return_value=None):
-            self.assertIs(extract_structure(source, "csharp", native), native)
+            self.assertIs(extract_structure(parsing_syntax(source, "csharp"), native), native)
 
     def test_queries_are_cached_per_language(self) -> None:
         with patch(

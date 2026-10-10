@@ -5,7 +5,7 @@ import type { Repository } from './api'
 export class RepositoryStore {
   constructor(private readonly database: AppDatabase) {}
 
-  register(id: string, name: string, location: string, createdAt: number) {
+  register({ id, name, location, createdAt }: Omit<Repository, 'importedAt'>) {
     return this.database
       .query<Repository, [string, string, string, number]>(
         `

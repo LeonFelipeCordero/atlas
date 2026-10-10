@@ -8,6 +8,7 @@ are private helpers.
 """
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import get_args
 
@@ -94,21 +95,30 @@ def _directory_rules(base: Path, inherited, filename: str):
     return rules
 
 
-def _include_directory(base: Path, name: str, rules, atlas_rules, use_gitignore: bool) -> bool:
-    if name == ".git" or _is_ignored(base / name, atlas_rules, True):
+@dataclass(frozen=True)
+class _DirectoryContext:
+    base: Path
+    rules: list[tuple[Path, GitIgnoreSpec]]
+    atlas_rules: list[tuple[Path, GitIgnoreSpec]]
+    use_gitignore: bool
+
+
+def _include_directory(directory: _DirectoryContext, name: str) -> bool:
+    path = directory.base / name
+    if name == ".git" or _is_ignored(path, directory.atlas_rules, True):
         return False
-    if use_gitignore:
-        return not _is_ignored(base / name, rules, True)
+    if directory.use_gitignore:
+        return not _is_ignored(path, directory.rules, True)
     return name not in IGNORED_DIRECTORIES and "generated" not in name
 
 
-def _directory_files(base: Path, names: list[str], rules, atlas_rules):
+def _directory_files(directory: _DirectoryContext, names: list[str]):
     return [
-        base / name
+        directory.base / name
         for name in names
         if name != ".git"
-        and not _is_ignored(base / name, rules, False)
-        and not _is_ignored(base / name, atlas_rules, False)
+        and not _is_ignored(directory.base / name, directory.rules, False)
+        and not _is_ignored(directory.base / name, directory.atlas_rules, False)
     ]
 
 
@@ -116,13 +126,8 @@ def _child_rules(base: Path, directories: list[str], rules):
     return {base / name: rules for name in directories}
 
 
-def _visible_directories(
-    base: Path, directories: list[str], rules, atlas_rules, use_gitignore: bool
-):
-    return [
-        name for name in directories
-        if _include_directory(base, name, rules, atlas_rules, use_gitignore)
-    ]
+def _visible_directories(directory: _DirectoryContext, directories: list[str]):
+    return [name for name in directories if _include_directory(directory, name)]
 
 
 def _repository_paths(root: Path) -> list[Path]:
@@ -138,12 +143,11 @@ def _repository_paths(root: Path) -> list[Path]:
             if use_gitignore else []
         )
         atlas_rules = _directory_rules(base, atlas_directory_rules.get(base, []), ".atlasignore")
-        directories[:] = _visible_directories(
-            base, directories, rules, atlas_rules, use_gitignore
-        )
+        context = _DirectoryContext(base, rules, atlas_rules, use_gitignore)
+        directories[:] = _visible_directories(context, directories)
         directory_rules.update(_child_rules(base, directories, rules))
         atlas_directory_rules.update(_child_rules(base, directories, atlas_rules))
-        paths.extend(_directory_files(base, names, rules, atlas_rules))
+        paths.extend(_directory_files(context, names))
     return _contained_files(paths, root)
 
 

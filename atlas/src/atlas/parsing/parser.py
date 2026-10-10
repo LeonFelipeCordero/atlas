@@ -6,16 +6,17 @@ byte offsets are zero-based, and stored end offsets are exclusive.
 """
 
 import hashlib
+from dataclasses import dataclass
 from functools import cache
 
 
 from tree_sitter import Node
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_language, get_parser, process
 
-from .adapters import LanguageAdapter, get_adapter
+from .adapters import DEFAULT_ADAPTER, LanguageAdapter, get_adapter
 from ..domain.models import SourceFile
 from .structure import _declaration_query, extract_structure
-from .syntax import FALLBACK_CALL_TYPES, call_sites
+from .syntax import FALLBACK_CALL_TYPES, DeclarationHeader, ParsedSyntax, call_sites
 
 
 from ..domain.models import (
@@ -46,6 +47,19 @@ def _parse_syntax(file: SourceFile, adapter: LanguageAdapter) -> Node | None:
         or _declaration_query(file.language) is not None
     ):
         return get_parser(file.language).parse(file.source).root_node
+    return None
+
+
+def _syntax_error(root: Node | None) -> str | None:
+    if root is None or not root.has_error:
+        return None
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        if node.is_error or node.is_missing:
+            line, column = node.start_point
+            return f"Syntax error at line {line + 1}, column {column + 1}; analysis may be incomplete."
+        pending.extend(reversed(node.children))
     return None
 
 
@@ -82,14 +96,20 @@ def _extract_calls(
     return calls
 
 
+@dataclass(frozen=True)
+class _StructureParent:
+    key: str
+    ancestors: tuple[str, ...] = ()
+
+
 def _add_structure(
-    file: ParsedFile, item: StructureItem, parent_key: str, ancestors: list[str]
+    file: ParsedFile, item: StructureItem, parent: _StructureParent
 ) -> None:
     span = item.span
     if span is None:
         return
     name = item.name or "<anonymous>"
-    qualified_name = f"{file.source.path}::{'.'.join([*ancestors, name])}"
+    qualified_name = f"{file.source.path}::{'.'.join((*parent.ancestors, name))}"
     key = f"symbol:{qualified_name}:{span.start_byte}"
     kind = str(item.kind).lower()
     symbol = Symbol(
@@ -99,7 +119,7 @@ def _add_structure(
         name,
         qualified_name,
         kind,
-        parent_key,
+        parent.key,
         span.start_byte,
         span.end_byte,
         span.start_line + 1,
@@ -112,7 +132,7 @@ def _add_structure(
     )
     file.symbols.append(symbol)
     for target_name in get_adapter(file.source.language).inheritance(
-        file.source.language, kind, item.signature or ""
+        DeclarationHeader(file.source.language, kind, item.signature or "")
     ):
         file.inheritances.append(
             Inheritance(
@@ -125,7 +145,7 @@ def _add_structure(
             )
         )
     for child in item.children:
-        _add_structure(file, child, key, [*ancestors, name])
+        _add_structure(file, child, _StructureParent(key, (*parent.ancestors, name)))
 
 
 def parse_file(source: SourceFile) -> ParsedFile:
@@ -133,7 +153,7 @@ def parse_file(source: SourceFile) -> ParsedFile:
 
     Calls, imports, and structure share a syntax tree when needed.
     Native processing runs separately. Parser failures propagate to the caller.
-    Text decoding replaces invalid UTF-8; syntax errors need not raise.
+    Text decoding replaces invalid UTF-8; syntax errors are recorded as diagnostics.
 
     Args:
         source: File path, language identifier, and source bytes to index.
@@ -159,6 +179,9 @@ def parse_file(source: SourceFile) -> ParsedFile:
         source.path, source.absolute_path, source.language, syntax_source
     )
     root = _parse_syntax(syntax_file, adapter)
+    # Generic grammars may reject valid dialects (e.g. Tailwind CSS). Dedicated
+    # code adapters report concrete ERROR/missing nodes, not grammar-only flags.
+    parsed.parse_error = _syntax_error(root) if adapter is not DEFAULT_ADAPTER else None
     parsed.calls = _extract_calls(syntax_file, root=root, adapter=adapter)
     result = process(text, ProcessConfig(language=source.language))
     native_imports = [
@@ -166,15 +189,14 @@ def parse_file(source: SourceFile) -> ParsedFile:
         for item in result.imports
         if item.span is not None
     ]
+    syntax = ParsedSyntax(syntax_file, root)
     parsed.imports = [
         Import(source.path, value, line)
-        for value, line in adapter.imports(syntax_file, native_imports, root=root)
+        for value, line in adapter.imports(syntax, native_imports)
     ]
-    structure = extract_structure(
-        syntax_source, source.language, result.structure, root=root
-    )
+    structure = extract_structure(syntax, result.structure)
     for item in structure:
-        _add_structure(parsed, item, file_key(source.path), [])
+        _add_structure(parsed, item, _StructureParent(file_key(source.path)))
     return parsed
 
 

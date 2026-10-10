@@ -240,7 +240,13 @@ export function buildProjectGraph(
     render(node, true),
   )
   const local = projectNodes(children, visible)
-  const targets = addBoundaryDependencies(artifact, scope, local, nodes, render)
+  const targets = addBoundaryDependencies({
+    artifact,
+    scope,
+    local,
+    nodes,
+    render,
+  })
   return { nodes, edges: aggregateEdges(artifact, local, targets) }
 }
 

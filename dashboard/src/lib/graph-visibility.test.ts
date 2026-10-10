@@ -38,12 +38,19 @@ test('detects test directories without confusing directory names with filenames'
   expect(isTestPath('src/testing', true)).toBe(false)
 })
 
-function node(
-  key: string,
-  parent: string | null,
-  path: string | null,
+type VisibilityNode = {
+  key: string
+  parent: string | null
+  path: string | null
+  level?: string
+}
+
+function node({
+  key,
+  parent,
+  path,
   level = 'file',
-): ArtifactNode {
+}: VisibilityNode): ArtifactNode {
   return {
     stableKey: key,
     parentStableKey: parent,
@@ -63,16 +70,21 @@ function fixture(): Artifact {
     schemaVersion: 2,
     repository: { name: 'sample' },
     nodes: [
-      node('testFn', 'testFile', null, 'callable'),
-      node('testFile', 'src', 'src/widget.test.ts'),
-      node('helper', 'tests', 'tests/helper.ts'),
-      node('tests', null, 'tests', 'folder'),
-      node('fn', 'file', null, 'callable'),
-      node('file', 'src', 'src/widget.ts'),
-      node('src', null, 'src', 'folder'),
-      node('libFile', 'lib', 'lib/util.ts'),
-      node('lib', null, 'lib', 'folder'),
-      node('empty', null, 'empty', 'folder'),
+      node({
+        key: 'testFn',
+        parent: 'testFile',
+        path: null,
+        level: 'callable',
+      }),
+      node({ key: 'testFile', parent: 'src', path: 'src/widget.test.ts' }),
+      node({ key: 'helper', parent: 'tests', path: 'tests/helper.ts' }),
+      node({ key: 'tests', parent: null, path: 'tests', level: 'folder' }),
+      node({ key: 'fn', parent: 'file', path: null, level: 'callable' }),
+      node({ key: 'file', parent: 'src', path: 'src/widget.ts' }),
+      node({ key: 'src', parent: null, path: 'src', level: 'folder' }),
+      node({ key: 'libFile', parent: 'lib', path: 'lib/util.ts' }),
+      node({ key: 'lib', parent: null, path: 'lib', level: 'folder' }),
+      node({ key: 'empty', parent: null, path: 'empty', level: 'folder' }),
     ],
     edges: [
       {
@@ -127,9 +139,14 @@ test('hides tests, descendants, and their edges without changing the imported ar
 test('prunes newly empty test folders but preserves unrelated empty folders', () => {
   const artifact = fixture()
   artifact.nodes.push(
-    node('only', null, 'only', 'folder'),
-    node('nested', 'only', 'only/nested', 'folder'),
-    node('spec', 'nested', 'only/nested/foo.spec.ts'),
+    node({ key: 'only', parent: null, path: 'only', level: 'folder' }),
+    node({
+      key: 'nested',
+      parent: 'only',
+      path: 'only/nested',
+      level: 'folder',
+    }),
+    node({ key: 'spec', parent: 'nested', path: 'only/nested/foo.spec.ts' }),
   )
   const visible = hideTestFiles(artifact)
   expect(

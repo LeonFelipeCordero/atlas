@@ -1,6 +1,7 @@
 """Calculate complexity by traversing normalized adapter decision/scope facts."""
 
 from collections.abc import Iterator
+from dataclasses import dataclass
 
 from tree_sitter import Node
 
@@ -11,9 +12,17 @@ from .adapters.base import MetricPolicy
 from ..domain.models import Complexity
 
 
+@dataclass(frozen=True)
+class _TraversalFrame:
+    node: Node
+    decision_depth: int
+    loop_depth: int
+
+
 def _decision_metrics(
-    node: Node, depth: int, loop_depth: int, policy: MetricPolicy
+    frame: _TraversalFrame, policy: MetricPolicy
 ) -> tuple[int, int, int, int]:
+    node, depth, loop_depth = frame.node, frame.decision_depth, frame.loop_depth
     if policy.alternative(node):
         depth = max(0, depth - 1)
     decision = policy.decision(node)
@@ -28,9 +37,9 @@ def _decision_metrics(
 
 def _child_frames(
     node: Node, depth: int, loop_depth: int
-) -> Iterator[tuple[Node, int, int]]:
+) -> Iterator[_TraversalFrame]:
     for child in reversed(node.named_children):
-        yield child, depth, loop_depth
+        yield _TraversalFrame(child, depth, loop_depth)
 
 
 def calculate_complexity(
@@ -44,13 +53,14 @@ def calculate_complexity(
     """
     root = policy.body(root)
     base, nested, loops, maximum = 1, 0, 0, 0
-    stack = [(root, 0, 0)]
+    stack = [_TraversalFrame(root, 0, 0)]
     while stack:
-        node, depth, loop_depth = stack.pop()
+        frame = stack.pop()
+        node, loop_depth = frame.node, frame.loop_depth
         if node != root and policy.scope(node):
             continue
         decisions, penalty, nested_loops, depth = _decision_metrics(
-            node, depth, loop_depth, policy
+            frame, policy
         )
         base += decisions
         nested += penalty

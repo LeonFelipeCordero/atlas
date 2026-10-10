@@ -90,12 +90,12 @@ function canvasEdges(
     const active = cycle
       ? highlighted.has(edge.id)
       : edge.source === selected || edge.target === selected
-    return canvasEdge(
+    return canvasEdge({
       edge,
       active,
-      Boolean(cycle && active),
-      Boolean(cycle || selected),
-    )
+      cycleImport: Boolean(cycle && active),
+      hasSelection: Boolean(cycle || selected),
+    })
   })
 }
 
@@ -104,12 +104,19 @@ function edgeLabel(edge: GraphEdge, cycleImport: boolean) {
   return edge.count > 1 ? String(edge.count) : undefined
 }
 
-function canvasEdge(
-  edge: GraphEdge,
-  active: boolean,
-  cycleImport: boolean,
-  hasSelection: boolean,
-) {
+type CanvasEdgeOptions = {
+  edge: GraphEdge
+  active: boolean
+  cycleImport: boolean
+  hasSelection: boolean
+}
+
+function canvasEdge({
+  edge,
+  active,
+  cycleImport,
+  hasSelection,
+}: CanvasEdgeOptions) {
   const color = active ? 'var(--primary)' : 'var(--graph-edge)'
   return {
     id: edge.id,
@@ -129,14 +136,23 @@ function canvasEdge(
   }
 }
 
-function canvasNode(
-  item: GraphNode,
-  position: { x: number; y: number },
-  onOpen: Props['onOpen'],
-  selected: string | null,
-  related: Set<string>,
-  activeCycle: ProjectedCycle | null,
-) {
+type CanvasNodeOptions = {
+  item: GraphNode
+  position: { x: number; y: number }
+  onOpen: Props['onOpen']
+  selected: string | null
+  related: Set<string>
+  activeCycle: ProjectedCycle | null
+}
+
+function canvasNode({
+  item,
+  position,
+  onOpen,
+  selected,
+  related,
+  activeCycle,
+}: CanvasNodeOptions) {
   return {
     id: item.id,
     type: 'code' as const,
@@ -196,14 +212,14 @@ function Canvas({
   const nodes = useMemo(
     () =>
       graph.nodes.map((item) =>
-        canvasNode(
+        canvasNode({
           item,
-          positions.get(item.id)!,
+          position: positions.get(item.id)!,
           onOpen,
           selected,
           related,
           activeCycle,
-        ),
+        }),
       ),
     [graph, positions, onOpen, selected, related, activeCycle],
   )

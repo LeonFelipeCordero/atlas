@@ -7,7 +7,9 @@ from random import Random
 import pytest
 from pydantic import ValidationError
 
-from atlas.metrics.artifact import GraphArtifact, build_artifact
+from atlas.metrics.artifact import (
+    GraphArtifact, build_artifact, build_dependency_views, validate_artifact,
+)
 from atlas.metrics.dependency_metrics import METRIC_NAMES, dependency_metrics
 from atlas.domain.models import (
     GraphNode,
@@ -44,6 +46,13 @@ def counts(fan_in: int, fan_out: int, impact: int) -> dict[str, int]:
     return dict(zip(METRIC_NAMES, (fan_in, fan_out, impact)))
 
 
+def expected_metrics(fan_in: int, fan_out: int, impact: int) -> dict[str, int | float | None]:
+    return {
+        **counts(fan_in, fan_out, impact),
+        "instability": fan_out / (fan_in + fan_out) if fan_in + fan_out else None,
+    }
+
+
 @pytest.mark.parametrize(
     ("pairs", "expected"),
     [
@@ -66,8 +75,8 @@ def test_chain_diamond_and_cycles(pairs, expected) -> None:
     keys = list("abcd")[: len(expected)]
     actual = dependency_metrics(view([*keys, "isolated"], pairs))
     assert actual == {
-        **{key: counts(*values) for key, values in zip(keys, expected)},
-        "isolated": counts(0, 0, 0),
+        **{key: expected_metrics(*values) for key, values in zip(keys, expected)},
+        "isolated": expected_metrics(0, 0, 0),
     }
 
 
@@ -83,8 +92,21 @@ def test_duplicate_self_and_outside_view_edges_do_not_count() -> None:
             ("external", "b"),
         ],
     )
-    assert dependency_metrics(graph) == {"a": counts(0, 1, 0), "b": counts(1, 0, 1)}
+    assert dependency_metrics(graph) == {
+        "a": expected_metrics(0, 1, 0), "b": expected_metrics(1, 0, 1),
+    }
     assert dependency_metrics(view([], [])) == {}
+
+
+def test_instability_uses_distinct_incoming_and_outgoing_peers() -> None:
+    peers = list("abcd")
+    pairs = [(peer, "stable") for peer in peers] + [("stable", "unstable")]
+    pairs += [("unstable", peer) for peer in peers]
+    actual = dependency_metrics(view([*peers, "stable", "unstable", "isolated"], pairs))
+    assert actual["stable"] == {**counts(4, 1, 5), "instability": 0.2}
+    assert actual["unstable"] == {**counts(1, 4, 5), "instability": 0.8}
+    assert actual["isolated"] == {**counts(0, 0, 0), "instability": None}
+    assert all(actual[peer] == expected_metrics(1, 1, 5) for peer in peers)
 
 
 def reverse_reachable(key: str, pairs: list[tuple[str, str]]) -> int:
@@ -115,7 +137,7 @@ def test_deep_graph_is_iterative_and_exact() -> None:
     keys = [str(index) for index in range(10_000)]
     actual = dependency_metrics(view(keys, list(zip(keys, keys[1:]))))
     assert actual == {
-        key: counts(int(index > 0), int(index < len(keys) - 1), index)
+        key: expected_metrics(int(index > 0), int(index < len(keys) - 1), index)
         for index, key in enumerate(keys)
     }
 
@@ -123,10 +145,12 @@ def test_deep_graph_is_iterative_and_exact() -> None:
 def test_large_cycle_is_iterative_and_excludes_selected_node() -> None:
     keys = [str(index) for index in range(3_000)]
     actual = dependency_metrics(view(keys, list(zip(keys, [*keys[1:], keys[0]]))))
-    assert all(metrics == counts(1, 1, len(keys) - 1) for metrics in actual.values())
+    assert all(metrics == expected_metrics(1, 1, len(keys) - 1) for metrics in actual.values())
 
 
-def declaration(name: str, kind: str, path: str, parent: str) -> Symbol:
+def declaration(name: str, kind: str, owner: Symbol | SourceFile) -> Symbol:
+    path = owner.file_path if isinstance(owner, Symbol) else owner.path
+    parent = owner.key if isinstance(owner, Symbol) else file_key(path)
     return Symbol(
         name, path, "python", name, name, kind, parent, 0, 1, 1, 1, 1, 2, None, None, []
     )
@@ -136,14 +160,16 @@ def projected_artifact(root: Path) -> GraphArtifact:
     files = []
     for name in "abcdz":
         path = f"{name}/{name}.py"
+        source = SourceFile(path, root / path, "python", b"")
+        type_symbol = declaration(f"type:{name}", "class", source)
         files.append(
             ParsedFile(
-                SourceFile(path, root / path, "python", b""),
+                source,
                 "hash",
                 None,
                 [
-                    declaration(f"type:{name}", "class", path, file_key(path)),
-                    declaration(name, "method", path, f"type:{name}"),
+                    type_symbol,
+                    declaration(name, "method", type_symbol),
                 ],
             )
         )
@@ -176,7 +202,9 @@ def assert_projected_peer_metrics(
     nodes: dict[str, GraphNode], name: str, values: tuple[int, int, int]
 ) -> None:
     keys = [name, f"type:{name}", f"file:{name}/{name}.py", f"module:{name}"]
+    expected = expected_metrics(*values)
     assert all(metric_values(nodes[key]) == counts(*values) for key in keys)
+    assert all(nodes[key]["properties"]["instability"] == expected["instability"] for key in keys)
 
 
 def test_all_levels_use_aggregated_internal_dependencies(tmp_path: Path) -> None:
@@ -191,13 +219,15 @@ def test_all_levels_use_aggregated_internal_dependencies(tmp_path: Path) -> None
     }
     for name, values in expected.items():
         assert_projected_peer_metrics(nodes, name, values)
-    assert nodes["module:."]["properties"] == counts(0, 0, 0)
+    assert nodes["module:."]["properties"] == expected_metrics(0, 0, 0)
     assert nodes["external"]["properties"] == {}
     assert not set(METRIC_NAMES).intersection(nodes["repository"]["properties"])
     # Type-only is included in metrics but not runtime import cycle detection.
     assert artifact.circularDependencies == {"version": 1, "groups": []}
     assert len(artifact.views["callable"]["edges"]) == 4
     assert artifact.views["callable"]["edges"][0]["count"] == 2
+    snapshot = asdict(artifact)
+    assert build_dependency_views(snapshot["nodes"], snapshot["edges"]) == artifact.views
 
 
 def test_indexer_populates_metrics_and_excludes_unresolved_targets(
@@ -223,6 +253,7 @@ def test_indexer_populates_metrics_and_excludes_unresolved_targets(
         "isolated": (0, 0, 0),
     }.items():
         assert metric_values(nodes[name]) == counts(*values)
+        assert nodes[name]["properties"]["instability"] == expected_metrics(*values)["instability"]
     assert nodes["missing"]["level"] == "external"
     assert nodes["missing"]["properties"] == {}
 
@@ -238,12 +269,13 @@ def test_type_only_imports_contribute_compile_time_impact(tmp_path: Path) -> Non
     files = [node for node in artifact.nodes if node["level"] == "file"]
     assert len(files) == 2
     assert all(metric_values(node) == counts(1, 1, 1) for node in files)
+    assert all(node["properties"]["instability"] == 0.5 for node in files)
     assert any(edge.get("typeOnly") for edge in artifact.edges)
     assert artifact.circularDependencies == {"version": 1, "groups": []}
 
 
 def strip_metrics(node: GraphNode) -> None:
-    for name in METRIC_NAMES:
+    for name in (*METRIC_NAMES, "instability"):
         node["properties"].pop(name, None)
 
 
@@ -263,3 +295,26 @@ def test_metric_properties_require_nonnegative_integer_counts(
     data["nodes"][1]["properties"][name] = value
     with pytest.raises(ValidationError, match=f"{name} must be a nonnegative integer"):
         GraphArtifact(**data)
+
+
+@pytest.mark.parametrize("value", [None, 0.0, 0.2, 0.8, 1.0])
+def test_instability_accepts_none_and_finite_unit_interval_floats(
+    tmp_path: Path, value: float | None
+) -> None:
+    data = asdict(projected_artifact(tmp_path))
+    data["nodes"][1]["properties"]["instability"] = value
+    artifact = GraphArtifact(**data)
+    assert artifact.nodes[1]["properties"]["instability"] == value
+    validate_artifact(artifact)
+
+
+@pytest.mark.parametrize("value", [-0.1, 1.1, float("inf"), float("-inf"), float("nan"), 0, 1, True, "0.2"])
+def test_instability_requires_none_or_a_finite_unit_interval_float(
+    tmp_path: Path, value: object
+) -> None:
+    artifact = projected_artifact(tmp_path)
+    artifact.nodes[1]["properties"]["instability"] = value
+    with pytest.raises(ValidationError, match="instability must be None or a finite float between 0 and 1"):
+        validate_artifact(artifact)
+    with pytest.raises(ValidationError, match="instability must be None or a finite float between 0 and 1"):
+        GraphArtifact(**asdict(artifact))

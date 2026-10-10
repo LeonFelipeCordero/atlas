@@ -11,6 +11,7 @@ from tree_sitter import Node
 from ...domain.models import Call, ParsedFile, ParsedRepository, Symbol
 from ..resolution_syntax import Syntax
 from ..resolution_contract import SCOPES as SCOPES
+from ..resolution_contract import ImportRequest, ResolutionRequest
 from .resolution_paths import (
     import_path as import_path,
     namespace_binding as namespace_binding,
@@ -91,7 +92,8 @@ class CallableIdentity:
     def select(
         self, file: ParsedFile, call: Call, matches: list[Symbol]
     ) -> list[Symbol]:
-        return self.syntax[file.source.path].adapter.select(self, file, call, matches)
+        request = ResolutionRequest(file, call, None, call.name, call.qualifier)
+        return self.syntax[file.source.path].adapter.select(self, request, matches)
 
 
 class ImportBindings:
@@ -130,22 +132,17 @@ class ImportBindings:
         self, file: ParsedFile, path: str, position: int | None = None
     ) -> list[ParsedFile]:
         return self.syntax[file.source.path].adapter.import_files(
-            self, file, path, position
+            self, ImportRequest(file, path, position)
         )
 
     def import_key(
         self, file: ParsedFile, source: str, position: int | None = None
     ) -> str | None:
-        return self.syntax[file.source.path].adapter.import_key(
-            self, file, source, position
-        )
+        adapter = self.syntax[file.source.path].adapter
+        return adapter.import_key(self, ImportRequest(file, adapter.import_path(source), position, source))
 
-    def _members(
-        self, file: ParsedFile, path: str, name: str, position: int | None = None
-    ) -> list[Symbol]:
-        return self.syntax[file.source.path].adapter.members(
-            self, file, path, name, position
-        )
+    def _members(self, request: ImportRequest, name: str) -> list[Symbol]:
+        return self.syntax[request.file.source.path].adapter.members(self, request, name)
 
     def _file_bindings(self, file: ParsedFile) -> list[Binding]:
         syntax = self.syntax[file.source.path]
@@ -158,7 +155,7 @@ class ImportBindings:
                 for item in file.imports
             )
         )
-        result.extend(syntax.adapter.module_bindings(self, file, syntax, source_length))
+        result.extend(syntax.adapter.module_bindings(self, file, source_length))
         return result
 
     def _directive_bindings(self, file, item, source_length) -> list[Binding]:
@@ -171,37 +168,34 @@ class ImportBindings:
         start, end = (scope.start_byte, scope.end_byte) if scope else (0, source_length)
         position = directive.start_byte if directive is not None else None
         path = adapter.import_path(item.source)
-        entries = adapter.import_item(self, file, item.source, path, position)
+        request = ImportRequest(file, path, position, item.source)
+        entries = adapter.import_item(self, request)
         return [
-            self._binding(file, path, entry, start, end, scope) for entry in entries
+            self._binding(request, Binding(name, targets, namespace, start, end, scope=scope))
+            for name, targets, namespace in entries
         ]
 
-    def _binding(self, file, path, entry, start, end, scope) -> Binding:
-        name, targets, namespace = entry
-        binding = Binding(name, targets, namespace, start, end, scope=scope)
-        if namespace:
-            binding.members = self.syntax[file.source.path].adapter.namespace_members(
-                self, file, path, targets
+    def _binding(self, request: ImportRequest, binding: Binding) -> Binding:
+        if binding.namespace:
+            binding.members = self.syntax[request.file.source.path].adapter.namespace_members(
+                self, request, binding.targets
             )
         return binding
 
-    def _visible_binding(
-        self, file: ParsedFile, binding: Binding, name: str, position: int
-    ) -> bool:
+    def _visible_binding(self, syntax: Syntax, binding: Binding, position: int) -> bool:
         return (
-            binding.name == name
-            and binding.start <= position < binding.end
-            and (
-                binding.scope is None
-                or self.syntax[file.source.path]._visible(binding.scope, position)
-            )
+            binding.start <= position < binding.end
+            and (binding.scope is None or syntax._visible(binding.scope, position))
         )
+
+    def _named_bindings(self, file: ParsedFile, name: str) -> list[Binding]:
+        return [binding for binding in self.bindings[file.source.path] if binding.name == name]
 
     def get(self, file: ParsedFile, name: str, position: int) -> Binding | None:
         matches = [
             b
-            for b in self.bindings[file.source.path]
-            if self._visible_binding(file, b, name, position)
+            for b in self._named_bindings(file, name)
+            if self._visible_binding(self.syntax[file.source.path], b, position)
         ]
         if not matches:
             return None

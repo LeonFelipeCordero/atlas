@@ -1,9 +1,15 @@
 import type { ArtifactNode } from '@/lib/architecture-artifact'
 
 export function GraphDependencyMetrics({ node }: { node: ArtifactNode }) {
+  const instability = node.properties?.instability
   const rows = [
     ['Fan-in', node.properties?.fanIn, 'Distinct direct dependents'],
     ['Fan-out', node.properties?.fanOut, 'Distinct direct dependencies'],
+    [
+      'Internal instability',
+      instability === null ? 'N/A' : instability?.toFixed(2),
+      'Fan-out / (fan-in + fan-out); N/A for isolated items',
+    ],
     [
       'Transitive change impact',
       node.properties?.transitiveChangeImpact,
@@ -25,9 +31,11 @@ export function GraphDependencyMetrics({ node }: { node: ArtifactNode }) {
             ))}
           </dl>
           <p className="sidebar-hint">
-            Counts distinct {node.level} peers across the full index, including
-            tests and type-only dependencies. Impact follows direct and indirect
-            dependents; it excludes this item. External targets are excluded.
+            Counts distinct internal {node.level} peers across the full index,
+            including tests and type-only dependencies. Self and external
+            dependencies are excluded. Internal instability is fan-out / (fan-in
+            + fan-out); N/A means isolated. Impact follows direct and indirect
+            dependents, excluding this item.
           </p>
         </>
       ) : (

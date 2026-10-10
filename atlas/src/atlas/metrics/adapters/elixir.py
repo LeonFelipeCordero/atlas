@@ -2,7 +2,8 @@
 
 import re
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
+from ...domain.models import Call, Symbol
 
 
 from tree_sitter import Node
@@ -185,8 +186,16 @@ def _call_arity(node: Node | None) -> int | None:
     return count + 1 if pipeline else count
 
 
-def _clause_matches(symbol, clauses, count, call) -> bool:
-    clause = clauses.get(symbol.key)
+@dataclass(frozen=True)
+class ClauseInvocation:
+    count: int
+    call: Call
+
+
+def _clause_matches(
+    symbol: Symbol, clause: tuple[int, int, bool] | None, invocation: ClauseInvocation
+) -> bool:
+    count, call = invocation.count, invocation.call
     if clause is None:
         return False
     minimum, maximum, private = clause
@@ -217,11 +226,12 @@ class ElixirResolution(ResolutionAdapter):
             else symbol.qualified_name.split("::")[-1]
         )
 
-    def import_key(self, ctx, file, source, position):
-        targets = ctx.modules.declared(file, self.import_path(source))
+    def import_key(self, ctx, request):
+        targets = ctx.modules.declared(request.file, request.path)
         return targets[0].key if len(targets) == 1 else None
 
-    def import_item(self, ctx, file, source, path, position):
+    def import_item(self, ctx, request):
+        file, source, path = request.file, request.source, request.path
         alias = re.search(r"\bas\s*:?\s*([\w]+)", source)
         return [
             (
@@ -231,8 +241,10 @@ class ElixirResolution(ResolutionAdapter):
             )
         ]
 
-    def qualified(self, resolver, file, qualifier, name, call):
-        return resolver.members(resolver.modules.declared(file, qualifier), name, True)
+    def qualified(self, resolver, request):
+        return resolver.members(
+            resolver.modules.declared(request.file, request.qualifier or ""), request.name, True
+        )
 
     def clauses(self, repository, syntax):
         clauses = {}
@@ -246,13 +258,15 @@ class ElixirResolution(ResolutionAdapter):
             clauses[symbol.key] = _clause_signature(node)
         return clauses
 
-    def select(self, identity, file, call, matches):
+    def select(self, identity, request, matches):
+        file, call = request.file, request.call
         node = identity.syntax[file.source.path].node(call.start_byte, call.end_byte)
         count = _call_arity(node)
         if count is None:
             return matches if len(matches) == 1 else []
         clauses = identity.clauses
-        matches = [s for s in matches if _clause_matches(s, clauses, count, call)]
+        invocation = ClauseInvocation(count, call)
+        matches = [s for s in matches if _clause_matches(s, clauses.get(s.key), invocation)]
         identities = {(s.parent_key, s.name) for s in matches}
         return matches if len(identities) == 1 else []
 

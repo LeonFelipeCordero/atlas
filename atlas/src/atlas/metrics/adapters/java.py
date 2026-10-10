@@ -86,24 +86,24 @@ class JavaResolution(ResolutionAdapter):
         match = re.search(r"\bimport\s+(?:static\s+)?([\w.]+)", source)
         return match[1] if match else path
 
-    def import_key(self, ctx, file, source, position):
+    def import_key(self, ctx, request):
         targets = ctx.modules.declared(
-            file, self.import_name(source, self.import_path(source))
+            request.file, self.import_name(request.source, request.path)
         )
         return targets[0].key if len(targets) == 1 else None
 
-    def import_item(self, ctx, file, source, path, position):
-        path = self.import_name(source, path)
-        return [(path.rsplit(".", 1)[-1], ctx.modules.declared(file, path), False)]
+    def import_item(self, ctx, request):
+        path = self.import_name(request.source, request.path)
+        return [(path.rsplit(".", 1)[-1], ctx.modules.declared(request.file, path), False)]
 
-    def qualify_class(self, resolver, file, name, matches):
-        return resolver.modules.declared(file, name) if "." in name else matches
+    def qualify_class(self, resolver, request, matches):
+        return resolver.modules.declared(request.file, request.name) if "." in request.name else matches
 
-    def inheritance(self, resolver, file, name, call, owner, matches):
+    def inheritance(self, resolver, request, matches):
         return (
-            resolver.modules.declared(file, name)
-            if "." in name
-            else super().inheritance(resolver, file, name, call, owner, matches)
+            resolver.modules.declared(request.file, request.name)
+            if "." in request.name
+            else super().inheritance(resolver, request, matches)
         )
 
 

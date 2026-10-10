@@ -86,10 +86,13 @@ test('imported complexity survives graph projection and displays its breakdown',
   const graph = buildProjectGraph(artifact, { kind: 'file', key: 'file' })
   expect(graph.nodes[0].properties).toEqual(metrics)
   const html = sidebar(artifact)
-  expect(html).toContain('Cyclomatic complexity')
+  expect(html).toContain('aria-label="Weighted complexity"')
+  expect(html).toContain('<h4>Weighted complexity</h4>')
+  expect(html).not.toContain('aria-label="Cyclomatic complexity"')
+  expect(html).not.toContain('Base complexity')
   for (const [label, value] of [
     ['Total', 8],
-    ['Base complexity', 5],
+    ['Cyclomatic complexity', 5],
     ['Nested decisions extra', 2],
     ['Nested loops extra', 1],
     ['Maximum decision depth', 4],
@@ -109,6 +112,7 @@ test('zero penalties display, missing metrics never become zero', () => {
   ).toContain('<dt>Nested loops extra</dt><dd>0</dd>')
   const legacy = sidebar(fixture())
   expect(legacy).toContain('Not available. Re-index this repository')
+  expect(legacy).toContain('<h4>Weighted complexity</h4>')
   expect(legacy).not.toContain('<dt>Total</dt>')
   const partial = sidebar(fixture({ cyclomaticComplexity: 1 }))
   expect(partial).toContain('<dt>Total</dt><dd>1</dd>')
@@ -118,8 +122,8 @@ test('zero penalties display, missing metrics never become zero', () => {
 test('containers and constructors do not show complexity', () => {
   const artifact = fixture(metrics)
   expect(sidebar(artifact, 'file', false)).not.toContain(
-    'Cyclomatic complexity',
+    'aria-label="Weighted complexity"',
   )
   artifact.nodes[2].type = artifact.nodes[2].kind = 'constructor'
-  expect(sidebar(artifact)).not.toContain('Cyclomatic complexity')
+  expect(sidebar(artifact)).not.toContain('aria-label="Weighted complexity"')
 })

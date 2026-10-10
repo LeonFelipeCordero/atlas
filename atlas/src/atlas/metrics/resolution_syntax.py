@@ -11,6 +11,7 @@ from ..domain.models import ParsedFile, Symbol
 from ..syntax import field, text, walk
 
 from .resolution_contract import FUNCTIONS as FUNCTIONS, SCOPES as SCOPES
+from .resolution_contract import DeclarationLookup
 
 PARAMETERS = {
     "parameters",
@@ -96,6 +97,10 @@ def _class_or_function(node: Node) -> Node | None:
     return parent
 
 
+def _binding_entries(names, scope: Node, node: Node):
+    return ((name, scope, node) for name in names)
+
+
 class Syntax:
     """One parsed tree per file; binding checks reject any visible rebinding."""
 
@@ -148,12 +153,8 @@ class Syntax:
     def _bindings(self, node: Node, bindings: list[tuple[str, Node, Node]]) -> None:
         scope = self.scope(node)
         if node.type in PARAMETERS:
-            self._record_bindings(
-                chain.from_iterable(names(child) for child in node.named_children),
-                scope,
-                node,
-                bindings,
-            )
+            parameters = chain.from_iterable(names(child) for child in node.named_children)
+            bindings.extend(_binding_entries(parameters, scope, node))
             return
         if node.type in self.adapter.single_parameter_functions:
             parameter = field(node, "parameter", "parameters")
@@ -161,25 +162,20 @@ class Syntax:
                 bindings.append((text(parameter), node, parameter))
             return
         target, scope = self.adapter.binding(self, node, scope)
-        self._record_bindings(names(target), scope, node, bindings)
-
-    def _record_bindings(self, names, scope: Node, node: Node, bindings) -> None:
-        bindings.extend((name, scope, node) for name in names)
+        bindings.extend(_binding_entries(names(target), scope, node))
 
     def _visible(self, scope: Node, position: int) -> bool:
         return scope.start_byte <= position < scope.end_byte and self.adapter.visible(
             self, scope, position
         )
 
-    def _declaration_allowed(
-        self, name: str, node: Node, position: int, allowed: list[Symbol]
-    ) -> bool:
+    def _declaration_allowed(self, lookup: DeclarationLookup, allowed: list[Symbol]) -> bool:
         if any(
-            node.start_byte <= s.start_byte and s.end_byte <= node.end_byte
+            lookup.node.start_byte <= s.start_byte and s.end_byte <= lookup.node.end_byte
             for s in allowed
         ):
             return True
-        return self.adapter.declaration_allowed(self, name, node, position)
+        return self.adapter.declaration_allowed(self, lookup)
 
     def shadowed(
         self, name: str, position: int, allowed: list[Symbol] | None = None
@@ -190,7 +186,7 @@ class Syntax:
         return any(
             binding == name
             and self._visible(scope, position)
-            and not self._declaration_allowed(name, node, position, allowed)
+            and not self._declaration_allowed(DeclarationLookup(name, node, position), allowed)
             for binding, scope, node in self.bindings
         )
 
