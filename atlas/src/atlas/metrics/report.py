@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .cycles import circular_dependencies
-from ..domain.repositories import GraphDTO
+from ..domain.repositories import ReportFactsDTO
 
 THRESHOLDS = {
     "cyclomaticComplexity": 8,
@@ -111,9 +111,16 @@ def _cycle_findings(cycles: Mapping[str, Any], nodes: list[dict[str, Any]]):
     return [_cycle_finding(group, paths) for group in cycles["groups"]]
 
 
-def build_report(graph: GraphDTO) -> dict[str, Any]:
-    """Return only actionable findings, with readable descriptions and locations."""
-    return build_artifact_report(graph.artifact)
+def build_report(graph: ReportFactsDTO) -> dict[str, Any]:
+    """Build findings from focused normalized metrics and import-cycle facts."""
+    nodes = [_report_node(node.model_dump()) for node in graph.nodes]
+    cycles = circular_dependencies(nodes, [edge.model_dump() for edge in graph.imports])
+    return {"findings": _complexity_findings(nodes) + _size_findings(nodes) + _cycle_findings(cycles, nodes)}
+
+
+def _report_node(node: dict[str, Any]) -> dict[str, Any]:
+    metrics = (*THRESHOLDS, "lineCount", "parameterCount")
+    return {**node, "properties": {name: node[name] for name in metrics}}
 
 
 def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:

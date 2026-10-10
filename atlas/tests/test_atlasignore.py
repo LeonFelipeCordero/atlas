@@ -153,8 +153,8 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     with repository_service(database) as service:
         original = service.get_architecture(project.id)
         assert original is not None
-        assert original.artifact["stats"]["files"] == 3
-        assert original.artifact["circularDependencies"]["groups"]
+        assert original.stats.files == 3
+        assert service.report(project.name)["findings"]
     (source / ".atlasignore").write_text("/fixtures/\n")
     second = runner.invoke(main, args)
     assert second.exit_code == 0, second.output
@@ -165,16 +165,15 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     with repository_service(database) as service:
         saved = service.get_architecture(project.id)
         assert saved is not None
-        assert saved.artifact["stats"]["files"] == 1
-        assert saved.artifact["circularDependencies"]["groups"] == []
-        assert not any(
-            node.get("path", "").startswith("fixtures/")
-            for node in saved.artifact["nodes"]
-        )
+        assert saved.stats.files == 1
+        assert service.report(project.name)["findings"] == []
+        facts = service.repository.report_facts(project.id)
+        assert facts is not None
+        assert not any((node.path or "").startswith("fixtures/") for node in facts.nodes)
     (source / ".atlasignore").unlink()
     restored = runner.invoke(main, args)
     assert restored.exit_code == 0, restored.output
     with repository_service(database) as service:
         saved = service.get_architecture(project.id)
         assert saved is not None
-        assert saved.artifact["stats"]["files"] == 3
+        assert saved.stats.files == 3

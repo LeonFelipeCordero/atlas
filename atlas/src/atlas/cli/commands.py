@@ -27,8 +27,8 @@ def index_command(folder: Path) -> None:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps({
         "repositoryId": saved.repositoryId,
-        "schemaVersion": saved.artifact["schemaVersion"],
-        "stats": saved.artifact["stats"],
+        "schemaVersion": saved.schemaVersion,
+        "stats": saved.stats.model_dump(),
     }))
 
 

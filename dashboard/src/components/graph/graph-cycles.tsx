@@ -1,31 +1,25 @@
-import type { Artifact } from '@/lib/architecture-artifact'
 import type { GraphNode } from '@/lib/project-graph'
-import type { ProjectedCycle } from '@/lib/graph-cycles'
-import { cycleContainsNode } from '@/lib/graph-cycles'
+import type { ViewCycle } from '@/lib/graph-data'
 import { Button } from '@/components/ui/button'
 
 export type CycleProps = {
-  cycles: Array<ProjectedCycle> | undefined
-  activeCycle: ProjectedCycle | null
-  onCycle: (cycle: ProjectedCycle) => void
-  onCycleScope: (cycle: ProjectedCycle) => void
+  cycles: Array<ViewCycle> | undefined
+  activeCycle: ViewCycle | null
+  onCycle: (cycle: ViewCycle) => void
+  onCycleScope: (cycle: ViewCycle) => void
 }
 
 export function GraphCycles({
-  artifact,
   item,
   cycles,
   activeCycle,
   onCycle,
   onCycleScope,
-}: CycleProps & { artifact: Artifact; item?: GraphNode }) {
+}: CycleProps & { item?: GraphNode }) {
   const linked = cycles?.filter(
-    (cycle) => !item || cycleContainsNode(artifact, cycle.group, item),
+    (cycle) => !item || cycle.linkedNodeIds.includes(item.id),
   )
   if (!linked?.length) return null
-  const lookup = new Map(
-    artifact.nodes.map((node) => [node.stableKey, node.path || node.name]),
-  )
   return (
     <section className="graph-cycles" aria-label="Circular dependencies">
       <div className="section-heading">
@@ -56,7 +50,7 @@ export function GraphCycles({
             </strong>
             <span>
               {cycle.group.exampleCycle
-                .map((key) => lookup.get(key) ?? key)
+                .map((key) => cycle.labels[key] ?? key)
                 .join(' → ')}
             </span>
           </button>

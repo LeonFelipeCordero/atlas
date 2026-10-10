@@ -1,11 +1,5 @@
 import type { AppDatabase } from './database.servers'
-import type { ImportedGraph, Repository } from './api'
-
-type StoredGraph = {
-  repositoryId: string
-  importedAt: number
-  artifact: string
-}
+import type { Repository } from './api'
 
 /** Shared-file access only; schema and graph writes belong to Python. */
 export class RepositoryStore {
@@ -27,33 +21,12 @@ export class RepositoryStore {
     return this.database
       .query<Repository, []>(
         `
-      SELECT r.id, r.name, r.location, r.created_at AS createdAt, g.imported_at AS importedAt
+      SELECT r.id, r.name, r.location, r.created_at AS createdAt,
+        CASE WHEN g.graph_revision IS NOT NULL THEN g.imported_at END AS importedAt
       FROM repositories r LEFT JOIN repository_graphs g ON r.id = g.repository_id
       ORDER BY r.created_at, r.id
     `,
       )
       .all()
-  }
-
-  exists(id: string) {
-    return (
-      this.database
-        .query<{ id: string }, [string]>(
-          'SELECT id FROM repositories WHERE id = ?',
-        )
-        .get(id) !== null
-    )
-  }
-
-  graph(id: string): ImportedGraph | null {
-    const row = this.database
-      .query<StoredGraph, [string]>(
-        `
-      SELECT repository_id AS repositoryId, imported_at AS importedAt, artifact
-      FROM repository_graphs WHERE repository_id = ?
-    `,
-      )
-      .get(id)
-    return row ? { ...row, artifact: JSON.parse(row.artifact) } : null
   }
 }

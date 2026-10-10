@@ -55,7 +55,7 @@ class RepositoryService:
         identifier = self.repository.resolve(name)
         if identifier is None:
             raise RepositoryError("Repository not found", 404)
-        graph = self.repository.graph(identifier)
+        graph = self.repository.report_facts(identifier)
         if graph is None:
             raise RepositoryError("Repository has no indexed graph; run atlas index first", 409)
         return build_report(graph)

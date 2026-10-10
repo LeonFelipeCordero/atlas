@@ -42,21 +42,20 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
         ]
         assert db.execute("PRAGMA table_info('repository_graphs')").fetchall() == [
             (0, "repository_id", "TEXT", 1, None, 1),
-            (1, "artifact", "TEXT", 1, None, 0),
-            (2, "imported_at", "INTEGER", 1, None, 0),
-            (3, "graph_revision", "TEXT", 0, None, 0),
-            (4, "schema_version", "INTEGER", 0, None, 0),
-            (5, "indexed_at", "TEXT", 0, None, 0),
-            (6, "root_name", "TEXT", 0, None, 0),
-            (7, "root_path", "TEXT", 0, None, 0),
+            (1, "imported_at", "INTEGER", 1, None, 0),
+            (2, "graph_revision", "TEXT", 0, None, 0),
+            (3, "schema_version", "INTEGER", 0, None, 0),
+            (4, "indexed_at", "TEXT", 0, None, 0),
+            (5, "root_name", "TEXT", 0, None, 0),
+            (6, "root_path", "TEXT", 0, None, 0),
         ]
         db.execute("PRAGMA foreign_keys = ON")
         db.execute("INSERT INTO repositories VALUES ('a', 'Mixed', '.', 1)")
         with pytest.raises(sqlite3.IntegrityError):
             db.execute("INSERT INTO repositories VALUES ('b', 'MIXED', '.', 2)")
         with pytest.raises(sqlite3.IntegrityError):
-            db.execute("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('unknown', '{}', 1)")
-        db.execute("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('a', '{}', 1)")
+            db.execute("INSERT INTO repository_graphs (repository_id, imported_at) VALUES ('unknown', 1)")
+        db.execute("INSERT INTO repository_graphs (repository_id, imported_at) VALUES ('a', 1)")
         db.execute("DELETE FROM repositories WHERE id='a'")
         assert db.execute("SELECT count(*) FROM repository_graphs").fetchone() == (0,)
     engine = create_engine(path)
@@ -94,7 +93,7 @@ def test_service_reindex_resolves_name_and_rolls_back_failed_write(database: Pat
         assert service.get_architecture(first.id) is None
         graph = service.index(first.name, root)
         assert graph.repositoryId == first.id
-        assert graph.artifact["schemaVersion"] == 2
+        assert graph.schemaVersion == 2
         with pytest.raises(RepositoryError) as duplicate:
             service.register({"name": "FIRST", "location": "elsewhere"})
         assert duplicate.value.status == 409

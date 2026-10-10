@@ -1,6 +1,5 @@
 """Normalized writes handle missing/null metadata and reject ambiguous containers."""
 
-import json
 import sqlite3
 from pathlib import Path
 
@@ -31,11 +30,11 @@ def test_null_containers_round_trip(tmp_path: Path, container: str) -> None:
     with repository_session(path) as session:
         store = RepositoryStore(session)
         result = store.save_new("Nulls", ".", artifact)
-        assert result.artifact == artifact
         graph = store.graph(result.repositoryId)
-        assert graph is not None and graph.artifact == artifact
+        assert graph == result
+        assert graph is not None and graph.stats.nodes == len(artifact["nodes"])
     with sqlite3.connect(path) as db:
-        assert json.loads(db.execute("SELECT artifact FROM repository_graphs").fetchone()[0]) == artifact
+        assert "artifact" not in [row[1] for row in db.execute("PRAGMA table_info(repository_graphs)")]
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
 
 

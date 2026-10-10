@@ -14,14 +14,15 @@ import { GraphSizeMetrics } from './graph-size-metrics'
 import { GraphFileComplexity } from './graph-file-complexity'
 import { GraphCycles } from './graph-cycles'
 import type { CycleProps } from './graph-cycles'
-import type { Artifact, ArtifactNode } from '@/lib/architecture-artifact'
+import type { ArtifactNode } from '@/lib/architecture-artifact'
+import type { GraphDetails } from '@/lib/graph-data'
 import type { GraphNode, GraphScope, ProjectGraph } from '@/lib/project-graph'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 type Props = CycleProps & {
   graph: ProjectGraph
-  artifact: Artifact
+  details: GraphDetails
   selected: string | null
   scope?: GraphScope
   onSelect: (id: string | null) => void
@@ -30,7 +31,7 @@ type Props = CycleProps & {
 
 export function GraphSidebar({
   graph,
-  artifact,
+  details,
   selected,
   scope,
   onSelect,
@@ -45,7 +46,7 @@ export function GraphSidebar({
         {...cycleProps}
         item={item}
         graph={graph}
-        artifact={artifact}
+        details={details}
         onSelect={onSelect}
         onOpen={onOpen}
       />
@@ -57,7 +58,7 @@ export function GraphSidebar({
       : localItems.length === 1 && localItems[0].kind === 'file'
         ? localItems[0].id
         : null
-  const file = artifact.nodes.find((node) => node.stableKey === fileKey)
+  const file = details.nodes.find((node) => node.stableKey === fileKey)
   const matches = graph.nodes.filter((node) =>
     `${node.label} ${node.path}`.toLowerCase().includes(search.toLowerCase()),
   )
@@ -66,7 +67,7 @@ export function GraphSidebar({
       {file && (
         <div className="sidebar-file-summary">
           <p className="eyebrow">{file.name}</p>
-          <GraphFileComplexity artifact={artifact} fileKey={file.stableKey} />
+          <GraphFileComplexity sum={details.fileComplexities[file.stableKey]} />
           <GraphSizeMetrics node={file} />
           <GraphDependencyMetrics node={file} />
         </div>
@@ -101,7 +102,7 @@ export function GraphSidebar({
           </p>
         )}
       </div>
-      <GraphCycles artifact={artifact} {...cycleProps} />
+      <GraphCycles {...cycleProps} />
     </aside>
   )
 }
@@ -154,12 +155,12 @@ function nodeTitle(item: GraphNode, original: ArtifactNode | undefined) {
 
 function NodeSummary({
   item,
-  artifact,
+  details,
   original,
   onOpen,
 }: {
   item: GraphNode
-  artifact: Artifact
+  details: GraphDetails
   original: ArtifactNode | undefined
   onOpen: Props['onOpen']
 }) {
@@ -177,7 +178,7 @@ function NodeSummary({
         </Button>
       )}
       {item.kind === 'file' && (
-        <GraphFileComplexity artifact={artifact} fileKey={item.id} />
+        <GraphFileComplexity sum={details.fileComplexities[item.id]} />
       )}
       <NodeMetrics node={original} />
     </>
@@ -202,12 +203,12 @@ function NodeMetrics({ node }: { node: ArtifactNode | undefined }) {
 function NodeDetails({
   item,
   graph,
-  artifact,
+  details,
   onSelect,
   onOpen,
   ...cycleProps
 }: Omit<Props, 'selected'> & { item: GraphNode }) {
-  const original = artifact.nodes.find((node) => node.stableKey === item.id)
+  const original = details.nodes.find((node) => node.stableKey === item.id)
   const connections = graph.edges.filter(
     (edge) => edge.source === item.id || edge.target === item.id,
   )
@@ -225,7 +226,7 @@ function NodeDetails({
       </Button>
       <NodeSummary
         item={item}
-        artifact={artifact}
+        details={details}
         original={original}
         onOpen={onOpen}
       />
@@ -257,7 +258,7 @@ function NodeDetails({
           </p>
         )}
       </div>
-      <GraphCycles artifact={artifact} item={item} {...cycleProps} />
+      <GraphCycles item={item} {...cycleProps} />
     </aside>
   )
 }

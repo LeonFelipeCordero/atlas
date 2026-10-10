@@ -37,11 +37,7 @@ function GraphPage() {
       </Link>
       <div className="graph-page-heading">
         <div>
-          <h1>
-            {repository?.name ??
-              graph.data?.artifact.repository.name ??
-              'Repository'}
-          </h1>
+          <h1>{repository?.name ?? graph.data?.rootName ?? 'Repository'}</h1>
           <p className="repository-location">{repository?.location}</p>
         </div>
         <div className="graph-actions">
@@ -95,15 +91,21 @@ function GraphContent({
       {graph.data === null && !graph.error && repositoryName && (
         <WaitingForImport />
       )}
-      {graph.data && (
+      {graph.data?.state === 'needsReindex' && (
+        <section className="waiting-for-import">
+          <h2>This graph needs to be re-indexed.</h2>
+          <p>The saved index predates normalized graph storage.</p>
+        </section>
+      )}
+      {graph.data?.state === 'ready' && (
         <>
           <div className="import-status">
             <span className="status-dot" />
             Indexed {formatDate(graph.data.importedAt)}
           </div>
           <GraphExplorer
-            key={`${repositoryId}:${graph.data.importedAt}`}
-            artifact={graph.data.artifact}
+            key={`${repositoryId}:${graph.data.graphRevision}`}
+            initial={graph.data}
           />
         </>
       )}

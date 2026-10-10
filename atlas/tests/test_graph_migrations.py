@@ -28,7 +28,7 @@ def test_schema_upgrade_leaves_existing_artifacts_unparsed(tmp_path: Path) -> No
         assert db.execute("SELECT version_num FROM alembic_version").fetchone() == (HEAD,)
         assert db.execute("SELECT * FROM repositories").fetchall() == [("old", "Local", ".", 7)]
         assert db.execute("SELECT * FROM repository_graphs").fetchone() == (
-            "old", "not JSON", 123, None, None, None, None, None,
+            "old", 123, None, None, None, None, None,
         )
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
     assert not any(normalized_rows(path, "old").values())

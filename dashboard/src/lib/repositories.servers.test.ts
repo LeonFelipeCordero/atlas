@@ -8,7 +8,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, beforeEach, expect, test } from 'bun:test'
+import { afterEach, beforeEach, expect, spyOn, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
 import { openDatabase } from './database.servers'
 import {
@@ -17,15 +17,26 @@ import {
   registerRepository,
   repositoryErrorResponse,
 } from './repositories.servers'
-import { parseArtifact } from './architecture-artifact'
-import { hideTestFiles } from './graph-visibility'
-import { buildProjectGraph } from './project-graph'
-import type { Artifact } from './architecture-artifact'
+import type { GraphView } from './graph-data'
+import type { GraphScope } from './project-graph-types'
 import type { AppDatabase } from './database.servers'
 
 let directory: string
 let path: string
 let database: AppDatabase
+
+function ready(
+  id: string,
+  scope: GraphScope = { kind: 'repository' },
+): GraphView {
+  const result = getArchitecture(id, database, scope)
+  expect(result?.state).toBe('ready')
+  if (result?.state !== 'ready') throw new Error('Expected normalized graph')
+  expect(result).not.toHaveProperty('artifact')
+  return result
+}
+const fileView = (id: string, key = 'file:main.py') =>
+  ready(id, { kind: 'file', key })
 
 function python(...args: Array<string>) {
   const result = Bun.spawnSync(
@@ -70,7 +81,7 @@ test('UI opens a Python-migrated database without owning migrations', () => {
   expect(listRepositories(database)).toEqual([repository])
   expect(
     database.query('SELECT version_num FROM alembic_version').get(),
-  ).toEqual({ version_num: '0003_graph_relations' })
+  ).toEqual({ version_num: '0004_drop_graph_artifact' })
   expect(
     database
       .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -138,20 +149,19 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     database,
   )
   const summary = JSON.parse(python('atlas', 'index', '-f', source))
-  const first = getArchitecture(repository.id, database)!
+  const first = fileView(repository.id)
   expect(summary.repositoryId).toBe(repository.id)
-  expect(first.artifact.schemaVersion).toBe(2)
-  expect(first.artifact).toMatchObject({ stats: { files: 1 } })
-  expect(first.artifact.nodes.some((node) => node.name === 'run')).toBe(true)
+  expect(first.graph.nodes.some((node) => node.label === 'run')).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
   python('atlas', 'index', '-f', source)
-  const replacement = getArchitecture(repository.id, database)!
+  const replacement = fileView(repository.id)
   expect(
-    replacement.artifact.nodes.some((node) => node.name === 'replacement'),
+    replacement.graph.nodes.some((node) => node.label === 'replacement'),
   ).toBe(true)
-  expect(replacement.artifact.nodes.some((node) => node.name === 'run')).toBe(
+  expect(replacement.graph.nodes.some((node) => node.label === 'run')).toBe(
     false,
   )
+  expect(replacement.graphRevision).not.toBe(first.graphRevision)
   expect(listRepositories(database)[0].importedAt).toBe(replacement.importedAt)
   expect(
     database.query('SELECT count(*) AS count FROM repository_graphs').get(),
@@ -171,11 +181,11 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
   writeFileSync(join(otherSource, 'main.py'), 'def id_named():\n    return 3\n')
   const selected = JSON.parse(python('atlas', 'index', '-f', otherSource))
   expect(selected.repositoryId).toBe(idNamed.id)
-  const idNamedGraph = getArchitecture(idNamed.id, database)!
+  const idNamedGraph = fileView(idNamed.id)
   expect(
-    idNamedGraph.artifact.nodes.some((node) => node.name === 'id_named'),
+    idNamedGraph.graph.nodes.some((node) => node.label === 'id_named'),
   ).toBe(true)
-  expect(getArchitecture(repository.id, database)).toEqual(replacement)
+  expect(fileView(repository.id)).toEqual(replacement)
   expect(
     database
       .query(
@@ -199,16 +209,14 @@ test('folder reports register and update graphs visible to the UI', () => {
   expect(repository.name).toBe('source')
   expect(repository.location).toBe(source)
   expect(
-    getArchitecture(repository.id, database)!.artifact.nodes.some(
-      (node) => node.name === 'first',
-    ),
+    fileView(repository.id).graph.nodes.some((node) => node.label === 'first'),
   ).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
   python('atlas', 'report', '--f', source)
   expect(listRepositories(database)).toHaveLength(1)
   expect(
-    getArchitecture(repository.id, database)!.artifact.nodes.some(
-      (node) => node.name === 'replacement',
+    fileView(repository.id).graph.nodes.some(
+      (node) => node.label === 'replacement',
     ),
   ).toBe(true)
 })
@@ -225,8 +233,10 @@ test('Python src imports become dashboard arrows even when the report has no fin
   writeFileSync(join(app, 'worker.py'), 'def work(): pass\n')
   expect(python('atlas', 'report', '-f', source)).toBe('No findings.\n')
   const repository = listRepositories(database)[0]
-  const artifact = parseArtifact(getArchitecture(repository.id, database)!.artifact)
-  const graph = buildProjectGraph(artifact, { kind: 'folder', key: 'module:src/app' })
+  const { graph } = ready(repository.id, {
+    kind: 'folder',
+    key: 'module:src/app',
+  })
   expect(graph.edges).toHaveLength(1)
   expect(graph.edges[0]).toMatchObject({
     source: 'file:src/app/main.py',
@@ -249,44 +259,79 @@ test('indexed metrics survive Python/Bun storage and keep hidden test dependents
   )
   python('atlas', 'report', '-f', source)
   const repository = listRepositories(database)[0]
-  const artifact = parseArtifact(
-    getArchitecture(repository.id, database)!.artifact,
-  )
-  const visible = hideTestFiles(artifact)
-  const core = visible.nodes.find((node) => node.name === 'core.py')!
+  const view = ready(repository.id)
+  const core = view.details.nodes.find((node) => node.name === 'core.py')!
   expect(core.properties).toMatchObject({
     fanIn: 1,
     fanOut: 0,
     transitiveChangeImpact: 2,
   })
-  expect(artifact.nodes.some((node) => node.name === 'test_main.py')).toBe(true)
-  expect(visible.nodes.some((node) => node.name === 'test_main.py')).toBe(false)
-  const graph = buildProjectGraph(visible, { kind: 'repository' })
+  expect(view.details.nodes.some((node) => node.name === 'test_main.py')).toBe(
+    false,
+  )
+  const { graph } = view
   expect(
     graph.edges.filter((edge) => edge.target === core.stableKey),
   ).toHaveLength(1)
 })
 
-test('reading saved graph JSON preserves all fields', () => {
+test('legacy rows require reindex and never look like valid empty graphs', () => {
   const repository = registerRepository(
     { name: 'Legacy', location: 'local' },
     database,
   )
-  const artifact: Artifact = {
-    schemaVersion: 2,
-    repository: { name: 'Legacy' },
-    nodes: [],
-    edges: [],
-    future: { values: [1, null, 'value'] },
-  }
   database
-    .query('INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES (?, ?, ?)')
-    .run(repository.id, JSON.stringify(artifact), 123)
+    .query(
+      'INSERT INTO repository_graphs (repository_id, imported_at) VALUES (?, ?)',
+    )
+    .run(repository.id, 123)
   expect(getArchitecture(repository.id, database)).toEqual({
+    state: 'needsReindex',
     repositoryId: repository.id,
-    artifact,
     importedAt: 123,
+    rootName: 'Legacy',
   })
+  expect(listRepositories(database)[0].importedAt).toBeNull()
+  expect(
+    database
+      .query<{ name: string }, []>('PRAGMA table_info(repository_graphs)')
+      .all()
+      .map((column) => column.name),
+  ).not.toContain('artifact')
+})
+
+test('one read transaction keeps metadata and nodes on one WAL snapshot', () => {
+  const source = join(directory, 'source')
+  mkdirSync(source)
+  const file = join(source, 'main.py')
+  writeFileSync(file, 'def before(): return 1\n')
+  python('atlas', 'index', '-f', source)
+  const repository = listRepositories(database)[0]
+  const before = fileView(repository.id)
+  writeFileSync(file, 'def after(): return 2\n')
+  const original = database.query.bind(database)
+  let interleaved = false
+  const spy = spyOn(database, 'query').mockImplementation((sql: string) => {
+    expect(database.inTransaction).toBe(true)
+    if (
+      !interleaved &&
+      sql.includes('FROM graph_nodes n LEFT JOIN graph_symbols')
+    ) {
+      interleaved = true
+      python('atlas', 'index', '-f', source)
+    }
+    return original(sql)
+  })
+  try {
+    expect(fileView(repository.id)).toEqual(before)
+    expect(interleaved).toBe(true)
+  } finally {
+    spy.mockRestore()
+  }
+  const after = fileView(repository.id)
+  expect(after.graphRevision).not.toBe(before.graphRevision)
+  expect(after.graph.nodes.map((node) => node.label)).toEqual(['after'])
+  expect(database.inTransaction).toBe(false)
 })
 
 test('error responses remain JSON with the expected status', async () => {

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from atlas.persistence.database import create_engine, migrate_database, repository_session
+from atlas.metrics.report import build_report, build_artifact_report
 from atlas.persistence.models import (
     GraphEdgeRow, GraphFileRow, GraphNodeDecoratorRow, GraphNodeMetricRow,
     GraphNodeRow, GraphSymbolRow, RepositoryGraphRow,
@@ -36,13 +37,17 @@ def fail_edges(path: Path) -> None:
         db.execute("CREATE TRIGGER fail_edges BEFORE INSERT ON graph_edges BEGIN SELECT RAISE(ABORT, 'late edge failure'); END")
 
 
-def stored_artifact(store: RuntimeRepositoryStore, identifier: str) -> dict:
+def assert_saved(store: RuntimeRepositoryStore, identifier: str, artifact: dict) -> None:
     graph = store.graph(identifier)
-    assert graph is not None
-    return graph.artifact
+    assert graph is not None and graph.schemaVersion == artifact.get("schemaVersion")
+    assert graph.stats.nodes == len(artifact.get("nodes", []))
+    assert graph.stats.edges == len(artifact.get("edges", []))
+    facts = store.report_facts(identifier)
+    assert facts is not None and facts.graphRevision == graph.graphRevision
+    assert build_report(facts) == build_artifact_report(artifact)
 
 
-def test_full_facts_and_raw_artifact(database: Path) -> None:
+def test_full_normalized_facts(database: Path) -> None:
     artifact = graph_artifact()
     with repository_session(database) as session:
         store = RuntimeRepositoryStore(session)
@@ -50,7 +55,8 @@ def test_full_facts_and_raw_artifact(database: Path) -> None:
         identifier = result.repositoryId
         row = session.get(RepositoryGraphRow, identifier)
         assert row is not None
-        assert json.loads(row.artifact) == artifact == stored_artifact(store, identifier)
+        assert_saved(store, identifier, artifact)
+        assert "artifact" not in RepositoryGraphRow.__table__.columns
         assert row.repository_id == identifier
         assert row.graph_revision is not None
         assert re.fullmatch(r"[0-9a-f]{32}", row.graph_revision)
@@ -102,7 +108,11 @@ def test_explicit_null_measurement_is_present_not_zero(database: Path) -> None:
         result = RuntimeRepositoryStore(session).save_new("Nulls", ".", artifact)
     rows = normalized_rows(database, result.repositoryId)
     assert rows["graph_node_metrics"][1] == (result.repositoryId, "worker", None, None, None, None, None, None, None)
-    assert json.loads(header(database, result.repositoryId)[1]) == artifact
+    with repository_session(database) as session:
+        facts = RuntimeRepositoryStore(session).report_facts(result.repositoryId)
+        assert facts is not None
+        assert facts.nodes[0].lineCount == 0
+        assert facts.nodes[1].lineCount is None
 
 
 @pytest.mark.parametrize("table", ["repository_graphs", "repositories"])
@@ -158,14 +168,14 @@ def test_replacement_removes_stale_facts_and_always_changes_revision(database: P
     with repository_session(database) as session:
         store = RuntimeRepositoryStore(session)
         identifier = store.save_new("Replace", ".", graph_artifact()).repositoryId
-        previous = header(database, identifier)[3]
+        previous = header(database, identifier)[2]
         for _ in range(2):
             artifact = replacement()
             store.save(identifier, artifact)
             current = header(database, identifier)
-            assert current[3] != previous
-            previous = current[3]
-            assert json.loads(current[1]) == artifact == stored_artifact(store, identifier)
+            assert current[2] != previous
+            previous = current[2]
+            assert_saved(store, identifier, artifact)
             rows = normalized_rows(database, identifier)
             assert len(rows.pop("graph_nodes")) == 1
             assert not any(rows.values())
@@ -183,26 +193,26 @@ def test_late_replacement_failure_restores_entire_snapshot_and_session(database:
         with pytest.raises(Exception, match="late edge failure"):
             store.save(identifier, artifact)
         assert (header(database, identifier), normalized_rows(database, identifier)) == before
-        assert stored_artifact(store, identifier) == graph_artifact()
+        assert_saved(store, identifier, graph_artifact())
         store.save(identifier, replacement())
-        assert stored_artifact(store, identifier) == replacement()
+        assert_saved(store, identifier, replacement())
 
 
-@pytest.mark.parametrize("failure", ["serialization", "late_edge"])
+@pytest.mark.parametrize("failure", ["invalid_collection", "late_edge"])
 def test_save_new_failure_leaves_no_pending_or_ghost_registration(database: Path, failure: str) -> None:
     artifact = graph_artifact()
-    if failure == "serialization":
-        artifact["future"] = {1, 2}
+    if failure == "invalid_collection":
+        artifact["nodes"] = {}
     else:
         fail_edges(database)
     with repository_session(database) as session:
         store = RuntimeRepositoryStore(session)
-        with pytest.raises(Exception, match="serializable|late edge failure"):
+        with pytest.raises(Exception, match="arrays|late edge failure"):
             store.save_new("Ghost", ".", artifact)
         assert not session.new
         assert store.list() == []
         assert store.resolve("Ghost") is None
-        assert store.save_new("Reusable", ".", replacement()).artifact == replacement()
+        assert store.save_new("Reusable", ".", replacement()).stats.nodes == 1
     with sqlite3.connect(database) as db:
         assert db.execute("SELECT count(*) FROM repositories").fetchone() == (1,)
         assert db.execute("SELECT count(*) FROM repository_graphs").fetchone() == (1,)
@@ -224,7 +234,7 @@ def test_invalid_graph_rolls_back_existing_snapshot(database: Path, failure: str
         with pytest.raises(Exception, match="cyclic|FOREIGN KEY"):
             store.save(identifier, artifact)
         assert (header(database, identifier), normalized_rows(database, identifier)) == before
-        assert stored_artifact(store, identifier) == graph_artifact()
+        assert_saved(store, identifier, graph_artifact())
 
 
 def connection_rows(connection, identifier: str) -> dict:
@@ -248,7 +258,7 @@ def test_wal_reader_keeps_header_and_rows_in_one_snapshot(database: Path) -> Non
             assert tuple(reader.exec_driver_sql("SELECT * FROM repository_graphs WHERE repository_id=?", (identifier,)).one()) == old_header
             transaction.commit()
             assert connection_rows(reader, identifier) == normalized_rows(database, identifier) != old_rows
-            assert reader.exec_driver_sql("SELECT graph_revision FROM repository_graphs WHERE repository_id=?", (identifier,)).scalar() != old_header[3]
+            assert reader.exec_driver_sql("SELECT graph_revision FROM repository_graphs WHERE repository_id=?", (identifier,)).scalar() != old_header[2]
     finally:
         engine.dispose()
 
@@ -262,7 +272,7 @@ def test_coffee_graphs_write_all_nodes_and_edge_occurrences(database: Path, snap
     with repository_session(database) as session:
         store = RuntimeRepositoryStore(session)
         result = store.save_new(snapshot.stem, ".", artifact)
-        assert stored_artifact(store, result.repositoryId) == artifact
+        assert_saved(store, result.repositoryId, artifact)
     rows = normalized_rows(database, result.repositoryId)
     assert len(rows["graph_nodes"]) == len(artifact["nodes"])
     assert len(rows["graph_edges"]) == len(artifact["edges"])

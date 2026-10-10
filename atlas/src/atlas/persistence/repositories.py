@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from time import time
 from typing import Any
 from uuid import uuid4
 
 from atlas.domain.repositories import GraphDTO, RepositoryDTO, RepositoryError
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from .graph_records import (
     decorator_records,
@@ -24,6 +22,7 @@ from .graph_records import (
     symbol_records,
     validate_parentage,
 )
+from .graph_queries import GraphReadRepository
 from .models import (
     Base,
     GraphDiagnosticRow,
@@ -48,10 +47,7 @@ def _repository_dto(row: RepositoryRow, imported_at: int | None) -> RepositoryDT
     )
 
 
-class RepositoryStore:
-    def __init__(self, session: Session) -> None:
-        self.session = session
-
+class RepositoryStore(GraphReadRepository):
     def register(self, name: str, location: str) -> RepositoryDTO:
         self.session.rollback()
         row = RepositoryRow(
@@ -76,7 +72,10 @@ class RepositoryStore:
 
     def list(self) -> list[RepositoryDTO]:
         rows = self.session.execute(
-            select(RepositoryRow, RepositoryGraphRow.imported_at)
+            select(RepositoryRow, case(
+                (RepositoryGraphRow.graph_revision.is_not(None), RepositoryGraphRow.imported_at),
+                else_=None,
+            ))
             .outerjoin(
                 RepositoryGraphRow, RepositoryRow.id == RepositoryGraphRow.repository_id
             )
@@ -94,18 +93,6 @@ class RepositoryStore:
             )
         )
         return row.id if row else None
-
-    def graph(self, identifier: str) -> GraphDTO | None:
-        row = self.session.get(RepositoryGraphRow, identifier)
-        return (
-            GraphDTO(
-                repositoryId=identifier,
-                artifact=json.loads(row.artifact),
-                importedAt=row.imported_at,
-            )
-            if row
-            else None
-        )
 
     def save_new(self, name: str, location: str, artifact: dict[str, Any]) -> GraphDTO:
         self.session.rollback()
@@ -128,10 +115,8 @@ class RepositoryStore:
     def _save(self, identifier: str, artifact: dict[str, Any]) -> GraphDTO:
         imported_at = int(time() * 1000)
         try:
-            payload = json.dumps(artifact, ensure_ascii=False, separators=(",", ":"))
             validate_parentage(artifact)
             values = {
-                "artifact": payload,
                 "imported_at": imported_at,
                 "graph_revision": uuid4().hex,
                 **graph_metadata(artifact),
@@ -143,13 +128,14 @@ class RepositoryStore:
             )
             self.session.execute(statement)
             self._replace_graph(identifier, artifact)
+            row = self.session.get(RepositoryGraphRow, identifier, populate_existing=True)
+            assert row is not None
+            result = self._graph_summary(row)
             self.session.commit()
         except Exception:
             self.session.rollback()
             raise
-        return GraphDTO(
-            repositoryId=identifier, artifact=artifact, importedAt=imported_at
-        )
+        return result
 
     def _replace_graph(self, identifier: str, artifact: dict[str, Any]) -> None:
         self.session.execute(delete(GraphEdgeRow).where(GraphEdgeRow.repository_id == identifier))

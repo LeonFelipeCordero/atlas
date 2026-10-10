@@ -28,7 +28,6 @@ class RepositoryGraphRow(Base):
         primary_key=True,
         nullable=False,
     )
-    artifact: Mapped[str] = mapped_column(Text, nullable=False)
     imported_at: Mapped[int] = mapped_column(Integer, nullable=False)
     graph_revision: Mapped[str | None] = mapped_column(Text, nullable=True)
     schema_version: Mapped[int | None] = mapped_column(Integer, nullable=True)

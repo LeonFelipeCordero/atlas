@@ -5,7 +5,7 @@ import type {
   Artifact,
   NodeDependencyMetrics,
 } from '@/lib/architecture-artifact'
-import { parseArtifact } from '@/lib/architecture-artifact'
+import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { buildProjectGraph } from '@/lib/project-graph'
 import { fixtureNodes } from '@/lib/project-graph-fixture'
 
@@ -34,7 +34,7 @@ function sidebar(
         : { kind: 'repository' as const }
   return renderToStaticMarkup(
     <GraphSidebar
-      artifact={parseArtifact(artifact)}
+      details={fixtureDetails(artifact)}
       graph={buildProjectGraph(artifact, scope)}
       scope={scope}
       selected={selected ? key : null}
@@ -78,28 +78,3 @@ test('missing metrics require reindexing; indexed zeros and partial values remai
 test('single-file contents summary includes dependency metrics without selecting it', () => {
   expect(sidebar('service', metrics, false)).toContain('>Fan-in</dt><dd>2</dd>')
 })
-
-test('artifact validation preserves metrics and rejects invalid counts', () => {
-  const artifact = fixture()
-  artifact.nodes[0].properties = { ...metrics, custom: 'preserved' }
-  expect(parseArtifact(artifact).nodes[0].properties).toEqual({
-    ...metrics,
-    custom: 'preserved',
-  })
-  for (const key of Object.keys(metrics)) expectInvalidCounts(artifact, key)
-})
-
-function expectInvalidCounts(artifact: Artifact, key: string) {
-  for (const value of [
-    -1,
-    1.5,
-    '2',
-    null,
-    NaN,
-    Infinity,
-    Number.MAX_SAFE_INTEGER + 1,
-  ]) {
-    artifact.nodes[0].properties = { [key]: value }
-    expect(() => parseArtifact(artifact)).toThrow(`properties.${key}`)
-  }
-}

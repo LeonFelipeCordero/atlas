@@ -1,6 +1,5 @@
 """Fresh write transactions and atomic normalized graph writes."""
 
-import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -53,9 +52,8 @@ def assert_replaced(path: Path, identifier: str, previous_revision: str) -> None
     artifact = replacement()
     current = header(path, identifier)
     rows = normalized_rows(path, identifier)
-    assert current[3] != previous_revision
-    assert current[4:] == (3, artifact["repository"]["indexedAt"], "Replacement root", "/unavailable")
-    assert json.loads(current[1]) == artifact
+    assert current[2] != previous_revision
+    assert current[3:] == (3, artifact["repository"]["indexedAt"], "Replacement root", "/unavailable")
     assert len(rows.pop("graph_nodes")) == 1
     assert not any(rows.values())
 
@@ -64,8 +62,7 @@ def assert_new_graph(
     path: Path, identifier: str, expected_rows: dict[str, list[tuple[Any, ...]]]
 ) -> None:
     current = header(path, identifier)
-    assert json.loads(current[1]) == graph_artifact()
-    assert current[3] is not None
+    assert current[2] is not None
     expected = {
         table: [(identifier, *row[1:]) for row in records]
         for table, records in expected_rows.items()
@@ -91,10 +88,10 @@ def test_public_write_ends_stale_orchestration_read(database: Path, operation: s
         assert store.resolve("Other") is None  # The read still owns the old WAL snapshot.
         if operation == "save":
             store.save(identifier, replacement())
-            assert_replaced(database, identifier, old_header[3])
+            assert_replaced(database, identifier, old_header[2])
         elif operation == "save_new":
             created = store.save_new("New", ".", graph_artifact())
-            assert created.artifact == graph_artifact()
+            assert created.stats.nodes == len(graph_artifact()["nodes"])
             assert_new_graph(database, created.repositoryId, old_rows)
         else:
             created_repository = store.register("New", ".")
@@ -108,7 +105,7 @@ def test_public_write_ends_stale_orchestration_read(database: Path, operation: s
 
 
 @pytest.mark.parametrize("operation", ["save", "save_new"])
-@pytest.mark.parametrize("failure", ["serialization", "late_insert"])
+@pytest.mark.parametrize("failure", ["invalid_collection", "late_insert"])
 def test_write_failure_is_atomic_and_same_session_reusable(
     database: Path, operation: str, failure: str
 ) -> None:
@@ -119,8 +116,8 @@ def test_write_failure_is_atomic_and_same_session_reusable(
         artifact = graph_artifact()
         artifact["repository"]["name"] = "Uncommitted root"
         artifact["nodes"][0]["properties"]["lineCount"] = 99
-        if failure == "serialization":
-            artifact["future"] = {1, 2}
+        if failure == "invalid_collection":
+            artifact["nodes"] = {}
         else:
             with sqlite3.connect(database) as connection:
                 connection.execute("""
@@ -128,7 +125,7 @@ def test_write_failure_is_atomic_and_same_session_reusable(
                     BEGIN SELECT RAISE(ABORT, 'late graph insert failure'); END
                 """)
         assert store.resolve("First") == identifier
-        with pytest.raises(Exception, match="serializable|late graph insert failure"):
+        with pytest.raises(Exception, match="arrays|late graph insert failure"):
             if operation == "save":
                 store.save(identifier, artifact)
             else:
@@ -137,7 +134,8 @@ def test_write_failure_is_atomic_and_same_session_reusable(
         assert (header(database, identifier), normalized_rows(database, identifier)) == before
         assert store.resolve("Ghost") is None
         graph = store.graph(identifier)
-        assert graph is not None and graph.artifact == graph_artifact()
+        assert graph is not None and graph.stats.nodes == len(graph_artifact()["nodes"])
+        assert graph.rootName == graph_artifact()["repository"]["name"]
         recovered = store.save_new("Recovered", ".", replacement())
         store.save(identifier, replacement())
         assert store.resolve("Recovered") == recovered.repositoryId
