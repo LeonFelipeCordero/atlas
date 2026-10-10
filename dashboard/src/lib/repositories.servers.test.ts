@@ -70,13 +70,20 @@ test('UI opens a Python-migrated database without owning migrations', () => {
   expect(listRepositories(database)).toEqual([repository])
   expect(
     database.query('SELECT version_num FROM alembic_version').get(),
-  ).toEqual({ version_num: '0001_initial' })
+  ).toEqual({ version_num: '0003_graph_relations' })
   expect(
     database
       .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all(),
   ).toEqual([
     { name: 'alembic_version' },
+    { name: 'graph_diagnostics' },
+    { name: 'graph_edges' },
+    { name: 'graph_files' },
+    { name: 'graph_node_decorators' },
+    { name: 'graph_node_metrics' },
+    { name: 'graph_nodes' },
+    { name: 'graph_symbols' },
     { name: 'repositories' },
     { name: 'repository_graphs' },
   ])
@@ -273,7 +280,7 @@ test('reading saved graph JSON preserves all fields', () => {
     future: { values: [1, null, 'value'] },
   }
   database
-    .query('INSERT INTO repository_graphs VALUES (?, ?, ?)')
+    .query('INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES (?, ?, ?)')
     .run(repository.id, JSON.stringify(artifact), 123)
   expect(getArchitecture(repository.id, database)).toEqual({
     repositoryId: repository.id,

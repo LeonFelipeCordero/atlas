@@ -1,17 +1,41 @@
 """SQLAlchemy repository; owns transactions and returns only domain DTOs."""
 
+from __future__ import annotations
+
 import json
 from time import time
 from typing import Any
 from uuid import uuid4
 
 from atlas.domain.repositories import GraphDTO, RepositoryDTO, RepositoryError
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .models import RepositoryGraphRow, RepositoryRow
+from .graph_records import (
+    decorator_records,
+    diagnostic_records,
+    edge_records,
+    file_records,
+    graph_metadata,
+    metric_records,
+    node_records,
+    symbol_records,
+    validate_parentage,
+)
+from .models import (
+    Base,
+    GraphDiagnosticRow,
+    GraphEdgeRow,
+    GraphFileRow,
+    GraphNodeDecoratorRow,
+    GraphNodeMetricRow,
+    GraphNodeRow,
+    GraphSymbolRow,
+    RepositoryGraphRow,
+    RepositoryRow,
+)
 
 
 def _repository_dto(row: RepositoryRow, imported_at: int | None) -> RepositoryDTO:
@@ -29,6 +53,7 @@ class RepositoryStore:
         self.session = session
 
     def register(self, name: str, location: str) -> RepositoryDTO:
+        self.session.rollback()
         row = RepositoryRow(
             id=str(uuid4()), name=name, location=location, created_at=int(time() * 1000)
         )
@@ -83,28 +108,41 @@ class RepositoryStore:
         )
 
     def save_new(self, name: str, location: str, artifact: dict[str, Any]) -> GraphDTO:
+        self.session.rollback()
         row = RepositoryRow(
             id=str(uuid4()), name=name, location=location, created_at=int(time() * 1000)
         )
-        # save() flushes the pending registration and commits both writes together.
-        self.session.add(row)
-        return self.save(row.id, artifact)
+        # _save() flushes the registration and commits the whole graph together.
+        try:
+            self.session.add(row)
+            return self._save(row.id, artifact)
+        except Exception:
+            self.session.rollback()
+            raise
 
     def save(self, identifier: str, artifact: dict[str, Any]) -> GraphDTO:
+        # End orchestration reads before promoting a stale WAL snapshot to a write.
+        self.session.rollback()
+        return self._save(identifier, artifact)
+
+    def _save(self, identifier: str, artifact: dict[str, Any]) -> GraphDTO:
         imported_at = int(time() * 1000)
-        payload = json.dumps(artifact, ensure_ascii=False, separators=(",", ":"))
-        statement = insert(RepositoryGraphRow).values(
-            repository_id=identifier, artifact=payload, imported_at=imported_at
-        )
-        statement = statement.on_conflict_do_update(
-            index_elements=[RepositoryGraphRow.repository_id],
-            set_={
-                "artifact": statement.excluded.artifact,
-                "imported_at": statement.excluded.imported_at,
-            },
-        )
         try:
+            payload = json.dumps(artifact, ensure_ascii=False, separators=(",", ":"))
+            validate_parentage(artifact)
+            values = {
+                "artifact": payload,
+                "imported_at": imported_at,
+                "graph_revision": uuid4().hex,
+                **graph_metadata(artifact),
+            }
+            statement = insert(RepositoryGraphRow).values(repository_id=identifier, **values)
+            statement = statement.on_conflict_do_update(
+                index_elements=[RepositoryGraphRow.repository_id],
+                set_={name: statement.excluded[name] for name in values},
+            )
             self.session.execute(statement)
+            self._replace_graph(identifier, artifact)
             self.session.commit()
         except Exception:
             self.session.rollback()
@@ -112,3 +150,19 @@ class RepositoryStore:
         return GraphDTO(
             repositoryId=identifier, artifact=artifact, importedAt=imported_at
         )
+
+    def _replace_graph(self, identifier: str, artifact: dict[str, Any]) -> None:
+        self.session.execute(delete(GraphEdgeRow).where(GraphEdgeRow.repository_id == identifier))
+        self.session.execute(delete(GraphNodeRow).where(GraphNodeRow.repository_id == identifier))
+        self.session.execute(delete(GraphDiagnosticRow).where(GraphDiagnosticRow.repository_id == identifier))
+        self._insert_records(GraphNodeRow, node_records(identifier, artifact))
+        self._insert_records(GraphFileRow, file_records(identifier, artifact))
+        self._insert_records(GraphSymbolRow, symbol_records(identifier, artifact))
+        self._insert_records(GraphNodeMetricRow, metric_records(identifier, artifact))
+        self._insert_records(GraphNodeDecoratorRow, decorator_records(identifier, artifact))
+        self._insert_records(GraphEdgeRow, edge_records(identifier, artifact))
+        self._insert_records(GraphDiagnosticRow, diagnostic_records(identifier, artifact))
+
+    def _insert_records(self, entity: type[Base], records: list[dict[str, Any]]) -> None:
+        if records:
+            self.session.execute(insert(entity), records)

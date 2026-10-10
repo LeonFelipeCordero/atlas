@@ -9,7 +9,7 @@ from typing import Generator, cast
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, create_engine as sqlalchemy_create_engine, event
+from sqlalchemy import Connection, Engine, create_engine as sqlalchemy_create_engine, event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -30,10 +30,17 @@ def create_engine(path: str | Path | None = None) -> Engine:
 
     @event.listens_for(engine, "connect")
     def configure(connection: object, _record: object) -> None:
-        cursor = cast(SqliteConnection, connection).cursor()
+        sqlite = cast(SqliteConnection, connection)
+        # SQLAlchemy owns BEGIN, including transactional DDL and consistent reads.
+        sqlite.isolation_level = None
+        cursor = sqlite.cursor()
         cursor.execute("PRAGMA busy_timeout = 30000")
         cursor.execute("PRAGMA foreign_keys = ON")
         cursor.close()
+
+    @event.listens_for(engine, "begin")
+    def begin(connection: Connection) -> None:
+        connection.exec_driver_sql("BEGIN IMMEDIATE" if connection.info.get("migrating") else "BEGIN")
 
     return engine
 
@@ -42,12 +49,16 @@ def migrate_database(path: str | Path | None = None) -> None:
     """Apply Alembic revisions to a database explicitly."""
     engine = create_engine(path)
     try:
-        with engine.begin() as connection:
-            connection.exec_driver_sql("PRAGMA journal_mode = WAL")
-            config = Config()
-            config.set_main_option("script_location", str(Path(__file__).parent / "migrations"))
-            config.attributes["connection"] = connection
-            command.upgrade(config, "head")
+        with engine.connect() as connection:
+            # journal_mode must change outside the migration transaction.
+            sqlite = cast(SqliteConnection, connection.connection.driver_connection)
+            sqlite.execute("PRAGMA journal_mode = WAL").close()
+            connection.info["migrating"] = True
+            with connection.begin():
+                config = Config()
+                config.set_main_option("script_location", str(Path(__file__).parent / "migrations"))
+                config.attributes["connection"] = connection
+                command.upgrade(config, "head")
     except SQLAlchemyError as error:
         raise RepositoryError(str(error), 500) from error
     finally:

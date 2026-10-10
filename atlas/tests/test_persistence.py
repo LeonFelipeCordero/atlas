@@ -15,6 +15,8 @@ from atlas.persistence.database import (
 )
 from sqlalchemy import text
 
+from tests.graph_storage_fixture import GRAPH_TABLES, HEAD
+
 
 @pytest.fixture
 def database(tmp_path: Path) -> Path:
@@ -28,9 +30,9 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
     migrate_database(path)
     migrate_database(path)
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001_initial",)
+        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == (HEAD,)
         assert db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall() == [
-            ("alembic_version",), ("repositories",), ("repository_graphs",),
+            (name,) for name in sorted(("alembic_version", "repositories", "repository_graphs", *GRAPH_TABLES))
         ]
         assert db.execute("PRAGMA table_info('repositories')").fetchall() == [
             (0, "id", "TEXT", 1, None, 1),
@@ -42,19 +44,24 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
             (0, "repository_id", "TEXT", 1, None, 1),
             (1, "artifact", "TEXT", 1, None, 0),
             (2, "imported_at", "INTEGER", 1, None, 0),
+            (3, "graph_revision", "TEXT", 0, None, 0),
+            (4, "schema_version", "INTEGER", 0, None, 0),
+            (5, "indexed_at", "TEXT", 0, None, 0),
+            (6, "root_name", "TEXT", 0, None, 0),
+            (7, "root_path", "TEXT", 0, None, 0),
         ]
         db.execute("PRAGMA foreign_keys = ON")
         db.execute("INSERT INTO repositories VALUES ('a', 'Mixed', '.', 1)")
         with pytest.raises(sqlite3.IntegrityError):
             db.execute("INSERT INTO repositories VALUES ('b', 'MIXED', '.', 2)")
         with pytest.raises(sqlite3.IntegrityError):
-            db.execute("INSERT INTO repository_graphs VALUES ('unknown', '{}', 1)")
-        db.execute("INSERT INTO repository_graphs VALUES ('a', '{}', 1)")
+            db.execute("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('unknown', '{}', 1)")
+        db.execute("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('a', '{}', 1)")
         db.execute("DELETE FROM repositories WHERE id='a'")
         assert db.execute("SELECT count(*) FROM repository_graphs").fetchone() == (0,)
     engine = create_engine(path)
     try:
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             assert connection.execute(text("PRAGMA foreign_keys")).scalar() == 1
             assert connection.execute(text("PRAGMA journal_mode")).scalar() == "wal"
             config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
@@ -65,7 +72,7 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
         engine.dispose()
     migrate_database(path)
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001_initial",)
+        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == (HEAD,)
 
 
 def test_service_requires_explicit_migration(tmp_path: Path) -> None:

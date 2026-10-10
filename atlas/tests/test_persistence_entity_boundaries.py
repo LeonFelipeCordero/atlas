@@ -1,0 +1,160 @@
+"""Entities declare schema; graph record helpers only transform in-memory values."""
+
+import ast
+
+import pytest
+
+from tests.test_architecture import ROOT, module_package
+from tests.test_database_boundaries import (
+    belongs_to,
+    dynamic_import_violations,
+    import_aliases,
+    import_targets,
+    qualified_name,
+)
+
+IO_IMPORTS = {
+    "os", "sys", "pathlib", "io", "socket", "subprocess", "http", "urllib",
+    "requests", "sqlite3", "alembic", "tempfile", "shutil",
+}
+ORM_IO_NAMES = {
+    "Session", "AsyncSession", "Engine", "AsyncEngine", "Connection",
+    "create_engine", "create_async_engine", "sessionmaker", "async_sessionmaker",
+    "scoped_session", "select", "insert", "update", "delete", "Query",
+}
+IO_METHODS = {
+    "query", "execute", "exec_driver_sql", "scalar", "scalars", "commit",
+    "rollback", "flush", "connect", "begin", "create_all", "drop_all",
+    "read_text", "read_bytes", "write_text", "write_bytes", "open", "mkdir",
+    "unlink", "bulk_save_objects", "bulk_insert_mappings", "bulk_update_mappings",
+}
+
+
+def entity_violations(source: str, package: str = "atlas.persistence") -> set[str]:
+    tree = ast.parse(source)
+    aliases = import_aliases(tree, package)
+    violations = dynamic_import_violations(source, package)
+    forbidden = (
+        "atlas.persistence.database", "atlas.persistence.repositories", "atlas.services",
+        "atlas.cli", "atlas.bootstrap", "atlas.domain.repositories",
+    )
+    violations.update(target for target in import_targets(source, package) if entity_target_forbidden(target, forbidden))
+    for node in ast.walk(tree):
+        violations.update(entity_behavior_violations(node, aliases))
+    return violations
+
+
+def entity_target_forbidden(target: str, forbidden: tuple[str, ...]) -> bool:
+    if target.split(".")[0] in IO_IMPORTS or any(belongs_to(target, name) for name in forbidden):
+        return True
+    if belongs_to(target, "sqlalchemy") and target.rsplit(".", 1)[-1] in ORM_IO_NAMES:
+        return True
+    return target in {"builtins.open", "builtins.input", "builtins.print"}
+
+
+def entity_behavior_violations(node: ast.AST, aliases: dict[str, str]) -> set[str]:
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in IO_METHODS:
+        return {f"entity method {node.name}"}
+    if not isinstance(node, ast.Call):
+        return set()
+    name = qualified_name(node.func, aliases)
+    method = node.func.attr if isinstance(node.func, ast.Attribute) else name.rsplit(".", 1)[-1]
+    if method in IO_METHODS or name in {"open", "builtins.open", "input", "print"}:
+        return {f"I/O call {method}"}
+    return set()
+
+
+def graph_record_violations(source: str) -> set[str]:
+    """Optional graph_records.py is not another repository or ORM layer."""
+    violations = entity_violations(source)
+    for target in import_targets(source, "atlas.persistence"):
+        if target and target.split(".")[0] not in {"typing", "__future__"}:
+            violations.add(target)
+    return violations
+
+
+@pytest.mark.parametrize("source", [
+    "from .database import create_engine",
+    "from atlas.persistence import repositories as stores",
+    "from ..domain.repositories import RepositoryPort",
+    "from builtins import open as load",
+    "if TYPE_CHECKING:\n    from sqlalchemy.orm import Session as S",
+    "from sqlalchemy import Engine",
+    "import sqlalchemy as sa\nsa.orm.Session()",
+    "from sqlalchemy import orm as mapping\nmapping.sessionmaker()",
+    "def load():\n    from ..services.repositories import RepositoryService",
+    "from ..cli import commands",
+    "import atlas as app\napp.persistence.database.create_engine()",
+    "from sqlalchemy import select as query",
+    "from pathlib import Path\nPath('db').read_text()",
+    "import builtins as b\nb.open('database.sqlite')",
+    "class Row:\n    def commit(self):\n        pass",
+    "class Row:\n    def load(self, session):\n        return session.query(Row)",
+    "class Row:\n    def save(self, connection):\n        connection.execute('SELECT 1')",
+    "metadata.create_all(engine)",
+    "open('db.sqlite')",
+])
+def test_entities_reject_dependencies_and_database_behavior(source: str) -> None:
+    assert entity_violations(source)
+
+
+@pytest.mark.parametrize("source", [
+    "from sqlalchemy.orm import DeclarativeBase\nclass Base(DeclarativeBase):\n    pass",
+    """from sqlalchemy import ForeignKey, Index, Integer, Text, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+class Base(DeclarativeBase):
+    pass
+class Row(Base):
+    __tablename__ = 'rows'
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    parent_id: Mapped[str] = mapped_column(Text, ForeignKey('rows.id'))
+    name: Mapped[str] = mapped_column(Text)
+    __table_args__ = (Index('rows_name', func.lower(name), unique=True),)
+""",
+    """import sqlalchemy as sa
+from sqlalchemy import orm as mapping
+class Base(mapping.DeclarativeBase):
+    pass
+class Row(Base):
+    __tablename__ = 'rows'
+    id: mapping.Mapped[int] = mapping.mapped_column(sa.Integer, primary_key=True)
+""",
+])
+def test_declarative_entity_definitions_are_allowed(source: str) -> None:
+    assert not entity_violations(source)
+
+
+@pytest.mark.parametrize("source", [
+    "from typing import Any\ndef rows(artifact: dict[str, Any]):\n    return [dict(item) for item in artifact['nodes']]",
+    "from typing import Iterable\ndef rows(items: Iterable[str]):\n    return list(enumerate(items))",
+    "def ids(items):\n    found = set()\n    for item in items:\n        found.add(item.get('id'))\n    return found",
+])
+def test_pure_graph_record_mapping_is_allowed(source: str) -> None:
+    assert not graph_record_violations(source)
+
+
+@pytest.mark.parametrize("source", [
+    "from .models import RepositoryRow",
+    "from .repositories import RepositoryStore",
+    "if TYPE_CHECKING:\n    from sqlalchemy.orm import Session",
+    "import json",
+    "def save(session, rows):\n    session.commit()",
+    "def load():\n    return open('artifact.json').read()",
+    "import importlib\nimportlib.import_module('atlas.persistence.models')",
+])
+def test_graph_records_cannot_gain_orm_or_io_dependencies(source: str) -> None:
+    assert graph_record_violations(source)
+
+
+def test_production_entities_declare_schema_without_io() -> None:
+    path = ROOT / "persistence" / "models.py"
+    assert path.is_file(), "ORM entity declarations belong in persistence/models.py"
+    violations = entity_violations(path.read_text(encoding="utf-8"), module_package(path))
+    assert not violations, f"{path.relative_to(ROOT)} violates entity isolation: {sorted(violations)}"
+
+
+def test_optional_production_graph_records_are_pure() -> None:
+    path = ROOT / "persistence" / "graph_records.py"
+    if path.exists():
+        violations = graph_record_violations(path.read_text(encoding="utf-8"))
+        assert not violations, f"{path.relative_to(ROOT)} is not pure: {sorted(violations)}"
