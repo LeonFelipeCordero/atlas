@@ -214,7 +214,7 @@ test('folder reports register and update graphs visible to the UI', () => {
   mkdirSync(source)
   const file = join(source, 'main.py')
   writeFileSync(file, 'def first():\n    return 1\n')
-  python('atlas', 'report', '-f', source)
+  python('atlas', 'report', '-f', source, '--save')
   const repository = listRepositories(database)[0]
   expect(repository.name).toBe('source')
   expect(repository.location).toBe(source)
@@ -222,7 +222,7 @@ test('folder reports register and update graphs visible to the UI', () => {
     fileView(repository.id).graph.nodes.some((node) => node.label === 'first'),
   ).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('atlas', 'report', '--f', source)
+  python('atlas', 'report', '--f', source, '--save')
   expect(listRepositories(database)).toHaveLength(1)
   expect(
     fileView(repository.id).graph.nodes.some(
@@ -241,7 +241,7 @@ test('Python src imports become dashboard arrows even when the report has no fin
     'from app import worker as w\ndef run():\n    w.work()\n',
   )
   writeFileSync(join(app, 'worker.py'), 'def work(): pass\n')
-  python('atlas', 'report', '-f', source)
+  python('atlas', 'report', '-f', source, '--save')
   const repository = listRepositories(database)[0]
   const { graph } = ready(repository.id, {
     kind: 'folder',
@@ -267,7 +267,7 @@ test('indexed metrics survive Python/Bun storage and keep hidden test dependents
     join(source, 'test_main.py'),
     'from main import main\ndef test_main():\n    return main()\n',
   )
-  python('atlas', 'report', '-f', source)
+  python('atlas', 'report', '-f', source, '--save')
   const repository = listRepositories(database)[0]
   const view = ready(repository.id)
   const core = view.details.nodes.find((node) => node.name === 'core.py')!

@@ -47,14 +47,14 @@ def projects_command() -> None:
     click.echo(json.dumps(projects, ensure_ascii=False, indent=2))
 
 
-def _folder_report(folder: Path, skip_save: bool) -> dict[str, Any]:
+def _folder_report(folder: Path, save: bool) -> dict[str, Any]:
     from ..metrics.report import build_artifact_report
     from ..services.repositories import analyze_folder
 
     root = folder.expanduser().resolve()
     artifact = analyze_folder(root)
     report = build_artifact_report(artifact)
-    if not skip_save:
+    if save:
         from ..bootstrap import repository_service
 
         with repository_service() as service:
@@ -62,23 +62,23 @@ def _folder_report(folder: Path, skip_save: bool) -> dict[str, Any]:
     return report
 
 
-@main.command("report", help="Analyze a folder and show quantitative metrics as Markdown or JSON")
-@click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to analyze and save")
-@click.option("--skip-save", is_flag=True, help="Analyze a folder without accessing the database")
+@main.command("report", help="Analyze a folder and show quantitative metrics as Markdown or JSON, without saving by default")
+@click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to analyze")
+@click.option("--save", is_flag=True, help="Save the analyzed graph in SQLite")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
-def report_command(folder: Path, skip_save: bool, output_format: str) -> None:
+def report_command(folder: Path, save: bool, output_format: str) -> None:
     from ..metrics.report import render_markdown
     from ..domain.repositories import RepositoryError
 
     try:
-        report = _folder_report(folder, skip_save)
+        report = _folder_report(folder, save)
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps(report, ensure_ascii=False, indent=2) if output_format == "json" else render_markdown(report))
 
 
 @main.command("check", help=(
-    "Check current sources against atlas.json in the analyzed folder, without saving. "
+    "Check current sources against atlas.json in the analyzed folder, without saving by default. "
     "Missing keys inherit defaults: maxFileLines=600, maxFunctionLines=100, "
     "maxParameters=3, maxWeightedComplexity=8, maxDecisionDepth=3, "
     "maxNestedLoops=0, maxCircularImportGroups=0. maxChangeImpact and "
@@ -86,9 +86,9 @@ def report_command(folder: Path, skip_save: bool, output_format: str) -> None:
     "Null disables a check. Equality passes; violations exit 1."
 ))
 @click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to analyze and check")
+@click.option("--save", is_flag=True, help="Save the analyzed graph in SQLite")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
-@click.pass_context
-def check_command(context: click.Context, folder: Path, output_format: str) -> None:
+def check_command(folder: Path, save: bool, output_format: str) -> None:
     from ..metrics.check import build_check, render_check
     from ..metrics.config import load_config
     from ..domain.repositories import RepositoryError
@@ -96,12 +96,12 @@ def check_command(context: click.Context, folder: Path, output_format: str) -> N
     try:
         root = folder.expanduser().resolve()
         config = load_config(root)
-        result = build_check(_folder_report(root, skip_save=True), config)
+        result = build_check(_folder_report(root, save), config)
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps(result, ensure_ascii=False, indent=2) if output_format == "json" else render_check(result))
     if result["findings"]:
-        context.exit(1)
+        raise click.exceptions.Exit(1)
 
 
 main.add_command(graph)

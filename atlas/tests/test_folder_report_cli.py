@@ -27,7 +27,7 @@ def test_folder_report_creates_and_updates_saved_project(
     database = tmp_path / "central/db.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
-    args = ["report", flag, str(source), "--format", "json"]
+    args = ["report", flag, str(source), "--save", "--format", "json"]
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output
     report = json.loads(first.output)
@@ -53,7 +53,7 @@ def test_folder_names_are_trimmed_for_registration(tmp_path: Path) -> None:
     database = tmp_path / "db.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
-    saved = runner.invoke(main, ["report", "-f", str(source)])
+    saved = runner.invoke(main, ["report", "-f", str(source), "--save"])
     assert saved.exit_code == 0, saved.output
     with repository_service(database) as service:
         assert service.list()[0].name == "source"
@@ -67,7 +67,7 @@ def test_relative_folder_uses_user_database_not_source(
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "user-data"))
     migrate_database()
     before = sorted(source.iterdir())
-    result = CliRunner().invoke(main, ["report", "--f", "./"])
+    result = CliRunner().invoke(main, ["report", "--f", "./", "--save"])
     assert result.exit_code == 0, result.output
     assert "## Circular imports" in result.output
     assert (tmp_path / "user-data/atlas/atlas.sqlite").exists()
@@ -84,7 +84,7 @@ def test_folder_updates_registered_location_not_same_name(
     with repository_service(database) as service:
         registered = service.register({"name": "Custom", "location": str(alias)})
         other = service.register({"name": "example", "location": str(tmp_path / "other")})
-    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(source)])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(source), "--save"])
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         assert len(service.list()) == 2
@@ -98,7 +98,7 @@ def test_same_basename_folders_get_distinct_projects(source: Path, tmp_path: Pat
     other = tmp_path / "other/EXAMPLE"
     other.mkdir(parents=True)
     for root in (source, other, source):
-        result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(root)])
+        result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(root), "--save"])
         assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         projects = service.list()
@@ -106,8 +106,9 @@ def test_same_basename_folders_get_distinct_projects(source: Path, tmp_path: Pat
         assert {project.location for project in projects} == {str(source), str(other)}
 
 
-def test_skip_save_never_accesses_database(
-    source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("command", ["report", "check"])
+def test_default_never_accesses_database(
+    source: Path, monkeypatch: pytest.MonkeyPatch, command: str,
 ) -> None:
     from atlas import bootstrap
 
@@ -116,32 +117,76 @@ def test_skip_save_never_accesses_database(
 
     monkeypatch.setattr(bootstrap, "repository_service", fail)
     monkeypatch.setattr(bootstrap, "migrate_database", fail)
-    database = tmp_path / "missing/db.sqlite"
+    database = source.parent / "missing/db.sqlite"
     result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [
-        "report", "-f", str(source), "--skip-save", "--format", "json",
+        command, "-f", str(source), "--format", "json",
     ])
-    assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["circularImports"]
+    assert result.exit_code == (0 if command == "report" else 1), result.output
+    output = json.loads(result.output)
+    if command == "report":
+        assert output["circularImports"]
+    else:
+        assert output["findings"][0]["rule"] == "maxCircularImportGroups"
     assert not database.parent.exists()
 
 
-def test_skip_save_preserves_existing_graph(source: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("command", ["report", "check"])
+def test_default_preserves_existing_graph(source: Path, tmp_path: Path, command: str) -> None:
     database = tmp_path / "db.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
-    args = ["report", "-f", str(source)]
-    saved = runner.invoke(main, args)
+    saved = runner.invoke(main, ["report", "-f", str(source), "--save"])
     assert saved.exit_code == 0, saved.output
     with repository_service(database) as service:
         project = service.list()[0]
         original = service.get_architecture(project.id)
     (source / "b.py").write_text("value = 1\n")
-    fresh = runner.invoke(main, [*args, "--skip-save"])
+    fresh = runner.invoke(main, [command, "-f", str(source)])
     assert fresh.exit_code == 0, fresh.output
-    assert "circularImportGroups: 0" in fresh.output
-    assert "## Circular imports" not in fresh.output
+    if command == "report":
+        assert "circularImportGroups: 0" in fresh.output
+        assert "## Circular imports" not in fresh.output
+    else:
+        assert fresh.output == "All checks passed.\n"
     with repository_service(database) as service:
         assert service.get_architecture(project.id) == original
+
+
+@pytest.mark.parametrize("command", ["report", "check"])
+def test_save_analyzes_once_and_keeps_output(
+    source: Path, monkeypatch: pytest.MonkeyPatch, command: str,
+) -> None:
+    from atlas.services import repositories
+
+    database = source.parent / "db.sqlite"
+    migrate_database(database)
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    args = [command, "-f", str(source), "--format", "json"]
+    calls: list[Path] = []
+    analyze_folder = repositories.analyze_folder
+
+    def analyze(root: Path):
+        calls.append(root)
+        return analyze_folder(root)
+
+    monkeypatch.setattr(repositories, "analyze_folder", analyze)
+    original = None
+    for code in ("import a\n", "value = 1\n"):
+        (source / "b.py").write_text(code)
+        expected = runner.invoke(main, args)
+        assert expected.exit_code == (1 if command == "check" and code == "import a\n" else 0), expected.output
+        calls.clear()
+        saved = runner.invoke(main, [*args, "--save"])
+        assert saved.exit_code == expected.exit_code, saved.output
+        assert saved.output == expected.output
+        assert calls == [source.resolve()]
+        with repository_service(database) as service:
+            projects = service.list()
+            assert len(projects) == 1
+            graph = service.get_architecture(projects[0].id)
+            assert graph is not None and graph != original
+            assert graph.stats.files == 2
+            original = graph
 
 
 @pytest.mark.parametrize("args, message", [
@@ -182,7 +227,7 @@ def test_failed_update_preserves_saved_graph(source: Path, tmp_path: Path) -> No
     database = tmp_path / "db.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
-    args = ["report", "-f", str(source)]
+    args = ["report", "-f", str(source), "--save"]
     result = runner.invoke(main, args)
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
@@ -206,7 +251,7 @@ def test_failed_save_rolls_back_registration(source: Path, tmp_path: Path) -> No
     with sqlite3.connect(database) as db:
         db.execute("""CREATE TRIGGER reject_graph BEFORE INSERT ON repository_graphs
             BEGIN SELECT RAISE(ABORT, 'forced write failure'); END""")
-    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(source)])
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", "-f", str(source), "--save"])
     assert result.exit_code == 1
     assert "forced write failure" in result.output
     with repository_service(database) as service:

@@ -1,4 +1,4 @@
-"""Check reads current sources and root config without accessing the database."""
+"""Check reads current sources and root config, saving only when requested."""
 
 import json
 from pathlib import Path
@@ -34,7 +34,7 @@ def test_cycles_fail_check_but_report_stays_quantitative(tmp_path: Path) -> None
     failed = invoke(tmp_path)
     assert failed.exit_code == 1, failed.output
     assert json.loads(failed.output)["findings"][0]["rule"] == "maxCircularImportGroups"
-    result = CliRunner().invoke(main, ["report", "-f", str(tmp_path), "--skip-save", "--format", "json"])
+    result = CliRunner().invoke(main, ["report", "-f", str(tmp_path), "--format", "json"])
     assert result.exit_code == 0, result.output
     measurements = json.loads(result.output)
     assert measurements["summary"]["circularImportGroups"] == 1
@@ -85,7 +85,7 @@ def test_check_defaults_aliases_and_analyzed_root_config(tmp_path: Path, monkeyp
     assert result.output == "All checks passed.\n"
 
 
-def test_check_never_opens_database(tmp_path: Path, monkeypatch) -> None:
+def test_check_default_never_opens_database(tmp_path: Path, monkeypatch) -> None:
     from atlas import bootstrap
 
     def fail(*_args, **_kwargs):
@@ -117,7 +117,7 @@ def test_invalid_configuration_fails_before_analysis(tmp_path: Path, monkeypatch
 def test_report_does_not_apply_project_limits(tmp_path: Path) -> None:
     (tmp_path / "app.py").write_text("def f(a): return a\n")
     (tmp_path / "atlas.json").write_text('{"maxParameters": 0}')
-    result = CliRunner().invoke(main, ["report", "-f", str(tmp_path), "--skip-save"])
+    result = CliRunner().invoke(main, ["report", "-f", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert "Parameters" in result.output and "maximum" not in result.output
     result = CliRunner().invoke(main, ["check", "-f", str(tmp_path)])
@@ -147,7 +147,7 @@ def test_real_syntax_errors_fail_check_even_with_all_limits_disabled(tmp_path: P
     assert findings and all(finding["rule"] == "analysis" for finding in findings)
     assert findings[0]["files"] == [{"path": filename}]
     assert "Syntax error at line" in findings[0]["details"][0]
-    measured = CliRunner().invoke(main, ["report", "-f", str(tmp_path), "--skip-save", "--format", "json"])
+    measured = CliRunner().invoke(main, ["report", "-f", str(tmp_path), "--format", "json"])
     assert measured.exit_code == 0, measured.output
     assert json.loads(measured.output)["summary"]["parseErrors"] == 1
     assert json.loads(measured.output)["diagnostics"][0]["path"] == filename

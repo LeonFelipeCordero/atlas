@@ -40,7 +40,7 @@ def test_folder_default_and_aliases(
     if flag is not None:
         arguments += [flag, str(source)]
     if command == "report":
-        arguments += ["--format", "json"]
+        arguments += ["--save", "--format", "json"]
     result = CliRunner().invoke(main, arguments)
     assert result.exit_code == 0, result.output
     output = json.loads(result.output)
@@ -61,13 +61,27 @@ def test_folder_default_and_aliases(
     assert sorted(path.name for path in source.iterdir()) == ["a.py", "b.py"]
 
 
-def test_report_default_cwd_skip_save(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_report_default_cwd_without_saving(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "a.py").write_text("import b\n")
     (tmp_path / "b.py").write_text("import a\n")
     database = tmp_path / "missing/db.sqlite"
     monkeypatch.setenv("DATABASE_PATH", str(database))
-    result = CliRunner().invoke(main, ["report", "--skip-save", "--format", "json"])
+    result = CliRunner().invoke(main, ["report", "--format", "json"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.output)["summary"]["circularImportGroups"] == 1
+    assert not database.parent.exists()
+
+
+@pytest.mark.parametrize("command", ["report", "check"])
+def test_skip_save_option_is_removed(command: str, tmp_path: Path) -> None:
+    database = tmp_path / "missing/db.sqlite"
+    runner = CliRunner(env={"DATABASE_PATH": str(database)})
+    help_result = runner.invoke(main, [command, "--help"])
+    assert help_result.exit_code == 0
+    assert "--save" in help_result.output
+    assert "--skip-save" not in help_result.output
+    rejected = runner.invoke(main, [command, "--skip-save"])
+    assert rejected.exit_code == 2
+    assert "No such option" in rejected.output and "--skip-save" in rejected.output
     assert not database.parent.exists()
