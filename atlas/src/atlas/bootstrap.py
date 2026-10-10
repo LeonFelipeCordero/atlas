@@ -8,6 +8,15 @@ from atlas.persistence.database import migrate_database as _migrate_database
 from atlas.persistence.database import repository_session
 from atlas.persistence.repositories import RepositoryStore
 from atlas.services.repositories import RepositoryService
+from atlas.persistence.navigation import navigation_reader
+from atlas.services.navigation import NavigationService
+
+
+@contextmanager
+def navigation_service(project: str, revision: str | None = None, path: str | Path | None = None) -> Generator[NavigationService, None, None]:
+    """Compose navigation inside one explicit read-only snapshot."""
+    with navigation_reader(project, revision, path) as reader:
+        yield NavigationService(reader)
 
 
 def migrate_database(path: str | Path | None = None) -> None:
