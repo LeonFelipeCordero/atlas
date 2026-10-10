@@ -1,6 +1,6 @@
 """Build and validate in-memory version-2 repository graph artifacts."""
 from collections import Counter, defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, dataclass as standard_dataclass
 from datetime import datetime, timezone
 from math import isfinite
 from pathlib import Path, PurePosixPath
@@ -83,7 +83,10 @@ def _validate_dependency_metrics(node: GraphNode) -> None:
         value = node["properties"][name]
         if type(value) is not int or value < 0:
             raise ValueError(f"Node property {name} must be a nonnegative integer")
-    value = node["properties"].get("instability")
+    _validate_instability(node["properties"].get("instability"))
+
+
+def _validate_instability(value: object) -> None:
     if value is not None and (
         type(value) is not float or not isfinite(value) or not 0 <= value <= 1
     ):
@@ -129,17 +132,31 @@ def _module_paths(repository: ParsedRepository) -> list[str]:
     return sorted(paths, key=lambda path: (path.count("/"), path))
 
 
+@standard_dataclass(frozen=True)
+class _SourceLocation:
+    path: str
+    line: int = 1
+    evidence: str | None = None
+
+
+@standard_dataclass
+class _ArtifactContents:
+    nodes: list[dict[str, object]]
+    edges: list[dict[str, object]]
+    diagnostics: list[dict[str, object]]
+
+
 def _containment_edge(
-    source_key: str, target_key: str, path: str, line: int, evidence: str | None = None
+    source_key: str, target_key: str, location: _SourceLocation
 ) -> dict[str, object]:
     return {
         "sourceStableKey": source_key,
         "targetStableKey": target_key,
         "type": "CONTAINS",
         "confidence": "EXTRACTED",
-        "path": path,
-        "line": line,
-        "evidence": evidence,
+        "path": location.path,
+        "line": location.line,
+        "evidence": location.evidence,
     }
 
 
@@ -231,14 +248,13 @@ def _view_edges(
 
 
 def _level_view(
-    nodes: list[dict[str, object]],
     edges: list[dict[str, object]],
     level: str,
     nodes_by_key: dict[str, dict[str, object]],
 ) -> dict[str, Any]:
     relationships = _projected_relationships(edges, level, nodes_by_key)
     return {
-        "nodes": [node["stableKey"] for node in nodes if node["level"] == level],
+        "nodes": [node["stableKey"] for node in nodes_by_key.values() if node["level"] == level],
         "edges": _view_edges(relationships, level),
     }
 
@@ -249,7 +265,7 @@ def build_dependency_views(
     """Project non-containment relationships to distinct internal peers at each level."""
     nodes_by_key = {str(node["stableKey"]): node for node in nodes}
     return {
-        level: _level_view(nodes, edges, level, nodes_by_key)
+        level: _level_view(edges, level, nodes_by_key)
         for level in ("module", "file", "type", "callable")
     }
 
@@ -270,11 +286,9 @@ def _add_dependency_metrics(
 
 
 def _add_directory_nodes(
-    root: Path,
-    repository: ParsedRepository,
-    nodes: list[dict[str, object]],
-    edges: list[dict[str, object]],
+    root: Path, repository: ParsedRepository, contents: _ArtifactContents
 ) -> None:
+    nodes, edges = contents.nodes, contents.edges
     for path in _module_paths(repository):
         parent_path = PurePosixPath(path).parent.as_posix()
         parent_key = "repository" if path == "." else _module_key(parent_path)
@@ -293,15 +307,11 @@ def _add_directory_nodes(
                 "properties": {},
             }
         )
-        edges.append(_containment_edge(parent_key, _module_key(path), path, 1))
+        edges.append(_containment_edge(parent_key, _module_key(path), _SourceLocation(path)))
 
 
-def _add_file_nodes(
-    repository: ParsedRepository,
-    nodes: list[dict[str, object]],
-    edges: list[dict[str, object]],
-    diagnostics: list[dict[str, object]],
-) -> None:
+def _add_file_nodes(repository: ParsedRepository, contents: _ArtifactContents) -> None:
+    nodes, edges, diagnostics = contents.nodes, contents.edges, contents.diagnostics
     for file in repository.files:
         source = file.source
         parent_key = _module_key(PurePosixPath(source.path).parent.as_posix())
@@ -325,7 +335,7 @@ def _add_file_nodes(
             }
         )
         edges.append(
-            _containment_edge(parent_key, file_key(source.path), source.path, 1)
+            _containment_edge(parent_key, file_key(source.path), _SourceLocation(source.path))
         )
         if file.parse_error:
             diagnostics.append(
@@ -338,11 +348,8 @@ def _add_file_nodes(
             )
 
 
-def _add_symbol_nodes(
-    repository: ParsedRepository,
-    nodes: list[dict[str, object]],
-    edges: list[dict[str, object]],
-) -> None:
+def _add_symbol_nodes(repository: ParsedRepository, contents: _ArtifactContents) -> None:
+    nodes, edges = contents.nodes, contents.edges
     for symbol in repository.symbols:
         level = _symbol_level(symbol.kind)
         nodes.append(
@@ -384,9 +391,10 @@ def _add_symbol_nodes(
             _containment_edge(
                 symbol.parent_key,
                 symbol.key,
-                symbol.file_path,
-                symbol.start_line,
-                f"{symbol.parent_key} contains {symbol.name}",
+                _SourceLocation(
+                    symbol.file_path, symbol.start_line,
+                    f"{symbol.parent_key} contains {symbol.name}",
+                ),
             )
         )
 
@@ -448,9 +456,10 @@ def build_artifact(
     ]
     edges = []
     diagnostics = []
-    _add_directory_nodes(root, repository, nodes, edges)
-    _add_file_nodes(repository, nodes, edges, diagnostics)
-    _add_symbol_nodes(repository, nodes, edges)
+    contents = _ArtifactContents(nodes, edges, diagnostics)
+    _add_directory_nodes(root, repository, contents)
+    _add_file_nodes(repository, contents)
+    _add_symbol_nodes(repository, contents)
     _add_external_nodes(graph, nodes)
     edges.extend(
         {

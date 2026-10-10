@@ -1,6 +1,7 @@
 """Reports measure every item without thresholds or good/bad judgments."""
 
 from copy import deepcopy
+from dataclasses import dataclass
 
 import pytest
 
@@ -8,7 +9,15 @@ from atlas.domain.repositories import ReportFactsDTO, ReportImportDTO, ReportNod
 from atlas.metrics.report import build_artifact_report, build_report, render_markdown
 
 
-def callable_node(name: str, total: int = 8, loops: int = 0, depth: int = 3):
+@dataclass(frozen=True)
+class Complexity:
+    total: int = 8
+    loops: int = 0
+    depth: int = 3
+
+
+def callable_node(name: str, complexity: Complexity = Complexity()):
+    total, loops, depth = complexity.total, complexity.loops, complexity.depth
     return {
         "stableKey": f"symbol:{name}", "name": name, "qualifiedName": f"App.{name}",
         "kind": "function", "type": "function", "level": "callable", "path": "app.py", "startLine": 10,
@@ -30,7 +39,7 @@ def file_node(path: str):
 
 
 def test_report_contains_below_and_above_thresholds_and_keeps_input() -> None:
-    artifact = {"nodes": [file_node("app.py"), callable_node("simple", total=1, depth=0), callable_node("complex", total=10, loops=2)]}
+    artifact = {"nodes": [file_node("app.py"), callable_node("simple", Complexity(total=1, depth=0)), callable_node("complex", Complexity(total=10, loops=2))]}
     original = deepcopy(artifact)
     report = build_artifact_report(artifact)
     assert set(report) == {"summary", "nodes", "circularImports", "diagnostics"}
@@ -81,7 +90,7 @@ def test_empty_graph_still_has_quantitative_summary() -> None:
 
 def test_unavailable_metrics_and_partial_file_totals_are_explicit() -> None:
     unknown = {**callable_node("unknown"), "properties": {}}
-    report = build_artifact_report({"nodes": [file_node("app.py"), callable_node("known", total=2), unknown]})
+    report = build_artifact_report({"nodes": [file_node("app.py"), callable_node("known", Complexity(total=2)), unknown]})
     measurements = {node["subject"]: node["metrics"] for node in report["nodes"]}
     assert measurements["App.unknown"]["parameterCount"] is None
     assert measurements["app.py"]["functionCount"] == 2
@@ -92,9 +101,9 @@ def test_unavailable_metrics_and_partial_file_totals_are_explicit() -> None:
 
 def test_measurements_sort_by_path_line_then_symbol() -> None:
     nodes = [
-        {**callable_node("z", total=9), "path": "z.py", "startLine": 1},
-        {**callable_node("a", total=9), "startLine": 20},
-        callable_node("b", total=9),
+        {**callable_node("z", Complexity(total=9)), "path": "z.py", "startLine": 1},
+        {**callable_node("a", Complexity(total=9)), "startLine": 20},
+        callable_node("b", Complexity(total=9)),
     ]
     report = build_artifact_report({"nodes": nodes})
     assert [node["subject"] for node in report["nodes"]] == ["App.b", "App.a", "App.z"]

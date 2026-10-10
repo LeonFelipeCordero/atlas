@@ -1,5 +1,6 @@
 """Evaluate only enabled project limits against quantitative measurements."""
 
+from dataclasses import dataclass
 from typing import Any
 
 from .config import CheckConfig
@@ -19,40 +20,64 @@ DEPENDENCY_RULES = (
 )
 
 
-def _finding(node, rule: str, metric: str, actual, limit, details: str):
+@dataclass(frozen=True)
+class _MetricLimit:
+    rule: str
+    metric: str
+    maximum: int | float
+
+
+def _finding(node, limit: _MetricLimit, actual):
+    label = METRIC_LABELS[limit.metric]
+    details = (
+        f"{label} is unavailable; cannot evaluate maximum {limit.maximum}."
+        if actual is None else f"{label} is {actual} (maximum: {limit.maximum})."
+    )
     return {
-        "rule": rule, "metric": metric, "subject": node["subject"],
+        "rule": limit.rule, "metric": limit.metric, "subject": node["subject"],
         "files": [{"path": node.get("path"), "line": node.get("line")}],
-        "actual": actual, "limit": limit, "details": [details],
+        "actual": actual, "limit": limit.maximum, "details": [details],
     }
 
 
-def _metric_finding(node, rule: str, metric: str, limit):
-    actual = node["metrics"].get(metric)
-    label = METRIC_LABELS[metric]
-    if actual is None:
-        return _finding(node, rule, metric, None, limit, f"{label} is unavailable; cannot evaluate maximum {limit}.")
-    if actual > limit:
-        return _finding(node, rule, metric, actual, limit, f"{label} is {actual} (maximum: {limit}).")
+def _metric_finding(node, limit: _MetricLimit):
+    actual = node["metrics"].get(limit.metric)
+    if actual is None or actual > limit.maximum:
+        return _finding(node, limit, actual)
     return None
 
 
-def _node_findings(node, config: CheckConfig):
+def _enabled_limits(node, config: CheckConfig):
     rules = [(rule, metric) for rule, metric, kinds in RULES if node["kind"] in kinds]
     if node["level"] in {"module", "file"}:
         rules.extend(DEPENDENCY_RULES)
-    findings = []
     for rule, metric in rules:
-        limit = getattr(config, rule)
-        if limit is None:
-            continue
+        maximum = getattr(config, rule)
+        if maximum is not None:
+            yield _MetricLimit(rule, metric, maximum)
+
+
+def _isolated(node) -> bool:
+    return node["metrics"].get("fanIn") == node["metrics"].get("fanOut") == 0
+
+
+def _node_findings(node, config: CheckConfig):
+    findings = []
+    for limit in _enabled_limits(node, config):
         # Zero connections make instability mathematically undefined, not missing.
-        if metric == "instability" and node["metrics"].get("fanIn") == node["metrics"].get("fanOut") == 0:
+        if limit.metric == "instability" and _isolated(node):
             continue
-        finding = _metric_finding(node, rule, metric, limit)
+        finding = _metric_finding(node, limit)
         if finding is not None:
             findings.append(finding)
     return findings
+
+
+def _cycle_files(groups):
+    paths = set()
+    for group in groups:
+        paths.update(group["files"])
+    return [{"path": path} for path in sorted(paths)]
 
 
 def _cycle_finding(report, limit):
@@ -62,9 +87,7 @@ def _cycle_finding(report, limit):
     return [{
         "rule": "maxCircularImportGroups", "metric": "circularImportGroups",
         "subject": "Circular imports", "actual": count, "limit": limit,
-        "files": [{"path": path} for path in sorted({
-            path for group in report["circularImports"] for path in group["files"]
-        })],
+        "files": _cycle_files(report["circularImports"]),
         "details": [
             f"Circular import groups: {count} (maximum: {limit}).",
             *["Example cycle: " + " → ".join(group["exampleCycle"]) for group in report["circularImports"]],
@@ -84,15 +107,16 @@ def build_check(report: dict[str, Any], config: CheckConfig) -> dict[str, Any]:
     return {"findings": findings}
 
 
+def _finding_section(finding) -> str:
+    files = [f"- {code(location(file))}" for file in finding["files"]]
+    return "\n".join([
+        f"## {finding['rule']}: {code(finding['subject'])}", "",
+        f"Measured: {value_text(finding['actual'])}; maximum: {value_text(finding['limit'])}.",
+        "", *files, "", *[f"- {detail}" for detail in finding["details"]],
+    ])
+
+
 def render_check(check: dict[str, Any]) -> str:
     if not check["findings"]:
         return "All checks passed."
-    sections = []
-    for finding in check["findings"]:
-        files = [f"- {code(location(file))}" for file in finding["files"]]
-        sections.append("\n".join([
-            f"## {finding['rule']}: {code(finding['subject'])}", "",
-            f"Measured: {value_text(finding['actual'])}; maximum: {value_text(finding['limit'])}.",
-            "", *files, "", *[f"- {detail}" for detail in finding["details"]],
-        ]))
-    return "\n\n".join(sections)
+    return "\n\n".join(_finding_section(finding) for finding in check["findings"])

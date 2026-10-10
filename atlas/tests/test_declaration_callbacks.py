@@ -4,10 +4,12 @@ import unittest
 from dataclasses import replace
 
 from tree_sitter import Node
-from tree_sitter_language_pack import ProcessConfig, StructureItem, get_parser, process
+from tree_sitter_language_pack import ProcessConfig, StructureItem, process
 
 from atlas.parsing.adapters import get_adapter
 from atlas.parsing.structure import extract_structure
+from atlas.parsing.syntax import ParsedSyntax
+from tests.parsing_fixture import parsing_syntax
 
 
 def flatten(
@@ -100,9 +102,10 @@ BOUND_SOURCES = {
 
 class CallbackDeclarationTests(unittest.TestCase):
     def assert_callback_carriers(
-        self, source: str, language: str, items: list[StructureItem], count: int
+        self, syntax: ParsedSyntax, items: list[StructureItem], count: int
     ) -> list[tuple[StructureItem, StructureItem | None]]:
-        root = get_parser(language).parse(source.encode()).root_node
+        language = syntax.source.language
+        root = syntax.tree()
         expression_nodes = [
             node
             for node in walk(root)
@@ -149,9 +152,9 @@ class CallbackDeclarationTests(unittest.TestCase):
             process(source, ProcessConfig(language=language)).structure,
         ):
             with self.subTest(language=language, native=bool(native)):
-                items = extract_structure(source.encode(), language, native)
+                items = extract_structure(parsing_syntax(source, language), native)
                 first, nested = self.assert_callback_carriers(
-                    source, language, items, 2
+                    parsing_syntax(source, language), items, 2
                 )
                 self.assertIsNotNone(first[1])
                 assert first[1] is not None
@@ -166,8 +169,8 @@ class CallbackDeclarationTests(unittest.TestCase):
 
     def assert_bound_expressions(self, source, language):
         native = process(source, ProcessConfig(language=language)).structure
-        items = extract_structure(source.encode(), language, native)
-        callbacks = self.assert_callback_carriers(source, language, items, 2)
+        items = extract_structure(parsing_syntax(source, language), native)
+        callbacks = self.assert_callback_carriers(parsing_syntax(source, language), items, 2)
         expected_name = {"java": "field", "typescript": "top", "go": "top"}.get(
             language
         )
@@ -188,8 +191,8 @@ class CallbackDeclarationTests(unittest.TestCase):
     ) -> None:
         for language, source in BOUND_SOURCES.items():
             with self.subTest(language=language):
-                tagged = extract_structure(source.encode(), language)
-                callback = self.assert_callback_carriers(source, language, tagged, 2)[
+                tagged = extract_structure(parsing_syntax(source, language))
+                callback = self.assert_callback_carriers(parsing_syntax(source, language), tagged, 2)[
                     0
                 ][0]
                 native = process(source, ProcessConfig(language=language)).structure
@@ -205,8 +208,8 @@ class CallbackDeclarationTests(unittest.TestCase):
                     replace(decorated, name=None),
                 ]
                 original = repr(existing)
-                items = extract_structure(source.encode(), language, existing)
-                callbacks = self.assert_callback_carriers(source, language, items, 2)
+                items = extract_structure(parsing_syntax(source, language), existing)
+                callbacks = self.assert_callback_carriers(parsing_syntax(source, language), items, 2)
                 self.assertEqual(callbacks[0][0].doc_comment, "callback docs")
                 self.assertEqual(callbacks[0][0].decorators, ["native annotation"])
                 self.assertEqual(repr(existing), original)
@@ -214,14 +217,14 @@ class CallbackDeclarationTests(unittest.TestCase):
     def test_unbound_callback_identity_ignores_conflicting_native_names(self) -> None:
         source = "function outer() { use(x => x + 1); }"
         callback = self.assert_callback_carriers(
-            source, "javascript", extract_structure(source.encode(), "javascript"), 1
+            parsing_syntax(source, "javascript"), extract_structure(parsing_syntax(source, "javascript")), 1
         )[0][0]
         native = [
             replace(callback, name="stale-one", children=[]),
             replace(callback, name="stale-two", children=[]),
         ]
-        items = extract_structure(source.encode(), "javascript", native)
-        self.assert_callback_carriers(source, "javascript", items, 1)
+        items = extract_structure(parsing_syntax(source, "javascript"), native)
+        self.assert_callback_carriers(parsing_syntax(source, "javascript"), items, 1)
 
     def test_go_assigned_literal_accepts_safe_binding_not_receiver_assignment(
         self,
@@ -234,8 +237,8 @@ func outer() {
   use(func() {})
 }
 """
-        items = extract_structure(source.encode(), "go")
-        callbacks = self.assert_callback_carriers(source, "go", items, 5)
+        items = extract_structure(parsing_syntax(source, "go"))
+        callbacks = self.assert_callback_carriers(parsing_syntax(source, "go"), items, 5)
         self.assertEqual(
             [item.name for item, _ in callbacks],
             ["accept", "left", "right", None, None],
@@ -249,8 +252,8 @@ fun outer(cb: (Int) -> Int) {
   use(fun(x: Int) = if (x > 0) x else 0)
   use label@ { x -> if (x > 0) x else 0 }
 }"""
-        items = extract_structure(source.encode(), "kotlin")
-        callbacks = self.assert_callback_carriers(source, "kotlin", items, 3)
+        items = extract_structure(parsing_syntax(source, "kotlin"))
+        callbacks = self.assert_callback_carriers(parsing_syntax(source, "kotlin"), items, 3)
         self.assertTrue(
             all(
                 item.name is None and parent.name == "outer"
@@ -270,8 +273,8 @@ fun outer(cb: (Int) -> Int) {
   end
 end"""
         native = process(source, ProcessConfig(language="elixir")).structure
-        items = extract_structure(source.encode(), "elixir", native)
-        callbacks = self.assert_callback_carriers(source, "elixir", items, 3)
+        items = extract_structure(parsing_syntax(source, "elixir"), native)
+        callbacks = self.assert_callback_carriers(parsing_syntax(source, "elixir"), items, 3)
         self.assertTrue(all(parent is items[0].children[0] for _, parent in callbacks))
 
     def test_script_bindings_and_inline_functions_keep_single_identity(self) -> None:
@@ -287,8 +290,8 @@ function outer() { use(() => 0, function () {}, function* () {}, function local(
 
     def assert_script_bindings(self, source, language):
         native = process(source, ProcessConfig(language=language)).structure
-        items = extract_structure(source.encode(), language, native)
-        self.assert_callback_carriers(source, language, items, 9)
+        items = extract_structure(parsing_syntax(source, language), native)
+        self.assert_callback_carriers(parsing_syntax(source, language), items, 9)
         self.assertEqual(
             [item.name for item in items],
             ["named", "generator", "action", "apply", "outer"],
@@ -306,8 +309,8 @@ function outer() { use(() => 0, function () {}, function* () {}, function local(
         }
         for language, source in samples.items():
             with self.subTest(language=language):
-                items = extract_structure(source.encode(), language)
-                callback = self.assert_callback_carriers(source, language, items, 1)[0][
+                items = extract_structure(parsing_syntax(source, language))
+                callback = self.assert_callback_carriers(parsing_syntax(source, language), items, 1)[0][
                     0
                 ]
                 self.assertEqual(callback.children[0].name, "local")

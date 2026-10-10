@@ -39,7 +39,8 @@ def test_fresh_migration_late_failure_rolls_back_all_schema(tmp_path: Path, monk
     engine = create_engine(path)
 
     @event.listens_for(engine, "before_cursor_execute")
-    def fail_schema(_connection, _cursor, statement, _parameters, _context, _many):
+    def fail_schema(*cursor_event):
+        statement = cursor_event[2]
         if "CREATE TABLE graph_diagnostics" in statement:
             raise RuntimeError("forced schema failure")
 

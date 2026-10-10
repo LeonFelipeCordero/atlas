@@ -110,12 +110,13 @@ def schema_call_violations(call: ast.Call, aliases: dict[str, str], tables: set[
     checks = {
         f"{name} requires a literal name/column": bool(call.args) and first_literal(call.args[0]),
         f"{name} uses nonliteral options": all(literal_schema_option(key, aliases) for key in call.keywords),
-        f"{name} uses schema factories": schema_arguments_literal(name, call, aliases, tables),
+        f"{name} uses schema factories": schema_arguments_literal(call, aliases, tables),
     }
     return {message for message, valid in checks.items() if not valid}
 
 
-def schema_arguments_literal(name: str, call: ast.Call, aliases: dict[str, str], tables: set[str]) -> bool:
+def schema_arguments_literal(call: ast.Call, aliases: dict[str, str], tables: set[str]) -> bool:
+    name = qualified_name(call.func, aliases).rsplit(".", 1)[-1]
     if name in {"Column", "Table"}:
         return all(sqlalchemy_expression(arg, aliases) for arg in call.args[1:])
     if name in {"ForeignKeyConstraint", "PrimaryKeyConstraint", "UniqueConstraint", "CheckConstraint"}:
@@ -134,7 +135,7 @@ def ddl_call_violations(call: ast.Call, aliases: dict[str, str], tables: set[str
     checks = {
         f"{operation} requires a literal name": bool(call.args) and literal_string(call.args[0]),
         f"{operation} uses nonliteral options": all(literal_schema_option(key, aliases) for key in call.keywords),
-        f"{operation} requires inline literal schema": ddl_arguments_literal(operation, call, aliases, tables),
+        f"{operation} requires inline literal schema": ddl_arguments_literal(call, aliases, tables),
     }
     return {message for message, valid in checks.items() if not valid}
 
@@ -145,7 +146,8 @@ def inline_schema_call(node: ast.AST, aliases: dict[str, str], constructors: set
     }
 
 
-def ddl_arguments_literal(operation: str, call: ast.Call, aliases: dict[str, str], tables: set[str]) -> bool:
+def ddl_arguments_literal(call: ast.Call, aliases: dict[str, str], tables: set[str]) -> bool:
+    operation = qualified_name(call.func, aliases).rsplit(".", 1)[-1]
     if operation == "create_table":
         return all(inline_schema_call(arg, aliases, TABLE_CONSTRAINTS) for arg in call.args[1:])
     if operation == "add_column":

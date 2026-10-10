@@ -34,31 +34,36 @@ def value_text(value: Any) -> str:
     return f"{value:.2f}" if isinstance(value, float) else str(value)
 
 
+def _table_row(node: dict[str, Any], names: tuple[str, ...]) -> str:
+    cells = (code(node["subject"]), code(location(node)), *(value_text(node["metrics"].get(name)) for name in names))
+    return "| " + " | ".join(cells) + " |"
+
+
 def _table(title: str, nodes: list[dict[str, Any]], names: tuple[str, ...]) -> str:
     labels = ("Item", "Location", *(METRIC_LABELS[name] for name in names))
     rows = [f"## {title}", "", "| " + " | ".join(labels) + " |", "| " + " | ".join("---" for _ in labels) + " |"]
-    for node in nodes:
-        cells = (code(node["subject"]), code(location(node)), *(value_text(node["metrics"].get(name)) for name in names))
-        rows.append("| " + " | ".join(cells) + " |")
+    rows.extend(_table_row(node, names) for node in nodes)
     return "\n".join(rows)
+
+
+def _cycle_section(index: int, group: dict[str, Any]) -> list[str]:
+    return [
+        f"### Group {index}", "",
+        f"Files: {group['groupSize']}. Internal dependencies: {group['internalDependencyCount']}.",
+        *[f"- {code(path)}" for path in group["files"]], "",
+        "Example cycle: " + " → ".join(code(path) for path in group["exampleCycle"]), "",
+    ]
 
 
 def _cycles(groups: list[dict[str, Any]]) -> str:
     rows = ["## Circular imports", ""]
     for index, group in enumerate(groups, 1):
-        rows.extend([
-            f"### Group {index}", "",
-            f"Files: {group['groupSize']}. Internal dependencies: {group['internalDependencyCount']}.",
-            *[f"- {code(path)}" for path in group["files"]], "",
-            "Example cycle: " + " → ".join(code(path) for path in group["exampleCycle"]), "",
-        ])
+        rows.extend(_cycle_section(index, group))
     return "\n".join(rows).rstrip()
 
 
-def render_markdown(report: dict[str, Any]) -> str:
-    summary = report["summary"]
-    parts = ["# Metrics", "\n".join(f"- {name}: {value}" for name, value in summary.items())]
-    nodes = report["nodes"]
+def _size_tables(nodes: list[dict[str, Any]]) -> list[str]:
+    parts = []
     files = [node for node in nodes if node["kind"] == "file"]
     callables = [node for node in nodes if node["kind"] in {"function", "method"}]
     if files:
@@ -68,11 +73,25 @@ def render_markdown(report: dict[str, Any]) -> str:
             "lineCount", "parameterCount", "cyclomaticComplexity", "weightedComplexity",
             "nestedDecisionPenalty", "nestedLoops", "maxDecisionDepth",
         )))
-    if nodes:
-        parts.append(_table("Dependencies", [node for node in nodes if "fanIn" in node["metrics"]], (
+    return parts
+
+
+def _dependencies(nodes: list[dict[str, Any]]) -> list[str]:
+    if not nodes:
+        return []
+    return [
+        _table("Dependencies", [node for node in nodes if "fanIn" in node["metrics"]], (
             "fanIn", "fanOut", "transitiveChangeImpact", "instability",
-        )))
-        parts.append("Dependency metrics count distinct internal peers at each item's level, including tests and type-only dependencies. Impact excludes the item itself. Instability = fan-out / (fan-in + fan-out); isolated items are N/A.")
+        )),
+        "Dependency metrics count distinct internal peers at each item's level, including tests and type-only dependencies. Impact excludes the item itself. Instability = fan-out / (fan-in + fan-out); isolated items are N/A.",
+    ]
+
+
+def render_markdown(report: dict[str, Any]) -> str:
+    summary = report["summary"]
+    parts = ["# Metrics", "\n".join(f"- {name}: {value}" for name, value in summary.items())]
+    parts.extend(_size_tables(report["nodes"]))
+    parts.extend(_dependencies(report["nodes"]))
     if report["circularImports"]:
         parts.append(_cycles(report["circularImports"]))
     if report["diagnostics"]:

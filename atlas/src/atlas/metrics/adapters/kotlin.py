@@ -104,7 +104,8 @@ class KotlinResolution(JavaResolution):
     def import_name(self, source, path):
         return path
 
-    def import_item(self, ctx, file, source, path, position):
+    def import_item(self, ctx, request):
+        file, source, path = request.file, request.source, request.path
         alias = re.search(r"\bas\s*:?\s*([\w]+)", source)
         return [
             (

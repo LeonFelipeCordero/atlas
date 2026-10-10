@@ -1,6 +1,6 @@
 """Configured limits evaluate the same quantitative report, never hidden policy."""
 
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pytest
@@ -25,17 +25,26 @@ def report(nodes=None, cycles=None, diagnostics=None):
             "circularImports": cycles or [], "diagnostics": diagnostics or []}
 
 
-@pytest.mark.parametrize("rule, metric, kind, limit", [
-    ("maxFileLines", "lineCount", "file", 600),
-    ("maxFunctionLines", "lineCount", "function", 100),
-    ("maxParameters", "parameterCount", "method", 3),
-    ("maxWeightedComplexity", "weightedComplexity", "function", 8),
-    ("maxDecisionDepth", "maxDecisionDepth", "function", 3),
-    ("maxNestedLoops", "nestedLoops", "function", 0),
-    ("maxChangeImpact", "transitiveChangeImpact", "file", 2),
-    ("maxInstability", "instability", "module", 0.5),
+@dataclass(frozen=True)
+class LimitCase:
+    rule: str
+    metric: str
+    kind: str
+    limit: int | float
+
+
+@pytest.mark.parametrize("case", [
+    LimitCase("maxFileLines", "lineCount", "file", 600),
+    LimitCase("maxFunctionLines", "lineCount", "function", 100),
+    LimitCase("maxParameters", "parameterCount", "method", 3),
+    LimitCase("maxWeightedComplexity", "weightedComplexity", "function", 8),
+    LimitCase("maxDecisionDepth", "maxDecisionDepth", "function", 3),
+    LimitCase("maxNestedLoops", "nestedLoops", "function", 0),
+    LimitCase("maxChangeImpact", "transitiveChangeImpact", "file", 2),
+    LimitCase("maxInstability", "instability", "module", 0.5),
 ])
-def test_equality_passes_and_only_exceeded_limits_are_returned(rule, metric, kind, limit) -> None:
+def test_equality_passes_and_only_exceeded_limits_are_returned(case: LimitCase) -> None:
+    rule, metric, kind, limit = case.rule, case.metric, case.kind, case.limit
     config = disabled_config(**{rule: limit})
     assert build_check(report([report_node(kind, {metric: limit})]), config) == {"findings": []}
     actual = limit + (0.1 if metric == "instability" else 1)

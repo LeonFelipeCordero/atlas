@@ -36,7 +36,8 @@ class GoResolution(ResolutionAdapter):
     def import_path(self, source: str) -> str:
         return quoted_path(source) or source.strip()
 
-    def import_item(self, ctx, file, source, path, position):
+    def import_item(self, ctx, request):
+        source, path = request.source, request.path
         if re.match(r"\s*\.\s+['\"]", source):
             return []
         alias = re.match(r"\s*([A-Za-z_$][\w$]*)\s+['\"]", source)
@@ -45,7 +46,7 @@ class GoResolution(ResolutionAdapter):
             if alias and alias[1] not in {"import", "require"}
             else path.replace(".", "/").rstrip("/").rsplit("/", 1)[-1]
         )
-        targets = self.import_files(ctx, file, path, position)
+        targets = self.import_files(ctx, request)
         symbols = list(chain.from_iterable(top_symbols(target) for target in targets))
         return [(binding, symbols, True)] if binding else []
 

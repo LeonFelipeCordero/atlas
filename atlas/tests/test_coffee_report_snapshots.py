@@ -28,23 +28,27 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_coffee_size_measurements_include_every_source_and_callable(language: str) -> None:
     graph = coffee_graph(language)
-    calibration = next(node for node in graph.nodes if node["name"] == "calibrate")
-    path = calibration["path"]
-    assert path is not None
-    source = (FIXTURE_ROOT / language / path).read_bytes()
-    assert "startLine" in calibration and "endLine" in calibration and "endColumn" in calibration
-    end = calibration["endLine"] - int(calibration["endColumn"] == 1)
     result = CliRunner().invoke(main, [
         "report", "--folder", str(FIXTURE_ROOT / language), "--skip-save", "--format", "json",
     ])
     assert result.exit_code == 0, result.output
     measurements = {node["stableKey"]: node for node in json.loads(result.output)["nodes"]}
+    calibration = next(node for node in graph.nodes if node["name"] == "calibrate")
+    assert_calibration_size(language, calibration, measurements)
+    ready = next(node for node in graph.nodes if node["name"] == "ready")
+    assert measurements[ready["stableKey"]]["metrics"]["parameterCount"] == 4
+    assert set(measurements) >= {node["stableKey"] for node in graph.nodes if node["level"] == "file"}
+
+
+def assert_calibration_size(language, calibration, measurements):
+    path = calibration["path"]
+    assert path is not None
+    source = (FIXTURE_ROOT / language / path).read_bytes()
+    assert "startLine" in calibration and "endLine" in calibration and "endColumn" in calibration
+    end = calibration["endLine"] - int(calibration["endColumn"] == 1)
     file = measurements[f"file:{path}"]["metrics"]
     assert file["lineCount"] == len(source.splitlines()) and file["lineCount"] > 600
     metrics = measurements[calibration["stableKey"]]["metrics"]
     assert metrics["lineCount"] == end - calibration["startLine"] + 1
     assert metrics["lineCount"] > 100 and metrics["parameterCount"] == 8
     assert metrics["weightedComplexity"] == metrics["cyclomaticComplexity"] == 1
-    ready = next(node for node in graph.nodes if node["name"] == "ready")
-    assert measurements[ready["stableKey"]]["metrics"]["parameterCount"] == 4
-    assert set(measurements) >= {node["stableKey"] for node in graph.nodes if node["level"] == "file"}

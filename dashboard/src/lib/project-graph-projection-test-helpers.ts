@@ -19,13 +19,21 @@ function canAlias(artifact: Artifact, ancestor: ArtifactNode) {
   )
 }
 
-function registerFolderAliases(
-  artifact: Artifact,
-  node: GraphNode,
-  scope: GraphScope,
-  byKey: Map<string, ArtifactNode>,
-  aliases: Map<string, string>,
-) {
+type FolderAliasProjection = {
+  artifact: Artifact
+  node: GraphNode
+  scope: GraphScope
+  byKey: Map<string, ArtifactNode>
+  aliases: Map<string, string>
+}
+
+function registerFolderAliases({
+  artifact,
+  node,
+  scope,
+  byKey,
+  aliases,
+}: FolderAliasProjection) {
   for (const key of [...byKey.get(node.id)!.ancestorStableKeys].reverse()) {
     if (scope.kind !== 'repository' && key === scope.key) break
     if (!canAlias(artifact, byKey.get(key)!)) break
@@ -84,7 +92,7 @@ export function expectDirectProjection(
   const byKey = new Map(artifact.nodes.map((node) => [node.stableKey, node]))
   const aliases = new Map(graph.nodes.map((node) => [node.id, node.id]))
   for (const node of graph.nodes.filter((entry) => entry.kind === 'folder'))
-    registerFolderAliases(artifact, node, scope, byKey, aliases)
+    registerFolderAliases({ artifact, node, scope, byKey, aliases })
   const expected = expectedEdges(
     artifact,
     projectAncestors(artifact, aliases, byKey),
@@ -103,12 +111,19 @@ export function expectDirectProjection(
   }
 }
 
-export function recordReachableNodes(
-  graph: ProjectGraph,
-  seenFiles: Set<string>,
-  seenFunctions: Set<string>,
-  pending: Array<GraphScope>,
-) {
+type ReachableNodes = {
+  graph: ProjectGraph
+  seenFiles: Set<string>
+  seenFunctions: Set<string>
+  pending: Array<GraphScope>
+}
+
+export function recordReachableNodes({
+  graph,
+  seenFiles,
+  seenFunctions,
+  pending,
+}: ReachableNodes) {
   for (const node of graph.nodes) {
     if (node.kind === 'file') seenFiles.add(node.id)
     if (node.kind === 'function') seenFunctions.add(node.id)

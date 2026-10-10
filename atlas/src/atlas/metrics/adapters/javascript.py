@@ -8,7 +8,7 @@ from itertools import chain
 
 from tree_sitter import Node
 
-from ...domain.models import ParsedFile, Symbol
+from ...domain.models import Symbol
 
 from .resolution import ResolutionAdapter, relative_targets, top_symbols
 
@@ -18,7 +18,7 @@ from .base import COMMON_METRICS, MetricAdapter
 
 from .parameters import parameter_children, parameter_node
 
-from ..resolution_contract import FUNCTIONS
+from ..resolution_contract import FUNCTIONS, CallTarget, ImportRequest
 
 from ...syntax import field, text
 
@@ -102,22 +102,28 @@ def export_bindings(file, syntax) -> dict[str, list[Symbol]]:
     return {name: _unique_symbols(symbols) for name, symbols in result.items()}
 
 
-def _named_import(ctx, file, path, part, type_only):
+def _import_clause(source: str) -> str:
+    clause = re.search(r"\bimport\s+(.+?)\s+from\b", source, re.S)
+    return clause[1].strip() if clause else ""
+
+
+def _named_import(ctx, request: ImportRequest, part: str):
     match = re.fullmatch(r"\s*(type\s+)?([\w$]+)(?:\s+as\s+([\w$]+))?\s*", part)
     if not match:
         return None
-    targets = [] if type_only or match[1] else ctx._members(file, path, match[2])
+    type_only = _import_clause(request.source).startswith("type ")
+    targets = [] if type_only or match[1] else ctx._members(request, match[2])
     return match[3] or match[2], targets, False
 
 
-def _named_imports(ctx, file, path, raw, type_only):
+def _named_imports(ctx, request: ImportRequest, raw: str):
     named = re.search(r"\{([^}]+)\}", raw)
     if not named:
         return []
     return [
         entry
         for part in named[1].split(",")
-        if (entry := _named_import(ctx, file, path, part, type_only)) is not None
+        if (entry := _named_import(ctx, request, part)) is not None
     ]
 
 
@@ -165,10 +171,10 @@ class JavaScriptResolution(ResolutionAdapter):
             return field(node, "constructor", "type"), None
         return super().call_target(node)
 
-    def normalized_call(self, node, call, callee, receiver):
+    def normalized_call(self, call, callee, receiver):
         if call.relationship == "REFERENCES":
-            return callee, receiver, call.name, call.qualifier
-        return super().normalized_call(node, call, callee, receiver)
+            return CallTarget(callee, receiver, call.name, call.qualifier)
+        return super().normalized_call(call, callee, receiver)
 
     def receiver_class_allowed(self, syntax, callee, member):
         return not syntax.member_rebound(text(callee) + ".prototype", member)
@@ -195,13 +201,13 @@ class JavaScriptResolution(ResolutionAdapter):
 
     def paths(self, source, name, files):
         return (
-            relative_targets(source, name, files, index_only=True)
+            relative_targets(ImportRequest(source, name), files, index_only=True)
             if name.startswith(".") and "/" in name
             else []
         )
 
-    def members(self, ctx, file, path, name, position):
-        targets = self.import_files(ctx, file, path, position)
+    def members(self, ctx, request: ImportRequest, name):
+        targets = self.import_files(ctx, request)
         if len(targets) != 1:
             return []
         return export_bindings(targets[0], ctx.syntax[targets[0].source.path]).get(
@@ -223,44 +229,44 @@ class JavaScriptResolution(ResolutionAdapter):
             return True
         return _type_only_named_clause(node)
 
-    def import_item(
-        self, ctx, file: ParsedFile, source: str, path: str, position: int | None
-    ):
-        clause = re.search(r"\bimport\s+(.+?)\s+from\b", source, re.S)
-        if not clause:
+    def import_item(self, ctx, request: ImportRequest):
+        raw = _import_clause(request.source)
+        if not raw:
             return []
-        raw = clause[1].strip()
         type_only = raw.startswith("type ")
         raw = raw.removeprefix("type ")
         result = []
-        result.extend(self._namespace_import(ctx, file, path, raw, type_only))
-        result.extend(_named_imports(ctx, file, path, raw, type_only))
+        result.extend(self._namespace_import(ctx, request, raw))
+        result.extend(_named_imports(ctx, request, raw))
         default = re.match(r"([\w$]+)(?:\s*,|$)", raw)
         if default:
             result.append(
                 (
                     default[1],
-                    [] if type_only else ctx._members(file, path, "default"),
+                    [] if type_only else ctx._members(request, "default"),
                     False,
                 )
             )
         return result
 
-    def _namespace_import(self, ctx, file, path, raw, type_only):
+    def _namespace_import(self, ctx, request: ImportRequest, raw):
+        type_only = _import_clause(request.source).startswith("type ")
         namespace = re.search(r"\*\s+as\s+([\w$]+)", raw)
         if not namespace:
             return []
         targets = list(
-            chain.from_iterable(self.namespace_exports(ctx, file, path).values())
+            chain.from_iterable(self.namespace_exports(ctx, request.file, request.path).values())
         )
         return [(namespace[1], [] if type_only else targets, True)]
 
-    def namespace_members(self, ctx, file, path, targets):
-        return self.namespace_exports(ctx, file, path) if targets else {}
+    def namespace_members(self, ctx, request: ImportRequest, targets):
+        return self.namespace_exports(ctx, request.file, request.path) if targets else {}
 
-    def implicit_receiver(self, resolver, file, qualifier, call, ancestors, method):
-        if qualifier != "this":
+    def implicit_receiver(self, resolver, request, method):
+        if request.qualifier != "this":
             return True
+        file = request.file
+        ancestors = resolver.ancestors(request.owner)
         nested = ancestors[: ancestors.index(method)]
         return all(
             (node := resolver.syntax[file.source.path].node(s.start_byte, s.end_byte))

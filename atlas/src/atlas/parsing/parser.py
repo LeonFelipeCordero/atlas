@@ -6,6 +6,7 @@ byte offsets are zero-based, and stored end offsets are exclusive.
 """
 
 import hashlib
+from dataclasses import dataclass
 from functools import cache
 
 
@@ -15,7 +16,7 @@ from tree_sitter_language_pack import ProcessConfig, StructureItem, get_language
 from .adapters import DEFAULT_ADAPTER, LanguageAdapter, get_adapter
 from ..domain.models import SourceFile
 from .structure import _declaration_query, extract_structure
-from .syntax import FALLBACK_CALL_TYPES, call_sites
+from .syntax import FALLBACK_CALL_TYPES, DeclarationHeader, ParsedSyntax, call_sites
 
 
 from ..domain.models import (
@@ -95,14 +96,20 @@ def _extract_calls(
     return calls
 
 
+@dataclass(frozen=True)
+class _StructureParent:
+    key: str
+    ancestors: tuple[str, ...] = ()
+
+
 def _add_structure(
-    file: ParsedFile, item: StructureItem, parent_key: str, ancestors: list[str]
+    file: ParsedFile, item: StructureItem, parent: _StructureParent
 ) -> None:
     span = item.span
     if span is None:
         return
     name = item.name or "<anonymous>"
-    qualified_name = f"{file.source.path}::{'.'.join([*ancestors, name])}"
+    qualified_name = f"{file.source.path}::{'.'.join((*parent.ancestors, name))}"
     key = f"symbol:{qualified_name}:{span.start_byte}"
     kind = str(item.kind).lower()
     symbol = Symbol(
@@ -112,7 +119,7 @@ def _add_structure(
         name,
         qualified_name,
         kind,
-        parent_key,
+        parent.key,
         span.start_byte,
         span.end_byte,
         span.start_line + 1,
@@ -125,7 +132,7 @@ def _add_structure(
     )
     file.symbols.append(symbol)
     for target_name in get_adapter(file.source.language).inheritance(
-        file.source.language, kind, item.signature or ""
+        DeclarationHeader(file.source.language, kind, item.signature or "")
     ):
         file.inheritances.append(
             Inheritance(
@@ -138,7 +145,7 @@ def _add_structure(
             )
         )
     for child in item.children:
-        _add_structure(file, child, key, [*ancestors, name])
+        _add_structure(file, child, _StructureParent(key, (*parent.ancestors, name)))
 
 
 def parse_file(source: SourceFile) -> ParsedFile:
@@ -182,15 +189,14 @@ def parse_file(source: SourceFile) -> ParsedFile:
         for item in result.imports
         if item.span is not None
     ]
+    syntax = ParsedSyntax(syntax_file, root)
     parsed.imports = [
         Import(source.path, value, line)
-        for value, line in adapter.imports(syntax_file, native_imports, root=root)
+        for value, line in adapter.imports(syntax, native_imports)
     ]
-    structure = extract_structure(
-        syntax_source, source.language, result.structure, root=root
-    )
+    structure = extract_structure(syntax, result.structure)
     for item in structure:
-        _add_structure(parsed, item, file_key(source.path), [])
+        _add_structure(parsed, item, _StructureParent(file_key(source.path)))
     return parsed
 
 

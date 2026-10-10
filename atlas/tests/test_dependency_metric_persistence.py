@@ -141,8 +141,9 @@ def test_enriched_facts_share_a_revision_and_are_repository_scoped(tmp_path: Pat
     changed = False
 
     @event.listens_for(reader_engine, "before_cursor_execute")
-    def replace_after_header(_connection, _cursor, statement, _parameters, _context, _many):
+    def replace_after_header(*cursor_event):
         nonlocal changed
+        statement = cursor_event[2]
         if changed or "FROM graph_nodes" not in statement:
             return
         changed = True

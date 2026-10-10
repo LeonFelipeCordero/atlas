@@ -1,5 +1,7 @@
 """Scenario assertions for coffee ownership and resolved project dependencies."""
 
+from dataclasses import dataclass
+
 from tests.coffee_snapshot_assertions import call_edges, nodes_by_key
 from tests.coffee_scenarios import COMPLEXITY_FIELDS
 
@@ -20,10 +22,11 @@ def assert_oo_contract(test, language, graph):
     test.assertEqual(len(inherited), 1)
     test.assertEqual(nodes[inherited[0]["targetStableKey"]]["name"], contract)
     test.assertEqual(nodes[inherited[0]["targetStableKey"]]["level"], "type")
-    assert_brewer_construction(test, graph, nodes, brewer)
+    assert_brewer_construction(test, graph, brewer)
 
 
-def assert_brewer_construction(test, graph, nodes, brewer):
+def assert_brewer_construction(test, graph, brewer):
+    nodes = nodes_by_key(graph)
     constructions = [
         edge
         for edge in call_edges(graph)
@@ -113,7 +116,15 @@ def workflow_owner(nodes, edge):
     return source
 
 
-def matches_workflow(nodes, edge, source_name, target_name, target_path):
+@dataclass(frozen=True)
+class WorkflowContext:
+    language: str
+    nodes: dict
+    calls: list
+
+
+def matches_workflow(nodes, edge, case):
+    source_name, target_name, target_path = case
     source = workflow_owner(nodes, edge)
     target = nodes[edge["targetStableKey"]]
     if source["name"].lower() != source_name:
@@ -123,21 +134,22 @@ def matches_workflow(nodes, edge, source_name, target_name, target_path):
     )
 
 
-def assert_workflow_case(test, language, graph, nodes, case):
+def assert_workflow_case(test, context, case):
     source_name, target_name, target_path = case
     with test.subTest(source=source_name, target=target_name):
         matches = [
             edge
-            for edge in call_edges(graph)
-            if matches_workflow(nodes, edge, source_name, target_name, target_path)
+            for edge in context.calls
+            if matches_workflow(context.nodes, edge, case)
         ]
-        test.assertTrue(matches, (language, source_name, target_name))
+        test.assertTrue(matches, (context.language, source_name, target_name))
 
 
 def assert_workflow(test, language, graph):
     nodes = nodes_by_key(graph)
+    context = WorkflowContext(language, nodes, call_edges(graph))
     for case in workflow_cases(language):
-        assert_workflow_case(test, language, graph, nodes, case)
+        assert_workflow_case(test, context, case)
     if language == "java":
         assert_java_workflow_references(test, graph, nodes)
 

@@ -20,7 +20,7 @@ from .resolution import ResolutionAdapter, Binding
 
 from .resolution_paths import quoted_path
 
-from ..resolution_contract import SCOPES
+from ..resolution_contract import SCOPES, ImportRequest
 
 from .base import COMMON_METRICS, MetricAdapter
 
@@ -92,20 +92,10 @@ def _entry_files(files: list[ParsedFile]) -> list[ParsedFile]:
     ]
 
 
-def _inline_scopes(
-    scope: RustScope,
-    identity: str,
-    body: Node,
-    attribute_dir: Path,
-    paths: list[str],
-    name: str,
-) -> list[RustScope]:
-    directories = (
-        [attribute_dir / path for path in paths] if paths else [scope.directory / name]
-    )
-    return [
-        RustScope(scope.file, identity, body, directory) for directory in directories
-    ]
+def _inline_scopes(scope: RustScope, attribute_dir: Path, paths: list[str]) -> list[RustScope]:
+    name = scope.identity.rsplit("::", 1)[-1]
+    directories = [attribute_dir / path for path in paths] if paths else [scope.directory / name]
+    return [replace(scope, directory=directory) for directory in directories]
 
 
 class RustModules(ModuleIndex):
@@ -169,7 +159,9 @@ class RustModules(ModuleIndex):
         )
         body = field(node, "body")
         if body:
-            return _inline_scopes(scope, identity, body, attribute_dir, paths, name)
+            return _inline_scopes(
+                RustScope(scope.file, identity, body, scope.directory), attribute_dir, paths
+            )
         locations = (
             [attribute_dir / path for path in paths]
             if paths
@@ -263,27 +255,28 @@ class RustResolution(ResolutionAdapter):
     def index(self, ctx) -> RustModules:
         return ctx.modules.indexes[self.family]
 
-    def import_files(self, ctx, file, path, position):
-        return self.index(ctx).rust_import(file, path, position)
+    def import_files(self, ctx, request: ImportRequest):
+        return self.index(ctx).rust_import(request.file, request.path, request.position)
 
-    def import_key(self, ctx, file, source, position):
-        path = self.import_path(source)
+    def import_key(self, ctx, request: ImportRequest):
+        file, path, position = request.file, request.path, request.position
         key = self.index(ctx).rust_key(file, path, position)
         if not key and "::" in path:
             module, _, name = path.rpartition("::")
-            targets = ctx._members(file, module, name, position)
+            targets = ctx._members(replace(request, path=module), name)
             return targets[0].key if len(targets) == 1 else None
         return key
 
-    def members(self, ctx, file, path, name, position):
+    def members(self, ctx, request: ImportRequest, name):
         return [
             s
-            for s in self.index(ctx).rust_symbols(file, path, position)
+            for s in self.index(ctx).rust_symbols(request.file, request.path, request.position)
             if s.name == name
         ]
 
-    def import_item(self, ctx, file, source, path, position):
-        match = re.search(r"\buse\s+([\w:]+)(?:\s+as\s+(\w+))?", source)
+    def import_item(self, ctx, request: ImportRequest):
+        file, position = request.file, request.position
+        match = re.search(r"\buse\s+([\w:]+)(?:\s+as\s+(\w+))?", request.source)
         if not match:
             return []
         path, alias = match.groups()
@@ -296,9 +289,10 @@ class RustResolution(ResolutionAdapter):
                 )
             ]
         module, _, name = path.rpartition("::")
-        return [(alias or name, ctx._members(file, module, name, position), False)]
+        return [(alias or name, ctx._members(replace(request, path=module), name), False)]
 
-    def module_bindings(self, ctx, file, syntax, source_length):
+    def module_bindings(self, ctx, file, source_length):
+        syntax = ctx.syntax[file.source.path]
         result = []
         for node in syntax.nodes:
             if node.type != "mod_item":
@@ -323,11 +317,13 @@ class RustResolution(ResolutionAdapter):
             for s in local
         )
 
-    def qualified(self, resolver, file, qualifier, name, call):
+    def qualified(self, resolver, request):
         return [
             s
-            for s in self.index(resolver).rust_symbols(file, qualifier, call.start_byte)
-            if s.name == name
+            for s in self.index(resolver).rust_symbols(
+                request.file, request.qualifier or "", request.call.start_byte
+            )
+            if s.name == request.name
         ]
 
     def receiver_rejected(self, receiver, qualifier):

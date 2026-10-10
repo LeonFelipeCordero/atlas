@@ -148,7 +148,9 @@ def test_large_cycle_is_iterative_and_excludes_selected_node() -> None:
     assert all(metrics == expected_metrics(1, 1, len(keys) - 1) for metrics in actual.values())
 
 
-def declaration(name: str, kind: str, path: str, parent: str) -> Symbol:
+def declaration(name: str, kind: str, owner: Symbol | SourceFile) -> Symbol:
+    path = owner.file_path if isinstance(owner, Symbol) else owner.path
+    parent = owner.key if isinstance(owner, Symbol) else file_key(path)
     return Symbol(
         name, path, "python", name, name, kind, parent, 0, 1, 1, 1, 1, 2, None, None, []
     )
@@ -158,14 +160,16 @@ def projected_artifact(root: Path) -> GraphArtifact:
     files = []
     for name in "abcdz":
         path = f"{name}/{name}.py"
+        source = SourceFile(path, root / path, "python", b"")
+        type_symbol = declaration(f"type:{name}", "class", source)
         files.append(
             ParsedFile(
-                SourceFile(path, root / path, "python", b""),
+                source,
                 "hash",
                 None,
                 [
-                    declaration(f"type:{name}", "class", path, file_key(path)),
-                    declaration(name, "method", path, f"type:{name}"),
+                    type_symbol,
+                    declaration(name, "method", type_symbol),
                 ],
             )
         )

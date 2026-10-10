@@ -18,12 +18,14 @@ export function compareKeys(a: string, b: string): number {
   return left.length - right.length
 }
 
-function finishFrom(
-  root: string,
-  adjacency: Adjacency,
-  visited: Set<string>,
-  finished: Array<string>,
-) {
+type FinishTraversal = {
+  root: string
+  adjacency: Adjacency
+  visited: Set<string>
+  finished: Array<string>
+}
+
+function finishFrom({ root, adjacency, visited, finished }: FinishTraversal) {
   const pending: Array<[string, number]> = [[root, 0]]
   while (pending.length) {
     const entry = pending[pending.length - 1]
@@ -46,7 +48,7 @@ function finishOrder(adjacency: Adjacency): Array<string> {
   for (const root of adjacency.keys()) {
     if (visited.has(root)) continue
     visited.add(root)
-    finishFrom(root, adjacency, visited, finished)
+    finishFrom({ root, adjacency, visited, finished })
   }
   return finished
 }

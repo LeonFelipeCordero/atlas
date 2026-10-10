@@ -8,7 +8,7 @@ from .cycles import CircularGroup, circular_dependencies
 from .dependency_metrics import dependency_metrics
 from .report_markdown import render_markdown
 from ..domain.models import GraphView
-from ..domain.repositories import ReportFactsDTO
+from ..domain.repositories import ReportFactsDTO, ReportNodeDTO
 
 __all__ = ["build_report", "build_artifact_report", "render_markdown"]
 
@@ -131,15 +131,16 @@ def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _record_node(record: ReportNodeDTO) -> dict[str, Any]:
+    values = record.model_dump()
+    metric_names = (*COMPLEXITY_METRICS, "lineCount", "parameterCount")
+    return {**values, "properties": {name: values.get(name) for name in metric_names}}
+
+
 def build_report(graph: ReportFactsDTO) -> dict[str, Any]:
     """Use the same projection and metric calculations on normalized saved facts."""
-    nodes = []
-    for record in graph.nodes:
-        values = record.model_dump()
-        metric_names = (*COMPLEXITY_METRICS, "lineCount", "parameterCount")
-        nodes.append({**values, "properties": {name: values.get(name) for name in metric_names}})
     return build_artifact_report({
-        "nodes": nodes,
+        "nodes": [_record_node(record) for record in graph.nodes],
         "edges": [edge.model_dump() for edge in graph.edges or graph.imports],
         "diagnostics": graph.diagnostics,
     })

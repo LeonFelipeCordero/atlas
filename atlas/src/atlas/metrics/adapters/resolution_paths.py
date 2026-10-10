@@ -4,6 +4,7 @@ import re
 from pathlib import PurePosixPath
 
 from ...domain.models import ParsedFile, Symbol, file_key
+from ..resolution_contract import ImportRequest
 
 
 def top_symbols(file: ParsedFile) -> list[Symbol]:
@@ -37,9 +38,9 @@ def _relative_match(file: ParsedFile, base) -> bool:
 
 
 def relative_targets(
-    source: ParsedFile, name: str, files: list[ParsedFile], index_only: bool = False
+    request: ImportRequest, files: list[ParsedFile], index_only: bool = False
 ) -> list[ParsedFile]:
-    base = (source.source.absolute_path.parent / name).resolve()
+    base = (request.file.source.absolute_path.parent / request.path).resolve()
     matches = [file for file in files if _relative_match(file, base)]
     if matches:
         return matches if len(matches) == 1 else []

@@ -44,12 +44,14 @@ function fixture(): Artifact {
   return { schemaVersion: 2, repository: { name: 'test' }, nodes, edges: [] }
 }
 
-function link(
-  artifact: Artifact,
-  source: string,
-  target: string,
-  type = 'CALLS',
-) {
+type BoundaryLink = {
+  artifact: Artifact
+  source: string
+  target: string
+  type?: string
+}
+
+function link({ artifact, source, target, type = 'CALLS' }: BoundaryLink) {
   artifact.edges.push({
     sourceStableKey: source,
     targetStableKey: target,
@@ -63,19 +65,29 @@ const ids = (graph: ReturnType<typeof buildProjectGraph>) =>
 
 test('folder boundaries group below the LCA, compact, deduplicate and aggregate', () => {
   const artifact = fixture()
-  link(artifact, 'local-call', 'target-call')
-  link(artifact, 'local-symbol', 'target-symbol')
-  link(artifact, 'local-file', 'target-file', 'IMPORTS')
-  link(artifact, 'local-call', 'other-file')
-  link(artifact, 'local-call', 'external:a')
-  link(artifact, 'local-call', 'external:a', '__proto__')
-  link(artifact, 'local-call', 'hidden')
-  link(artifact, 'local-call', 'local-symbol')
-  link(artifact, 'incoming', 'local-call')
-  link(artifact, 'target-call', 'external:b')
-  link(artifact, 'external:a', 'external:b')
-  link(artifact, 'hidden', 'incoming')
-  link(artifact, 'local-call', 'incoming', 'CONTAINS')
+  link({ artifact, source: 'local-call', target: 'target-call' })
+  link({ artifact, source: 'local-symbol', target: 'target-symbol' })
+  link({
+    artifact,
+    source: 'local-file',
+    target: 'target-file',
+    type: 'IMPORTS',
+  })
+  link({ artifact, source: 'local-call', target: 'other-file' })
+  link({ artifact, source: 'local-call', target: 'external:a' })
+  link({
+    artifact,
+    source: 'local-call',
+    target: 'external:a',
+    type: '__proto__',
+  })
+  link({ artifact, source: 'local-call', target: 'hidden' })
+  link({ artifact, source: 'local-call', target: 'local-symbol' })
+  link({ artifact, source: 'incoming', target: 'local-call' })
+  link({ artifact, source: 'target-call', target: 'external:b' })
+  link({ artifact, source: 'external:a', target: 'external:b' })
+  link({ artifact, source: 'hidden', target: 'incoming' })
+  link({ artifact, source: 'local-call', target: 'incoming', type: 'CONTAINS' })
   const before = structuredClone(artifact)
   const graph = buildProjectGraph(artifact, { kind: 'folder', key: 'current' })
   expect(ids(graph)).toEqual(['chain', 'local-file', 'other'])
@@ -98,14 +110,14 @@ test('folder boundaries group below the LCA, compact, deduplicate and aggregate'
 
 test('file boundaries use nearest callable or file, keep folders and expose callable destinations', () => {
   const artifact = fixture()
-  link(artifact, 'local-call', 'target-symbol')
-  link(artifact, 'local-symbol', 'nested-call')
-  link(artifact, 'local-call', 'target-type', 'USES')
-  link(artifact, 'local-call', 'sibling', 'USES')
-  link(artifact, 'local-call', 'local-type')
-  link(artifact, 'local-type', 'incoming')
-  link(artifact, 'nested-call', 'other-file')
-  link(artifact, 'nested-call', 'local-call')
+  link({ artifact, source: 'local-call', target: 'target-symbol' })
+  link({ artifact, source: 'local-symbol', target: 'nested-call' })
+  link({ artifact, source: 'local-call', target: 'target-type', type: 'USES' })
+  link({ artifact, source: 'local-call', target: 'sibling', type: 'USES' })
+  link({ artifact, source: 'local-call', target: 'local-type' })
+  link({ artifact, source: 'local-type', target: 'incoming' })
+  link({ artifact, source: 'nested-call', target: 'other-file' })
+  link({ artifact, source: 'nested-call', target: 'local-call' })
   const graph = buildProjectGraph(artifact, { kind: 'file', key: 'local-file' })
   expect(ids(graph)).toEqual([
     'chain',
@@ -144,16 +156,21 @@ function addExternalChild(artifact: Artifact) {
     ancestorStableKeys: [...parent.ancestorStableKeys, parent.stableKey],
     depth: parent.depth + 1,
   })
-  link(artifact, 'local-call', 'external:child')
+  link({ artifact, source: 'local-call', target: 'external:child' })
 }
 
 test('outside-scope test targets are excluded even with an unfiltered artifact', () => {
   const artifact = fixture()
   const file = artifact.nodes.find((node) => node.stableKey === 'target-file')!
   file.path = 'src/helper.test.ts'
-  link(artifact, 'local-call', 'target-call')
-  link(artifact, 'local-call', 'target-file', 'IMPORTS')
-  link(artifact, 'local-call', 'other-file')
+  link({ artifact, source: 'local-call', target: 'target-call' })
+  link({
+    artifact,
+    source: 'local-call',
+    target: 'target-file',
+    type: 'IMPORTS',
+  })
+  link({ artifact, source: 'local-call', target: 'other-file' })
   for (const scope of [
     { kind: 'folder', key: 'current' },
     { kind: 'file', key: 'local-file' },
@@ -180,11 +197,16 @@ test('outside-repository dependencies never appear at any scope', () => {
   a.name = ''
   a.qualifiedName = 'package.a'
   artifact.nodes.find((node) => node.stableKey === 'external:b')!.name = ''
-  link(artifact, 'local-call', 'external:a')
-  link(artifact, 'local-file', 'external:a', 'IMPORTS')
-  link(artifact, 'local-call', 'external:b')
-  link(artifact, 'external:a', 'other-file')
-  link(artifact, 'external:a', 'local-call')
+  link({ artifact, source: 'local-call', target: 'external:a' })
+  link({
+    artifact,
+    source: 'local-file',
+    target: 'external:a',
+    type: 'IMPORTS',
+  })
+  link({ artifact, source: 'local-call', target: 'external:b' })
+  link({ artifact, source: 'external:a', target: 'other-file' })
+  link({ artifact, source: 'external:a', target: 'local-call' })
   addExternalChild(artifact)
   for (const scope of [
     { kind: 'repository' },

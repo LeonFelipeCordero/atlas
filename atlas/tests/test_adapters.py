@@ -9,7 +9,8 @@ from typing import get_args
 from tree_sitter_language_pack import SupportedLanguage, available_languages, get_parser
 
 from atlas.parsing.adapters import ADAPTERS, DEFAULT_ADAPTER, get_adapter
-from atlas.parsing.syntax import DeclarationCarrier
+from atlas.parsing.syntax import DeclarationCarrier, ImportPolicy, ParsedSyntax
+from tests.parsing_fixture import parsing_syntax
 from atlas.parsing.discovery import SourceFile, detect_language, discover_files
 from atlas.parsing.parser import parse_file
 from atlas.parsing.syntax import supplement_imports
@@ -87,7 +88,7 @@ class Service {
     }
 }
 """
-        structure = extract_structure(source, "kotlin", [])
+        structure = extract_structure(parsing_syntax(source, "kotlin"), [])
         self.assertEqual([item.name for item in structure], ["demo", "Service"])
         factory = structure[1].children[0]
         self.assertEqual(factory.name, "Factory")
@@ -105,17 +106,17 @@ class Service {
             with self.subTest(language=language):
                 file = SourceFile("sample", Path("sample"), language, sample)
                 adapter = get_adapter(language)
-                self.assertEqual(adapter.imports(file, []), imports)
-                self.assertEqual(adapter.imports(file, imports), imports)
+                self.assertEqual(adapter.imports(ParsedSyntax(file), []), imports)
+                self.assertEqual(adapter.imports(ParsedSyntax(file), imports), imports)
 
     def test_shared_import_merging_defers_inline_module_policy_to_adapter(self):
         sample = b"mod external;\nmod inline { fn run() {} }"
         file = SourceFile("sample.rs", Path("sample.rs"), "rust", sample)
         self.assertEqual(
-            supplement_imports(file, [], "mod_item"),
+            supplement_imports(ParsedSyntax(file), [], ImportPolicy("mod_item")),
             [("mod external;", 1), ("mod inline { fn run() {} }", 2)],
         )
-        self.assertEqual(get_adapter("rust").imports(file, []), [("mod external;", 1)])
+        self.assertEqual(get_adapter("rust").imports(ParsedSyntax(file), []), [("mod external;", 1)])
 
 
 class LanguageSupportTest(unittest.TestCase):
@@ -195,7 +196,7 @@ class LanguageSupportTest(unittest.TestCase):
                     with self.assertRaisesRegex(
                         ValueError, "Unsupported Python importer"
                     ):
-                        extract_structure(file.source, language)
+                        extract_structure(ParsedSyntax(file))
                     query.assert_not_called()
 
 

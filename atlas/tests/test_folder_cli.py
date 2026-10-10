@@ -1,6 +1,8 @@
 """Index and report use the current directory unless a folder is supplied."""
 
 import json
+from dataclasses import dataclass
+from itertools import product
 from pathlib import Path
 
 import pytest
@@ -10,11 +12,20 @@ from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 
 
-@pytest.mark.parametrize("command", ["index", "report"])
-@pytest.mark.parametrize("flag", [None, "-f", "--f", "--folder"])
+@dataclass(frozen=True)
+class FolderCase:
+    command: str
+    flag: str | None
+
+
+@pytest.mark.parametrize("case", [
+    FolderCase(command, flag)
+    for command, flag in product(("index", "report"), (None, "-f", "--f", "--folder"))
+])
 def test_folder_default_and_aliases(
-    command: str, flag: str | None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    case: FolderCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    command, flag = case.command, case.flag
     source = tmp_path / "source"
     source.mkdir()
     (source / "a.py").write_text("import b\n")

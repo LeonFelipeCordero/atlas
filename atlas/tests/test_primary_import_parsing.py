@@ -10,6 +10,7 @@ from atlas.metrics.adapters.resolution_paths import import_path, namespace_bindi
 from atlas.metrics.adapters.resolution_policy import ResolutionAdapter
 from atlas.domain.models import Import
 from atlas.metrics.resolver import _import_connections
+from atlas.metrics.resolution_contract import ImportRequest
 
 
 @pytest.mark.parametrize(
@@ -58,7 +59,7 @@ def test_go_namespace_rules_do_not_use_polyglot_fallback(source, expected):
     ctx = Mock()
     ctx.path_files.return_value = []
     with patch("atlas.metrics.adapters.resolution_policy.namespace_binding", side_effect=AssertionError):
-        entries = get_resolution_adapter("go").import_item(ctx, Mock(), source, path, None)
+        entries = get_resolution_adapter("go").import_item(ctx, ImportRequest(Mock(), path, source=source))
     assert entries == ([(expected, [], True)] if expected else [])
 
 
@@ -97,7 +98,9 @@ def test_default_import_methods_dispatch_to_adapter_path_hook():
     adapter.import_path = Mock(return_value="owned/path")
     ctx = Mock()
     ctx.path_files.return_value = []
-    assert adapter.import_targets(ctx, Mock(), "directive", None) == [("owned/path", None)]
+    request = ImportRequest(Mock(), adapter.import_path("directive"), source="directive")
+    assert adapter.import_targets(ctx, request) == [("owned/path", None)]
+    adapter.import_path.assert_called_once_with("directive")
     assert ctx.path_files.call_args.args[1] == "owned/path"
 
 
@@ -113,7 +116,8 @@ def test_directive_bindings_dispatch_to_adapter_path_hook():
     file.source.path = "source"
     item = Import("source", "directive", 1)
     assert ImportBindings._directive_bindings(ctx, file, item, 20) == []
-    adapter.import_item.assert_called_once_with(ctx, file, "directive", "owned/path", None)
+    adapter.import_path.assert_called_once_with("directive")
+    adapter.import_item.assert_called_once_with(ctx, ImportRequest(file, "owned/path", source="directive"))
 
 
 def test_missing_required_import_node_dispatches_to_adapter_path_hook():
