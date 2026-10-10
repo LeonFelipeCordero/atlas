@@ -13,7 +13,8 @@ export class RepositoryStore {
       .values({ id, name, location, createdAt })
       .onConflictDoNothing()
       .returning()
-      .get()
+      .all()
+      .at(0)
     return row ? { ...row, importedAt: null } : undefined
   }
 

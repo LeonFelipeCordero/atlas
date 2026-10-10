@@ -160,7 +160,7 @@ function valueInspector(
       ...(assignments.get(symbol) ?? []),
       ...(initializer ? [initializer] : []),
     ]
-    return values.some((value) => inspect(value, seen))
+    return values.some((candidate) => inspect(candidate, seen))
   }
   return inspect
 }

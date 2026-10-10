@@ -12,9 +12,9 @@ from .repositories import RepositoryService
 
 
 @contextmanager
-def navigation_service(project: str, revision: str | None = None, path: str | Path | None = None) -> Generator[NavigationService, None, None]:
+def navigation_service(project: str | None = None, revision: str | None = None, path: str | Path | None = None) -> Generator[NavigationService, None, None]:
     """Compose navigation inside one explicit read-only snapshot."""
-    with _navigation_reader(project, revision, path) as reader:
+    with _navigation_reader(Path.cwd() if project is None else project, revision, path) as reader:
         yield NavigationService(reader)
 
 

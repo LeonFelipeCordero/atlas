@@ -17,6 +17,7 @@ import {
 import type { RepositoryService } from './repositories.servers'
 import type { GraphView } from './graph-data'
 import type { GraphScope } from './project-graph-types'
+
 let directory: string
 let path: string
 let database: Database

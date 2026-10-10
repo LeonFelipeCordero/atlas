@@ -29,7 +29,7 @@ atlas graph --project "$PROJECT" --revision "$REVISION" source "$KEY" --max-line
 atlas graph --project "$PROJECT" --revision "$REVISION" path "$FROM" "$TO"
 ```
 
-`--project` accepts a registered name or ID. `--revision` is optional on the first query, then recommended. Group options precede the subcommand. Keep `DATABASE_PATH` unchanged between indexing and querying; otherwise Atlas uses its user-data database.
+`--project` is optional inside an indexed folder, including any subdirectory: `atlas graph overview` and `atlas graph find 'save_folder'` infer the nearest containing registered folder. From elsewhere, or when that folder has multiple registrations, `--project` accepts an explicit registered name or ID. No match returns an actionable error; navigation never indexes automatically. `--revision` is optional on the first query, then recommended. Group options precede the subcommand. Keep `DATABASE_PATH` unchanged between indexing and querying; otherwise Atlas uses its user-data database.
 
 | Command | Purpose |
 |---|---|

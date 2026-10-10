@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from 'bun:test'
 import ts from 'typescript-ast'
 import {
-  auditSource,
   auditServiceExports,
+  auditSource,
   repositoryRoot,
   serviceFile,
 } from './database-architecture'

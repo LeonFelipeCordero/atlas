@@ -11,10 +11,10 @@ from atlas.domain.navigation import NavigationError, PathRequest, Record, Traver
 
 
 @click.group("graph", help="Read an indexed graph as JSON; external nodes may be unresolved or ambiguous.")
-@click.option("--project", required=True, help="Registered project name or ID (required).")
+@click.option("--project", help="Registered project name or ID; defaults to the indexed folder containing the current directory.")
 @click.option("--revision", help="Expected graphRevision; reject a stale graph.")
 @click.pass_context
-def graph(ctx: click.Context, project: str, revision: str | None) -> None:
+def graph(ctx: click.Context, project: str | None, revision: str | None) -> None:
     ctx.obj = (project, revision)
 
 

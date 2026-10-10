@@ -46,14 +46,16 @@ def command(*args: str) -> dict:
     return json.loads(result.output)
 
 
-def test_cli_metadata_and_required_project(graph) -> None:
+def test_cli_metadata_and_optional_project(graph, monkeypatch: pytest.MonkeyPatch) -> None:
     overview = command("overview")
     assert overview["repositoryId"] == graph[1]
     assert overview["graphRevision"] == graph[2]
     assert overview["indexedAt"]
     assert overview["levels"]
+    monkeypatch.chdir(graph[0].parent)
     result = CliRunner().invoke(main, ["graph", "overview"])
-    assert result.exit_code == 2 and "--project" in result.output
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["repositoryId"] == graph[1]
 
 
 def test_search_rank_ambiguity_and_literal_query(graph) -> None:

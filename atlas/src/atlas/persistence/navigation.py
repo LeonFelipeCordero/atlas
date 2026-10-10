@@ -18,27 +18,48 @@ from .navigation_queries import AdjacencyRequest, adjacency, metrics, nodes
 
 
 @contextmanager
-def navigation_reader(project: str, revision: str | None, path: str | Path | None = None) -> Generator["GraphReader", None, None]:
+def navigation_reader(project: str | Path, revision: str | None, path: str | Path | None = None) -> Generator["GraphReader", None, None]:
     """Construct a repository privately for the service-owned factory."""
     with readonly_session(path) as session:
         yield GraphReader(session, project, revision)
 
 
 class GraphReader:
-    def __init__(self, session: Session, project: str, revision: str | None) -> None:
+    def __init__(self, session: Session, project: str | Path, revision: str | None) -> None:
         self._session = session
-        rows = session.execute(select(RepositoryRow.id, RepositoryRow.location).where(
-            or_(RepositoryRow.id == project, func.lower(RepositoryRow.name) == func.lower(project)),
-        ).order_by(RepositoryRow.id).limit(2)).all()
-        if len(rows) != 1:
-            raise NavigationError("Project not found or ambiguous; use an explicit registered project ID")
-        repository_id, location = rows[0]
+        repository_id, location = self._project(project)
         graph = session.get(RepositoryGraphRow, repository_id)
         if not graph or not graph.graph_revision:
             raise NavigationError("Project has no normalized graph; index it first")
         self.snapshot = GraphSnapshot(repository_id, graph.graph_revision, graph.indexed_at, location)
         if revision is not None and revision != self.snapshot.revision:
             raise NavigationError(f"Stale graph revision: expected {revision}, current {self.snapshot.revision}")
+
+    def _project(self, project: str | Path) -> tuple[str, str]:
+        statement = select(RepositoryRow.id, RepositoryRow.location)
+        if isinstance(project, str):
+            rows = self._session.execute(statement.where(
+                or_(RepositoryRow.id == project, func.lower(RepositoryRow.name) == func.lower(project)),
+            ).order_by(RepositoryRow.id).limit(2)).all()
+        else:
+            rows = self._containing_projects(project)
+            if not rows:
+                raise NavigationError("No indexed project contains the current directory; run atlas index from the repository root or use --project")
+        if len(rows) != 1:
+            raise NavigationError("Project not found or ambiguous; use an explicit registered project ID with --project")
+        return rows[0][0], rows[0][1]
+
+    def _containing_projects(self, directory: Path) -> list[tuple[str, str]]:
+        current = directory.resolve()
+        matches = []
+        for identifier, location in self._session.execute(select(RepositoryRow.id, RepositoryRow.location)):
+            if "://" in location:
+                continue
+            root = Path(location).expanduser().resolve()
+            if current.is_relative_to(root):
+                matches.append((len(root.parts), identifier, location))
+        nearest = max((depth for depth, _, _ in matches), default=0)
+        return [(identifier, location) for depth, identifier, location in matches if depth == nearest]
 
     def _rows(self, statement: Select) -> list[Record]:
         return [dict(row) for row in self._session.execute(statement).mappings()]

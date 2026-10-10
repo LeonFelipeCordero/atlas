@@ -23,9 +23,7 @@ export function moduleReferences(
 }
 function importEqualsReferences(node: ts.ImportEqualsDeclaration) {
   if (!ts.isExternalModuleReference(node.moduleReference)) return []
-  return node.moduleReference.expression
-    ? [node.moduleReference.expression]
-    : []
+  return [node.moduleReference.expression]
 }
 export function literal(node: ts.Node): string | undefined {
   if (ts.isLiteralTypeNode(node)) return literal(node.literal)
