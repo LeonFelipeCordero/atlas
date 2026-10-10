@@ -3,17 +3,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, test } from 'bun:test'
-import { openDatabase } from './database.servers'
+import { Database } from 'bun:sqlite'
 import {
   architectureScope,
-  getArchitecture,
+  createRepositoryService,
   repositoryErrorResponse,
 } from './repositories.servers'
 import { buildProjectGraph, getGraphTrail } from './project-graph'
 import { hideTestFiles } from './graph-visibility'
 import { projectCycles } from './graph-cycles'
 import { sumFileComplexity } from './file-complexity'
-import type { AppDatabase } from './database.servers'
+import type { RepositoryService } from './repositories.servers'
 import type {
   Artifact,
   ArtifactNode,
@@ -24,7 +24,8 @@ import type { GraphView } from './graph-data'
 
 let directory: string
 let path: string
-let database: AppDatabase
+let database: Database
+let service: RepositoryService
 const project = fileURLToPath(new URL('../../../atlas', import.meta.url))
 function python(...args: Array<string>) {
   const result = Bun.spawnSync(['uv', 'run', '--project', project, ...args], {
@@ -37,30 +38,39 @@ beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'normalized-dashboard-'))
   path = join(directory, 'atlas.sqlite')
   python('atlas-migrate')
-  database = openDatabase(path)
+  database = new Database(path, {
+    readwrite: true,
+    create: false,
+    strict: true,
+  })
+  service = createRepositoryService(path)
 })
 afterEach(() => {
+  service.close()
   database.close()
   rmSync(directory, { recursive: true, force: true })
 })
 function ready(id: string, scope: GraphScope = { kind: 'repository' }) {
-  const view = getArchitecture(id, database, scope)
+  const view = service.getArchitecture(id, scope)
   if (view?.state !== 'ready') throw new Error('Expected normalized graph')
   return view
 }
 function save(artifact: Artifact, name = 'custom'): string {
+  const fixturePath = join(directory, 'fixture.json')
+  writeFileSync(fixturePath, JSON.stringify(artifact))
   return python(
     'python',
     '-c',
     `
 import json, sys
+from pathlib import Path
 from atlas.persistence.database import repository_session
 from atlas.persistence.repositories import RepositoryStore
 with repository_session() as session:
-    graph = RepositoryStore(session).save_new(sys.argv[2], sys.argv[2], json.loads(sys.argv[1]))
+    graph = RepositoryStore(session).save_new(sys.argv[2], sys.argv[2], json.loads(Path(sys.argv[1]).read_text()))
     print(graph.repositoryId)
 `,
-    JSON.stringify(artifact),
+    fixturePath,
     name,
   ).trim()
 }
@@ -424,6 +434,59 @@ test('cycle IDs, members and evidence ordering match Python for Unicode stable k
   expect(ready(save(artifact)).cycles.map((cycle) => cycle.group)).toEqual(
     expected,
   )
+})
+
+test('ORM key batches preserve large scoped details, decorators, edge order and file sums', () => {
+  const artifact = fixture()
+  const extra = Array.from({ length: 510 }, (_, index): ArtifactNode => ({
+    stableKey: `extra:${index}`,
+    name: `extra${index}`,
+    type: 'function',
+    kind: 'function',
+    level: 'callable',
+    path: 'a.py',
+    language: 'python',
+    parentStableKey: 'a.py',
+    ancestorStableKeys: ['repo', 'a.py'],
+    depth: 2,
+    properties: {
+      cyclomaticComplexity: index % 3,
+      decorators: ['second', 'first'],
+    },
+  }))
+  artifact.nodes.push(...extra)
+  const edges = extra
+    .slice()
+    .reverse()
+    .map((node): DirectEdge => ({
+      sourceStableKey: node.stableKey,
+      targetStableKey: 'b.py',
+      type: 'CALLS',
+      confidence: 'EXTRACTED',
+    }))
+  artifact.edges.push(...edges)
+  const id = save(artifact)
+  const view = ready(id, { kind: 'file', key: 'a.py' })
+  expect(
+    view.details.nodes.filter((node) => node.stableKey.startsWith('extra:')),
+  ).toHaveLength(510)
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'extra:509')
+      ?.properties,
+  ).toMatchObject({
+    cyclomaticComplexity: 2,
+    decorators: ['second', 'first'],
+  })
+  expect(view.relations.map((edge) => edge.sourceStableKey)).toEqual([
+    'run',
+    'run',
+    ...edges.map((edge) => edge.sourceStableKey),
+  ])
+  expect(view.details.fileComplexities['a.py']).toEqual({
+    functions: 512,
+    measured: 511,
+    total: 511,
+  })
 })
 
 test('valid normalized empty graphs differ from unindexed rows and invalid scopes return 400', () => {

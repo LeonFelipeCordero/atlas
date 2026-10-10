@@ -1,13 +1,13 @@
 """JSON-only read navigation commands; persistence is composed by bootstrap."""
 
 import json
-from typing import Any, get_args
+from typing import Any, Callable, get_args
 
 import click
 
 from atlas.bootstrap import navigation_service
 from atlas.domain.models import Relationship
-from atlas.domain.navigation import NavigationError
+from atlas.domain.navigation import NavigationError, Record
 
 
 @click.group("graph", help="Read an indexed graph as JSON; external nodes may be unresolved or ambiguous.")
@@ -29,7 +29,12 @@ def emit(ctx: click.Context, command: str, **options: Any) -> None:
     project, revision = ctx.obj
     try:
         with navigation_service(project, revision) as service:
-            payload = getattr(service, command)(**options)
+            commands: dict[str, Callable[..., Record]] = {
+                "overview": service.overview, "find": service.find, "show": service.show,
+                "children": service.children, "context": service.context,
+                "source": service.source, "path": service.path,
+            }
+            payload = commands[command](**options)
     except (NavigationError, OSError, ValueError) as error:
         raise GraphError(str(error)) from error
     click.echo(json.dumps(payload, ensure_ascii=False))

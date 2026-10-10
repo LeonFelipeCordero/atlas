@@ -23,7 +23,7 @@ def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
         graph = service.index(repository.name, root)
     with repository_service(path) as service:
         assert service.get_architecture(repository.id) == graph
-        facts = service.repository.report_facts(repository.id)
+        facts = service.get_report_facts(repository.id)
         assert facts is not None
     view = cast(GraphView, {
         "nodes": [node.stableKey for node in facts.nodes if node.level == "file"],

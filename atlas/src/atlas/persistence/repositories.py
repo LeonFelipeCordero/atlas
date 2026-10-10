@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from pathlib import Path
 from time import time
-from typing import Any
+from typing import Any, Generator
 from uuid import uuid4
 
 from atlas.domain.repositories import GraphDTO, RepositoryDTO, RepositoryError
@@ -22,6 +24,7 @@ from .graph_records import (
     symbol_records,
     validate_parentage,
 )
+from .database import repository_session
 from .graph_queries import GraphReadRepository
 from .models import (
     Base,
@@ -47,17 +50,24 @@ def _repository_dto(row: RepositoryRow, imported_at: int | None) -> RepositoryDT
     )
 
 
+@contextmanager
+def repository_store(path: str | Path | None = None) -> Generator["RepositoryStore", None, None]:
+    """Own storage construction; the service factory receives only a repository."""
+    with repository_session(path) as session:
+        yield RepositoryStore(session)
+
+
 class RepositoryStore(GraphReadRepository):
     def register(self, name: str, location: str) -> RepositoryDTO:
-        self.session.rollback()
+        self._session.rollback()
         row = RepositoryRow(
             id=str(uuid4()), name=name, location=location, created_at=int(time() * 1000)
         )
         try:
-            self.session.add(row)
-            self.session.commit()
+            self._session.add(row)
+            self._session.commit()
         except IntegrityError as error:
-            self.session.rollback()
+            self._session.rollback()
             if "repositories_name_unique" in str(error) or "repositories.name" in str(
                 error
             ):
@@ -66,12 +76,12 @@ class RepositoryStore(GraphReadRepository):
                 ) from error
             raise
         except Exception:
-            self.session.rollback()
+            self._session.rollback()
             raise
         return _repository_dto(row, None)
 
     def list(self) -> list[RepositoryDTO]:
-        rows = self.session.execute(
+        rows = self._session.execute(
             select(RepositoryRow, case(
                 (RepositoryGraphRow.graph_revision.is_not(None), RepositoryGraphRow.imported_at),
                 else_=None,
@@ -84,10 +94,10 @@ class RepositoryStore(GraphReadRepository):
         return [_repository_dto(row, imported_at) for row, imported_at in rows]
 
     def exists(self, identifier: str) -> bool:
-        return self.session.get(RepositoryRow, identifier) is not None
+        return self._session.get(RepositoryRow, identifier) is not None
 
     def resolve(self, name: str) -> str | None:
-        row = self.session.scalar(
+        row = self._session.scalar(
             select(RepositoryRow).where(
                 func.lower(RepositoryRow.name) == func.lower(name)
             )
@@ -95,21 +105,21 @@ class RepositoryStore(GraphReadRepository):
         return row.id if row else None
 
     def save_new(self, name: str, location: str, artifact: dict[str, Any]) -> GraphDTO:
-        self.session.rollback()
+        self._session.rollback()
         row = RepositoryRow(
             id=str(uuid4()), name=name, location=location, created_at=int(time() * 1000)
         )
         # _save() flushes the registration and commits the whole graph together.
         try:
-            self.session.add(row)
+            self._session.add(row)
             return self._save(row.id, artifact)
         except Exception:
-            self.session.rollback()
+            self._session.rollback()
             raise
 
     def save(self, identifier: str, artifact: dict[str, Any]) -> GraphDTO:
         # End orchestration reads before promoting a stale WAL snapshot to a write.
-        self.session.rollback()
+        self._session.rollback()
         return self._save(identifier, artifact)
 
     def _save(self, identifier: str, artifact: dict[str, Any]) -> GraphDTO:
@@ -126,21 +136,21 @@ class RepositoryStore(GraphReadRepository):
                 index_elements=[RepositoryGraphRow.repository_id],
                 set_={name: statement.excluded[name] for name in values},
             )
-            self.session.execute(statement)
+            self._session.execute(statement)
             self._replace_graph(identifier, artifact)
-            row = self.session.get(RepositoryGraphRow, identifier, populate_existing=True)
+            row = self._session.get(RepositoryGraphRow, identifier, populate_existing=True)
             assert row is not None
             result = self._graph_summary(row)
-            self.session.commit()
+            self._session.commit()
         except Exception:
-            self.session.rollback()
+            self._session.rollback()
             raise
         return result
 
     def _replace_graph(self, identifier: str, artifact: dict[str, Any]) -> None:
-        self.session.execute(delete(GraphEdgeRow).where(GraphEdgeRow.repository_id == identifier))
-        self.session.execute(delete(GraphNodeRow).where(GraphNodeRow.repository_id == identifier))
-        self.session.execute(delete(GraphDiagnosticRow).where(GraphDiagnosticRow.repository_id == identifier))
+        self._session.execute(delete(GraphEdgeRow).where(GraphEdgeRow.repository_id == identifier))
+        self._session.execute(delete(GraphNodeRow).where(GraphNodeRow.repository_id == identifier))
+        self._session.execute(delete(GraphDiagnosticRow).where(GraphDiagnosticRow.repository_id == identifier))
         self._insert_records(GraphNodeRow, node_records(identifier, artifact))
         self._insert_records(GraphFileRow, file_records(identifier, artifact))
         self._insert_records(GraphSymbolRow, symbol_records(identifier, artifact))
@@ -151,4 +161,4 @@ class RepositoryStore(GraphReadRepository):
 
     def _insert_records(self, entity: type[Base], records: list[dict[str, Any]]) -> None:
         if records:
-            self.session.execute(insert(entity), records)
+            self._session.execute(insert(entity), records)

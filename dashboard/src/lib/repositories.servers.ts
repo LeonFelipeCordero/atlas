@@ -1,9 +1,10 @@
-import { getDatabase } from './database.servers'
-import { RepositoryStore } from './repository-store.servers'
-import { GraphStore } from './graph-store.servers'
+import {
+  createRepositoryContext,
+  repositoryDatabasePath,
+} from './persistence/repositories/factory'
 import { GraphScopeError } from './project-graph'
 import type { GraphScope } from './project-graph-types'
-import type { AppDatabase } from './database.servers'
+import type { RepositoryPort } from './repository-ports'
 
 export class RepositoryError extends Error {
   constructor(
@@ -27,16 +28,13 @@ const requiredText = (value: unknown, field: string, maxLength: number) => {
   return text
 }
 
-export function registerRepository(
-  input: unknown,
-  database: AppDatabase = getDatabase(),
-) {
+function register(store: RepositoryPort, input: unknown) {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new RepositoryError('Expected an object with name and location', 400)
   const data = input as Record<string, unknown>
   const name = requiredText(data.name, 'name', 200)
   const location = requiredText(data.location, 'location', 4096)
-  const repository = new RepositoryStore(database).register(
+  const repository = store.register(
     crypto.randomUUID(),
     name,
     location,
@@ -47,20 +45,35 @@ export function registerRepository(
   return repository
 }
 
-export const listRepositories = (database: AppDatabase = getDatabase()) =>
-  new RepositoryStore(database).list()
-
-export function getArchitecture(
-  repositoryId: string,
-  database: AppDatabase = getDatabase(),
-  scope: GraphScope = { kind: 'repository' },
-) {
-  const id = requiredText(repositoryId, 'repositoryId', 200)
-  const graph = new GraphStore(database).view(id, scope)
-  if (graph === undefined)
-    throw new RepositoryError('Repository not found', 404)
-  return graph
+/** Service owns repository construction/lifetime. Consumers receive only DTOs and operations. */
+export function createRepositoryService(path?: string) {
+  const repository = createRepositoryContext(path)
+  return {
+    registerRepository: (input: unknown) => register(repository, input),
+    listRepositories: () => repository.list(),
+    getArchitecture(
+      repositoryId: string,
+      scope: GraphScope = { kind: 'repository' },
+    ) {
+      const id = requiredText(repositoryId, 'repositoryId', 200)
+      const graph = repository.view(id, scope)
+      if (graph === undefined)
+        throw new RepositoryError('Repository not found', 404)
+      return graph
+    },
+    close: () => repository.close(),
+  }
 }
+
+export type RepositoryService = ReturnType<typeof createRepositoryService>
+export const defaultDatabasePath = () => repositoryDatabasePath()
+let service: RepositoryService | undefined
+const getService = () => (service ??= createRepositoryService())
+export const registerRepository = (input: unknown) =>
+  getService().registerRepository(input)
+export const listRepositories = () => getService().listRepositories()
+export const getArchitecture = (id: string, scope?: GraphScope) =>
+  getService().getArchitecture(id, scope)
 
 export function architectureScope(parameters: URLSearchParams): GraphScope {
   const kind = parameters.get('kind') ?? 'repository'

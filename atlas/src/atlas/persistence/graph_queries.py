@@ -14,22 +14,22 @@ from .models import (
 
 class GraphReadRepository:
     def __init__(self, session: Session) -> None:
-        self.session = session
+        self._session = session
 
     def graph(self, identifier: str) -> GraphDTO | None:
-        self.session.rollback()
-        with self.session.begin():
-            row = self.session.get(RepositoryGraphRow, identifier)
+        self._session.rollback()
+        with self._session.begin():
+            row = self._session.get(RepositoryGraphRow, identifier)
             return self._graph_summary(row) if row and row.graph_revision else None
 
     def report_facts(self, identifier: str) -> ReportFactsDTO | None:
-        self.session.rollback()
-        with self.session.begin():
-            row = self.session.get(RepositoryGraphRow, identifier)
+        self._session.rollback()
+        with self._session.begin():
+            row = self._session.get(RepositoryGraphRow, identifier)
             return self._report_facts(row) if row and row.graph_revision else None
 
     def _graph_summary(self, row: RepositoryGraphRow) -> GraphDTO:
-        counts = self.session.execute(
+        counts = self._session.execute(
             select(GraphNodeRow.level, func.count()).where(
                 GraphNodeRow.repository_id == row.repository_id
             ).group_by(GraphNodeRow.level)
@@ -52,13 +52,13 @@ class GraphReadRepository:
         )
 
     def _count(self, entity: type[GraphSymbolRow] | type[GraphEdgeRow] | type[GraphDiagnosticRow], identifier: str) -> int:
-        return self.session.scalar(select(func.count()).select_from(entity).where(
+        return self._session.scalar(select(func.count()).select_from(entity).where(
             entity.repository_id == identifier
         )) or 0
 
     def _report_facts(self, row: RepositoryGraphRow) -> ReportFactsDTO:
         node, symbol, metric = GraphNodeRow, GraphSymbolRow, GraphNodeMetricRow
-        records = self.session.execute(select(
+        records = self._session.execute(select(
             node.node_key.label("stableKey"), node.parent_key.label("parentStableKey"),
             node.type, node.level, node.kind, node.name,
             node.qualified_name.label("qualifiedName"), node.path,
@@ -72,7 +72,7 @@ class GraphReadRepository:
           .where(node.repository_id == row.repository_id).order_by(node.ordinal)).mappings()
         nodes = [ReportNodeDTO.model_validate(record) for record in records]
         edge = GraphEdgeRow
-        imports = self.session.execute(select(
+        imports = self._session.execute(select(
             edge.source_key.label("sourceStableKey"), edge.target_key.label("targetStableKey"),
             edge.relationship.label("type"), edge.confidence, edge.path, edge.line,
             edge.evidence, edge.type_only.label("typeOnly"),

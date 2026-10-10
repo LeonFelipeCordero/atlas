@@ -7,6 +7,7 @@ import sqlite3
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 from click.testing import CliRunner
@@ -15,7 +16,8 @@ from atlas.bootstrap import navigation_service
 from atlas.cli.commands import main
 from atlas.domain.navigation import NavigationError
 from atlas.persistence.database import migrate_database, repository_session
-from atlas.persistence.navigation import navigation_reader
+from atlas.persistence.navigation import GraphReader, navigation_reader
+from atlas.persistence.navigation_queries import adjacency
 from atlas.persistence.repositories import RepositoryStore
 from atlas.services.navigation import NavigationService
 from tests.graph_storage_fixture import graph_artifact
@@ -114,24 +116,31 @@ def test_external_and_type_only(graph) -> None:
     assert payload["boundaries"] == [{"stableKey": "external", "reason": "external_unresolved_or_ambiguous", "expandable": False}]
 
 
+def driver(reader: GraphReader) -> sqlite3.Connection:
+    """Test-only instrumentation of repository internals, never a production API."""
+    return cast(sqlite3.Connection, reader._session.connection().connection.driver_connection)
+
+
 def test_frontier_edge_queries_are_scoped_and_bounded(graph) -> None:
     with navigation_reader("Local", None) as reader:
         statements: list[str] = []
-        reader.connection.set_trace_callback(statements.append)
+        driver(reader).set_trace_callback(statements.append)
         NavigationService(reader).context("run", "both", ["CALLS"], 4, 3, 2)
     edges = [sql for sql in statements if "FROM graph_edges" in sql]
     assert edges
-    assert all(f"repository_id='{graph[1]}'" in sql for sql in edges)
+    assert all(f"graph_edges.repository_id = '{graph[1]}'" in sql for sql in edges)
     assert all("LIMIT" in sql for sql in edges)
     assert all("INDEXED BY graph_edges_" in sql for sql in edges)
-    assert all("relationship='CALLS'" in sql for sql in edges)
+    assert all("graph_edges.relationship = 'CALLS'" in sql for sql in edges)
 
 
 @pytest.mark.parametrize("column,index", [("source_key", "graph_edges_source"), ("target_key", "graph_edges_target")])
 def test_adjacency_plan_streams_endpoint_relation_index(graph, column, index) -> None:
     with navigation_reader("Local", None) as reader:
-        sql = f"SELECT ordinal FROM graph_edges INDEXED BY {index} WHERE repository_id=? AND {column}=? AND relationship=? ORDER BY ordinal LIMIT ?"
-        plan = reader.connection.execute(f"EXPLAIN QUERY PLAN {sql}", (graph[1], "run", "CALLS", 2)).fetchall()
+        statement = adjacency(graph[1], "run", column == "source_key", "CALLS", 2)
+        sql = str(statement.compile(dialect=reader._session.get_bind().dialect, compile_kwargs={"literal_binds": True}))
+        assert f"INDEXED BY {index}" in sql
+        plan = driver(reader).execute(f"EXPLAIN QUERY PLAN {sql}").fetchall()
     assert all("TEMP B-TREE" not in row[3] for row in plan)
     assert any("relationship=?" in row[3] for row in plan)
 
@@ -147,7 +156,7 @@ def test_adjacency_work_ignores_unrelated_edges(graph, direction) -> None:
             steps.append(None)
             return 0
 
-        reader.connection.set_progress_handler(count_steps, 100)
+        driver(reader).set_progress_handler(count_steps, 100)
         assert reader.edges("repository", direction, ["CALLS", "REFERENCES"], 1) == []
     assert len(steps) < 10
 
@@ -188,7 +197,7 @@ def test_read_snapshot_and_revision(graph) -> None:
         assert reader.node("run")["name"] == "run"
         assert reader.snapshot.revision == revision
         with pytest.raises(sqlite3.OperationalError, match="readonly"):
-            reader.connection.execute("DELETE FROM graph_nodes")
+            driver(reader).execute("DELETE FROM graph_nodes")
     result = CliRunner().invoke(main, ["graph", "--project", "Local", "--revision", revision, "overview"])
     assert result.exit_code == 1 and "Stale graph revision" in result.output
     with navigation_service(identifier) as service:
