@@ -20,6 +20,7 @@ import type {
   DirectEdge,
 } from './architecture-artifact'
 import type { GraphScope } from './project-graph-types'
+import type { GraphView } from './graph-data'
 
 let directory: string
 let path: string
@@ -151,6 +152,83 @@ function fixture(): Artifact {
   }
 }
 
+function expectPartialDetails(view: GraphView) {
+  expect(view.details.nodes.map((node) => node.stableKey)).toEqual([
+    'a.py',
+    'b.py',
+    'run',
+    'nested',
+    'constructor',
+  ])
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'run'),
+  ).toMatchObject({
+    signature: 'run(self)',
+    startLine: 3,
+    startColumn: 0,
+    endLine: 4,
+    endColumn: 12,
+    properties: {
+      lineCount: 2,
+      parameterCount: 0,
+      cyclomaticComplexity: 1,
+      nestedCyclomaticComplexity: 0,
+      decorators: ['second', 'first'],
+      visibility: 'public',
+    },
+  })
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'nested')!.properties,
+  ).not.toHaveProperty('cyclomaticComplexity')
+  expect(view.details.fileComplexities['a.py']).toEqual({
+    total: 1,
+    measured: 1,
+    functions: 2,
+  })
+  expect(view.details.fileComplexities['b.py']).toEqual({
+    total: 0,
+    measured: 0,
+    functions: 0,
+  })
+}
+
+function expectMetrics(node: ArtifactNode, original: ArtifactNode) {
+  for (const key of [
+    'fanIn',
+    'fanOut',
+    'transitiveChangeImpact',
+    'lineCount',
+    'parameterCount',
+    'cyclomaticComplexity',
+    'nestedCyclomaticComplexity',
+  ])
+    expect(node.properties?.[key]).toEqual(original.properties?.[key])
+}
+
+function expectAnalyzedDetails(view: GraphView, artifact: Artifact) {
+  for (const node of view.details.nodes) {
+    const original = artifact.nodes.find(
+      (entry) => entry.stableKey === node.stableKey,
+    )!
+    expectMetrics(node, original)
+    if (node.level === 'file')
+      expect(view.details.fileComplexities[node.stableKey]).toEqual(
+        sumFileComplexity(artifact, node.stableKey),
+      )
+  }
+}
+
+function enqueueScopes(graph: GraphView['graph'], pending: Array<GraphScope>) {
+  for (const node of graph.nodes)
+    if (
+      node.scope &&
+      !pending.some(
+        (entry) => JSON.stringify(entry) === JSON.stringify(node.scope),
+      )
+    )
+      pending.push(node.scope)
+}
+
 test('normalized-only DTOs preserve partial metrics, symbol details, ordered diagnostics and duplicate evidence', () => {
   const artifact = fixture()
   const expectedRelations = structuredClone(artifact.edges)
@@ -199,43 +277,7 @@ test('normalized-only DTOs preserve partial metrics, symbol details, ordered dia
   expect(view.graph.edges).toMatchObject([
     { source: 'run', target: 'b.py', count: 2, relationships: { CALLS: 2 } },
   ])
-  expect(view.details.nodes.map((node) => node.stableKey)).toEqual([
-    'a.py',
-    'b.py',
-    'run',
-    'nested',
-    'constructor',
-  ])
-  expect(
-    view.details.nodes.find((node) => node.stableKey === 'run'),
-  ).toMatchObject({
-    signature: 'run(self)',
-    startLine: 3,
-    startColumn: 0,
-    endLine: 4,
-    endColumn: 12,
-    properties: {
-      lineCount: 2,
-      parameterCount: 0,
-      cyclomaticComplexity: 1,
-      nestedCyclomaticComplexity: 0,
-      decorators: ['second', 'first'],
-      visibility: 'public',
-    },
-  })
-  expect(
-    view.details.nodes.find((node) => node.stableKey === 'nested')!.properties,
-  ).not.toHaveProperty('cyclomaticComplexity')
-  expect(view.details.fileComplexities['a.py']).toEqual({
-    total: 1,
-    measured: 1,
-    functions: 2,
-  })
-  expect(view.details.fileComplexities['b.py']).toEqual({
-    total: 0,
-    measured: 0,
-    functions: 0,
-  })
+  expectPartialDetails(view)
   expect(view.diagnostics).toEqual(artifact.diagnostics ?? [])
   expect(
     ready(otherId, { kind: 'file', key: 'a.py' }).graph.nodes[0].label,
@@ -301,34 +343,8 @@ with repository_session() as session:
       projectCycles(expected, graph, scope)!.map((cycle) => cycle.group),
     )
     expect(view.diagnostics).toEqual(expected.diagnostics ?? [])
-    for (const node of view.details.nodes) {
-      const original = expected.nodes.find(
-        (entry) => entry.stableKey === node.stableKey,
-      )!
-      for (const key of [
-        'fanIn',
-        'fanOut',
-        'transitiveChangeImpact',
-        'lineCount',
-        'parameterCount',
-        'cyclomaticComplexity',
-        'nestedCyclomaticComplexity',
-      ]) {
-        expect(node.properties?.[key]).toEqual(original.properties?.[key])
-      }
-      if (node.level === 'file')
-        expect(view.details.fileComplexities[node.stableKey]).toEqual(
-          sumFileComplexity(expected, node.stableKey),
-        )
-    }
-    for (const node of graph.nodes)
-      if (
-        node.scope &&
-        !pending.some(
-          (entry) => JSON.stringify(entry) === JSON.stringify(node.scope),
-        )
-      )
-        pending.push(node.scope)
+    expectAnalyzedDetails(view, expected)
+    enqueueScopes(graph, pending)
   }
   expect(pending.length).toBeGreaterThan(2)
   expect(ready(result.id).cycles).toHaveLength(1)

@@ -18,50 +18,83 @@ export function compareKeys(a: string, b: string): number {
   return left.length - right.length
 }
 
-/** Iterative Kosaraju in source-first component order, matching the importer. */
-export function components(adjacency: Adjacency): Array<Array<string>> {
+function finishFrom(
+  root: string,
+  adjacency: Adjacency,
+  visited: Set<string>,
+  finished: Array<string>,
+) {
+  const pending: Array<[string, number]> = [[root, 0]]
+  while (pending.length) {
+    const entry = pending[pending.length - 1]
+    const targets = adjacency.get(entry[0])!
+    if (entry[1] === targets.length) {
+      finished.push(entry[0])
+      pending.pop()
+      continue
+    }
+    const target = targets[entry[1]++]
+    if (visited.has(target)) continue
+    visited.add(target)
+    pending.push([target, 0])
+  }
+}
+
+function finishOrder(adjacency: Adjacency): Array<string> {
   const visited = new Set<string>()
   const finished: Array<string> = []
   for (const root of adjacency.keys()) {
     if (visited.has(root)) continue
     visited.add(root)
-    const pending: Array<[string, number]> = [[root, 0]]
-    while (pending.length) {
-      const entry = pending[pending.length - 1]
-      const targets = adjacency.get(entry[0])!
-      if (entry[1] === targets.length) {
-        finished.push(entry[0])
-        pending.pop()
-        continue
-      }
-      const target = targets[entry[1]++]
-      if (visited.has(target)) continue
-      visited.add(target)
-      pending.push([target, 0])
-    }
+    finishFrom(root, adjacency, visited, finished)
   }
+  return finished
+}
+
+function addReverseEdges(
+  source: string,
+  targets: Array<string>,
+  reverse: Adjacency,
+) {
+  for (const target of targets) reverse.get(target)!.push(source)
+}
+
+function enqueueUnvisited(
+  targets: Array<string>,
+  visited: Set<string>,
+  pending: Array<string>,
+) {
+  for (const target of targets) {
+    if (visited.has(target)) continue
+    visited.add(target)
+    pending.push(target)
+  }
+}
+
+function reverseGroup(root: string, reverse: Adjacency, visited: Set<string>) {
+  const group: Array<string> = []
+  const pending = [root]
+  visited.add(root)
+  while (pending.length) {
+    const node = pending.pop()!
+    group.push(node)
+    enqueueUnvisited(reverse.get(node)!, visited, pending)
+  }
+  return group.sort(compareKeys)
+}
+
+/** Iterative Kosaraju in source-first component order, matching the importer. */
+export function components(adjacency: Adjacency): Array<Array<string>> {
   const reverse: Adjacency = new Map(
     [...adjacency.keys()].map((key) => [key, []]),
   )
   for (const [source, targets] of adjacency)
-    for (const target of targets) reverse.get(target)!.push(source)
-  visited.clear()
+    addReverseEdges(source, targets, reverse)
+  const visited = new Set<string>()
   const groups: Array<Array<string>> = []
-  for (const root of finished.reverse()) {
+  for (const root of finishOrder(adjacency).reverse()) {
     if (visited.has(root)) continue
-    const group: Array<string> = []
-    const pending = [root]
-    visited.add(root)
-    while (pending.length) {
-      const node = pending.pop()!
-      group.push(node)
-      for (const target of reverse.get(node)!) {
-        if (visited.has(target)) continue
-        visited.add(target)
-        pending.push(target)
-      }
-    }
-    groups.push(group.sort(compareKeys))
+    groups.push(reverseGroup(root, reverse, visited))
   }
   return groups
 }
@@ -93,16 +126,59 @@ function impactCounts(adjacency: Adjacency): Map<string, number> {
     offset += BigInt(group.length)
     pending.delete(index)
     const count = bits.toString(2).replaceAll('0', '').length - 1
-    for (const key of group) {
-      impact.set(key, count)
-      for (const target of adjacency.get(key)!) {
-        const targetGroup = membership.get(target)!
-        if (targetGroup !== index)
-          pending.set(targetGroup, (pending.get(targetGroup) ?? 0n) | bits)
-      }
-    }
+    for (const key of group) impact.set(key, count)
+    const targets = new Set(
+      group.flatMap((key) =>
+        adjacency.get(key)!.map((target) => membership.get(target)!),
+      ),
+    )
+    for (const target of targets)
+      if (target !== index)
+        pending.set(target, (pending.get(target) ?? 0n) | bits)
   })
   return impact
+}
+
+function levelAdjacency(
+  nodes: Array<ArtifactNode>,
+  edges: Array<Pick<DirectEdge, 'sourceStableKey' | 'targetStableKey'>>,
+  level: string,
+): Adjacency {
+  const owners = levelOwners(nodes, level)
+  const neighbors = new Map(
+    nodes
+      .filter((node) => node.level === level)
+      .map((node) => [node.stableKey, new Set<string>()]),
+  )
+  for (const edge of edges) {
+    const source = owners.get(edge.sourceStableKey)
+    const target = owners.get(edge.targetStableKey)
+    if (source && target && source !== target)
+      neighbors.get(source)!.add(target)
+  }
+  return new Map(
+    [...neighbors].map(([key, targets]) => [key, [...targets].sort()]),
+  )
+}
+
+function countIncoming(targets: Array<string>, incoming: Map<string, number>) {
+  for (const target of targets)
+    incoming.set(target, (incoming.get(target) ?? 0) + 1)
+}
+
+function addLevelMetrics(
+  adjacency: Adjacency,
+  metrics: Map<string, NodeDependencyMetrics>,
+) {
+  const impact = impactCounts(adjacency)
+  const incoming = new Map<string, number>()
+  for (const targets of adjacency.values()) countIncoming(targets, incoming)
+  for (const [key, targets] of adjacency)
+    metrics.set(key, {
+      fanIn: incoming.get(key) ?? 0,
+      fanOut: targets.length,
+      transitiveChangeImpact: impact.get(key)!,
+    })
 }
 
 /** Full internal topology, including hidden test dependents and type-only imports. */
@@ -111,33 +187,7 @@ export function dependencyMetrics(
   edges: Array<Pick<DirectEdge, 'sourceStableKey' | 'targetStableKey'>>,
 ): Map<string, NodeDependencyMetrics> {
   const metrics = new Map<string, NodeDependencyMetrics>()
-  for (const level of ['module', 'file', 'type', 'callable']) {
-    const owners = levelOwners(nodes, level)
-    const neighbors = new Map(
-      nodes
-        .filter((node) => node.level === level)
-        .map((node) => [node.stableKey, new Set<string>()]),
-    )
-    for (const edge of edges) {
-      const source = owners.get(edge.sourceStableKey)
-      const target = owners.get(edge.targetStableKey)
-      if (source && target && source !== target)
-        neighbors.get(source)!.add(target)
-    }
-    const adjacency: Adjacency = new Map(
-      [...neighbors].map(([key, targets]) => [key, [...targets].sort()]),
-    )
-    const impact = impactCounts(adjacency)
-    const incoming = new Map<string, number>()
-    for (const targets of adjacency.values())
-      for (const target of targets)
-        incoming.set(target, (incoming.get(target) ?? 0) + 1)
-    for (const [key, targets] of adjacency)
-      metrics.set(key, {
-        fanIn: incoming.get(key) ?? 0,
-        fanOut: targets.length,
-        transitiveChangeImpact: impact.get(key)!,
-      })
-  }
+  for (const level of ['module', 'file', 'type', 'callable'])
+    addLevelMetrics(levelAdjacency(nodes, edges, level), metrics)
   return metrics
 }

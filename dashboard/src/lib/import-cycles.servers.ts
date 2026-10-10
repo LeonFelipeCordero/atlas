@@ -46,34 +46,69 @@ function fileOwners(nodes: Array<ArtifactNode>) {
   )
 }
 
+function projectImport(
+  edge: DirectEdge,
+  owners: Map<string, string | undefined>,
+): DirectEdge | null {
+  if (edge.type !== 'IMPORTS' || edge.typeOnly) return null
+  const source = owners.get(edge.sourceStableKey)
+  const target = owners.get(edge.targetStableKey)
+  if (!source || !target) return null
+  if (
+    source === target &&
+    (edge.sourceStableKey !== source || edge.targetStableKey !== target)
+  )
+    return null
+  const { path, line, evidence, confidence, type } = edge
+  return {
+    sourceStableKey: source,
+    targetStableKey: target,
+    path,
+    line,
+    evidence,
+    confidence,
+    type,
+  }
+}
+
 function projectImports(nodes: Array<ArtifactNode>, edges: Array<DirectEdge>) {
   const owners = fileOwners(nodes)
   const projected: Array<DirectEdge> = []
   for (const edge of edges) {
-    if (edge.type !== 'IMPORTS' || edge.typeOnly) continue
-    const source = owners.get(edge.sourceStableKey)
-    const target = owners.get(edge.targetStableKey)
-    if (!source || !target) continue
-    if (
-      source === target &&
-      (edge.sourceStableKey !== source || edge.targetStableKey !== target)
-    )
-      continue
-    const { path, line, evidence, confidence, type } = edge
-    projected.push({
-      sourceStableKey: source,
-      targetStableKey: target,
-      path,
-      line,
-      evidence,
-      confidence,
-      type,
-    })
+    const projection = projectImport(edge, owners)
+    if (projection) projected.push(projection)
   }
   const sortKey = (edge: DirectEdge) => pythonJson(edge)
   return projected.sort((a, b) =>
     sortKey(a) < sortKey(b) ? -1 : sortKey(a) > sortKey(b) ? 1 : 0,
   )
+}
+
+function cyclePath(start: string, parents: Map<string, string | null>) {
+  const path = [start]
+  let current = parents.get(start)!
+  while (current !== null) {
+    path.push(current)
+    current = parents.get(current)!
+  }
+  return [start, ...path.reverse()]
+}
+
+function cycleNeighbors(
+  node: string,
+  targets: Array<string>,
+  members: Set<string>,
+  start: string,
+  parents: Map<string, string | null>,
+  pending: Array<string>,
+) {
+  for (const target of targets) {
+    if (!members.has(target) || parents.has(target)) continue
+    parents.set(target, node)
+    if (target === start) return true
+    pending.push(target)
+  }
+  return false
 }
 
 function exampleCycle(
@@ -88,23 +123,18 @@ function exampleCycle(
     .find((key) => key !== start && members.has(key))!
   const parents = new Map<string, string | null>([[first, null]])
   const pending = [first]
-  for (const node of pending) {
-    for (const target of adjacency.get(node)!) {
-      if (!members.has(target) || parents.has(target)) continue
-      parents.set(target, node)
-      if (target !== start) {
-        pending.push(target)
-        continue
-      }
-      const path = [start]
-      let current = parents.get(start)!
-      while (current !== null) {
-        path.push(current)
-        current = parents.get(current)!
-      }
-      return [start, ...path.reverse()]
-    }
-  }
+  for (const node of pending)
+    if (
+      cycleNeighbors(
+        node,
+        adjacency.get(node)!,
+        members,
+        start,
+        parents,
+        pending,
+      )
+    )
+      return cyclePath(start, parents)
   throw new Error('Import component has no return path')
 }
 
