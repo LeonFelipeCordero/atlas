@@ -426,7 +426,7 @@ test('cycle IDs, members and evidence ordering match Python for Unicode stable k
   )
 })
 
-test('valid normalized empty graphs differ from unindexed rows and invalid scopes return 400', async () => {
+test('valid normalized empty graphs differ from unindexed rows and invalid scopes return 400', () => {
   const id = save({
     schemaVersion: 2,
     repository: { name: 'empty' },

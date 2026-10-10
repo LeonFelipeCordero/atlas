@@ -86,10 +86,10 @@ function projectImports(nodes: Array<ArtifactNode>, edges: Array<DirectEdge>) {
 
 function cyclePath(start: string, parents: Map<string, string | null>) {
   const path = [start]
-  let current = parents.get(start)!
+  let current = parents.get(start) ?? null
   while (current !== null) {
     path.push(current)
-    current = parents.get(current)!
+    current = parents.get(current) ?? null
   }
   return [start, ...path.reverse()]
 }

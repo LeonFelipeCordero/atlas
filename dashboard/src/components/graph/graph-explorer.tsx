@@ -164,7 +164,7 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
         </Button>
       </div>
     )
-  if (!view.data || view.data.state !== 'ready')
+  if (!view.data)
     return (
       <div className="loading-state" role="status">
         Loading the repository graph…

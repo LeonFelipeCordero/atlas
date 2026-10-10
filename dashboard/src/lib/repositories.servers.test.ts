@@ -311,7 +311,7 @@ test('one read transaction keeps metadata and nodes on one WAL snapshot', () => 
   writeFileSync(file, 'def after(): return 2\n')
   const original = database.query.bind(database)
   let interleaved = false
-  const spy = spyOn(database, 'query').mockImplementation(((sql: string) => {
+  const spy = spyOn(database, 'query').mockImplementation((sql: string) => {
     expect(database.inTransaction).toBe(true)
     if (
       !interleaved &&
@@ -321,7 +321,7 @@ test('one read transaction keeps metadata and nodes on one WAL snapshot', () => 
       python('atlas', 'index', '-f', source)
     }
     return original(sql)
-  }) as typeof database.query)
+  })
   try {
     expect(fileView(repository.id)).toEqual(before)
     expect(interleaved).toBe(true)
