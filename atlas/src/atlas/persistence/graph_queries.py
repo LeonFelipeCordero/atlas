@@ -64,6 +64,8 @@ class GraphReadRepository:
             node.qualified_name.label("qualifiedName"), node.path,
             symbol.start_line.label("startLine"), metric.line_count.label("lineCount"),
             metric.parameter_count.label("parameterCount"),
+            metric.base_complexity.label("baseCyclomaticComplexity"),
+            metric.nested_complexity.label("nestedCyclomaticComplexity"),
             metric.total_complexity.label("cyclomaticComplexity"),
             metric.loop_complexity.label("loopNestedComplexity"),
             metric.max_decision_depth.label("maxDecisionDepth"),
@@ -72,12 +74,21 @@ class GraphReadRepository:
           .where(node.repository_id == row.repository_id).order_by(node.ordinal)).mappings()
         nodes = [ReportNodeDTO.model_validate(record) for record in records]
         edge = GraphEdgeRow
-        imports = self.session.execute(select(
+        records = self.session.execute(select(
             edge.source_key.label("sourceStableKey"), edge.target_key.label("targetStableKey"),
             edge.relationship.label("type"), edge.confidence, edge.path, edge.line,
             edge.evidence, edge.type_only.label("typeOnly"),
-        ).where(edge.repository_id == row.repository_id, edge.relationship == "IMPORTS")
+        ).where(edge.repository_id == row.repository_id, edge.relationship != "CONTAINS")
           .order_by(edge.ordinal)).mappings()
+        edges = [ReportImportDTO.model_validate(record) for record in records]
+        diagnostic = GraphDiagnosticRow
+        diagnostics = self.session.execute(select(
+            diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
+        ).where(diagnostic.repository_id == row.repository_id)
+          .order_by(diagnostic.ordinal)).mappings()
         assert row.graph_revision is not None
-        return ReportFactsDTO(graphRevision=row.graph_revision, nodes=nodes,
-                              imports=[ReportImportDTO.model_validate(record) for record in imports])
+        return ReportFactsDTO(
+            graphRevision=row.graph_revision, nodes=nodes, edges=edges,
+            imports=[edge for edge in edges if edge.type == "IMPORTS"],
+            diagnostics=[dict(record) for record in diagnostics],
+        )

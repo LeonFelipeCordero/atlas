@@ -117,9 +117,13 @@ test('selected file and inside-file summary show the same sum', () => {
     selectedFile(artifact, 'file'),
     summary(artifact, 'file', true),
   ]) {
-    expect(html).toContain('Function complexity sum')
+    expect(html).toContain('aria-label="File weighted complexity sum"')
+    expect(html).toContain('<h4>Weighted complexity sum</h4>')
     expect(html).toContain('<strong>13</strong>')
-    expect(html).toContain('3 functions/methods in this file')
+    expect(html).toContain(
+      'Sum of weighted complexity across 3 functions/methods in this file',
+    )
+    expect(html).not.toContain('Sum of total complexity')
   }
   expect(summary(artifact, 'file', true)).toContain('file-complexity-bar')
   expect(selectedFile(artifact, 'empty')).toContain('<strong>0</strong>')
@@ -128,7 +132,7 @@ test('selected file and inside-file summary show the same sum', () => {
 
 test('unselected inside-file sidebar shows the current file sum', () => {
   const html = selectedFile(fixture(), null, { kind: 'file', key: 'file' })
-  expect(html).toContain('Function complexity sum')
+  expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
   expect(html).toContain('In this view')
 })
@@ -136,11 +140,11 @@ test('unselected inside-file sidebar shows the current file sum', () => {
 test('single local file preview ignores boundary nodes, multiple files have no implicit sum', () => {
   const artifact = fixture()
   const graph = buildProjectGraph(artifact, { kind: 'repository' })
-  expect(selectedFile(artifact, null)).not.toContain('Function complexity sum')
+  expect(selectedFile(artifact, null)).not.toContain('Weighted complexity sum')
   graph.nodes = graph.nodes.filter((node) => node.id !== 'empty')
   graph.nodes.find((node) => node.id === 'other-file')!.role = 'boundary'
   const html = selectedFile(artifact, null, { kind: 'repository' }, graph)
-  expect(html).toContain('Function complexity sum')
+  expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
   expect(html).not.toContain('<strong>50</strong>')
 })

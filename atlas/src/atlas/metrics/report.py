@@ -1,167 +1,145 @@
-"""Findings-only reports from in-memory or saved analysis."""
+"""Quantitative metrics from fresh analysis or normalized saved graph facts."""
 
-from collections.abc import Mapping
-from typing import Any
+from collections import Counter
+from typing import Any, cast
 
-from .cycles import circular_dependencies
+from .artifact import build_dependency_views
+from .cycles import CircularGroup, circular_dependencies
+from .dependency_metrics import dependency_metrics
+from .report_markdown import render_markdown
+from ..domain.models import GraphView
 from ..domain.repositories import ReportFactsDTO
 
-THRESHOLDS = {
-    "cyclomaticComplexity": 8,
-    "loopNestedComplexity": 0,
-    "maxDecisionDepth": 3,
+__all__ = ["build_report", "build_artifact_report", "render_markdown"]
+
+COMPLEXITY_METRICS = {
+    "baseCyclomaticComplexity": "cyclomaticComplexity",
+    "cyclomaticComplexity": "weightedComplexity",
+    "nestedCyclomaticComplexity": "nestedDecisionPenalty",
+    "loopNestedComplexity": "nestedLoops",
+    "maxDecisionDepth": "maxDecisionDepth",
 }
-METRIC_LABELS = {
-    "cyclomaticComplexity": "Cyclomatic complexity",
-    "loopNestedComplexity": "Nested-loop count",
-    "maxDecisionDepth": "Decision nesting depth",
-}
+DEPENDENCY_LEVELS = {"module", "file", "type", "callable"}
+CALLABLE_KINDS = {"function", "method"}
 
 
 def _node_order(node: dict[str, Any]):
     return node.get("path") or "", node.get("startLine") or 0, node["stableKey"]
 
 
-def _metric_details(
-    properties: dict[str, Any],
-    thresholds: dict[str, int] = THRESHOLDS,
-    labels: dict[str, str] = METRIC_LABELS,
-) -> list[str]:
+def _dependency_values(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]):
+    views = build_dependency_views(nodes, edges)
+    return {
+        key: metrics
+        for view in views.values()
+        for key, metrics in dependency_metrics(cast(GraphView, view)).items()
+    }
+
+
+def _file_owner(node: dict[str, Any], lookup: dict[str, dict[str, Any]]) -> str | None:
+    current = node
+    while current.get("kind") != "file":
+        parent = current.get("parentStableKey")
+        if parent not in lookup:
+            return None
+        current = lookup[parent]
+    return current["stableKey"]
+
+
+def _file_summaries(nodes: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    summaries = {
+        node["stableKey"]: {"functionCount": 0, "measuredFunctionCount": 0, "weightedComplexitySum": 0}
+        for node in nodes if node.get("kind") == "file"
+    }
+    lookup = {node["stableKey"]: node for node in nodes}
+    for node in nodes:
+        if node.get("kind") not in CALLABLE_KINDS:
+            continue
+        owner = _file_owner(node, lookup)
+        if owner is None:
+            continue
+        values = summaries[owner]
+        values["functionCount"] += 1
+        complexity = node.get("properties", {}).get("cyclomaticComplexity")
+        if complexity is not None:
+            values["measuredFunctionCount"] += 1
+            values["weightedComplexitySum"] += complexity
+    return summaries
+
+
+def _measurement(node: dict[str, Any], dependencies, files) -> dict[str, Any]:
+    properties = node.get("properties", {})
+    kind = node.get("kind")
+    metrics: dict[str, Any] = {}
+    if kind == "file" or kind in CALLABLE_KINDS:
+        metrics["lineCount"] = properties.get("lineCount")
+    if kind in CALLABLE_KINDS:
+        metrics["parameterCount"] = properties.get("parameterCount")
+        metrics.update({label: properties.get(name) for name, label in COMPLEXITY_METRICS.items()})
+    metrics.update(files.get(node["stableKey"], {}))
+    metrics.update(dependencies.get(node["stableKey"], {}))
+    return {
+        "stableKey": node["stableKey"],
+        "subject": node.get("qualifiedName") or node.get("name") or "Unnamed item",
+        "kind": kind,
+        "level": node.get("level"),
+        "path": node.get("path"),
+        "line": node.get("startLine"),
+        "metrics": metrics,
+    }
+
+
+def _cycle_measurements(groups: list[CircularGroup], nodes: list[dict[str, Any]]):
+    paths = {node["stableKey"]: node.get("path") for node in nodes}
     return [
-        f"{labels[metric]} is {properties[metric]} (limit: {threshold})."
-        for metric, threshold in thresholds.items()
-        if properties.get(metric) is not None and properties[metric] > threshold
+        {
+            "id": group["id"],
+            "groupSize": len(group["nodeStableKeys"]),
+            "internalDependencyCount": len({
+                (edge["sourceStableKey"], edge["targetStableKey"])
+                for edge in group["edges"]
+            }),
+            "files": sorted(paths.get(key) or "Unknown file" for key in group["nodeStableKeys"]),
+            "exampleCycle": [paths.get(key) or "Unknown file" for key in group["exampleCycle"]],
+        }
+        for group in groups
     ]
 
 
-def _complexity_finding(node: dict[str, Any]) -> dict[str, Any] | None:
-    if node.get("kind") not in ("function", "method"):
-        return None
-    details = _metric_details(node.get("properties", {}))
-    if not details:
-        return None
+def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:
+    """Report raw values, including zeros and unavailable metrics, without policy."""
+    nodes = artifact.get("nodes", [])
+    edges = artifact.get("edges", [])
+    cycles = artifact.get("circularDependencies") or circular_dependencies(nodes, edges)
+    dependencies = _dependency_values(nodes, edges)
+    files = _file_summaries(nodes)
+    levels = Counter(node.get("level") for node in nodes)
+    diagnostics = artifact.get("diagnostics", [])
     return {
-        "type": "complexity",
-        "subject": node.get("qualifiedName") or node.get("name") or "Unnamed callable",
-        "files": [{"path": node.get("path"), "line": node.get("startLine")}],
-        "details": details,
-    }
-
-
-def _complexity_findings(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    findings = map(_complexity_finding, sorted(nodes, key=_node_order))
-    return [finding for finding in findings if finding is not None]
-
-
-def _size_details(node: dict[str, Any]) -> list[str]:
-    file = node["kind"] == "file"
-    thresholds = {"lineCount": 600} if file else {"lineCount": 100, "parameterCount": 7}
-    labels = {"lineCount": "File line count" if file else "Function line count", "parameterCount": "Parameter count"}
-    return _metric_details(node.get("properties", {}), thresholds, labels)
-
-
-def _size_finding(node: dict[str, Any]) -> dict[str, Any] | None:
-    kind = node.get("kind")
-    if kind not in {"file", "function", "method"}:
-        return None
-    details = _size_details(node)
-    if not details:
-        return None
-    location = {"path": node.get("path")}
-    if kind != "file":
-        location["line"] = node.get("startLine")
-    return {
-        "type": "size",
-        "subject": node.get("qualifiedName") or node.get("name") or "Unnamed item",
-        "files": [location],
-        "details": details,
-    }
-
-
-def _size_findings(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    findings = map(_size_finding, sorted(nodes, key=_node_order))
-    return [finding for finding in findings if finding is not None]
-
-
-def _cycle_files(group: dict[str, Any], paths: dict[str, Any]):
-    return sorted(
-        ({"path": paths.get(key)} for key in group["nodeStableKeys"]),
-        key=lambda file: file["path"] or "",
-    )
-
-
-def _cycle_path(group: dict[str, Any], paths: dict[str, Any]) -> str:
-    return " → ".join(paths.get(key) or "Unknown file" for key in group["exampleCycle"])
-
-
-def _cycle_finding(group: dict[str, Any], paths: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "type": "circular_dependency",
-        "subject": "Circular imports",
-        "files": _cycle_files(group, paths),
-        "details": [
-            "These files form a circular import dependency.",
-            f"Example cycle: {_cycle_path(group, paths)}.",
+        "summary": {
+            "files": levels["file"], "modules": levels["module"],
+            "types": levels["type"], "callables": levels["callable"],
+            "circularImportGroups": len(cycles["groups"]), "parseErrors": len(diagnostics),
+        },
+        "nodes": [
+            _measurement(node, dependencies, files)
+            for node in sorted(nodes, key=_node_order)
+            if node.get("level") in DEPENDENCY_LEVELS or node.get("kind") in CALLABLE_KINDS
         ],
+        "circularImports": _cycle_measurements(cycles["groups"], nodes),
+        "diagnostics": diagnostics,
     }
-
-
-def _cycle_findings(cycles: Mapping[str, Any], nodes: list[dict[str, Any]]):
-    paths = {node["stableKey"]: node.get("path") for node in nodes}
-    return [_cycle_finding(group, paths) for group in cycles["groups"]]
 
 
 def build_report(graph: ReportFactsDTO) -> dict[str, Any]:
-    """Build findings from focused normalized metrics and import-cycle facts."""
-    nodes = [_report_node(node.model_dump()) for node in graph.nodes]
-    cycles = circular_dependencies(nodes, [edge.model_dump() for edge in graph.imports])
-    return {"findings": _complexity_findings(nodes) + _size_findings(nodes) + _cycle_findings(cycles, nodes)}
-
-
-def _report_node(node: dict[str, Any]) -> dict[str, Any]:
-    metrics = (*THRESHOLDS, "lineCount", "parameterCount")
-    return {**node, "properties": {name: node[name] for name in metrics}}
-
-
-def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:
-    """Build the same findings from analysis without requiring persistence."""
-    nodes = artifact.get("nodes", [])
-    cycles = artifact.get("circularDependencies")
-    if cycles is None:
-        cycles = circular_dependencies(nodes, artifact.get("edges", []))
-    return {"findings": _complexity_findings(nodes) + _size_findings(nodes) + _cycle_findings(cycles, nodes)}
-
-
-def _code(value: str) -> str:
-    """Keep source names literal even when they contain Markdown delimiters."""
-    value = value.replace("\n", " ").replace("\r", " ")
-    fence = "`"
-    while fence in value:
-        fence += "`"
-    padding = " " if value.startswith("`") or value.endswith("`") else ""
-    return f"{fence}{padding}{value}{padding}{fence}"
-
-
-def _location(file: dict[str, Any]) -> str:
-    location = file["path"] or "Unknown file"
-    if file.get("line") is not None:
-        location += f":{file['line']}"
-    return f"- {_code(location)}"
-
-
-def _markdown_section(finding: dict[str, Any]) -> str:
-    title = {"complexity": "Complexity", "size": "Size", "circular_dependency": "Circular dependency"}[finding["type"]]
-    locations = map(_location, finding["files"])
-    details = (f"- {detail}" for detail in finding["details"])
-    return "\n".join([
-        f"## {title}: {_code(finding['subject'])}",
-        "", "Files:", *locations,
-        "", "Findings:", *details,
-    ])
-
-
-def render_markdown(report: dict[str, Any]) -> str:
-    """Use the same short section structure for humans and LLMs."""
-    if not report["findings"]:
-        return "No findings."
-    return "\n\n".join(map(_markdown_section, report["findings"]))
+    """Use the same projection and metric calculations on normalized saved facts."""
+    nodes = []
+    for record in graph.nodes:
+        values = record.model_dump()
+        metric_names = (*COMPLEXITY_METRICS, "lineCount", "parameterCount")
+        nodes.append({**values, "properties": {name: values.get(name) for name in metric_names}})
+    return build_artifact_report({
+        "nodes": nodes,
+        "edges": [edge.model_dump() for edge in graph.edges or graph.imports],
+        "diagnostics": graph.diagnostics,
+    })

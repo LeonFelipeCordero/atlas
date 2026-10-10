@@ -12,7 +12,7 @@ from functools import cache
 from tree_sitter import Node
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_language, get_parser, process
 
-from .adapters import LanguageAdapter, get_adapter
+from .adapters import DEFAULT_ADAPTER, LanguageAdapter, get_adapter
 from ..domain.models import SourceFile
 from .structure import _declaration_query, extract_structure
 from .syntax import FALLBACK_CALL_TYPES, call_sites
@@ -46,6 +46,19 @@ def _parse_syntax(file: SourceFile, adapter: LanguageAdapter) -> Node | None:
         or _declaration_query(file.language) is not None
     ):
         return get_parser(file.language).parse(file.source).root_node
+    return None
+
+
+def _syntax_error(root: Node | None) -> str | None:
+    if root is None or not root.has_error:
+        return None
+    pending = [root]
+    while pending:
+        node = pending.pop()
+        if node.is_error or node.is_missing:
+            line, column = node.start_point
+            return f"Syntax error at line {line + 1}, column {column + 1}; analysis may be incomplete."
+        pending.extend(reversed(node.children))
     return None
 
 
@@ -133,7 +146,7 @@ def parse_file(source: SourceFile) -> ParsedFile:
 
     Calls, imports, and structure share a syntax tree when needed.
     Native processing runs separately. Parser failures propagate to the caller.
-    Text decoding replaces invalid UTF-8; syntax errors need not raise.
+    Text decoding replaces invalid UTF-8; syntax errors are recorded as diagnostics.
 
     Args:
         source: File path, language identifier, and source bytes to index.
@@ -159,6 +172,9 @@ def parse_file(source: SourceFile) -> ParsedFile:
         source.path, source.absolute_path, source.language, syntax_source
     )
     root = _parse_syntax(syntax_file, adapter)
+    # Generic grammars may reject valid dialects (e.g. Tailwind CSS). Dedicated
+    # code adapters report concrete ERROR/missing nodes, not grammar-only flags.
+    parsed.parse_error = _syntax_error(root) if adapter is not DEFAULT_ADAPTER else None
     parsed.calls = _extract_calls(syntax_file, root=root, adapter=adapter)
     result = process(text, ProcessConfig(language=source.language))
     native_imports = [

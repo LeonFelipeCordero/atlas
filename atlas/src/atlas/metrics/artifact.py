@@ -2,6 +2,7 @@
 from collections import Counter, defaultdict
 from dataclasses import asdict
 from datetime import datetime, timezone
+from math import isfinite
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
 
@@ -42,10 +43,10 @@ class GraphArtifact:
 
     @model_validator(mode="after")
     def validate_references(self) -> Self:
-        """Check references and optional dependency counts, returning this instance.
+        """Check references and optional dependency metrics, returning this instance.
 
         Runs automatically after model validation; call directly to check node
-        uniqueness, references and dependency counts after editing containers.
+        uniqueness, references and dependency metrics after editing containers.
         This does not revalidate all field schemas.
 
         Args:
@@ -53,7 +54,7 @@ class GraphArtifact:
         Returns:
             This artifact, unchanged.
         Raises:
-            ValueError: Duplicate keys, missing references, or invalid dependency counts.
+            ValueError: Duplicate keys, missing references, or invalid dependency metrics.
             KeyError: Required reference fields were removed by in-place edits.
 
         Examples:
@@ -82,6 +83,11 @@ def _validate_dependency_metrics(node: GraphNode) -> None:
         value = node["properties"][name]
         if type(value) is not int or value < 0:
             raise ValueError(f"Node property {name} must be a nonnegative integer")
+    value = node["properties"].get("instability")
+    if value is not None and (
+        type(value) is not float or not isfinite(value) or not 0 <= value <= 1
+    ):
+        raise ValueError("Node property instability must be None or a finite float between 0 and 1")
 
 
 def _validate_edge_endpoints(edge: GraphEdge, known_keys: set[str]) -> None:
@@ -237,9 +243,10 @@ def _level_view(
     }
 
 
-def _build_views(
+def build_dependency_views(
     nodes: list[dict[str, object]], edges: list[dict[str, object]]
 ) -> dict[str, dict[str, Any]]:
+    """Project non-containment relationships to distinct internal peers at each level."""
     nodes_by_key = {str(node["stableKey"]): node for node in nodes}
     return {
         level: _level_view(nodes, edges, level, nodes_by_key)
@@ -460,7 +467,7 @@ def build_artifact(
     )
     _add_hierarchy(nodes)
     _enrich_edges(edges, nodes)
-    views = _build_views(nodes, edges)
+    views = build_dependency_views(nodes, edges)
     _add_dependency_metrics(nodes, views)
     level_counts = {level: len(view["nodes"]) for level, view in views.items()}
     return GraphArtifact(

@@ -46,7 +46,7 @@ def test_folder_default_and_aliases(
             assert output["repositoryId"] == project.id
             assert output["stats"] == saved.stats.model_dump()
         else:
-            assert output["findings"][0]["type"] == "circular_dependency"
+            assert output["summary"]["circularImportGroups"] == 1
     assert sorted(path.name for path in source.iterdir()) == ["a.py", "b.py"]
 
 
@@ -58,5 +58,5 @@ def test_report_default_cwd_skip_save(tmp_path: Path, monkeypatch: pytest.Monkey
     monkeypatch.setenv("DATABASE_PATH", str(database))
     result = CliRunner().invoke(main, ["report", "--skip-save", "--format", "json"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["findings"][0]["type"] == "circular_dependency"
+    assert json.loads(result.output)["summary"]["circularImportGroups"] == 1
     assert not database.parent.exists()

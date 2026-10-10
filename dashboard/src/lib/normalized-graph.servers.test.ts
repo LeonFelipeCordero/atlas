@@ -173,10 +173,17 @@ function expectPartialDetails(view: GraphView) {
       parameterCount: 0,
       cyclomaticComplexity: 1,
       nestedCyclomaticComplexity: 0,
+      instability: null,
       decorators: ['second', 'first'],
       visibility: 'public',
     },
   })
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'a.py')!.properties,
+  ).toMatchObject({ fanIn: 1, fanOut: 2, instability: 2 / 3 })
+  expect(
+    view.details.nodes.find((node) => node.stableKey === 'b.py')!.properties,
+  ).toMatchObject({ fanIn: 1, fanOut: 1, instability: 0.5 })
   expect(
     view.details.nodes.find((node) => node.stableKey === 'nested')!.properties,
   ).not.toHaveProperty('cyclomaticComplexity')
@@ -196,6 +203,7 @@ function expectMetrics(node: ArtifactNode, original: ArtifactNode) {
   for (const key of [
     'fanIn',
     'fanOut',
+    'instability',
     'transitiveChangeImpact',
     'lineCount',
     'parameterCount',

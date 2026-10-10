@@ -36,7 +36,7 @@ def test_legacy_graph_needs_reindex_and_keeps_registration(tmp_path: Path) -> No
         saved = service.index("Local", tmp_path)
         assert saved.repositoryId == "legacy"
         assert service.get_architecture("legacy") == saved
-        assert service.report("Local") == {"findings": []}
+        assert service.report("Local")["summary"]["circularImportGroups"] == 0
     with sqlite3.connect(path) as connection:
         assert "artifact" not in [row[1] for row in connection.execute("PRAGMA table_info(repository_graphs)")]
 

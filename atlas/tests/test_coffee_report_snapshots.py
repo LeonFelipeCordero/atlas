@@ -1,4 +1,4 @@
-"""CLI reports must match the saved coffee sample output."""
+"""CLI quantitative reports must match the saved coffee sample output."""
 
 import json
 
@@ -15,53 +15,36 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
         "report", "--folder", str(FIXTURE_ROOT / language), "--skip-save",
     ])
     assert result.exit_code == 0, result.output
-    assert "Cyclomatic complexity is 9 (limit: 8)." in result.output
-    assert "Decision nesting depth is 4 (limit: 3)." in result.output
-    if language != "elixir":
-        assert "Nested-loop count is 1 (limit: 0)." in result.output
+    assert "Cyclomatic complexity" in result.output and "Weighted complexity" in result.output
+    assert "Decision depth" in result.output and "Parameters" in result.output
+    assert "Internal instability" in result.output and "Change impact" in result.output
     if language != "go":
-        assert "## Circular dependency:" in result.output
-    assert "File line count is " in result.output
-    assert "Function line count is " in result.output
-    assert "Parameter count is 8 (limit: 7)." in result.output
+        assert "## Circular imports" in result.output
+    assert "limit" not in result.output and "finding" not in result.output.lower()
     expected = (SNAPSHOT_ROOT / f"{language}-coffee-report.md").read_text(encoding="utf-8")
     assert result.output == expected
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
-def test_coffee_size_findings_identify_oversized_source_and_callable(language: str) -> None:
+def test_coffee_size_measurements_include_every_source_and_callable(language: str) -> None:
     graph = coffee_graph(language)
     calibration = next(node for node in graph.nodes if node["name"] == "calibrate")
     path = calibration["path"]
     assert path is not None
-    file = next(node for node in graph.nodes if node["stableKey"] == f"file:{path}")
     source = (FIXTURE_ROOT / language / path).read_bytes()
-    assert file["properties"]["lineCount"] == len(source.splitlines())
-    assert file["properties"]["lineCount"] > 600
-    assert "startLine" in calibration
-    assert "endLine" in calibration
-    assert "endColumn" in calibration
+    assert "startLine" in calibration and "endLine" in calibration and "endColumn" in calibration
     end = calibration["endLine"] - int(calibration["endColumn"] == 1)
-    assert calibration["properties"]["lineCount"] == end - calibration["startLine"] + 1
-    assert calibration["properties"]["lineCount"] > 100
-    assert calibration["properties"]["parameterCount"] == 8
-    assert calibration["properties"]["cyclomaticComplexity"] == 1
     result = CliRunner().invoke(main, [
         "report", "--folder", str(FIXTURE_ROOT / language), "--skip-save", "--format", "json",
     ])
     assert result.exit_code == 0, result.output
-    sizes = [finding for finding in json.loads(result.output)["findings"] if finding["type"] == "size"]
-    assert len(sizes) == 2
-    by_subject = {finding["subject"]: finding for finding in sizes}
-    assert by_subject[file["qualifiedName"]] == {
-        "type": "size", "subject": file["qualifiedName"], "files": [{"path": file["path"]}],
-        "details": [f"File line count is {file['properties']['lineCount']} (limit: 600)."],
-    }
-    assert by_subject[calibration["qualifiedName"]] == {
-        "type": "size", "subject": calibration["qualifiedName"],
-        "files": [{"path": file["path"], "line": calibration["startLine"]}],
-        "details": [
-            f"Function line count is {calibration['properties']['lineCount']} (limit: 100).",
-            "Parameter count is 8 (limit: 7).",
-        ],
-    }
+    measurements = {node["stableKey"]: node for node in json.loads(result.output)["nodes"]}
+    file = measurements[f"file:{path}"]["metrics"]
+    assert file["lineCount"] == len(source.splitlines()) and file["lineCount"] > 600
+    metrics = measurements[calibration["stableKey"]]["metrics"]
+    assert metrics["lineCount"] == end - calibration["startLine"] + 1
+    assert metrics["lineCount"] > 100 and metrics["parameterCount"] == 8
+    assert metrics["weightedComplexity"] == metrics["cyclomaticComplexity"] == 1
+    ready = next(node for node in graph.nodes if node["name"] == "ready")
+    assert measurements[ready["stableKey"]]["metrics"]["parameterCount"] == 4
+    assert set(measurements) >= {node["stableKey"] for node in graph.nodes if node["level"] == "file"}
