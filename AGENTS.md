@@ -26,11 +26,11 @@ Run atlas against the entire project being worked on, not just the changed files
 For this project, from the repository root:
 
 ```sh
-uv run --project atlas atlas report --f . --skip-save # Analyze this entire project without saving
+uv run --project atlas atlas report --f . # Analyze this entire project without saving
 ```
 
 For another project:
 
 ```sh
-uv run --project /path/to/atlas/atlas atlas report --f /path/to/project --skip-save # Analyze another entire project without saving
+uv run --project /path/to/atlas/atlas atlas report --f /path/to/project # Analyze another entire project without saving
 ```

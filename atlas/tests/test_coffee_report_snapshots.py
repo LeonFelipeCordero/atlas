@@ -12,7 +12,7 @@ from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT, coffee_
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_coffee_report_matches_snapshot(language: str) -> None:
     result = CliRunner().invoke(main, [
-        "report", "--folder", str(FIXTURE_ROOT / language), "--skip-save",
+        "report", "--folder", str(FIXTURE_ROOT / language),
     ])
     assert result.exit_code == 0, result.output
     assert "Cyclomatic complexity" in result.output and "Weighted complexity" in result.output
@@ -29,7 +29,7 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
 def test_coffee_size_measurements_include_every_source_and_callable(language: str) -> None:
     graph = coffee_graph(language)
     result = CliRunner().invoke(main, [
-        "report", "--folder", str(FIXTURE_ROOT / language), "--skip-save", "--format", "json",
+        "report", "--folder", str(FIXTURE_ROOT / language), "--format", "json",
     ])
     assert result.exit_code == 0, result.output
     measurements = {node["stableKey"]: node for node in json.loads(result.output)["nodes"]}

@@ -146,6 +146,8 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     with repository_service(database) as service:
         project = service.register({"name": "example", "location": str(source)})
     args = [command, "-f", str(source)]
+    if command == "report":
+        args.append("--save")
     first = runner.invoke(main, args)
     assert first.exit_code == 0, first.output
     if command == "report":

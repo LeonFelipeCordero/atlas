@@ -1,4 +1,4 @@
-"""Report CLI analyzes folders freshly using the configured database."""
+"""Report CLI analyzes folders freshly, saving only when requested."""
 
 import json
 import sqlite3
@@ -77,7 +77,7 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     assert fresh.exit_code == 0, fresh.output
     assert "files: 0" in fresh.output and "circularImportGroups: 0" in fresh.output
     with repository_service(database) as service:
-        assert service.get_architecture(registered.id) != original
+        assert service.get_architecture(registered.id) == original
         assert service.get_architecture(other.id) is None
 
 
@@ -99,12 +99,15 @@ def test_report_empty_measurements_formats(database: Path, tmp_path: Path) -> No
     assert json.loads(structured.output)["circularImports"] == []
 
 
-@pytest.mark.parametrize("command", ["index", "report"])
+@pytest.mark.parametrize("command", ["index", "report", "check"])
 def test_saving_does_not_migrate_database(tmp_path: Path, command: str) -> None:
     root = tmp_path / "source"
     root.mkdir()
     database = tmp_path / "new.sqlite"
-    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, [command, "-f", str(root)])
+    args = [command, "-f", str(root)]
+    if command != "index":
+        args.append("--save")
+    result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, args)
     assert result.exit_code == 1
     assert "no such table" in result.output
     with sqlite3.connect(database) as db:
