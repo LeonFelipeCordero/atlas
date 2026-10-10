@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test } from 'bun:test'
-import { defaultDatabasePath } from './database.servers'
+import { defaultDatabasePath } from './repositories.servers'
 
 test('shared default database lives in user data with explicit overrides', () => {
   const databasePath = process.env.DATABASE_PATH
@@ -13,9 +13,7 @@ test('shared default database lives in user data with explicit overrides', () =>
       join(homedir(), '.local/share/atlas/atlas.sqlite'),
     )
     process.env.XDG_DATA_HOME = '/custom/user-data'
-    expect(defaultDatabasePath()).toBe(
-      '/custom/user-data/atlas/atlas.sqlite',
-    )
+    expect(defaultDatabasePath()).toBe('/custom/user-data/atlas/atlas.sqlite')
     process.env.DATABASE_PATH = '/custom/database.sqlite'
     expect(defaultDatabasePath()).toBe('/custom/database.sqlite')
   } finally {

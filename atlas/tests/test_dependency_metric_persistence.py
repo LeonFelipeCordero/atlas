@@ -37,7 +37,7 @@ def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
         graph = service.index(repository.name, root)
     with repository_service(path) as service:
         assert service.get_architecture(repository.id) == graph
-        facts = service.repository.report_facts(repository.id)
+        facts = service.get_report_facts(repository.id)
         assert facts is not None
     metrics = dependency_metrics(cast(GraphView, fact_views(facts)["file"]))
     assert metrics["file:a.py"] == {
@@ -63,7 +63,7 @@ def test_normalized_instability_excludes_duplicates_self_and_external_edges(tmp_
     with repository_service(path) as service:
         repository = service.register({"name": "Instability", "location": str(root)})
         service.index(repository.name, root)
-        facts = service.repository.report_facts(repository.id)
+        facts = service.get_report_facts(repository.id)
         assert facts is not None
     metrics = dependency_metrics(cast(GraphView, fact_views(facts)["file"]))
     assert metrics["file:stable.py"] == {

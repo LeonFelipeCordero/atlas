@@ -6,6 +6,8 @@ from typing import Any
 
 import click
 
+from atlas.cli.graph import graph
+
 @click.group(help="Analyze repositories and store their graphs in SQLite")
 def main() -> None:
     pass
@@ -100,6 +102,9 @@ def check_command(folder: Path, save: bool, output_format: str) -> None:
     click.echo(json.dumps(result, ensure_ascii=False, indent=2) if output_format == "json" else render_check(result))
     if result["findings"]:
         raise click.exceptions.Exit(1)
+
+
+main.add_command(graph)
 
 
 if __name__ == "__main__":

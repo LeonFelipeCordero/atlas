@@ -169,7 +169,7 @@ def test_cli_reanalysis_removes_atlasignored_files_and_findings(
         assert saved is not None
         assert saved.stats.files == 1
         assert service.report(project.name)["circularImports"] == []
-        facts = service.repository.report_facts(project.id)
+        facts = service.get_report_facts(project.id)
         assert facts is not None
         assert not any((node.path or "").startswith("fixtures/") for node in facts.nodes)
     (source / ".atlasignore").unlink()
