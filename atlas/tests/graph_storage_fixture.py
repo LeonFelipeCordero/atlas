@@ -6,7 +6,7 @@ from typing import Any
 
 from alembic.config import Config
 
-HEAD = "0003_graph_relations"
+HEAD = "0004_drop_graph_artifact"
 GRAPH_TABLES = (
     "graph_nodes", "graph_files", "graph_symbols", "graph_node_metrics",
     "graph_node_decorators", "graph_edges", "graph_diagnostics",

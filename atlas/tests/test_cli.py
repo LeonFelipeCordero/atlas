@@ -59,7 +59,7 @@ class CliTest(unittest.TestCase):
             with repository_service(database) as service:
                 saved = service.get_architecture(registered.id)
                 assert saved is not None
-                self.assertEqual(saved.artifact["stats"], summary["stats"])
+                self.assertEqual(saved.stats.model_dump(), summary["stats"])
 
 
 if __name__ == "__main__":

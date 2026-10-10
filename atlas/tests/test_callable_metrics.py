@@ -238,11 +238,12 @@ def test_metrics_survive_snapshot_persistence(tmp_path):
         graph = service.index(repository.name, root)
     fresh = analyze_repository(root)
     expected = {node["stableKey"]: node["properties"] for node in fresh.nodes}
-    assert {
-        node["stableKey"]: node["properties"]
-        for node in graph.artifact["nodes"]
-        if node["type"] != "repository"
-    } == {key: value for key, value in expected.items() if key != "repository"}
     with repository_service(path) as service:
         saved = service.get_architecture(repository.id)
-        assert saved is not None and saved.artifact == graph.artifact
+        assert saved == graph
+        facts = service.repository.report_facts(repository.id)
+        assert facts is not None
+        for node in facts.nodes:
+            assert node.lineCount == expected[node.stableKey].get("lineCount")
+            assert node.parameterCount == expected[node.stableKey].get("parameterCount")
+            assert node.cyclomaticComplexity == expected[node.stableKey].get("cyclomaticComplexity")

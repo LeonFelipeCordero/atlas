@@ -1,12 +1,15 @@
-"""Dependency metrics persist generically without a schema migration."""
+"""Dependency metrics derive from persisted normalized import facts."""
 
 from pathlib import Path
+from typing import cast
 
 from atlas.bootstrap import repository_service
+from atlas.domain.models import GraphView
+from atlas.metrics.dependency_metrics import dependency_metrics
 from atlas.persistence.database import migrate_database
 
 
-def test_dependency_metrics_round_trip_in_snapshot(tmp_path: Path) -> None:
+def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
     (root / "a.py").write_text("import b\n")
@@ -19,10 +22,14 @@ def test_dependency_metrics_round_trip_in_snapshot(tmp_path: Path) -> None:
         repository = service.register({"name": "Metrics", "location": str(root)})
         graph = service.index(repository.name, root)
     with repository_service(path) as service:
-        saved = service.get_architecture(repository.id)
-        assert saved is not None
-        assert saved.artifact == graph.artifact
-    nodes = {node["stableKey"]: node for node in saved.artifact["nodes"]}
-    assert nodes["file:a.py"]["properties"]["transitiveChangeImpact"] == 2
-    assert nodes["file:a.py"]["properties"]["fanIn"] == 2
-    assert nodes["file:isolated.py"]["properties"]["fanOut"] == 0
+        assert service.get_architecture(repository.id) == graph
+        facts = service.repository.report_facts(repository.id)
+        assert facts is not None
+    view = cast(GraphView, {
+        "nodes": [node.stableKey for node in facts.nodes if node.level == "file"],
+        "edges": [edge.model_dump() for edge in facts.imports],
+    })
+    metrics = dependency_metrics(view)
+    assert metrics["file:a.py"]["transitiveChangeImpact"] == 2
+    assert metrics["file:a.py"]["fanIn"] == 2
+    assert metrics["file:isolated.py"]["fanOut"] == 0

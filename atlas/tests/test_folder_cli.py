@@ -41,10 +41,10 @@ def test_folder_default_and_aliases(
         assert project.location == str(source.resolve())
         saved = service.get_architecture(project.id)
         assert saved is not None
-        assert saved.artifact["stats"]["files"] == 2
+        assert saved.stats.files == 2
         if command == "index":
             assert output["repositoryId"] == project.id
-            assert output["stats"] == saved.artifact["stats"]
+            assert output["stats"] == saved.stats.model_dump()
         else:
             assert output["findings"][0]["type"] == "circular_dependency"
     assert sorted(path.name for path in source.iterdir()) == ["a.py", "b.py"]

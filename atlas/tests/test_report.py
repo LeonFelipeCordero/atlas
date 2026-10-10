@@ -4,8 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from atlas.metrics.report import build_report, render_markdown
-from atlas.domain.repositories import GraphDTO
+from atlas.metrics.report import build_artifact_report, render_markdown
 
 
 def callable_node(name: str, total: int = 8, loops: int = 0, depth: int = 3):
@@ -37,7 +36,7 @@ def test_strict_independent_thresholds_and_deduplication() -> None:
     ]
     artifact = {"nodes": nodes, "circularDependencies": {"version": 1, "groups": []}}
     original = deepcopy(artifact)
-    report = build_report(GraphDTO(repositoryId="repo", artifact=artifact, importedAt=1))
+    report = build_artifact_report(artifact)
     assert set(report) == {"findings"}
     findings = {finding["subject"]: finding for finding in report["findings"]}
     assert set(findings) == {f"App.{name}" for name in ("total", "loops", "depth", "all", "method")}
@@ -74,7 +73,7 @@ def test_legacy_cycles_are_computed_from_imports_as_readable_paths(cycles) -> No
     artifact = {"nodes": nodes, "edges": edges, "diagnostics": [{"message": "parse error"}]}
     if cycles is None:
         artifact["circularDependencies"] = None
-    report = build_report(GraphDTO(repositoryId="repo", artifact=artifact, importedAt=1))
+    report = build_artifact_report(artifact)
     assert report == {"findings": [{
         "type": "circular_dependency", "subject": "Circular imports",
         "files": [{"path": "a.py"}, {"path": "b.py"}],
@@ -87,15 +86,13 @@ def test_legacy_cycles_are_computed_from_imports_as_readable_paths(cycles) -> No
 
 
 def test_empty_graph_has_only_empty_findings() -> None:
-    report = build_report(GraphDTO(repositoryId="repo", artifact={}, importedAt=1))
+    report = build_artifact_report({})
     assert report == {"findings": []}
     assert render_markdown(report) == "No findings."
 
 
 def test_markdown_has_subject_location_and_only_exceeded_metrics() -> None:
-    report = build_report(GraphDTO(repositoryId="repo", artifact={
-        "nodes": [callable_node("total", total=9)],
-    }, importedAt=1))
+    report = build_artifact_report({"nodes": [callable_node("total", total=9)]})
     assert render_markdown(report) == (
         "## Complexity: `App.total`\n\n"
         "Files:\n- `app.py:10`\n\n"
@@ -109,13 +106,13 @@ def test_findings_sort_by_path_line_then_symbol() -> None:
         {**callable_node("a", total=9), "startLine": 20},
         callable_node("b", total=9),
     ]
-    report = build_report(GraphDTO(repositoryId="repo", artifact={"nodes": nodes}, importedAt=1))
+    report = build_artifact_report({"nodes": nodes})
     assert [finding["subject"] for finding in report["findings"]] == ["App.b", "App.a", "App.z"]
 
 
 def test_markdown_handles_missing_locations_and_literal_delimiters() -> None:
     node = {**callable_node("`odd`", total=9), "path": None, "startLine": None}
-    report = build_report(GraphDTO(repositoryId="repo", artifact={"nodes": [node]}, importedAt=1))
+    report = build_artifact_report({"nodes": [node]})
     markdown = render_markdown(report)
     assert "`` App.`odd` ``" in markdown
     assert "- `Unknown file`" in markdown

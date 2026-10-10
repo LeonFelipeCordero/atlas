@@ -14,7 +14,7 @@ SCHEMA = {
         "location": ("TEXT", 1, 0), "created_at": ("INTEGER", 1, 0),
     },
     "repository_graphs": {
-        "repository_id": ("TEXT", 1, 1), "artifact": ("TEXT", 1, 0),
+        "repository_id": ("TEXT", 1, 1),
         "imported_at": ("INTEGER", 1, 0), "graph_revision": ("TEXT", 0, 0),
         "schema_version": ("INTEGER", 0, 0), "indexed_at": ("TEXT", 0, 0),
         "root_name": ("TEXT", 0, 0), "root_path": ("TEXT", 0, 0),
