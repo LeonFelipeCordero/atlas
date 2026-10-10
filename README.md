@@ -38,23 +38,19 @@ uv run --project atlas atlas report -f /path/to/project
 | --- | --- |
 | Code structure | Folders, files, types, functions, and methods in a navigable hierarchy. |
 | Relationships | Imports, calls, callable references, inheritance, and containment; dependency views at module, file, type, and callable levels. |
-| Complexity | Separate cyclomatic and weighted complexity, nested-decision penalties, nested-loop counts, maximum decision depth, and per-file callable counts/weighted complexity sums. |
+| Complexity | Cyclomatic/weighted complexity, decision depth, nested loops, and per-file totals. |
 | Size and parameters | Physical line counts for files and functions/methods, plus declared input parameter counts for supported callable syntax. |
 | Circular imports | Groups of files in runtime import cycles, with an example cycle and source evidence; type-only imports do not establish cycles. |
 | Dependency metrics | Fan-in (direct dependents), fan-out (direct dependencies), transitive change impact (all direct/indirect dependents), and internal instability, counting distinct internal peers. |
 | Parse diagnostics | Parsing failures retained in the graph, alongside unresolved external targets and relationship confidence. |
 
-Reports contain quantitative measurements, including zeros and unavailable values, without applying thresholds or reading `atlas.json`. Cyclomatic complexity is `1 + decisions + short-circuit operators`; weighted complexity adds penalties for decisions deeper than two levels and loops nested inside another loop.
-
-Lines include comments and blanks; callable line counts cover the full declaration. Parameters are declared inputs, not call-site arguments: defaults, destructuring patterns, and variadics each count as one; receivers and type parameters are excluded. Parameter counting supports Python, JavaScript, TypeScript/TSX, Go, Rust, Java, Kotlin, and Elixir. Unsupported syntax/languages leave counts unavailable, not zero (`N/A` in Markdown, `null` in JSON).
-
-Dependency metrics include tests and type-only dependencies, exclude self/external dependencies, and count distinct peers at each item's level. Change impact excludes the item itself. Internal instability is `fan-out / (fan-in + fan-out)`; isolated items have no defined instability (`N/A`), not zero.
+Reports show measurements, not pass/fail judgments. Unavailable values are `N/A` (or `null` in JSON), not zero. Lines include comments and blanks; parameters count declared inputs. Dependency metrics include tests and type-only dependencies.
 
 Atlas supports grammars recognized by its pinned Tree-sitter language pack, **except C and C++**. Python, JavaScript/JSX, TypeScript/TSX, Java, Kotlin, Go, Rust, and Elixir have specialized adapters; other supported grammars use generic extraction. Resolution is static and conservative, not compiler/type inference. Unresolved imports cannot establish cycles, and passing checks does not prove the code is problem-free.
 
 ### Project checks
 
-`atlas check -f /path/to/project` analyzes current sources and reads `atlas.json` only from that folder's root. No config file is required: omitted keys inherit these defaults, and `null` disables an individual check.
+`atlas check` enforces the defaults below. Override them in the analyzed folder's root `atlas.json`, for example `{"maxParameters": 5}`. Omitted keys keep their defaults; `null` disables a check.
 
 | Config key | Default maximum | Applies to |
 | --- | --- | --- |
@@ -68,18 +64,7 @@ Atlas supports grammars recognized by its pinned Tree-sitter language pack, **ex
 | `maxChangeImpact` | `null` (disabled) | Files/modules |
 | `maxInstability` | `null` (disabled) | Files/modules |
 
-For example, this `atlas.json` overrides four defaults:
-
-```json
-{
-  "maxParameters": 5,
-  "maxNestedLoops": null,
-  "maxChangeImpact": 20,
-  "maxInstability": 0.8
-}
-```
-
-Equality passes; values above an enabled maximum fail. Unavailable metrics for enabled checks also fail, except undefined instability for isolated items. Parse errors fail checks even when all limits are disabled. Limits must be nonnegative numbers (integers except instability, which ranges from 0 to 1); invalid config or unknown keys are command errors.
+Checks fail when limits are exceeded or analysis is incomplete.
 
 ### Exclude files
 
@@ -107,7 +92,7 @@ bun run dev
 
 Open **http://localhost:3000**. Drill from folders into files and functions, navigate with breadcrumbs, search the contents list, and inspect incoming/outgoing connections, complexity, line/parameter counts, and dependency metrics. The graph supports pan/zoom and hides test files visually; metrics still use the full index, including tests and type-only dependencies.
 
-Re-run `atlas index -f /path/to/project` (or `atlas report -f /path/to/project --save`) and refresh the UI after source changes. Saving matches an existing project by its canonical local folder location, preserving its registered name; otherwise it registers a project using the folder name with a suffix if needed. Manual registration in the UI is optional. `atlas index` always saves and prints the repository ID, schema version, and graph statistics as JSON.
+Re-run `atlas index -f /path/to/project` and refresh the UI after source changes. Projects are automatically registered or updated by their local folder location.
 
 Python owns the SQLite schema and migrations. The default database is `$XDG_DATA_HOME/atlas/atlas.sqlite`, falling back to `~/.local/share/atlas/atlas.sqlite`. Set the same absolute `DATABASE_PATH` for migrations, CLI, and UI to share a different database.
 
@@ -120,27 +105,16 @@ The UI has **no authentication**; keep it on a trusted local network.
 Run against the whole target project, not just changed files:
 
 ```sh
-atlas report -f .                  # Fresh quantitative metrics; no database access
-atlas report -f . --format json     # Structured measurements for scripts
-atlas check -f .                    # Fresh configured checks; no database access
-atlas check -f . --format json      # Structured findings; exits 1 when checks fail
-atlas-migrate                      # Apply migrations before database-backed commands
-atlas index -f .                    # Register/update by folder location and save
-atlas report -f . --save            # Measure and save the analyzed graph
-atlas check -f . --save             # Check and save, even when checks fail
-atlas projects                     # List registered projects as JSON
+atlas report -f .   # Show measurements
+atlas check -f .    # Enforce limits; use in CI
+atlas-migrate      # Migrate before database-backed commands
+atlas index -f .    # Register/update and save the graph
+atlas projects     # List registered projects as JSON
 ```
 
-The analyzed folder defaults to `.`; `-f`, `--f`, and `--folder` are equivalent. `report`, `check`, and `index` always analyze current sources; saved-project selectors (`-p`/`--project`) and `--skip-save` are no longer supported. Saving is opt-in for both reports and checks.
+Reports and checks analyze current sources without saving. Both default to Markdown; add `--format json` for structured output or `--save` to store the graph. The folder defaults to `.`.
 
-Markdown is the default, with file paths and callable line numbers. Report JSON contains `summary`, `nodes` (each with `metrics`), `circularImports`, and `diagnostics`; it is a measurements report, not a full graph export. Check JSON has the shape `{"findings": [...]}`; a clean check returns `{"findings": []}` or “All checks passed.” in Markdown.
-
-Reports do not fail because of measured values or parse diagnostics; command errors still return a nonzero exit code. **Checks exit 0 when all checks pass and 1 when findings exist.** For a shell script or CI gate, use `atlas check` directly. If piping its output, preserve the exit status:
-
-```sh
-set -o pipefail
-atlas check -f . --format json | tee atlas-check.json
-```
+`atlas check` exits 0 when checks pass and 1 when findings exist. `atlas report` does not enforce limits.
 
 For an AI coding agent with shell access, add this instruction to its project rules (for example, `AGENTS.md`):
 
@@ -150,7 +124,7 @@ Review measurements and configured-check findings; fix relevant findings and rer
 Analyze the entire project. Do not treat passing checks as a substitute for tests.
 ```
 
-The agent uses the same CLI; no native agent plugin or MCP server is provided. Use `--format json` when the agent/tool needs structured output.
+Agents use the same CLI; no native agent plugin or MCP server is provided.
 
 ## Contribute
 
