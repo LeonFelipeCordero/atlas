@@ -10,6 +10,8 @@ import {
 } from './database-architecture'
 import { auditRepositoryDependencies } from './database-dependency-policy'
 
+// These integration tests compile fixture programs or the full dashboard on CI.
+const compilerTimeout = 30_000
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '')
 const config = ts.readConfigFile(join(root, 'tsconfig.json'), ts.sys.readFile)
 const options = ts.parseJsonConfigFileContent(
@@ -117,7 +119,7 @@ test('typed port receivers, aliases and constructor fields are guarded regardles
       true,
     )
   }
-})
+}, compilerTimeout)
 
 const structuralPort = `type Port = {
   register(input: { id: string; name: string; location: string; at: number }): unknown
@@ -161,7 +163,7 @@ test('service cannot delegate inferred port dependencies to nonservice helpers o
       true,
     )
   }
-})
+}, compilerTimeout)
 
 test('DTO-returning helpers cannot receive ports, including erased aliases', () => {
   for (const setup of [
@@ -187,7 +189,7 @@ test('DTO-returning helpers cannot receive ports, including erased aliases', () 
       ),
     ).toBe(true)
   }
-})
+}, compilerTimeout)
 
 test('service-private helpers and domain DTO handoff remain permitted', () => {
   expect(
@@ -215,4 +217,4 @@ test('all production sources enforce typed repository dependency ownership', () 
   expect(
     sources.flatMap((source) => auditRepositoryDependencies(program, source)),
   ).toEqual([])
-})
+}, compilerTimeout)
