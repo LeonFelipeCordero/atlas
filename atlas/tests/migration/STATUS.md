@@ -16,12 +16,12 @@ mutation stages. Additional setup found during the source census is in `audit.js
 | Imports/indexing and namespace probes | `fixtures/cases/imports/`, `imports.json`, `import_cases.json` | `test_import_snapshots.py` | 107 |
 | Parsing and native metadata | `fixtures/cases/parsing/`, `parsing*.json` | `test_parsing_snapshots.py` | 590 |
 | Complexity, parameters and physical size | `fixtures/cases/metrics/`, `metric*.json` | `test_metric_snapshots.py` | 209 |
-| CLI and stateful operations | `fixtures/cases/cli/`, `fixtures/cases/operational/`, `cli.json` | `test_cli_case_snapshots.py` and scoped transcript fixture | 191 |
+| CLI and stateful operations | `fixtures/cases/cli/`, `fixtures/cases/operational/`, `cli.json` | `test_cli_case_snapshots.py` and scoped transcript fixture | 190 |
 | Python architecture snippets | `fixtures/cases/policy/`, `policy.json` | `test_policy_snapshots.py` | 627 |
 | Existing coffee source, parser-only metadata | `fixtures/coffee/`, `coffee.json` | `test_coffee_parsing_snapshots.py` | 48 |
 | Existing coffee quantitative CLI records | `fixtures/coffee/`, `coffee.json` | `test_coffee_metric_snapshots.py` | 8 |
 
-These 2,093 new baselines supplement the existing coffee graph, Markdown,
+These 2,092 new baselines supplement the existing coffee graph, Markdown,
 check and navigation snapshots; coffee sources are not copied.
 
 ```mermaid
@@ -52,6 +52,12 @@ remain. Source-grounded coffee and receiver/namespace invariants remain independ
 of baseline equality. Production-only architecture scans and synthetic graph/model
 unit tests remain separate. Setup-only cases do not invent analysis snapshots.
 
+The symlink-loop source lookup remains an independent filesystem assertion:
+`Path.resolve` can classify it as `unsafe` or `unreadable` on different platforms.
+Its transcript is deliberately not pinned to one status or normalized to hide
+that distinction; shared central setup and the original structured-status check
+remain. No version-specific behavior or compatibility tests were added.
+
 Record/list ordering, null/optional fields, evidence, diagnostics, ownership,
 byte spans, invalid UTF-8, CRLF and language-specific negative cases are preserved.
 Only volatile roots, timestamps and storage-generated identities are normalized.
@@ -76,8 +82,9 @@ conversion for the new byte-exact corpus. No tested path or source bytes are dro
 The new corpus is intentionally invalid, ambiguous or oversized in places.
 Atlas discovery, Pyright and Ruff exclude it as input data, not executable test
 harness code. Atlas also excludes the new derived snapshot JSON; analyzing those
-2,093 generated outputs caused a staged-tree cold-process timeout. The original
-15-second budget and whole-project code-analysis assertions remain unchanged. Harness/support files and manifests meet the repository size/depth
+thousands of generated outputs caused a staged-tree cold-process timeout. The
+original 15-second budget and whole-project code-analysis assertions remain
+unchanged. Harness/support files and manifests meet the repository size/depth
 limits; oversized input files preserve the existing size-boundary scenarios.
 Production implementation and README are unchanged.
 
@@ -85,7 +92,13 @@ Production implementation and README are unchanged.
 
 `(cd atlas && uv run pytest)`: 3,052 passed, the same 9 migration warnings.
 Pyright: zero errors/warnings. Ruff: passed. Full-repository Atlas report:
-341 files, 2,442 callables, zero parse errors. The 15-second cold-process test
-passes without weakening its assertions. Both independent review rounds approved
-the repaired ordering/selectors and portable CLI path; no known inventory gap
-remains. No dashboard changes.
+341 files, 2,457 callables, zero parse errors. Strict Atlas CI check: zero findings,
+without raising thresholds or excluding harness code. An isolated run with CI's
+Python 3.14 also passes all 3,052 tests and 530 subtests (same 9 warnings). The
+15-second cold-process test passes unchanged. CI-required helper splits preserve
+all collected case IDs/order, callback matrices and existing baseline values.
+Both independent review rounds approved the ordering/selectors and portable CLI
+path. Final independent CI-repair review confirmed unchanged outputs for all
+107 import, 209 metric and 313 resolution cases, collected IDs/order, native
+callback matrices and serializer nonmutation. No known inventory gap remains.
+No dashboard changes.

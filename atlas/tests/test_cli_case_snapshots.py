@@ -61,18 +61,28 @@ def case_trees(case_id: str) -> tuple[str, ...]:
     return (case_id,) if base == case_id else (base, case_id)
 
 
-@pytest.mark.parametrize("case_id", CLI_CASE_IDS)
-@pytest.mark.parametrize("output_format", ["json", "markdown"])
-def test_cli_source_case(case_id: str, output_format: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture
+def source_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
     root = tmp_path / "source"
     root.mkdir()
-    for tree in case_trees(case_id):
-        for name in case_sources("cli", tree):
-            path = root / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(case_bytes("cli", tree, name))
     database = tmp_path / "missing/db.sqlite"
     monkeypatch.setenv("DATABASE_PATH", str(database))
+    return root, database
+
+
+def write_case_tree(root: Path, tree: str) -> None:
+    for name in case_sources("cli", tree):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(case_bytes("cli", tree, name))
+
+
+@pytest.mark.parametrize("case_id", CLI_CASE_IDS)
+@pytest.mark.parametrize("output_format", ["json", "markdown"])
+def test_cli_source_case(case_id: str, output_format: str, source_environment: tuple[Path, Path]) -> None:
+    root, database = source_environment
+    for tree in case_trees(case_id):
+        write_case_tree(root, tree)
     for command in ("report", "check"):
         CliRunner().invoke(main, [command, "-f", str(root), "--format", output_format])
     assert not database.parent.exists()

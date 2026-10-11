@@ -20,12 +20,17 @@ def analyze(root: Path, sources: dict[str, str]):
 
 
 @pytest.mark.parametrize('case_id,prefix,relationship', [('python-project-imports-package-imports-resolve-independently-of-analysis-root-1', '', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-1', '', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-1', '', 'INHERITS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-4', 'src/', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-4', 'src/', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-4', 'src/', 'INHERITS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-7', 'services/backend/', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-7', 'services/backend/', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-7', 'services/backend/', 'INHERITS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-10', 'services/backend/src/', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-10', 'services/backend/src/', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-10', 'services/backend/src/', 'INHERITS')])
-def test_package_imports_resolve_independently_of_analysis_root(tmp_path, case_id, prefix, relationship):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
+def test_package_imports_resolve_independently_of_analysis_root(package_artifact, prefix, relationship):
+    artifact = package_artifact
     edges = [edge for edge in artifact.edges if edge["type"] == relationship]
     assert edges
     assert all(prefix + "app/worker.py" in edge["targetStableKey"] for edge in edges)
     assert build_artifact_report(asdict(artifact))["summary"]["circularImportGroups"] == 0
+
+
+@pytest.fixture
+def package_artifact(tmp_path: Path, case_id: str):
+    return analyze(tmp_path, case_sources("imports", case_id))
 
 
 def test_src_namespace_package(tmp_path):

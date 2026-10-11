@@ -191,12 +191,13 @@ def test_save_analyzes_once_and_keeps_output(
             original = graph
 
 
-@pytest.mark.parametrize("args, message", [
-    (["-f", "missing"], "Repository does not exist"),
+@pytest.mark.parametrize("invalid_arguments", [
+    pytest.param((["-f", "missing"], "Repository does not exist"), id="args0-Repository does not exist"),
 ])
 def test_invalid_report_arguments_do_not_create_database(
-    tmp_path: Path, args: list[str], message: str, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, invalid_arguments: tuple[list[str], str], monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    args, message = invalid_arguments
     monkeypatch.chdir(tmp_path)
     database = tmp_path / "missing/db.sqlite"
     result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", *args])

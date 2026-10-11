@@ -14,5 +14,5 @@ CASES = json.loads((Path(__file__).parent / "migration/import_cases.json").read_
 @pytest.mark.parametrize("case_id", sorted(CASES))
 def test_import_case_snapshot(tmp_path: Path, case_id: str) -> None:
     spec = CASES[case_id]
-    value = import_snapshot(tmp_path, case_id, spec["seam"], spec["language"])
+    value = import_snapshot(tmp_path, case_id, spec)
     assert_case_snapshot("imports", case_id, value)

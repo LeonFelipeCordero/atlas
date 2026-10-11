@@ -39,6 +39,10 @@ def snapshot_value(value: Any) -> Any:
             field.name: snapshot_value(getattr(value, field.name))
             for field in dataclasses.fields(value)
         }
+    return snapshot_collection(value)
+
+
+def snapshot_collection(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): snapshot_value(item) for key, item in sorted(value.items())}
     if isinstance(value, (list, tuple)):
@@ -48,6 +52,10 @@ def snapshot_value(value: Any) -> Any:
             (snapshot_value(item) for item in value),
             key=lambda item: json.dumps(item, sort_keys=True),
         )
+    return snapshot_scalar(value)
+
+
+def snapshot_scalar(value: Any) -> Any:
     if isinstance(value, bytes):
         return {"hex": value.hex()}
     if isinstance(value, Path):

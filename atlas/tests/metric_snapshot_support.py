@@ -16,7 +16,8 @@ from tests.parsing_snapshot_support import manifest, source_file
 from tests.source_snapshot_fixture import assert_case_snapshot, case_bytes, snapshot_value
 
 
-def thresholds(metrics, path, line, subject, kind='function'):
+def thresholds(metrics, location, kind='function'):
+    path, line, subject = location
     node = {"metrics": metrics, "path": path, "line": line, "subject": subject,
             "kind": kind, "level": "symbol"}
     rules = {'lineCount': 'maxFunctionLines', 'parameterCount': 'maxParameters',
@@ -68,7 +69,7 @@ def enriched_value(file):
             "maxDecisionDepth": complexity.maxDecisionDepth if complexity else None,
             "nestedLoops": complexity.loopNestedComplexity if complexity else None,
         }
-        findings.append(thresholds(metrics, source.path, symbol.start_line, symbol.key))
+        findings.append(thresholds(metrics, (source.path, symbol.start_line, symbol.key)))
     contents = _ArtifactContents([], [], [])
     _add_file_nodes(ParsedRepository([file]), contents)
     file_record = contents.nodes[0]
@@ -77,7 +78,7 @@ def enriched_value(file):
     file_metrics = {'lineCount': properties['lineCount']}
     return {"parse_error": file.parse_error, "records": file.symbols, "thresholds": findings,
             "file_record": file_record,
-            "file_thresholds": thresholds(file_metrics, source.path, 1, source.path, 'file')}
+            "file_thresholds": thresholds(file_metrics, (source.path, 1, source.path), 'file')}
 
 
 def complexity_value(case):
@@ -98,4 +99,4 @@ def complexity_value(case):
                "maxDecisionDepth": result.maxDecisionDepth, "nestedLoops": result.loopNestedComplexity}
     return {"node_type": target.type, "span": case["span"], "source_bytes": target.text,
             "complexity": snapshot_value(result),
-            "thresholds": thresholds(metrics, source.path, target.start_point.row + 1, target.type)}
+            "thresholds": thresholds(metrics, (source.path, target.start_point.row + 1, target.type))}

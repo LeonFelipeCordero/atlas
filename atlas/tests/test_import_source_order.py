@@ -65,7 +65,10 @@ def test_import_order_catalog_covers_setup_cases_and_exact_paths() -> None:
     root = CASE_ROOT / "imports"
     assert set(IMPORT_PATHS) == {path.name for path in root.iterdir() if path.is_dir()}
     for case_id, paths in IMPORT_PATHS.items():
-        actual = {path.relative_to(root / case_id).as_posix()
-                  for path in (root / case_id).rglob("*") if path.is_file()}
+        actual = import_tree_paths(root / case_id)
         assert len(paths) == len(set(paths))
         assert set(paths) == actual
+
+
+def import_tree_paths(root: Path) -> set[str]:
+    return {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}

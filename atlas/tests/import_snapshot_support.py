@@ -38,19 +38,24 @@ def write_import_case(root: Path, case_id: str) -> None:
         path.write_bytes(source.encode())
 
 
-def import_snapshot(root: Path, case_id: str, seam: str, language: str | None = None):
+def artifact_snapshot(root: Path, case_id: str):
+    write_import_case(root, case_id)
+    value = asdict(analyze_repository(root))
+    value["repository"]["path"] = "<case-root>"
+    value["repository"]["name"] = "<case-root>"
+    del value["repository"]["indexedAt"]
+    for node in value["nodes"]:
+        if node["stableKey"] == "repository":
+            node["properties"]["absolutePath"] = "<case-root>"
+        if node["stableKey"] in {"repository", "module:."}:
+            node["name"] = node["qualifiedName"] = "<case-root>"
+    return snapshot_value(value)
+
+
+def import_snapshot(root: Path, case_id: str, spec: dict[str, str | None]):
+    seam, language = spec["seam"], spec["language"]
     if seam == "artifact":
-        write_import_case(root, case_id)
-        value = asdict(analyze_repository(root))
-        value["repository"]["path"] = "<case-root>"
-        value["repository"]["name"] = "<case-root>"
-        del value["repository"]["indexedAt"]
-        for node in value["nodes"]:
-            if node["stableKey"] == "repository":
-                node["properties"]["absolutePath"] = "<case-root>"
-            if node["stableKey"] in {"repository", "module:."}:
-                node["name"] = node["qualifiedName"] = "<case-root>"
-        return snapshot_value(value)
+        return artifact_snapshot(root, case_id)
     assert language is not None
     if seam == "namespace-binding":
         source = next(iter(import_case_sources("imports", case_id).values()))
