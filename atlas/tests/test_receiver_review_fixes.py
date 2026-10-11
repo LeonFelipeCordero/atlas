@@ -13,10 +13,10 @@ from tests.test_semantic_resolution import call_edges, repository
     ("kotlin", "App.kt", "open class Service {open fun persist(){}} class Other: Service() {override fun persist(){}} fun run(local:Service){local=Other();local.persist()}"),
 ])
 def test_reassigned_declared_receiver_is_not_trusted(language, path, source):
-    assert_target(language, {path: source}, "local.persist()", False)
+    assert_target(language, {path: source}, ("local.persist()", False))
 
 
-@pytest.mark.parametrize("language,path,source,evidence", [
+@pytest.mark.parametrize("case", [
     ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n holder.service=other\n holder.service.persist()", "holder.service.persist()"),
     ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n alias=holder\n alias.service=other\n holder.service.persist()", "holder.service.persist()"),
     ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n alias=holder\n second=alias\n second.service=other\n holder.service.persist()", "holder.service.persist()"),
@@ -25,8 +25,9 @@ def test_reassigned_declared_receiver_is_not_trusted(language, path, source):
     ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); holder.service=other; holder.service.persist();}", "holder.service.persist()"),
     ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); const alias=holder; alias.service=other; holder.service.persist();}", "holder.service.persist()"),
 ])
-def test_caller_field_writes_invalidate_receiver(language, path, source, evidence):
-    assert_target(language, {path: source}, evidence, False)
+def test_caller_field_writes_invalidate_receiver(case):
+    language, path, source, evidence = case
+    assert_target(language, {path: source}, (evidence, False))
 
 
 @pytest.mark.parametrize("language,sources", [
@@ -36,17 +37,18 @@ def test_caller_field_writes_invalidate_receiver(language, path, source, evidenc
     ("python", {"tools.py": "class Service:\n def persist(self):pass", "app.py": "import tools\nfrom tools import Service\ntools.Service.persist=other\ndef run(local:Service):\n local.persist()"}),
 ])
 def test_member_mutation_follows_imported_class_identity(language, sources):
-    assert_target(language, sources, "local.persist()", False)
+    assert_target(language, sources, ("local.persist()", False))
 
 
-@pytest.mark.parametrize("language,path,source,evidence", [
+@pytest.mark.parametrize("case", [
     ("typescript", "app.ts", "class Service {persist(){}} function run(local:Service){local.persist();}", "local.persist()"),
     ("tsx", "app.tsx", "class Service {persist(){}} function run(local:Service){local.persist();}", "local.persist()"),
     ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef unrelated(holder):\n holder.service=other\ndef run(holder:Holder):\n holder.service.persist()", "holder.service.persist()"),
     ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); holder.service.persist();}", "holder.service.persist()"),
 ])
-def test_unchanged_receivers_remain_internal(language, path, source, evidence):
-    assert_target(language, {path: source}, evidence, True)
+def test_unchanged_receivers_remain_internal(case):
+    language, path, source, evidence = case
+    assert_target(language, {path: source}, (evidence, True))
 
 
 @pytest.mark.parametrize("implementation", [
@@ -57,7 +59,7 @@ def test_unchanged_receivers_remain_internal(language, path, source, evidence):
 def test_rust_impl_in_another_module_resolves_identity(implementation):
     sources = {"service.rs": "pub struct Service{}", "main.rs":
                "mod service; " + implementation + " fn run(local:&service::Service){local.persist();}"}
-    assert_target("rust", sources, "local.persist()", True)
+    assert_target("rust", sources, ("local.persist()", True))
 
 
 def test_rust_same_short_name_impl_is_not_used():
@@ -66,7 +68,7 @@ def test_rust_same_short_name_impl_is_not_used():
         "other.rs": "pub struct Service{} impl Service {pub fn persist(&self){}}",
         "main.rs": "mod service; mod other; use service::Service; fn run(local:&Service){local.persist();}",
     }
-    assert_target("rust", sources, "local.persist()", False)
+    assert_target("rust", sources, ("local.persist()", False))
 
 
 def test_rust_duplicate_impl_members_are_ambiguous():
@@ -74,7 +76,7 @@ def test_rust_duplicate_impl_members_are_ambiguous():
         "service.rs": "pub struct Service{} impl Service {pub fn persist(&self){}}",
         "main.rs": "mod service; use service::Service; impl Service {fn persist(&self){}} fn run(local:&Service){local.persist();}",
     }
-    assert_target("rust", sources, "local.persist()", False)
+    assert_target("rust", sources, ("local.persist()", False))
 
 
 def test_rust_trait_impl_is_not_an_inherent_member():
@@ -82,12 +84,12 @@ def test_rust_trait_impl_is_not_an_inherent_member():
         "service.rs": "pub struct Service{}",
         "main.rs": "mod service; use service::Service; trait Saving {fn persist(&self);} impl Saving for Service {fn persist(&self){}} fn run(local:&Service){local.persist();}",
     }
-    assert_target("rust", sources, "local.persist()", False)
+    assert_target("rust", sources, ("local.persist()", False))
 
 
 def test_java_constructor_subtype_field_write_is_not_trusted():
     source = "class Service {void persist(){}} class Other extends Service {void persist(){}} class App {Service local; App(){this.local=new Other();} void run(){local.persist();}}"
-    assert_target("java", {"App.java": source}, "local.persist()", False)
+    assert_target("java", {"App.java": source}, ("local.persist()", False))
 
 
 def test_rust_impl_target_is_the_actual_method():

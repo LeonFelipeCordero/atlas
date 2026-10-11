@@ -25,10 +25,14 @@ def type_name(node: Node | None) -> str | None:
     if node.type in {"generic_type", "generic_type_with_turbofish"}:
         return type_name(field(node, "name", "type") or child(node, {"type_identifier"}))
     if node.type in {"type_annotation", "type", "pointer_type", "reference_type", "nullable_type"}:
-        children = [c for c in node.named_children if c.type != "lifetime"]
-        return type_name(children[-1]) if len(children) == 1 else None
+        return _wrapped_type_name(node)
     value = text(node).split("<", 1)[0] if node.type == "user_type" else text(node)
     return value if re.fullmatch(r"[\w$]+(?:(?:\.|::)[\w$]+)*", value) else None
+
+
+def _wrapped_type_name(node: Node) -> str | None:
+    children = [c for c in node.named_children if c.type != "lifetime"]
+    return type_name(children[-1]) if len(children) == 1 else None
 
 
 def child(node: Node, kinds: set[str]) -> Node | None:
@@ -45,21 +49,41 @@ def enclosing(node: Node, kinds: set[str]) -> Node | None:
 CLASSES = {"class_definition", "class_declaration", "struct_item", "type_spec"}
 
 
-def declaration(syntax, node, name, annotation, value=None, member=False):
-    scope = enclosing(node, CLASSES) if member else syntax.scope(node)
-    if name is None or scope is None:
+@dataclass(frozen=True)
+class Declaration:
+    name: Node | None
+    annotation: str | None
+    value: Node | None = None
+    member: bool = False
+
+
+def declaration(syntax, node, details: Declaration):
+    scope = enclosing(node, CLASSES) if details.member else syntax.scope(node)
+    if details.name is None or scope is None:
         return []
-    annotation = None if annotation == "var" else annotation
+    annotation = None if details.annotation == "var" else details.annotation
     inferred = annotation is None
-    if inferred and member and member_assignment(node) and not constructor(node):
+    if inferred:
+        annotation = _inferred_annotation(syntax, node, details)
+    return [ReceiverBinding(text(details.name), annotation, scope, node, inferred, details.member, static_field(node))]
+
+
+def _inferred_annotation(syntax, node, details: Declaration):
+    value = details.value
+    if details.member and member_assignment(node) and not constructor(node):
         value = None
-    if inferred and value is not None and value.type in syntax.adapter.receiver_class_nodes:
+    annotation = _constructed_annotation(syntax, value)
+    if details.member and value is not None and value.type == "identifier":
+        annotation = injected_parameter(syntax, node, text(value))
+    return annotation
+
+
+def _constructed_annotation(syntax, value):
+    if value is not None and value.type in syntax.adapter.receiver_class_nodes:
         callee, receiver = syntax.adapter.call_target(value)
         if receiver is None:
-            annotation = type_name(callee)
-    if inferred and member and value is not None and value.type == "identifier":
-        annotation = injected_parameter(syntax, node, text(value))
-    return [ReceiverBinding(text(name), annotation, scope, node, inferred, member, static_field(node))]
+            return type_name(callee)
+    return None
 
 
 def member_assignment(node):
@@ -85,22 +109,30 @@ def injected_parameter(syntax, node, name):
     parameters = field(method, "parameters")
     if parameters is None:
         return None
-    writes = [n for n in syntax.nodes if n.type in syntax.adapter.assignments
-              and method.start_byte <= n.start_byte < method.end_byte and text(field(n, "left")) == name]
-    if writes:
+    if _parameter_written(syntax, method, name):
         return None
-    matches = [b for parameter in parameters.named_children
-               for b in syntax.adapter.receiver_bindings(syntax, parameter) if b.name == name]
+    matches = _parameter_bindings(syntax, parameters, name)
     return matches[0].annotation if len(matches) == 1 else None
+
+
+def _parameter_written(syntax, method, name):
+    return any(n.type in syntax.adapter.assignments
+               and method.start_byte <= n.start_byte < method.end_byte and text(field(n, "left")) == name
+               for n in syntax.nodes)
+
+
+def _parameter_bindings(syntax, parameters, name):
+    return [b for parameter in parameters.named_children
+            for b in syntax.adapter.receiver_bindings(syntax, parameter) if b.name == name]
 
 
 def java_bindings(syntax, node):
     if node.type == "formal_parameter":
-        return declaration(syntax, node, field(node, "name"), type_name(field(node, "type")))
+        return declaration(syntax, node, Declaration(field(node, "name"), type_name(field(node, "type"))))
     if node.type != "variable_declarator" or node.parent is None:
         return []
-    return declaration(syntax, node, field(node, "name"), type_name(field(node.parent, "type")),
-                       field(node, "value"), node.parent.type == "field_declaration")
+    return declaration(syntax, node, Declaration(field(node, "name"), type_name(field(node.parent, "type")),
+                       field(node, "value"), node.parent.type == "field_declaration"))
 
 
 def kotlin_bindings(syntax, node):
@@ -108,20 +140,28 @@ def kotlin_bindings(syntax, node):
         return []
     name = child(node, {"simple_identifier"})
     annotation = type_name(child(node, {"user_type", "nullable_type", "function_type"}))
-    parent = node.parent
-    value = None
-    member = node.type == "class_parameter" and any(c.type in {"val", "var", "binding_pattern_kind"} for c in node.children)
+    member = _kotlin_member(node)
     if node.type == "class_parameter" and not member:
         return []
+    value, member = _kotlin_property(node, member)
+    return declaration(syntax, node, Declaration(name, annotation, value, member))
+
+
+def _kotlin_member(node):
+    return node.type == "class_parameter" and any(c.type in {"val", "var", "binding_pattern_kind"} for c in node.children)
+
+
+def _kotlin_property(node, member):
+    parent = node.parent
     if parent and parent.type == "property_declaration":
         value = next((c for c in parent.named_children if c.type == "call_expression"), None)
-        member = parent.parent is not None and parent.parent.type == "class_body"
-    return declaration(syntax, node, name, annotation, value, member)
+        return value, parent.parent is not None and parent.parent.type == "class_body"
+    return None, member
 
 
 def python_bindings(syntax, node):
     if node.type in {"typed_parameter", "typed_default_parameter"}:
-        return declaration(syntax, node, child(node, {"identifier"}), type_name(field(node, "type")))
+        return declaration(syntax, node, Declaration(child(node, {"identifier"}), type_name(field(node, "type"))))
     if node.type != "assignment":
         return []
     name = field(node, "left")
@@ -134,35 +174,40 @@ def python_bindings(syntax, node):
         return []
     else:
         member = syntax.scope(node).type == "class_definition"
-    return declaration(syntax, node, name, type_name(field(node, "type")), field(node, "right"), member)
+    return declaration(syntax, node, Declaration(name, type_name(field(node, "type")), field(node, "right"), member))
 
 
 def script_bindings(syntax, node):
     if node.type == "assignment_expression":
         target = field(node, "left")
         if target and target.type == "member_expression" and text(field(target, "object")) == "this":
-            return declaration(syntax, node, field(target, "property"), None, field(node, "right"), True)
+            return declaration(syntax, node, Declaration(field(target, "property"), None, field(node, "right"), True))
         return []
     if node.type not in {"required_parameter", "optional_parameter", "variable_declarator", "public_field_definition", "field_definition"}:
         return []
     member = "field_definition" in node.type or any(c.type == "accessibility_modifier" for c in node.named_children)
-    return declaration(syntax, node, field(node, "name", "pattern", "property"), type_name(field(node, "type")), field(node, "value"), member)
+    return declaration(syntax, node, Declaration(field(node, "name", "pattern", "property"), type_name(field(node, "type")), field(node, "value"), member))
 
 
 def go_bindings(syntax, node):
     if node.type == "short_var_declaration":
-        target = field(node, "left")
-        names = target.named_children if target else []
-        return [b for name in names if name.type == "identifier" for b in declaration(syntax, node, name, None)]
+        return _go_short_bindings(syntax, node)
     if node.type not in {"parameter_declaration", "var_spec", "field_declaration"}:
         return []
     return [binding for name in node.children_by_field_name("name")
-            for binding in declaration(syntax, node, name, type_name(field(node, "type")),
-                                       member=node.type == "field_declaration")]
+            for binding in declaration(syntax, node, Declaration(name, type_name(field(node, "type")),
+                                       member=node.type == "field_declaration"))]
+
+
+def _go_short_bindings(syntax, node):
+    target = field(node, "left")
+    names = target.named_children if target else []
+    return [b for name in names if name.type == "identifier"
+            for b in declaration(syntax, node, Declaration(name, None))]
 
 
 def rust_bindings(syntax, node):
     if node.type not in {"parameter", "let_declaration", "field_declaration"}:
         return []
-    return declaration(syntax, node, field(node, "pattern", "name"), type_name(field(node, "type")),
-                       member=node.type == "field_declaration")
+    return declaration(syntax, node, Declaration(field(node, "pattern", "name"), type_name(field(node, "type")),
+                       member=node.type == "field_declaration"))

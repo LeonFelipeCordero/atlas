@@ -473,10 +473,9 @@ class CallResolver:
     def _matches(self, request: ResolutionRequest, node, target: CallTarget) -> list[Symbol]:
         file = request.file
         receiver, qualifier = target.receiver, request.qualifier
-        if qualifier and not self.syntax[file.source.path].member_rebound(qualifier, request.name):
-            typed = self.receivers.resolve(request)
-            if typed is not None:
-                return typed
+        typed = self._typed_matches(request)
+        if typed is not None:
+            return typed
         if get_resolution_adapter(file.source.language).receiver_rejected(
             receiver, qualifier
         ):
@@ -493,6 +492,11 @@ class CallResolver:
         if _is_bare_target(request.call, target.callee):
             return self._bare(request, node)
         return []
+
+    def _typed_matches(self, request: ResolutionRequest) -> list[Symbol] | None:
+        if request.qualifier and not self.syntax[request.file.source.path].member_rebound(request.qualifier, request.name):
+            return self.receivers.resolve(request)
+        return None
 
     def _receiver_matches(self, request: ResolutionRequest, receiver) -> list[Symbol]:
         if re.fullmatch(r"[\w$]+(?:\.|::)[\w.$:]+", request.qualifier or ""):

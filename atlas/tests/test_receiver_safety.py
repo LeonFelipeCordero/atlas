@@ -5,13 +5,14 @@ import pytest
 from tests.test_semantic_resolution import repository, call_edges
 
 
-def assert_target(language, sources, evidence, internal):
+def assert_target(language, sources, expected):
+    evidence, internal = expected
     edges = call_edges(repository(language, sources), evidence)
     assert edges, evidence
     assert all(e.target_key.startswith("symbol:" if internal else "external:") for e in edges), edges
 
 
-@pytest.mark.parametrize("language, path, source, evidence", [
+@pytest.mark.parametrize("case", [
     ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n def __init__(self, injected: Service):\n  self.service = injected\n def run(self):\n  self.service.persist()", "self.service.persist()"),
     ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n def __init__(self):\n  self.service = Service()\n def run(self):\n  self.service.persist()", "self.service.persist()"),
     ("javascript", "app.js", "class Service { persist() {} } class App { constructor() { this.service = new Service(); } run() { this.service.persist(); } }", "this.service.persist()"),
@@ -23,11 +24,12 @@ def assert_target(language, sources, evidence, internal):
     ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist() {}\ntype App struct{ service *Service }\nfunc(a *App) run(){ a.service.persist() }", "a.service.persist()"),
     ("rust", "app.rs", "struct Service {} impl Service { fn persist(&self) {} } struct App { service: Service } impl App { fn run(&self) { self.service.persist(); } }", "self.service.persist()"),
 ])
-def test_constructor_and_field_receivers(language, path, source, evidence):
-    assert_target(language, {path: source}, evidence, True)
+def test_constructor_and_field_receivers(case):
+    language, path, source, evidence = case
+    assert_target(language, {path: source}, (evidence, True))
 
 
-@pytest.mark.parametrize("language, path, source, evidence", [
+@pytest.mark.parametrize("case", [
     ("python", "app.py", "class Service:\n def persist(self): pass\ndef run(local: Service):\n local = other\n local.persist()", "local.persist()"),
     ("python", "app.py", "class Service:\n def persist(self): pass\ndef Service(): return other\ndef run():\n local = Service()\n local.persist()", "local.persist()"),
     ("python", "app.py", "class Service:\n def persist(self): pass\ndef run():\n local.persist()\n local: Service = Service()", "local.persist()"),
@@ -50,8 +52,9 @@ def test_constructor_and_field_receivers(language, path, source, evidence):
     ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist() {}\nfunc run(local interface{}) { local.persist() }", "local.persist()"),
     ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist() {}\nfunc run(local *Service) { if condition { local := other; local.persist() } }", "local.persist()"),
 ])
-def test_unsafe_receivers_stay_external(language, path, source, evidence):
-    assert_target(language, {path: source}, evidence, False)
+def test_unsafe_receivers_stay_external(case):
+    language, path, source, evidence = case
+    assert_target(language, {path: source}, (evidence, False))
 
 
 @pytest.mark.parametrize("language, sources, evidence", [
@@ -63,7 +66,7 @@ def test_unsafe_receivers_stay_external(language, path, source, evidence):
     ("rust", {"tools.rs": "pub struct Service {} impl Service { pub fn persist(&self) {} }", "main.rs": "mod tools; fn run(local: &tools::Service){ local.persist(); }"}, "local.persist()"),
 ])
 def test_type_visibility_follows_import_and_namespace_context(language, sources, evidence):
-    assert_target(language, sources, evidence, True)
+    assert_target(language, sources, (evidence, True))
 
 
 @pytest.mark.parametrize("language, sources", [
@@ -71,7 +74,7 @@ def test_type_visibility_follows_import_and_namespace_context(language, sources,
     ("javascript", {"tools.js": "export class Service { persist() {} }", "app.js": "import {Service as Alias} from './tools'; Alias.prototype.persist = other; function run(){ const local = new Alias(); local.persist(); }"}),
 ])
 def test_imported_receiver_member_rebinding_is_not_ignored(language, sources):
-    assert_target(language, sources, "local.persist()", False)
+    assert_target(language, sources, ("local.persist()", False))
 
 
 def test_exchange_broker_constructor_injected_websocket_client():
@@ -94,15 +97,15 @@ class OrderCreatedHandler {
  }
 }""",
     }
-    assert_target("java", sources, "orderService.saveOrder(order)", True)
-    assert_target("java", sources, "orderCreatedWebSocketClient.sendAndWait(event)", True)
+    assert_target("java", sources, ("orderService.saveOrder(order)", True))
+    assert_target("java", sources, ("orderCreatedWebSocketClient.sendAndWait(event)", True))
 
 
 def test_unrelated_constructor_assignments_are_separate_scopes():
     source = "class Service:\n def persist(self): pass\nclass App:\n def __init__(self):\n  self.service = Service()\n def run(self):\n  self.service.persist()\nclass Other:\n def __init__(self):\n  self.service = unknown"
-    assert_target("python", {"app.py": source}, "self.service.persist()", True)
+    assert_target("python", {"app.py": source}, ("self.service.persist()", True))
 
 
 def test_unimported_type_is_not_guessed_globally():
     sources = {"tools.py": "class Service:\n def persist(self): pass", "app.py": "def run(local: Service):\n local.persist()"}
-    assert_target("python", sources, "local.persist()", False)
+    assert_target("python", sources, ("local.persist()", False))

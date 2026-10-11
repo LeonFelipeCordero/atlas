@@ -17,11 +17,16 @@ def graph_output(value: Any) -> Any:
     result = {key: graph_output(item) for key, item in value.items()}
     if result.get("level") == "external":
         result["level"] = "unresolved"
-        if "stableKey" in result:
-            result.update(type="unresolved", external=False, unresolved=True)
-            qualified_name = result.get("qualifiedName")
-            if isinstance(qualified_name, str) and qualified_name.startswith("external:"):
-                result["qualifiedName"] = "unresolved:" + qualified_name.removeprefix("external:")
+        _unresolved_identity(result)
     if result.get("reason") == "external_unresolved_or_ambiguous":
         result["reason"] = "unresolved_or_ambiguous"
     return result
+
+
+def _unresolved_identity(result: dict) -> None:
+    if "stableKey" not in result:
+        return
+    result.update(type="unresolved", external=False, unresolved=True)
+    qualified_name = result.get("qualifiedName")
+    if isinstance(qualified_name, str) and qualified_name.startswith("external:"):
+        result["qualifiedName"] = "unresolved:" + qualified_name.removeprefix("external:")

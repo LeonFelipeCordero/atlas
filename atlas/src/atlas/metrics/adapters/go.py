@@ -38,13 +38,13 @@ class GoResolution(ResolutionAdapter):
 
     def instance_members(self, resolver, parent, name):
         symbols = self._package_symbols(resolver, resolver.files[parent.file_path])
-        return [s for s in symbols if self._receiver_method(resolver, s, parent, name)]
+        return [s for s in symbols if s.name == name and self._receiver_method(resolver, s, parent)]
 
     def _package_symbols(self, ctx, source):
         return chain.from_iterable(f.symbols for f in self._package_files(ctx, source))
 
-    def _receiver_method(self, resolver, symbol, parent, name):
-        if symbol.kind != "method" or symbol.name != name:
+    def _receiver_method(self, resolver, symbol, parent):
+        if symbol.kind != "method":
             return False
         node = resolver.syntax[symbol.file_path].node(symbol.start_byte, symbol.end_byte)
         receiver = field(node, "receiver") if node else None
