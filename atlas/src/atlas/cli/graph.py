@@ -6,11 +6,12 @@ from typing import Any, Callable, get_args
 import click
 
 from atlas.bootstrap import navigation_service
+from atlas.cli.graph_output import graph_output
 from atlas.domain.models import Relationship
 from atlas.domain.navigation import NavigationError, PathRequest, Record, TraversalRequest
 
 
-@click.group("graph", help="Read an indexed graph as JSON; external nodes may be unresolved or ambiguous.")
+@click.group("graph", help="Read an indexed graph as JSON; unresolved targets are not classified as external. Stable keys retain their indexed spelling.")
 @click.option("--project", help="Registered project name or ID; defaults to the indexed folder containing the current directory.")
 @click.option("--revision", help="Expected graphRevision; reject a stale graph.")
 @click.pass_context
@@ -37,7 +38,7 @@ def emit(ctx: click.Context, command: str, **options: Any) -> None:
             payload = commands[command](**command_options(command, options))
     except (NavigationError, OSError, ValueError) as error:
         raise GraphError(str(error)) from error
-    click.echo(json.dumps(payload, ensure_ascii=False))
+    click.echo(json.dumps(graph_output(payload), ensure_ascii=False))
 
 
 def command_options(command: str, options: Record) -> Record:

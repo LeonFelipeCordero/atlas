@@ -226,7 +226,7 @@ class Syntax:
         for node in self.nodes:
             if node.type not in self.adapter.member_writes:
                 continue
-            if text(field(node, "left")).replace(" ", "") == qualifier + "." + name:
+            if text(self.adapter.write_target(node)).replace(" ", "") == qualifier + "." + name:
                 return True
         return False
 

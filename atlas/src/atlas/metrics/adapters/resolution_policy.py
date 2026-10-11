@@ -27,6 +27,9 @@ class ResolutionAdapter:
     constructors = frozenset()
     receiver_class_nodes = frozenset()
     receiver_names = frozenset()
+    bare_instance_fields = False
+    trust_receiver_annotations = True
+    validate_receiver_initializer = False
     member_nodes: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
     macro_nodes = frozenset()
     assignments = frozenset()
@@ -35,8 +38,19 @@ class ResolutionAdapter:
     static_nodes = frozenset()
     static_containers = frozenset()
     member_writes = frozenset()
+    receiver_updates = {"update_expression"}
     rebound_declarations = frozenset()
     single_parameter_functions = frozenset()
+
+    def receiver_owner(self, resolver, request) -> list[Symbol] | None:
+        return None
+
+    @staticmethod
+    def receiver_bindings(syntax, node):
+        return []
+
+    def instance_members(self, resolver, parent, name):
+        return resolver._member_declarations(parent, name)
 
     def module_index(self, repository, syntax) -> object | None:
         return None
@@ -54,6 +68,9 @@ class ResolutionAdapter:
         if node.type in self.loop_bindings:
             return field(node, "left", "name"), scope
         return None, scope
+
+    def write_target(self, node):
+        return field(node, "left", "argument", "operand") or next(iter(node.named_children), None)
 
     def visible(self, syntax, scope: Node, position: int) -> bool:
         return True
@@ -165,6 +182,9 @@ class ResolutionAdapter:
             callee, receiver, text(callee) or call.name,
             text(receiver) if receiver else call.qualifier,
         )
+
+    def receiver_type_allowed(self, syntax, name: str, member: str) -> bool:
+        return not syntax.member_rebound(name, member)
 
     def receiver_class_allowed(self, syntax, callee, member: str) -> bool:
         return True

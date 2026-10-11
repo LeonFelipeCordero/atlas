@@ -13,14 +13,16 @@ from pathlib import Path
 
 from tree_sitter import Node
 
+from ..receiver_syntax import rust_bindings, type_name
 
-from ...domain.models import ParsedFile, ParsedRepository, Symbol
+
+from ...domain.models import Call, ParsedFile, ParsedRepository, Symbol
 
 from .resolution import ResolutionAdapter, Binding
 
 from .resolution_paths import quoted_path
 
-from ..resolution_contract import SCOPES, ImportRequest
+from ..resolution_contract import SCOPES, ImportRequest, ResolutionRequest
 
 from .base import COMMON_METRICS, MetricAdapter
 
@@ -234,15 +236,74 @@ class RustModules(ModuleIndex):
 
 
 class RustResolution(ResolutionAdapter):
+    receiver_bindings = staticmethod(rust_bindings)
+
+    def instance_members(self, resolver, parent, name):
+        implementations = {s.key for s in resolver.symbols.values()
+                           if s.language == "rust" and self._inherent_impl(resolver, s, parent)}
+        return resolver._member_declarations(parent, name) + [
+            s for s in resolver.symbols.values() if s.parent_key in implementations and s.name == name
+        ]
+
     def import_path(self, source: str) -> str:
         match = re.search(r"\b(?:use|mod)\s+([\w:]+)", source)
         return quoted_path(source) or (match[1] if match else source.strip())
 
+    def _inherent_impl(self, resolver, symbol, parent):
+        if symbol.kind != "impl":
+            return False
+        node = resolver.syntax[symbol.file_path].node(symbol.start_byte, symbol.end_byte)
+        name = type_name(field(node, "type")) if node else None
+        if not name or field(node, "trait"):
+            return False
+        types = self._impl_types(resolver, symbol, name)
+        return len(types) == 1 and types[0].key == parent.key
+
+    def _impl_types(self, resolver, symbol, name):
+        file = resolver.files[symbol.file_path]
+        call = Call(symbol.file_path, name, symbol.start_byte, symbol.end_byte, symbol.start_line, "")
+        request = ResolutionRequest(file, call, resolver.symbols.get(symbol.parent_key), name)
+        matches = self.qualify_class(resolver, request, resolver.named(request))
+        if "::" in name:
+            qualifier, _, member = name.rpartition("::")
+            matches = self.qualified(resolver, replace(request, name=member, qualifier=qualifier))
+        return [s for s in matches if s.kind in {"struct", "enum", "type"}]
+
+    def qualify_class(self, resolver, request, matches):
+        # An impl declaration is not a new type and must not mask its use import.
+        local = resolver.lexical(request.file, request.name, request.owner)
+        binding = resolver.imports.get(request.file, request.name, request.call.start_byte)
+        if binding and not binding.namespace and all(s.kind == "impl" for s in local + matches):
+            return binding.targets
+        return matches
+
+    def receiver_owner(self, resolver, request):
+        ancestors = resolver.ancestors(request.owner)
+        method = self._ancestor(ancestors, "function")
+        owner = self._ancestor(ancestors, "impl")
+        if method is None or owner is None:
+            return []
+        if not self._has_self(resolver, method):
+            return []
+        node = resolver.syntax[owner.file_path].node(owner.start_byte, owner.end_byte)
+        name = type_name(field(node, "type")) if node else None
+        return self._impl_types(resolver, owner, name) if name else []
+
+    def _ancestor(self, ancestors, kind):
+        return next((s for s in ancestors if s.kind == kind), None)
+
+    def _has_self(self, resolver, method):
+        syntax = resolver.syntax[method.file_path]
+        node = syntax.node(method.start_byte, method.end_byte)
+        parameters = field(node, "parameters") if node else None
+        return bool(parameters and any(c.type == "self_parameter" for c in parameters.named_children))
+
     family = "rust"
+    self_qualifiers = {"self"}
     scopes = SCOPES | {"declaration_list"}
     import_nodes = {"use_declaration", "mod_item"}
     require_import_node = True
-    assignments = {"assignment_expression"}
+    assignments = {"assignment_expression", "compound_assignment_expr"}
     declarations = {"let_declaration"}
     member_nodes = {"field_expression": (("value",), ("field",))}
     macro_nodes = {"macro_invocation"}

@@ -10,6 +10,8 @@ from typing import cast
 
 from tree_sitter import Node
 
+from ..receiver_syntax import python_bindings
+
 from ...domain.models import ParsedFile, Symbol
 from ..resolution_contract import DeclarationLookup, ImportRequest, ResolutionRequest
 
@@ -290,6 +292,7 @@ def _import_node(ctx, file, position):
 
 
 class PythonResolution(ResolutionAdapter):
+    receiver_bindings = staticmethod(python_bindings)
     def import_path(self, source: str) -> str:
         match = re.search(r"\bfrom\s+([\w.]+)|\bimport\s+([\w.]+)", source)
         path = (
@@ -304,6 +307,8 @@ class PythonResolution(ResolutionAdapter):
     import_nodes = {"import_statement", "import_from_statement"}
     skip_type_scope = True
     self_qualifiers = {"self"}
+    trust_receiver_annotations = False
+    validate_receiver_initializer = True
     receiver_class_nodes = {"call"}
     member_nodes = {"attribute": (("object",), ("attribute",))}
     assignments = {"assignment", "augmented_assignment", "named_expression"}

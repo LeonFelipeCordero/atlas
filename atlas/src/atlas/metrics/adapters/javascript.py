@@ -8,6 +8,8 @@ from itertools import chain
 
 from tree_sitter import Node
 
+from ..receiver_syntax import script_bindings
+
 from ...domain.models import Symbol
 
 from .resolution import ResolutionAdapter, relative_targets, top_symbols
@@ -147,6 +149,7 @@ def _type_only_named_clause(node: Node) -> bool:
 
 
 class JavaScriptResolution(ResolutionAdapter):
+    receiver_bindings = staticmethod(script_bindings)
     def import_path(self, source: str) -> str:
         return quoted_path(source) or source.strip()
 
@@ -163,7 +166,8 @@ class JavaScriptResolution(ResolutionAdapter):
     loop_bindings = {"for_statement", "for_in_statement"}
     static_nodes = {"static"}
     static_containers = {"modifiers"}
-    member_writes = {"assignment_expression"}
+    member_writes = assignments | {"update_expression"}
+    validate_receiver_initializer = True
     single_parameter_functions = {"arrow_function"}
 
     def call_target(self, node):
@@ -175,6 +179,9 @@ class JavaScriptResolution(ResolutionAdapter):
         if call.relationship == "REFERENCES":
             return CallTarget(callee, receiver, call.name, call.qualifier)
         return super().normalized_call(call, callee, receiver)
+
+    def receiver_type_allowed(self, syntax, name, member):
+        return super().receiver_type_allowed(syntax, name, member) and not syntax.member_rebound(name + ".prototype", member)
 
     def receiver_class_allowed(self, syntax, callee, member):
         return not syntax.member_rebound(text(callee) + ".prototype", member)

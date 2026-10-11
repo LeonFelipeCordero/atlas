@@ -2,6 +2,8 @@
 
 import re
 
+from ..receiver_syntax import kotlin_bindings
+
 from .resolution_paths import quoted_path
 
 from dataclasses import replace
@@ -56,6 +58,7 @@ METRICS = replace(
 
 
 class KotlinResolution(JavaResolution):
+    receiver_bindings = staticmethod(kotlin_bindings)
     def import_path(self, source: str) -> str:
         match = re.search(r"\bimport\s+([\w.]+)", source)
         return quoted_path(source) or (match[1] if match else source.strip())
@@ -72,7 +75,13 @@ class KotlinResolution(JavaResolution):
     assignments = {"assignment"}
     declarations = {"variable_declaration"}
     loop_bindings = frozenset()
-    member_writes = {"assignment"}
+    member_writes = {"assignment", "prefix_expression", "postfix_expression"}
+    receiver_updates = {"prefix_expression", "postfix_expression"}
+
+    def write_target(self, node):
+        if node.type in self.receiver_updates and not any(c.type in {"++", "--"} for c in node.children):
+            return None
+        return super().write_target(node)
     single_parameter_functions = {"lambda_expression"}
 
     def call_target(self, node):
