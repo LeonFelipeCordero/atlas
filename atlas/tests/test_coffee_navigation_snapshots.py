@@ -6,8 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from tests.coffee_fixture import LANGUAGES
-from tests.coffee_navigation import NAVIGATION_SNAPSHOT_ROOT, navigation_responses, normalize_responses
+from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES
+from tests.coffee_navigation import (
+    NAVIGATION_SNAPSHOT_ROOT, CoffeeNavigation, Declaration, declaration,
+    navigation_responses, normalize_responses,
+)
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -15,6 +18,21 @@ def test_coffee_navigation_matches_snapshot(language: str, tmp_path: Path) -> No
     actual = navigation_responses(language, tmp_path / "atlas.sqlite")
     expected = json.loads((NAVIGATION_SNAPSHOT_ROOT / f"{language}-coffee.json").read_text(encoding="utf-8"))
     assert actual == expected
+
+
+@pytest.mark.parametrize("fault", ["wrong_direction", "missing_base_edge"])
+def test_inheritance_assertions_reject_incomplete_outgoing_chain(fault: str) -> None:
+    # Mutate a response only: no saved snapshot is used to populate the database.
+    snapshot = json.loads((NAVIGATION_SNAPSHOT_ROOT / "python-coffee.json").read_text(encoding="utf-8"))
+    payload = snapshot["context_brewer_inherits_out"]
+    path = "src/coffee/brewing/brewer.py"
+    derived = declaration(payload["nodes"], Declaration(path, "Brewer", "class", level="type"))
+    base = declaration(payload["nodes"], Declaration(path, "Brewing", "class", level="type"))
+    payload["edges"] = [edge for edge in payload["edges"] if edge["sourceStableKey"] == derived["stableKey"]]
+    if fault == "wrong_direction":
+        payload["filters"]["direction"] = "in"
+    with pytest.raises(AssertionError):
+        CoffeeNavigation(FIXTURE_ROOT / "python", "repo").assert_inheritance(payload, (derived, base), "out")
 
 
 @pytest.mark.parametrize("field", ["repositoryId", "graphRevision", "indexedAt"])
