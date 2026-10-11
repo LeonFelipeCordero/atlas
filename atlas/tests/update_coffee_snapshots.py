@@ -26,6 +26,14 @@ def main() -> None:
         report_path = SNAPSHOT_ROOT / f"{language}-coffee-report.md"
         report_path.write_text(report.output, encoding="utf-8")
         print(report_path.name)
+        check = CliRunner().invoke(cli, [
+            "check", "--folder", str(FIXTURE_ROOT / language),
+        ])
+        if check.exit_code != 1 or not isinstance(check.exception, SystemExit) or not check.output.startswith("## "):
+            raise RuntimeError(f"{language} check failed: {check.output}") from check.exception
+        check_path = SNAPSHOT_ROOT / f"{language}-coffee-check.md"
+        check_path.write_text(check.output, encoding="utf-8")
+        print(check_path.name)
 
 
 if __name__ == "__main__":
