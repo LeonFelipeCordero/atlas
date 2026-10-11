@@ -1,3 +1,0 @@
-*.skip.py
-!keep.skip.py
-/local.py

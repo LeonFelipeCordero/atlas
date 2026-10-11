@@ -1,1 +1,0 @@
-object.action = (((function internal() { function local() {} return local(); })));

@@ -1,1 +1,0 @@
-session.bulk_save_objects(rows)

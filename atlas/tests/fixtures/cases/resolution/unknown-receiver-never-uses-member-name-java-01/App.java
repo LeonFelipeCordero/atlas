@@ -1,1 +1,0 @@
-class Service { void persist() {} } class App { Service orderService; App(Service orderService) { this.orderService = orderService; } void run(Service parameter) { Service local = new Service(); orderService.persist(); this.orderService.persist(); parameter.persist(); unknown.persist(); } }

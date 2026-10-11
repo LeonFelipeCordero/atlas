@@ -1,1 +1,0 @@
-fun outer() { use { fun local() = 1; local() } }

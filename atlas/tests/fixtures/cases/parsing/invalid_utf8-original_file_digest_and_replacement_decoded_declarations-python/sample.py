@@ -1,4 +1,0 @@
-# ����
-def work():
- return "�"
-work()

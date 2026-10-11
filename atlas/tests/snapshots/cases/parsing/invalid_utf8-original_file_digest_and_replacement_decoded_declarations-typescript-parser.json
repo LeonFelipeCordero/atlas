@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "2f2f20efbfbdefbfbdefbfbd28efbfbd280a6578706f72742066756e6374696f6e2076616c75652829207b2072657475726e2022efbfbd22207d0a76616c756528290a"}, "language": "typescript", "path": "sample.ts"},
-"content_hash": "bbd247484f45009d74071a4e1b1840baec8252b9efc701e4b0ccd46189151aec",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 58, "end_column": 41, "end_line": 2, "file_path": "sample.ts", "key": "symbol:sample.ts::value:25", "kind": "function", "language": "typescript", "line_count": null, "name": "value", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::value", "signature": "function value()", "start_byte": 25, "start_column": 8, "start_line": 2, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 66, "evidence": "value()", "file_path": "sample.ts", "line": 3, "name": "value", "qualifier": null, "relationship": "CALLS", "start_byte": 59}],
-"imports": [],
-"inheritances": []
-}

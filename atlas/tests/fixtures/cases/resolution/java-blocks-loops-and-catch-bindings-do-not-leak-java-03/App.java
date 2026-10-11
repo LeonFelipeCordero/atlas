@@ -1,1 +1,0 @@
-package app; import tools.R; class App {void run(){for (Thing R = other; check(); next()) {R.work();} R.work(2);}}

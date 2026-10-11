@@ -1,7 +1,0 @@
-[
-  {"allowed": false, "id": "reflective_port_extraction_cannot_hide_in_operator_aliases-497b7fbe6a", "module": "atlas.cli.commands", "old_test": "test_database_boundary_regressions.py::test_reflective_port_extraction_cannot_hide_in_operator_aliases", "operation": "boundary", "package": "atlas.cli"},
-  {"allowed": false, "id": "reflective_port_extraction_cannot_hide_in_operator_aliases-0ffd9eca66", "module": "atlas.cli.commands", "old_test": "test_database_boundary_regressions.py::test_reflective_port_extraction_cannot_hide_in_operator_aliases", "operation": "boundary", "package": "atlas.cli"},
-  {"allowed": false, "id": "reflective_port_extraction_cannot_hide_in_operator_aliases-bf621b8058", "module": "atlas.cli.commands", "old_test": "test_database_boundary_regressions.py::test_reflective_port_extraction_cannot_hide_in_operator_aliases", "operation": "boundary", "package": "atlas.cli"},
-  {"allowed": false, "id": "reflective_port_extraction_cannot_hide_in_operator_aliases-54c48627ea", "module": "atlas.cli.commands", "old_test": "test_database_boundary_regressions.py::test_reflective_port_extraction_cannot_hide_in_operator_aliases", "operation": "boundary", "package": "atlas.cli"},
-  {"allowed": false, "id": "reflective_port_extraction_cannot_hide_in_operator_aliases-c70480107f", "module": "atlas.cli.commands", "old_test": "test_database_boundary_regressions.py::test_reflective_port_extraction_cannot_hide_in_operator_aliases", "operation": "boundary", "package": "atlas.cli"}
-]

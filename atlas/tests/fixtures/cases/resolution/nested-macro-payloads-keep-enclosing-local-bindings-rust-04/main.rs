@@ -1,1 +1,0 @@
-mod other{pub fn other()->i32{2}} fn brew()->i32{1} fn main(){let _=vec![{use other::other as brew;dbg!(brew())}];}

@@ -1,1 +1,0 @@
-class Service { persist() {} } class Other { persist() {} } function run(local: Service | Other){ local.persist(); }

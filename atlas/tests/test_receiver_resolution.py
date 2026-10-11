@@ -1,17 +1,12 @@
-"""Whole-project receiver identities; isolated unknown/mutated receiver probes."""
+"""Whole coffee projects and coherent order receiver-lifetime overlays."""
 
 import pytest
 
-from tests.resolution_snapshot_support import fixture_sources
+from tests.test_receiver_safety import assert_lifetime_call
 from tests.test_semantic_resolution import (
     assert_coffee_call,
-    call_edges,
     coffee_repository,
-    coffee_symbols,
-    repository,
 )
-
-CASES = ("java", "kotlin", "typescript", "tsx", "python", "go", "rust", "javascript")
 
 # Each tuple identifies a real caller and the exact declaration it must reach.
 RECEIVER_CALLS = [
@@ -70,52 +65,45 @@ def test_coffee_receiver_limits_are_explicit(case):
 
 @pytest.mark.parametrize("language", ("go", "rust"))
 def test_declared_receiver_forms_absent_from_coffee(language):
-    # Go's uninitialized pointer local and Rust's borrowed parameter/struct literal
-    # are not coffee's constructor-returned locals. Keep their exact old inputs.
-    repo = repository(language, fixture_sources("receiver_resolution:test_declared_receivers:24-11", language=language))
-    path = "app.go" if language == "go" else "app.rs"
-    name = "persist" if language == "go" else "Service.persist"
-    target, = coffee_symbols(repo, path, name)
-    for evidence in ("parameter.persist()", "local.persist()"):
-        edges = call_edges(repo, evidence)
-        assert len(edges) == 1
-        assert edges[0].target_key == target.key
+    path = "reservations/ledger.go" if language == "go" else "reservation_intake.rs"
+    owner = "Receive" if language == "go" else "receive"
+    method = "Commit" if language == "go" else "commit"
+    target = "Commit" if language == "go" else "ReservationLedger.commit"
+    for receiver in ("parameter", "local"):
+        assert_lifetime_call(language, (path, owner, f"{receiver}.{method}(order)"), (path, target))
 
 
-@pytest.mark.parametrize("language", CASES)
-def test_unknown_receiver_never_uses_member_name(language):
-    repo = repository(
-        language,
-        fixture_sources(
-            "receiver_resolution:test_unknown_receiver_never_uses_member_name:34-11",
-            language=language,
-        ),
-    )
-    edges = call_edges(repo, "unknown.persist()")
-    assert edges
-    assert all(e.target_key.startswith("external:") for e in edges)
+UNKNOWN_WORKFLOWS = [
+    ("python", "src/coffee/orders/reservations.py", "accept_unknown"),
+    ("java", "intake/ReservationIntake.java", "ReservationIntake.unknown"),
+    ("kotlin", "intake/ReservationIntake.kt", "receiveUnknown"),
+    ("go", "reservations/ledger.go", "ReceiveUnknown"),
+    ("rust", "reservation_intake.rs", "receive_unknown"),
+    ("javascript", "reservations/Intake.js", "acceptUnknown"),
+    ("typescript", "reservations/Intake.ts", "acceptUnknown"),
+    ("tsx", "reservations/Intake.tsx", "acceptUnknown"),
+]
 
 
-@pytest.mark.parametrize("language", ("python", "javascript", "typescript"))
-def test_reassigned_inferred_receiver_stays_external(language):
-    edges = call_edges(
-        repository(
-            language,
-            fixture_sources(
-                "receiver_resolution:test_reassigned_inferred_receiver_stays_external:46-23",
-                language=language,
-            ),
-        ),
-        "local.persist()",
-    )
-    assert edges and all(e.target_key.startswith("external:") for e in edges)
+@pytest.mark.parametrize("language,path,owner", UNKNOWN_WORKFLOWS)
+def test_unknown_receiver_never_uses_member_name(language, path, owner):
+    method = "Commit" if language == "go" else "commit"
+    assert_lifetime_call(language, (path, owner, f"unknown.{method}(order)"))
+
+
+@pytest.mark.parametrize("language,path,owner", [
+    ("python", "src/coffee/orders/reservations.py", "redirect_inferred"),
+    ("javascript", "reservations/Intake.js", "redirectInferred"),
+    ("typescript", "reservations/Intake.ts", "redirectInferred"),
+    ("tsx", "reservations/Intake.tsx", "redirectInferred"),
+])
+def test_reassigned_inferred_receiver_stays_external(language, path, owner):
+    assert_lifetime_call(language, (path, owner, "ledger.commit(order)"))
 
 
 def test_elixir_has_module_calls_not_instance_members():
-    # Coffee exercises module calls; dynamic lowercase receiver stays isolated.
-    repo = repository(
-        "elixir",
-        fixture_sources("receiver_resolution:test_elixir_has_module_calls_not_instance_members:51-11"),
-    )
-    dynamic = call_edges(repo, "service.persist()")
-    assert dynamic and all(e.target_key.startswith("external:") for e in dynamic)
+    path = "reservations/intake.ex"
+    owner = "Coffee.Reservations.Intake.fulfill"
+    assert_lifetime_call("elixir", (path, owner, "Ledger.commit(order)"),
+                         (path, "Coffee.Reservations.Ledger.commit"))
+    assert_lifetime_call("elixir", (path, owner, "ledger.commit(order)"))

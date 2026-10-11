@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "discovered_paths",
-    "value": [
-      "src/file.ts",
-      "src/generated.ts"
-    ]
-  }
-]

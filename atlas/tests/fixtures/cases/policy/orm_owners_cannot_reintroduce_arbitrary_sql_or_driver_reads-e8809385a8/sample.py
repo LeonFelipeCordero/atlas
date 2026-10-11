@@ -1,1 +1,0 @@
-select(Row).from_statement(statement)

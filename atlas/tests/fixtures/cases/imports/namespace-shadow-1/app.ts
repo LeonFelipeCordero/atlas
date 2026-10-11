@@ -1,1 +1,0 @@
-import * as tools from './tools'; function run(tools) { tools.work() }

@@ -1,1 +1,0 @@
-import {R} from './tools'; use(({R: other})=>R.work()); R.work(2);

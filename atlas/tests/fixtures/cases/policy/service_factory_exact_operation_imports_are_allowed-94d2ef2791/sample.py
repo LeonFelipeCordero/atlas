@@ -1,1 +1,0 @@
-from atlas.persistence.database import migrate_database as _operation

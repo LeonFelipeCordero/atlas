@@ -1,4 +1,0 @@
-[
-  "database handle/operation self.repository.execute",
-  "database operation self.repository.execute"
-]

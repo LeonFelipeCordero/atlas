@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e6374696f6e20663c542c553e28613a204d61703c542c553e2c202f2a202c202a2f2062203d205b312c325d293a205b542c555d207b2072657475726e20623b207d"}, "language": "typescript", "path": "sample"},
-"content_hash": "b1dfbc9fc6adeae8ca461e543a08cb2d55b1eaf9b0415435e6fe8acc7ef3fe46",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 68, "end_column": 69, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "typescript", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "function f<T,U>(a: Map<T,U>, /* , */ b = [1,2]): [T,U]", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

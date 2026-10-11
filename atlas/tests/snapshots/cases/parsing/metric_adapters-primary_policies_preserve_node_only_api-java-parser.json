@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c61737320436f66666565207b20766f69642072756e2829207b20666f72283b3b29207b2069662872656164792920627265616b3b207d207d207d"}, "language": "java", "path": "sample.java"},
-"content_hash": "8cd387ca634b25fa7822e4a9ee11c7d0b714b672a3f6acdcfa4603f5b8dbc302",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 60, "end_column": 61, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Coffee:0", "kind": "class", "language": "java", "line_count": null, "name": "Coffee", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::Coffee", "signature": "class Coffee", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 58, "end_column": 59, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Coffee.run:15", "kind": "method", "language": "java", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.java::Coffee:0", "qualified_name": "sample.java::Coffee.run", "signature": "void run()", "start_byte": 15, "start_column": 16, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

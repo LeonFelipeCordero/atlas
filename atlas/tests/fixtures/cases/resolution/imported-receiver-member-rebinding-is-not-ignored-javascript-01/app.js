@@ -1,1 +1,0 @@
-import {Service as Alias} from './tools'; Alias.prototype.persist = other; function run(){ const local = new Alias(); local.persist(); }

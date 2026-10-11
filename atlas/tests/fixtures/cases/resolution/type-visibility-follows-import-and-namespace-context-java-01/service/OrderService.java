@@ -1,1 +1,0 @@
-package service; public class OrderService { public void saveOrder(int order) {} }

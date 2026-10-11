@@ -1,1 +1,0 @@
-function run(x) { return x && x.ready ? 1 : 0; }

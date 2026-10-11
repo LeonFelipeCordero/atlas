@@ -1,1 +1,0 @@
-mod inner; mod outer {mod inner; fn run(){self::inner::work(); super::inner::work();}}

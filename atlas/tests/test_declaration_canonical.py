@@ -1,4 +1,4 @@
-"""Declaration identity regressions independent of the coffee snapshots."""
+"""Canonical declaration identity and metadata on whole coffee modules."""
 
 import unittest
 from dataclasses import replace
@@ -10,8 +10,6 @@ from atlas.domain.models import SourceFile
 from atlas.parsing.structure import _declaration_query, extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_consolidation import coffee_source
-from tests.parsing_fixture import parsing_syntax
-from tests.source_snapshot_fixture import case_bytes, case_text
 
 
 def merged(source: SourceFile) -> list[StructureItem]:
@@ -108,18 +106,22 @@ class CanonicalDeclarationTests(unittest.TestCase):
             self.assertFalse(receipts.children[0].decorators)
 
     def test_python_stacked_utf8_decorator_discriminator(self) -> None:
-        # No coffee operation stacks a staticmethod and an argument-bearing
-        # annotation under a UTF-8 class annotation; preserve that syntax check.
-        source = case_text('parsing', 'declaration_canonical-java_constructor_kind_and_python_decorator_metadata-python', 'sample.py')
-        syntax = parsing_syntax(source, "python")
-        for items in (extract_structure(syntax), extract_structure(
-            syntax, process(source, ProcessConfig(language="python")).structure,
-        )):
-            self.assertEqual(items[0].decorators, ["@register('café')"])
-            run = items[0].children[0]
-            self.assertEqual(run.decorators, ["@staticmethod", "@annotate(level=1)"])
-            self.assertEqual(names(run.children), ["inner"])
-            self.assertFalse(run.children[0].decorators)
+        source = coffee_source("python", "src/coffee/reporting/dispatch.py")
+        for items in (extract_structure(ParsedSyntax(source)), merged(source)):
+            self.assert_stacked_decorators(source, items)
+
+    def assert_stacked_decorators(self, source: SourceFile, items: list[StructureItem]) -> None:
+        self.assertEqual(names(items), ["register", "annotate", "Dispatch"])
+        self.assertEqual(items[2].decorators, ["@register('café')"])
+        receipts = items[2].children[0]
+        self.assertEqual(receipts.decorators, ["@staticmethod", "@annotate(level=1)"])
+        self.assertEqual(names(receipts.children), ["format_ready"])
+        self.assertFalse(receipts.children[0].decorators)
+        for declaration in (items[2], receipts, receipts.children[0]):
+            span = declaration.span
+            assert span is not None
+            self.assertTrue(declaration.signature)
+            self.assertTrue(source.source[span.start_byte:span.end_byte].decode().startswith(declaration.signature or ""))
 
     def test_python_native_decorated_wrapper_canonicalizes_to_definition(self) -> None:
         source = coffee_source("python", "src/coffee/orders/models.py")
@@ -140,20 +142,24 @@ class CanonicalDeclarationTests(unittest.TestCase):
         self.assertEqual(names(items[1].children), ["subtotal", "espresso"])
 
     def test_missing_tags_and_unrelated_native_languages(self) -> None:
-        native = [StructureItem(name="Owner", children=[StructureItem(name="run")])]
+        source = coffee_source("csharp", "reporting/Dispatch.cs")
+        native = process(source.source.decode(), ProcessConfig(language="csharp")).structure
+        self.assertEqual(names(native), ["Dispatch"])
+        original = repr(native)
         _declaration_query.cache_clear()
         try:
             with patch("atlas.parsing.structure.get_tags_query", return_value=None):
-                source = case_bytes('parsing', 'declaration_canonical-missing_tags_and_unrelated_native_languages-csharp', 'sample.cs')
-                self.assertIs(extract_structure(parsing_syntax(source, "csharp"), native), native)
-                self.assertEqual(extract_structure(parsing_syntax(source, "csharp")), [])
+                self.assertIs(extract_structure(ParsedSyntax(source), native), native)
+                self.assertEqual(extract_structure(ParsedSyntax(source)), [])
+                self.assertEqual(repr(native), original)
         finally:
             _declaration_query.cache_clear()
-        source = case_text('parsing', 'declaration_canonical-missing_tags_and_unrelated_native_languages-ruby', 'sample.rb')
-        items = extract_structure(parsing_syntax(source, "ruby"), process(source, ProcessConfig(language="ruby")).structure)
-        self.assertEqual(names(items), ["Demo"])
-        self.assertEqual(names(items[0].children), ["Owner"])
-        self.assertEqual(names(items[0].children[0].children), ["run"])
+        items = merged(coffee_source("ruby", "reporting/Dispatch.rb"))
+        self.assertEqual(names(items), ["Coffee"])
+        self.assertEqual(names(items[0].children), ["Reporting"])
+        dispatcher = items[0].children[0].children[0]
+        self.assertEqual(dispatcher.name, "Dispatch")
+        self.assertEqual(names(dispatcher.children), ["initialize", "deliver", "preview"])
 
 
 if __name__ == "__main__":

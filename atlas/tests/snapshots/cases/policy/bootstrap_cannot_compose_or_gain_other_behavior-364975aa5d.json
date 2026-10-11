@@ -1,6 +1,0 @@
-[
-  "atlas.persistence.repositories",
-  "atlas.persistence.repositories.RepositoryStore",
-  "bootstrap must only re-export service factories (line 1)",
-  "bootstrap must only re-export service factories (line 2)"
-]

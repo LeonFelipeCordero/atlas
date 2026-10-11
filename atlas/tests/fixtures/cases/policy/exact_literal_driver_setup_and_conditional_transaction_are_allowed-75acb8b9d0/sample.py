@@ -1,1 +1,0 @@
-cursor.execute('PRAGMA journal_mode = WAL')

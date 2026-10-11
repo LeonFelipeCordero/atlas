@@ -1,1 +1,0 @@
-fn run(x: i32) { match x { 1 => run(0), _ => () } }

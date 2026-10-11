@@ -1,4 +1,0 @@
-{
-"native_input": null,
-"declarations": [{"body_span": null, "children": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "local", "signature": "function local() {}", "span": {"end_byte": 77, "end_column": 60, "end_line": 1, "start_byte": 58, "start_column": 41, "start_line": 1}, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": "action", "signature": "function internal() { function local() {} return local(); }", "span": {"end_byte": 95, "end_column": 78, "end_line": 1, "start_byte": 36, "start_column": 19, "start_line": 1}, "visibility": null}]
-}

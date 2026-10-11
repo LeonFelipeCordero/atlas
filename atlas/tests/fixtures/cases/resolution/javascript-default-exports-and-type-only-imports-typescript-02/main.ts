@@ -1,1 +1,0 @@
-import R from './recipe'; R.portions(1);

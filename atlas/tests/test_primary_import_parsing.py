@@ -1,7 +1,6 @@
-"""Primary import syntax belongs to language policies; legacy fallbacks stay stable."""
+"""Application imports belong to language policies; legacy fallbacks stay stable."""
 
-from tests.source_snapshot_fixture import case_text
-
+from functools import cache
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,133 +9,183 @@ from atlas.metrics.adapters import get_resolution_adapter
 from atlas.metrics.adapters.resolution import ImportBindings, _import_path, _namespace_binding
 from atlas.metrics.adapters.resolution_paths import import_path, namespace_binding
 from atlas.metrics.adapters.resolution_policy import ResolutionAdapter
-from atlas.domain.models import Import
 from atlas.metrics.resolver import _import_connections
 from atlas.metrics.resolution_contract import ImportRequest
+from atlas.parsing.parser import parse_files
+from tree_sitter_language_pack import get_parser
+from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, coffee_sources
+from tests.variant_snapshot_support import VARIANT_ROOT
 
 
-@pytest.mark.parametrize(
-    ("language", "source", "expected"),
-    [
-        ("python", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-python', 'sample.py'), "pkg.tools"),
-        ("python", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-python-2', 'sample.py'), "..pkg.tools"),
-        ("java", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-java', 'sample.java'), "pkg.Tools.run"),
-        ("java", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-java-2', 'sample.java'), "pkg.tools."),
-        ("kotlin", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-kotlin', 'sample.kt'), "pkg.Tools"),
-        ("go", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go', 'sample.go'), "example.org/pkg/tools"),
-        ("go", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-2', 'sample.go'), "example.org/pkg/tools"),
-        ("go", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-3', 'sample.go'), "example.org/pkg/tools"),
-        ("rust", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-rust', 'sample.rs'), "crate::tools::run"),
-        ("rust", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-rust-2', 'sample.rs'), "crate::tools::"),
-        ("rust", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-rust-3', 'sample.rs'), "tools"),
-        ("elixir", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-elixir', 'sample.ex'), "Project.Tools"),
-        ("elixir", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-elixir-2', 'sample.ex'), "Project.Tools"),
-        ("elixir", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-elixir-3', 'sample.ex'), "Project.Tools"),
-        ("javascript", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-javascript', 'sample.js'), "./tools"),
-        ("jsx", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-jsx', 'sample.jsx'), "./tools"),
-        ("typescript", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-typescript', 'sample.ts'), "./tools"),
-        ("tsx", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-tsx', 'sample.tsx'), "./tools"),
-    ],
-)
-def test_primary_import_paths_do_not_use_polyglot_fallback(language, source, expected):
-    assert import_path(source) == expected
+@cache
+def application(language):
+    return parse_files(coffee_sources(language))
+
+
+@pytest.mark.parametrize("language", [language for language in LANGUAGES if language not in {"ruby", "csharp"}])
+def test_primary_import_paths_do_not_use_polyglot_fallback(language):
+    repo = application(language)
+    imports = [(file, item) for file in repo.files for item in file.imports]
+    assert imports
     with patch("atlas.metrics.adapters.resolution_policy.import_path", side_effect=AssertionError):
-        assert get_resolution_adapter(language).import_path(source) == expected
+        for file, item in imports:
+            expected = import_path(item.source)
+            assert expected
+            assert get_resolution_adapter(file.source.language).import_path(item.source) == expected
+            assert item.file_path == file.source.path
+            text = file.source.source.decode()
+            assert item.source.strip() in text
+            assert item.source.strip().splitlines()[0] in text.splitlines()[item.line - 1]
 
 
-@pytest.mark.parametrize(
-    ("source", "expected"),
-    [
-        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python', 'sample.py'), "tools"),
-        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python-2', 'sample.py'), "tools"),
-        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python-3', 'sample.py'), "helpers"),
-        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python-4', 'sample.py'), "tools"),
-        (case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-2', 'sample.go'), "_"),
-        (case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-3', 'sample.go'), None),
-    ],
-)
-def test_go_namespace_rules_do_not_use_polyglot_fallback(source, expected):
-    path = "example.org/pkg/tools"
+@pytest.mark.parametrize("import_case", [
+    ("python", "src/coffee/brewing/brewer.py", "from .recipe", ".recipe"),
+    ("python", "src/coffee/brewing/brewer.py", "from ..reporting.report", "..reporting.report"),
+    ("java", "orders/Scheduling.java", "import static", "coffee.brewing.Recipe.portions"),
+    ("java", "orders/Scheduling.java", "java.util.*", "java.util."),
+    ("kotlin", "orders/Order.kt", "as renderCoffee", "coffee.reporting.render"),
+    ("rust", "main.rs", "mod brewing", "brewing"),
+    ("rust", "brewing/scheduling.rs", "recipe::*", "crate::brewing::recipe::"),
+    ("rust", "main.rs", "use crate::brewing::brewer;", "crate::brewing::brewer"),
+    ("elixir", "brewing/scheduling.ex", "use GenServer", "GenServer"),
+    ("elixir", "brewing/scheduling.ex", "require Logger", "Logger"),
+    ("elixir", "brewing/scheduling.ex", "alias Coffee", "Coffee.Brewing.Recipe"),
+    ("javascript", "ordering/Scheduling.js", "Recipe", "../brewing/Recipe.js"),
+    ("javascript", "ordering/Scheduling.jsx", "scheduleDrink", "./Scheduling.js"),
+    ("typescript", "ordering/Scheduling.ts", "Recipe", "../brewing/Recipe.ts"),
+    ("tsx", "App.tsx", "import * as Cards", "./CoffeeCard"),
+])
+def test_application_import_paths_are_exact(import_case):
+    language, path, needle, expected = import_case
+    file = next(file for file in application(language).files if file.source.path == path)
+    item, = [item for item in file.imports if needle in item.source]
+    assert import_path(item.source) == expected
+    with patch("atlas.metrics.adapters.resolution_policy.import_path", side_effect=AssertionError):
+        assert get_resolution_adapter(file.source.language).import_path(item.source) == expected
+
+
+@pytest.mark.parametrize("needle,path,expected", [
+    ('"time"', "time", "time"), ('clock "fmt"', "fmt", "clock"),
+    ('_ "net/http/pprof"', "net/http/pprof", "_"), ('. "math"', "math", None),
+])
+def test_go_namespace_rules_do_not_use_polyglot_fallback(needle, path, expected):
+    file = next(file for file in application("go").files
+                if file.source.path == "brewing/scheduling.go")
+    item, = [item for item in file.imports if needle == item.source]
+    source = item.source
     assert namespace_binding(source, path) == expected
     ctx = Mock()
     ctx.path_files.return_value = []
     with patch("atlas.metrics.adapters.resolution_policy.namespace_binding", side_effect=AssertionError):
-        entries = get_resolution_adapter("go").import_item(ctx, ImportRequest(Mock(), path, source=source))
+        entries = get_resolution_adapter("go").import_item(ctx, ImportRequest(file, path, source=source))
     assert entries == ([(expected, [], True)] if expected else [])
 
 
-@pytest.mark.parametrize(
-    ("source", "expected"),
-    [
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python', 'sample.py'), "tools/header.h"),
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-2', 'sample.py'), "tools"),
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-3', 'sample.py'), "Tools::run"),
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-4', 'sample.py'), "Tools.Run"),
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-5', 'sample.py'), "tools"),
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-6', 'sample.py'), "unknown syntax"),
-    ],
-)
-def test_legacy_import_path_fallback_and_reexport(source, expected):
+def assert_legacy_import_fallbacks(file):
+    for item in file.imports:
+        source = item.source
+        assert import_path(source) == _import_path(source) == ResolutionAdapter().import_path(source)
+        path = import_path(source)
+        assert namespace_binding(source, path) == _namespace_binding(source, path)
+
+
+@pytest.mark.parametrize("language", [language for language in LANGUAGES if language not in {"ruby", "csharp"}])
+def test_legacy_import_path_fallback_and_reexport(language):
+    for file in application(language).files:
+        assert_legacy_import_fallbacks(file)
+
+
+@pytest.mark.parametrize("import_case", [
+    ("python", "src/coffee/orders/scheduling.py", "from .models", None),
+    ("javascript", "ordering/Scheduling.js", "import { Recipe }", None),
+    ("javascript", "ordering/Scheduling.jsx", "import scheduleDrink", None),
+    ("rust", "brewing/brewer.rs", "as render_order", "render_order"),
+    ("tsx", "App.tsx", "import * as Cards", "Cards"),
+])
+def test_legacy_namespace_fallback_and_reexport(import_case):
+    language, path, needle, expected = import_case
+    file = next(file for file in application(language).files if file.source.path == path)
+    item, = [item for item in file.imports if needle in item.source]
+    assert namespace_binding(item.source, import_path(item.source)) == expected
+    assert _namespace_binding(item.source, import_path(item.source)) == expected
+
+
+def test_jsx_alias_import_policy_uses_owned_hook():
+    file = next(file for file in application("javascript").files
+                if file.source.path == "ordering/Scheduling.jsx")
+    item, = file.imports
+    with patch("atlas.metrics.adapters.resolution_policy.import_path", side_effect=AssertionError):
+        assert get_resolution_adapter("jsx").import_path(item.source) == "./Scheduling.js"
+
+
+@pytest.mark.parametrize("language,path,expected", [
+    ("ruby", FIXTURE_ROOT / "ruby/scheduling.rb", "date"),
+    ("c", VARIANT_ROOT / "c/legacy-scheduling-include/scheduling.h", "time.h"),
+])
+def test_legacy_require_and_include_paths(language, path, expected):
+    source = path.read_text()
+    root = get_parser(language).parse(source.encode()).root_node
+    assert not root.has_error
+    if language == "ruby":
+        directive, = [node for node in root.named_children if node.type == "call"]
+        source = source.encode()[directive.start_byte:directive.end_byte].decode()
     assert import_path(source) == _import_path(source) == expected
     assert ResolutionAdapter().import_path(source) == expected
 
 
-@pytest.mark.parametrize(
-    ("source", "path", "expected"),
-    [
-        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-5', 'sample.py'), "tools", None),
-        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python', 'sample.py'), "tools", None),
-        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python-2', 'sample.py'), "pkg", None),
-        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python-3', 'sample.py'), "tools", "Helpers"),
-        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python-4', 'sample.py'), "pkg/tools", "tools"),
-    ],
-)
-def test_legacy_namespace_fallback_and_reexport(source, path, expected):
-    assert namespace_binding(source, path) == _namespace_binding(source, path) == expected
+def test_legacy_unknown_import_path_is_preserved():
+    assert ResolutionAdapter().import_path("  malformed scheduling directive  ") == "malformed scheduling directive"
 
 
-def test_default_import_methods_dispatch_to_adapter_path_hook():
-    source = case_text('parsing', 'primary-import-hook-directive', 'directive.txt')
+@pytest.fixture
+def directive():
+    file = next(file for file in application("python").files
+                if file.source.path.endswith("/scheduling.py"))
+    item, = file.imports
+    return file, item
+
+
+def test_default_import_methods_dispatch_to_adapter_path_hook(directive):
+    file, item = directive
     adapter = ResolutionAdapter()
     adapter.import_path = Mock(return_value="owned/path")
     ctx = Mock()
     ctx.path_files.return_value = []
-    request = ImportRequest(Mock(), adapter.import_path(source), source=source)
+    request = ImportRequest(file, adapter.import_path(item.source), source=item.source)
     assert adapter.import_targets(ctx, request) == [("owned/path", None)]
-    adapter.import_path.assert_called_once_with(source)
+    adapter.import_path.assert_called_once_with(item.source)
     assert ctx.path_files.call_args.args[1] == "owned/path"
 
 
-def test_directive_bindings_dispatch_to_adapter_path_hook():
-    source = case_text('parsing', 'primary-import-hook-directive', 'directive.txt')
+def test_directive_bindings_dispatch_to_adapter_path_hook(directive):
+    file, item = directive
     adapter = Mock(require_import_node=False)
     adapter.import_path.return_value = "owned/path"
     adapter.import_item.return_value = []
     syntax = Mock(adapter=adapter)
     syntax.import_node.return_value = None
     syntax.import_scope.return_value = None
-    ctx = Mock(syntax={"source": syntax})
-    file = Mock()
-    file.source.path = "source"
-    item = Import("source", source, 1)
+    ctx = Mock(syntax={file.source.path: syntax})
     assert ImportBindings._directive_bindings(ctx, file, item, 20) == []
-    adapter.import_path.assert_called_once_with(source)
-    adapter.import_item.assert_called_once_with(ctx, ImportRequest(file, "owned/path", source=source))
+    adapter.import_path.assert_called_once_with(item.source)
+    adapter.import_item.assert_called_once_with(ctx, ImportRequest(file, "owned/path", source=item.source))
 
 
-def test_missing_required_import_node_dispatches_to_adapter_path_hook():
-    source = case_text('parsing', 'primary-import-hook-directive', 'directive.txt')
+def test_missing_required_import_node_dispatches_to_adapter_path_hook(directive):
+    file, item = directive
     adapter = Mock(require_import_node=True)
     adapter.import_path.return_value = "owned/path"
     adapter.import_targets.return_value = [("ignored", "ignored")]
     adapter.import_type_only.return_value = False
     syntax = Mock()
     syntax.import_node.return_value = None
-    file = Mock()
-    file.source.language = "rust"
-    resolver = Mock(files={"source": file}, syntax={"source": syntax})
+    resolver = Mock(files={file.source.path: file}, syntax={file.source.path: syntax})
     external = Mock(return_value="external:owned/path")
     with patch("atlas.metrics.resolver.get_resolution_adapter", return_value=adapter):
-        connections = _import_connections(Import("source", source, 1), resolver, external)
-    external.assert_called_once_with("rust", "module", "owned/path")
+        connections = _import_connections(item, resolver, external)
+    assert adapter.import_path.call_count == 2
+    assert all(call.args == (item.source,) for call in adapter.import_path.call_args_list)
+    adapter.import_targets.assert_called_once()
+    external.assert_called_once_with("python", "module", "owned/path")
+    assert len(connections) == 1
     assert connections[0].target_key == "external:owned/path"

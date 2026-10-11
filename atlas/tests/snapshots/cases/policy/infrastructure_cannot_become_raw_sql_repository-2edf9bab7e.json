@@ -1,4 +1,0 @@
-[
-  "infrastructure SQL must be literal setup only: connection.exec_driver_sql",
-  "raw SQL statement"
-]

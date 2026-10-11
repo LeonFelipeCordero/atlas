@@ -1,1 +1,0 @@
-getattr(service, '_repo' + 'sitory')

@@ -1,5 +1,0 @@
-[
-  "sqlalchemy",
-  "sqlalchemy.orm",
-  "sqlalchemy.orm.Session"
-]

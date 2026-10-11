@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e6374696f6e2066287b612c627d2c205b782c795d2c207a3d63616c6c28312c32292c202e2e2e6172677329207b7d"}, "language": "javascript", "path": "sample"},
-"content_hash": "df724da8455ad1bc3b2856844f347adbe2c3f66dae90d9ee4b0c206a96dbaec3",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 49, "end_column": 50, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "javascript", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "function f({a,b}, [x,y], z=call(1,2), ...args)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 36, "evidence": "call(1,2)", "file_path": "sample", "line": 1, "name": "call", "qualifier": null, "relationship": "CALLS", "start_byte": 27}],
-"imports": [],
-"inheritances": []
-}

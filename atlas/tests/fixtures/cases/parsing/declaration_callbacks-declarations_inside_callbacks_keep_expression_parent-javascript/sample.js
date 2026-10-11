@@ -1,1 +1,0 @@
-function outer() { use(() => { function local() {} return local(); }); }

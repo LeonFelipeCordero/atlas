@@ -1,2 +1,0 @@
-from sqlalchemy import literal_column
-literal_column(expression)

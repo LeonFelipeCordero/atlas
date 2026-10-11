@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "646566206628612c2c62293a2070617373"}, "language": "python", "path": "sample.py"},
-"content_hash": "1b1e7a1e4cc7e22516ac4d6b196801dba4aff64f688d6c0c7477210bf2389ef4",
-"parse_error": "Syntax error at line 1, column 8; analysis may be incomplete.",
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 17, "end_column": 18, "end_line": 1, "file_path": "sample.py", "key": "symbol:sample.py::f:0", "kind": "function", "language": "python", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::f", "signature": "def f(a,,b):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

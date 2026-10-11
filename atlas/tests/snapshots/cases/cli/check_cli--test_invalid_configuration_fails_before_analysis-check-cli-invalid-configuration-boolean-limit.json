@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "cli",
-    "exit_code": 1,
-    "output": "Error: Invalid <tmp>/atlas.json: 1 validation error for CheckConfig\nmaxParameters\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.14/v/int_type\n",
-    "stdout": "",
-    "stderr": "Error: Invalid <tmp>/atlas.json: 1 validation error for CheckConfig\nmaxParameters\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.14/v/int_type\n"
-  }
-]

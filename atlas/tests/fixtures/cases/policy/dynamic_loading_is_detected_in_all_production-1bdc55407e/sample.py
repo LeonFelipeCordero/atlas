@@ -1,1 +1,0 @@
-locals()[computed_name]

@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "cli",
-    "exit_code": 0,
-    "output": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"run\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"unsafe\", \"path\": \"src/escape.py\"}, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
-    "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"run\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"unsafe\", \"path\": \"src/escape.py\"}, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
-    "stderr": ""
-  }
-]

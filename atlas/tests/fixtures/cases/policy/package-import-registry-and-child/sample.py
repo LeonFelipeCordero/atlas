@@ -1,1 +1,0 @@
-from .adapters import get_adapter, java

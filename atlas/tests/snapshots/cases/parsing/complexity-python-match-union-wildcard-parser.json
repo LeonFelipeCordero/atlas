@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "64656620726f7574652876616c7565293a0a206d617463682076616c75653a0a2020636173652030207c205f3a20706173730a"}, "language": "python", "path": "sample.py"},
-"content_hash": "51fb9a3abf03a5190027d3116e0d66e5fa1b734c50cd48538cf62882d4557978",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 50, "end_column": 19, "end_line": 3, "file_path": "sample.py", "key": "symbol:sample.py::route:0", "kind": "function", "language": "python", "line_count": null, "name": "route", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::route", "signature": "def route(value):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

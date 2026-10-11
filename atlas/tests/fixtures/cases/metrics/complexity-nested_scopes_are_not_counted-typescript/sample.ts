@@ -1,1 +1,0 @@
-{ if(a) { function inner(){for(;;){for(;;){if(b){}}}} const f = () => {while(a){if(b){}}}; class A {run(){if(a){}}} } }

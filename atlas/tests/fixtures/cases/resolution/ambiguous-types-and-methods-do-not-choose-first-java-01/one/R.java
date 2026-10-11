@@ -1,1 +1,0 @@
-package tools; class R {static void work(){}}

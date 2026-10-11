@@ -1,1 +1,0 @@
-const holder = { apply: (((function* internal() { function local() {} yield local(); }))) };

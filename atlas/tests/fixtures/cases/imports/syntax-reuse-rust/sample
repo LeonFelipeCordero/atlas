@@ -1,2 +1,0 @@
-mod tools;
-fn run(value: bool) { if value { helper(value); } }

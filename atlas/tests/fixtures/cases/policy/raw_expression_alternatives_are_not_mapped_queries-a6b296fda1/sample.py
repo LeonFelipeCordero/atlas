@@ -1,1 +1,0 @@
-select(Row).suffix_with(fragment)

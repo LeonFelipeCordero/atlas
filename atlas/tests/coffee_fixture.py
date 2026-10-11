@@ -19,8 +19,10 @@ LANGUAGES = (
     "elixir",
     "python",
     "tsx",
+    "ruby",
+    "csharp",
 )
-BREWING_LANGUAGES = tuple(language for language in LANGUAGES if language != "tsx")
+BREWING_LANGUAGES = tuple(language for language in LANGUAGES if language not in {"tsx", "ruby", "csharp"})
 
 
 def coffee_sources(language: str):

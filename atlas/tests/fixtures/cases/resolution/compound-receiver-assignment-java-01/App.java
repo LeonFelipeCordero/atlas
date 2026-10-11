@@ -1,1 +1,0 @@
-class Service {void persist(){}} class App {void run(Service local){local++;local.persist();}}

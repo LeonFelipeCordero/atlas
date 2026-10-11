@@ -1,125 +1,113 @@
-"""Focused extraction-policy tests independent of graph resolution."""
-
-from tests.source_snapshot_fixture import case_bytes, case_text
+"""Extraction policies on whole application sources, independent of resolution."""
 
 import unittest
-from dataclasses import dataclass
-from pathlib import Path
-
-from tree_sitter_language_pack import get_parser
+from dataclasses import replace
 
 from atlas.parsing.adapters import DEFAULT_ADAPTER, get_adapter
-from atlas.parsing.discovery import SourceFile
 from atlas.parsing.parser import parse_file
-from atlas.syntax import walk
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import DeclarationHeader, ParsedSyntax
-from tests.parsing_fixture import parsing_syntax
-
-
-@dataclass(frozen=True)
-class MetadataCase:
-    syntax: ParsedSyntax
-    node_type: str
-    visibility: str | None
-    decorators: list[str]
+from atlas.syntax import walk
+from tests.coffee_consolidation import coffee_source
 
 
 class ExtractionAdapterTest(unittest.TestCase):
     def test_per_language_inheritance_and_generic_fallback(self):
-        for language, signature, expected in [
-            (
-                "java",
-                case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-java', 'sample.java'),
-                ["Base", "Service"],
-            ),
-            ("kotlin", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-kotlin', 'sample.kt'), ["Base", "Service"]),
-            (
-                "typescript",
-                case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-java', 'sample.java'),
-                ["Base", "Service"],
-            ),
-            ("python", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-python', 'sample.py'), ["Base", "pkg.Mixin"]),
-            ("javascript", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-javascript', 'sample.js'), ["Base"]),
+        for language, path, name, expected in [
+            ("java", "inventory/Inventory.java", "Inventory", ["StockLedger", "Reservable"]),
+            ("kotlin", "inventory/Inventory.kt", "Inventory", ["StockLedger", "Reservable"]),
+            ("typescript", "ordering/Dispatch.ts", "Dispatch", ["Receipt", "Iterable"]),
+            ("typescript", "ordering/Dispatch.ts", "DispatchBook", ["orderTypes.OrderBook", "Iterable"]),
+            ("python", "src/coffee/orders/service.py", "OrderService", ["CoffeeOrders", "AuditTrail"]),
+            ("python", "src/coffee/inventory/stock.py", "Ledger", ["ABC", "Generic"]),
+            ("python", "src/coffee/inventory/stock.py", "Inventory", ["Ledger"]),
+            ("javascript", "brewing/Brewer.js", "Brewer", ["Brewing"]),
         ]:
-            with self.subTest(language=language):
-                self.assertEqual(
-                    get_adapter(language).inheritance(DeclarationHeader(language, "class", signature)),
-                    expected,
-                )
-        self.assertEqual(
-            get_adapter("typescript").inheritance(
-                DeclarationHeader("typescript", "interface", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-typescript-2', 'sample.ts')),
-            ),
-            ["pkg.Base", "Service"],
-        )
+            with self.subTest(language=language, declaration=name):
+                self.assert_inheritance(coffee_source(language, path), (name, expected))
         self.assertIs(get_adapter("ruby"), DEFAULT_ADAPTER)
+        source = coffee_source("ruby", "reporting/Dispatch.rb")
+        dispatcher = extract_structure(ParsedSyntax(source))[0].children[0].children[0]
+        self.assertEqual(DEFAULT_ADAPTER.inheritance(DeclarationHeader("ruby", "class", dispatcher.signature or "")), [])
+
+    def assert_inheritance(self, source, expectation):
+        name, expected = expectation
+        items = extract_structure(ParsedSyntax(source))
+        declaration = next(item for item in items if item.name == name)
+        header = DeclarationHeader(source.language, str(declaration.kind).lower(), declaration.signature or "")
+        self.assertEqual(get_adapter(source.language).inheritance(header), expected)
 
     def test_jsx_tag_name_sites_are_references_without_swallowing_attribute_calls(self):
-        sample = case_bytes('parsing', 'extraction_adapters-jsx_tag_name_sites_are_references_without_swallowing_attribute_calls-javascript', 'App.jsx')
+        source = coffee_source("javascript", "ordering/DispatchView.jsx")
         for language in ("javascript", "tsx"):
             with self.subTest(language=language):
-                self.assert_jsx_reference_calls(language, sample)
+                self.assert_jsx_calls(replace(source, language=language))
 
-    def assert_jsx_reference_calls(self, language, sample):
-        parsed = parse_file(SourceFile("App.jsx", Path("App.jsx"), language, sample))
+    def assert_jsx_calls(self, source):
+        parsed = parse_file(source)
+        self.assertIsNone(parsed.parse_error)
         self.assertEqual(
+            [(call.evidence, call.relationship, call.qualifier) for call in parsed.calls],
             [
-                (call.evidence, call.relationship, call.qualifier)
-                for call in parsed.calls
-            ],
-            [
-                ("Card", "REFERENCES", None),
-                ("brew()", "CALLS", None),
-                ("UI.Card", "REFERENCES", "UI"),
-                ("Card", "REFERENCES", None),
+                ("ReceiptCard", "REFERENCES", None),
+                ("dispatchLabel(order)", "CALLS", None),
+                ("DispatchCards.ReceiptCard", "REFERENCES", "DispatchCards"),
+                ("new Dispatch()", "CALLS", None),
+                ("dispatcher.schedule([order])", "CALLS", "dispatcher"),
             ],
         )
-        self.assertTrue(
-            all(
-                call.end_byte - call.start_byte == len(call.evidence.encode())
-                for call in parsed.calls
-            )
-        )
+        for call in parsed.calls:
+            self.assertEqual(source.source[call.start_byte:call.end_byte].decode(), call.evidence)
+            self.assertEqual(call.end_byte - call.start_byte, len(call.evidence.encode()))
 
     def test_decorators_visibility_and_import_supplement_owned_by_adapters(self):
-        for language, code, node_type, visibility, decorators in [
-            (
-                "java",
-                case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-java', 'sample.java'),
-                "class_declaration",
-                "public",
-                ["@Deprecated"],
-            ),
-            ("rust", case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-rust', 'sample.rs'), "struct_item", None, []),
+        for language, path, node_type, visibility, decorators in [
+            ("java", "reporting/Dispatch.java", "class_declaration", "public", ["@Deprecated"]),
+            ("rust", "Dispatch.rs", "struct_item", None, []),
         ]:
             with self.subTest(language=language):
                 self.assert_declaration_metadata(
-                    MetadataCase(parsing_syntax(code, language), node_type, visibility, decorators)
+                    ParsedSyntax(coffee_source(language, path)), (node_type, visibility, decorators),
                 )
-        for language, code, expected in [
-            ("kotlin", case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-kotlin', 'sample.kt'), [("import demo.Service", 1)]),
-            ("rust", case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-rust-2', 'sample.rs'), [("mod external;", 1)]),
+        for language, path, expected in [
+            ("kotlin", "orders/OrderService.kt", [
+                ("import coffee.brewing.Brewer as CoffeeBrewer", 3),
+                ("import coffee.inventory.Inventory", 4),
+            ]),
+            ("rust", "Dispatch.rs", [("mod dispatch_report;", 2)]),
         ]:
-            source = SourceFile("sample", Path("sample"), language, code)
-            self.assertEqual(get_adapter(language).imports(ParsedSyntax(source), []), expected)
+            with self.subTest(language=language):
+                syntax = ParsedSyntax(coffee_source(language, path))
+                native = expected[:1]
+                original = native.copy()
+                self.assertEqual(get_adapter(language).imports(syntax, native), expected)
+                self.assertEqual(native, original)
 
-    def assert_declaration_metadata(self, case: MetadataCase):
-        node = next(node for node in walk(case.syntax.tree()) if node.type == case.node_type)
-        actual_visibility, actual_decorators = get_adapter(case.syntax.source.language).metadata(node)
-        self.assertEqual(actual_visibility, case.visibility)
-        self.assertEqual(actual_decorators, case.decorators)
+    def assert_declaration_metadata(self, syntax, expectation):
+        node_type, visibility, decorators = expectation
+        node = next(node for node in walk(syntax.tree()) if node.type == node_type)
+        self.assertEqual(get_adapter(syntax.source.language).metadata(node), (visibility, decorators))
 
     def test_rust_macro_payload_remains_rust_only(self):
-        code = case_bytes('parsing', 'extraction_adapters-rust_macro_payload_remains_rust_only-rust', 'sample.rs')
-        root = get_parser("rust").parse(code).root_node
+        syntax = ParsedSyntax(coffee_source("rust", "Dispatch.rs"))
         rust = get_adapter("rust")
-        sites = list(rust.call_sites(root))
-        self.assertEqual(
-            [rust.normalize_call(site)[0] for site in sites], ["println!", "helper"]
-        )
-        self.assertEqual([site[2] for site in sites], [False, True])
-        self.assertTrue(extract_structure(parsing_syntax(case_bytes('parsing', 'extraction_adapters-rust_macro_payload_remains_rust_only-python', 'sample.py'), "python")))
+        sites = list(rust.call_sites(syntax.tree()))
+        self.assertEqual([rust.normalize_call(site)[0] for site in sites], [
+            "format!", "collect", "map", "filter", "iter", "portions", "pickup", "encode",
+            "label", "preview", "receipts", "println!", "pickup", "send",
+        ])
+        self.assertEqual([site[2] for site in sites], [False] * 12 + [True, False])
+        macro_call = sites[12]
+        node, offset, opaque, parents = macro_call
+        self.assertTrue(opaque)
+        self.assertEqual(parents, ())
+        self.assertEqual(syntax.source.source[node.start_byte + offset:node.end_byte + offset],
+                         b"dispatch_labels::pickup(&receipt)")
+        python = get_adapter("python")
+        self.assertFalse(any(site[2] for site in python.call_sites(syntax.tree())))
+        python_syntax = ParsedSyntax(coffee_source("python", "src/coffee/reporting/dispatch.py"))
+        self.assertTrue(extract_structure(python_syntax))
+        self.assertFalse(any(site[2] for site in python.call_sites(python_syntax.tree())))
 
 
 if __name__ == "__main__":

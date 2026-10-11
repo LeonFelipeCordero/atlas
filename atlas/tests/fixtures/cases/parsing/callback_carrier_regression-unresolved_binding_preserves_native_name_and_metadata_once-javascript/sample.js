@@ -1,1 +1,0 @@
-consume((() => { function local() {} return local(); }));

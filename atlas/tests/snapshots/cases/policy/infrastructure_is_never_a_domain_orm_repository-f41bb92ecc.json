@@ -1,3 +1,0 @@
-[
-  "migration cannot query or mutate domain data: session.bulk_update_mappings"
-]

@@ -1,1 +1,0 @@
-package drinks.report; import drinks.recipe.Recipe; class Report {static int total(){return Recipe.portions(2);}}

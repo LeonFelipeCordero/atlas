@@ -1,5 +1,0 @@
-[
-  {"allowed": true, "id": "persistence-entity-boundaries-declarative-entity-definitions-are-allowed-case-01", "module": "", "old_test": "test_persistence_entity_boundaries.py::test_declarative_entity_definitions_are_allowed", "operation": "entity", "package": "atlas.persistence"},
-  {"allowed": true, "id": "persistence-entity-boundaries-declarative-entity-definitions-are-allowed-case-02", "module": "", "old_test": "test_persistence_entity_boundaries.py::test_declarative_entity_definitions_are_allowed", "operation": "entity", "package": "atlas.persistence"},
-  {"allowed": true, "id": "persistence-entity-boundaries-declarative-entity-definitions-are-allowed-case-03", "module": "", "old_test": "test_persistence_entity_boundaries.py::test_declarative_entity_definitions_are_allowed", "operation": "entity", "package": "atlas.persistence"}
-]

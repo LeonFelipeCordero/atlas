@@ -17,14 +17,14 @@ from tests.coffee_navigation import (
 @pytest.mark.parametrize("language", CORE_LANGUAGES)
 def test_coffee_navigation_matches_snapshot(language: str, tmp_path: Path) -> None:
     actual = navigation_responses(language, tmp_path / "atlas.sqlite")
-    expected = json.loads((NAVIGATION_SNAPSHOT_ROOT / f"{language}-coffee.json").read_text(encoding="utf-8"))
+    expected = json.loads((NAVIGATION_SNAPSHOT_ROOT / language / "navigation.json").read_text(encoding="utf-8"))
     assert actual == expected
 
 
 @pytest.mark.parametrize("fault", ["wrong_direction", "missing_base_edge"])
 def test_inheritance_assertions_reject_incomplete_outgoing_chain(fault: str) -> None:
     # Mutate a response only: no saved snapshot is used to populate the database.
-    snapshot = json.loads((NAVIGATION_SNAPSHOT_ROOT / "python-coffee.json").read_text(encoding="utf-8"))
+    snapshot = json.loads((NAVIGATION_SNAPSHOT_ROOT / "python" / "navigation.json").read_text(encoding="utf-8"))
     payload = snapshot["context_brewer_inherits_out"]
     path = "src/coffee/brewing/brewer.py"
     derived = declaration(payload["nodes"], Declaration(path, "Brewer", "class", level="type"))

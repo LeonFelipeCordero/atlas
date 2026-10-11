@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "7061636b6167652064656d6f0a696d706f72742064656d6f2e48656c7065720a636c6173732053657276696365207b7d"}, "language": "kotlin", "path": "sample.kt"},
-"content_hash": "9959fd4141531756624ec8b1c22f137ce520d36111d538a0ab9c0402627562e3",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 12, "end_column": 13, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::demo:0", "kind": "module", "language": "kotlin", "line_count": null, "name": "demo", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::demo", "signature": "package demo", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 48, "end_column": 17, "end_line": 3, "file_path": "sample.kt", "key": "symbol:sample.kt::Service:32", "kind": "class", "language": "kotlin", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::Service", "signature": "class Service {}", "start_byte": 32, "start_column": 1, "start_line": 3, "visibility": null}],
-"calls": [],
-"imports": [{"file_path": "sample.kt", "line": 2, "source": "import demo.Helper"}],
-"inheritances": []
-}

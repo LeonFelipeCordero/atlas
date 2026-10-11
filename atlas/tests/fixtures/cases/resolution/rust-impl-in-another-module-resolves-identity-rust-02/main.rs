@@ -1,1 +1,0 @@
-mod service; impl service::Service {fn persist(&self){}} fn run(local:&service::Service){local.persist();}

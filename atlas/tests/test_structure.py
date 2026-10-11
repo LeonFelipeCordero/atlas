@@ -7,8 +7,6 @@ from tree_sitter_language_pack import ProcessConfig, get_tags_query, process
 from atlas.parsing.structure import _declaration_query, extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_consolidation import coffee_source
-from tests.parsing_fixture import parsing_syntax
-from tests.source_snapshot_fixture import case_bytes
 
 
 def names(items):
@@ -52,11 +50,11 @@ class StructureTagsTest(unittest.TestCase):
         self.assertEqual(names(factory.children), ["espresso"])
 
     def test_kotlin_private_visibility_discriminator(self) -> None:
-        # Coffee services expose public operations; private callable visibility is
-        # deliberately retained independently rather than dropping that assertion.
-        source = case_bytes('parsing', 'structure-uses_bundled_tags_with_graph_metadata_and_nesting-kotlin', 'sample.kt')
-        service = extract_structure(parsing_syntax(source, "kotlin"))[1]
+        source = coffee_source("kotlin", "reporting/Dispatch.kt")
+        service = extract_structure(ParsedSyntax(source))[2]
+        self.assertEqual(names(service.children), ["eligible", "deliver", "preview", "Factory"])
         self.assertEqual(service.children[0].visibility, "private")
+        self.assertIsNone(service.children[1].visibility)
 
     def test_unnamed_companion_is_a_container_without_duplicate_declarations(self) -> None:
         source = coffee_source("kotlin", "inventory/Inventory.kt")
@@ -92,10 +90,11 @@ class StructureTagsTest(unittest.TestCase):
         self.assertEqual(names(contract[1].children), ["fulfill", "ready"])
 
     def test_java_private_method_visibility_discriminator(self) -> None:
-        # Coffee constructors are private, but its business methods are public.
-        source = case_bytes('parsing', 'structure-java_methods_constructors_overloads_and_nested_types-java', 'sample.java')
-        structure = extract_structure(parsing_syntax(source, "java"))
-        self.assertEqual(structure[2].children[1].visibility, "private")
+        source = coffee_source("java", "reporting/Dispatch.java")
+        service = extract_structure(ParsedSyntax(source))[1]
+        self.assertEqual(names(service.children), ["Dispatch", "eligible", "deliver", "preview"])
+        self.assertEqual(service.children[1].visibility, "private")
+        self.assertEqual(service.children[2].visibility, "public")
 
     def test_java_private_constructor_visibility(self) -> None:
         structure = extract_structure(ParsedSyntax(coffee_source("java", "brewing/Recipe.java")))
@@ -134,19 +133,24 @@ class StructureTagsTest(unittest.TestCase):
                     self.assertEqual(names(structure[0].children), ["lineTotal", None, None])
                     self.assertEqual(names(structure[2].children), ["ticket"])
 
-    def test_ruby_native_nesting_without_a_coffee_project(self) -> None:
-        source = case_bytes('parsing', 'structure-other_languages_use_the_same_nesting_and_keep_native_metadata-ruby', 'sample.rb')
-        native = process(source.decode(), ProcessConfig(language="ruby")).structure
-        structure = extract_structure(parsing_syntax(source, "ruby"), native)
-        self.assertEqual(names(structure), ["Demo"])
-        self.assertEqual(names(structure[0].children), ["Service"])
-        self.assertEqual(names(structure[0].children[0].children), ["run"])
+    def test_ruby_native_nesting(self) -> None:
+        source = coffee_source("ruby", "reporting/Dispatch.rb")
+        native = process(source.source.decode(), ProcessConfig(language="ruby")).structure
+        original = repr(native)
+        structure = extract_structure(ParsedSyntax(source), native)
+        self.assertEqual(names(structure), ["Coffee"])
+        self.assertEqual(names(structure[0].children), ["Reporting"])
+        dispatcher = structure[0].children[0].children[0]
+        self.assertEqual(dispatcher.name, "Dispatch")
+        self.assertEqual(names(dispatcher.children), ["initialize", "deliver", "preview"])
+        self.assertEqual(repr(native), original)
 
     def test_missing_bundled_tags_preserves_native_extraction(self) -> None:
-        source = case_bytes('parsing', 'structure-missing_bundled_tags_preserves_native_extraction-csharp', 'sample.cs')
-        native = process(source.decode(), ProcessConfig(language="csharp")).structure
+        source = coffee_source("csharp", "reporting/Dispatch.cs")
+        native = process(source.source.decode(), ProcessConfig(language="csharp")).structure
+        self.assertTrue(native)
         with patch("atlas.parsing.structure.get_tags_query", return_value=None):
-            self.assertIs(extract_structure(parsing_syntax(source, "csharp"), native), native)
+            self.assertIs(extract_structure(ParsedSyntax(source), native), native)
 
     def test_queries_are_cached_per_language(self) -> None:
         with patch("atlas.parsing.structure.get_tags_query", wraps=get_tags_query) as tags:

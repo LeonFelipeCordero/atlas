@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c6173732053657276696365207b2066756e2072756e2829203d2068656c7065722829207d"}, "language": "kotlin", "path": "sample"},
-"content_hash": "054ad03c06e22be01725b4f910b354e15e469dd82486c0bf475897a9f34aeac0",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 38, "end_column": 39, "end_line": 1, "file_path": "sample", "key": "symbol:sample::Service:0", "kind": "class", "language": "kotlin", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::Service", "signature": "class Service { fun run() = helper() }", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 36, "end_column": 37, "end_line": 1, "file_path": "sample", "key": "symbol:sample::Service.run:16", "kind": "function", "language": "kotlin", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample::Service:0", "qualified_name": "sample::Service.run", "signature": "fun run() = helper()", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 36, "evidence": "helper()", "file_path": "sample", "line": 1, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 28}],
-"imports": [],
-"inheritances": []
-}

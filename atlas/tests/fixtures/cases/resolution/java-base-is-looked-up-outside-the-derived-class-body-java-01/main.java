@@ -1,1 +1,0 @@
-class Base {} class Derived extends Base {static class Base {}}

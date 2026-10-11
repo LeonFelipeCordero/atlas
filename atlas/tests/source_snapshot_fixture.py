@@ -1,4 +1,4 @@
-"""Shared source corpus access and lossless deterministic snapshot serialization."""
+"""Lossless deterministic serialization for complete-project snapshots."""
 
 import dataclasses
 import json
@@ -8,26 +8,6 @@ from typing import Any
 
 from pydantic import BaseModel
 from tree_sitter_language_pack import StructureKind
-
-CASE_ROOT = Path(__file__).parent / "fixtures" / "cases"
-SNAPSHOT_ROOT = Path(__file__).parent / "snapshots" / "cases"
-
-
-def case_bytes(family: str, case_id: str, path: str = "sample.py") -> bytes:
-    return (CASE_ROOT / family / case_id / path).read_bytes()
-
-
-def case_text(family: str, case_id: str, path: str = "sample.py") -> str:
-    return case_bytes(family, case_id, path).decode("utf-8")
-
-
-def case_sources(family: str, case_id: str) -> dict[str, str]:
-    root = CASE_ROOT / family / case_id
-    return {
-        path.relative_to(root).as_posix(): path.read_bytes().decode("utf-8")
-        for path in sorted(root.rglob("*"))
-        if path.is_file()
-    }
 
 
 def snapshot_value(value: Any) -> Any:
@@ -65,10 +45,3 @@ def snapshot_scalar(value: Any) -> Any:
     if isinstance(value, Enum):
         return value.value
     return value
-
-
-def assert_case_snapshot(family: str, case_id: str, value: Any) -> None:
-    expected = json.loads(
-        (SNAPSHOT_ROOT / family / f"{case_id}.json").read_text(encoding="utf-8")
-    )
-    assert snapshot_value(value) == expected, f"{family}/{case_id}"

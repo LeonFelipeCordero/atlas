@@ -1,4 +1,0 @@
-[
-  "atlas.persistence.database.repository_session",
-  "factory imports must name only repository contexts or migration operation"
-]

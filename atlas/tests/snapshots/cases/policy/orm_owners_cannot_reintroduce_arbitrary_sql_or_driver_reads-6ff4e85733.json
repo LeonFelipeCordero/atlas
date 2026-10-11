@@ -1,5 +1,0 @@
-[
-  "database handle/operation connection.cursor",
-  "database operation connection.cursor",
-  "raw SQL/driver access connection.cursor"
-]

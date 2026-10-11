@@ -1,1 +1,0 @@
-connection.execute('UPDATE repositories SET name = 1')

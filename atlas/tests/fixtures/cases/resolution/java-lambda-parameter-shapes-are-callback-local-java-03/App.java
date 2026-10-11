@@ -1,1 +1,0 @@
-package app; import tools.R; class App {void run(){use((R, other) -> R.work()); R.work(2);}}

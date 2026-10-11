@@ -1,8 +1,9 @@
-"""Negative receiver inference and existing identity-safety contracts."""
+"""Whole coffee projects: receiver identity, visibility and unsafe lifetimes."""
 
-from tests.resolution_snapshot_support import fixture_sources
 import pytest
-from tests.test_semantic_resolution import repository, call_edges
+
+from tests.import_project_support import project_sources
+from tests.test_semantic_resolution import assert_coffee_call, call_edges, repository
 
 
 def assert_target(language, sources, expected):
@@ -14,337 +15,111 @@ def assert_target(language, sources, expected):
     ), edges
 
 
+def assert_lifetime_call(language, site, target=None):
+    """Resolve one workflow site, including its owner and exact declaration."""
+    path, owner, evidence = site
+    repo = repository(language, project_sources(language, "receiver-lifetime"))
+    target_path, target_name = target or (
+        None, f"external:{language}:callable:{evidence.split('(')[0].rsplit('.', 1)[-1]}"
+    )
+    return assert_coffee_call(repo, (path, owner, evidence, target_path, target_name))
+
+
+PY_LEDGER = "src/coffee/inventory/ledger.py"
+PY_INTAKE = "src/coffee/orders/reservations.py"
+JAVA_INTAKE = "intake/ReservationIntake.java"
+KOTLIN_INTAKE = "intake/ReservationIntake.kt"
+GO_LEDGER = "reservations/ledger.go"
+RUST_INTAKE = "reservation_intake.rs"
+
+
 @pytest.mark.parametrize(
     "case",
     [
-        (
-            "python",
-            "app.py",
-            "constructor-and-field-receivers-python-01",
-            "self.service.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "constructor-and-field-receivers-python-02",
-            "self.service.persist()",
-        ),
-        (
-            "javascript",
-            "app.js",
-            "constructor-and-field-receivers-javascript-01",
-            "this.service.persist()",
-        ),
-        (
-            "javascript",
-            "app.jsx",
-            "constructor-and-field-receivers-javascript-02",
-            "this.service.persist()",
-        ),
-        (
-            "java",
-            "App.java",
-            "constructor-and-field-receivers-java-01",
-            "local.persist()",
-        ),
-        (
-            "java",
-            "App.java",
-            "constructor-and-field-receivers-java-02",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "constructor-and-field-receivers-python-03",
-            "self.service.persist()",
-        ),
-        (
-            "kotlin",
-            "App.kt",
-            "constructor-and-field-receivers-kotlin-01",
-            "local.persist()",
-        ),
-        (
-            "go",
-            "app.go",
-            "constructor-and-field-receivers-go-01",
-            "a.service.persist()",
-        ),
-        (
-            "rust",
-            "app.rs",
-            "constructor-and-field-receivers-rust-01",
-            "self.service.persist()",
-        ),
+        ("python", PY_LEDGER, "InjectedStation.fulfill", "self.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("python", PY_LEDGER, "StableStation.fulfill", "self.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("python", PY_LEDGER, "OpeningStation.fulfill", "self.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("javascript", "reservations/Ledger.js", "OpeningStation.fulfill", "this.ledger.commit(order)", ("reservations/Ledger.js", "ReservationLedger.commit")),
+        ("javascript", "reservations/PickupPanel.jsx", "PickupPanel.fulfill", "this.ledger.commit(order)", ("reservations/Ledger.js", "ReservationLedger.commit")),
+        ("java", JAVA_INTAKE, "ReservationIntake.open", "local.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+        ("java", JAVA_INTAKE, "ReservationIntake.opening", "openingLedger.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+        ("kotlin", KOTLIN_INTAKE, "openPickup", "ledger.commit(order)", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+        ("go", GO_LEDGER, "Fulfill", "station.ledger.Commit(order)", (GO_LEDGER, "Commit")),
+        ("rust", RUST_INTAKE, "PickupStation.fulfill", "self.ledger.commit(order)", (RUST_INTAKE, "ReservationLedger.commit")),
     ],
 )
 def test_constructor_and_field_receivers(case):
-    language, path, source, evidence = case
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_safety:test_constructor_and_field_receivers:29-4", case=case
-        ),
-        (evidence, True),
-    )
+    language, path, owner, evidence, target = case
+    assert_lifetime_call(language, (path, owner, evidence), target)
 
 
 @pytest.mark.parametrize(
     "case",
     [
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-01",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-02",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-03",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-04",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-05",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-06",
-            "self.service.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-07",
-            "self.service.persist()",
-        ),
-        (
-            "javascript",
-            "app.js",
-            "unsafe-receivers-stay-external-javascript-01",
-            "this.service.persist()",
-        ),
-        (
-            "javascript",
-            "app.js",
-            "unsafe-receivers-stay-external-javascript-02",
-            "local.persist()",
-        ),
-        (
-            "javascript",
-            "app.js",
-            "unsafe-receivers-stay-external-javascript-03",
-            "local.persist()",
-        ),
-        (
-            "javascript",
-            "app.js",
-            "unsafe-receivers-stay-external-javascript-04",
-            "local.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "unsafe-receivers-stay-external-python-08",
-            "local.persist()",
-        ),
-        (
-            "javascript",
-            "app.js",
-            "unsafe-receivers-stay-external-javascript-05",
-            "local.persist()",
-        ),
-        (
-            "typescript",
-            "app.ts",
-            "unsafe-receivers-stay-external-typescript-01",
-            "local.persist()",
-        ),
-        (
-            "java",
-            "App.java",
-            "unsafe-receivers-stay-external-java-01",
-            "local.persist()",
-        ),
-        (
-            "java",
-            "App.java",
-            "unsafe-receivers-stay-external-java-02",
-            "local.persist()",
-        ),
-        (
-            "java",
-            "App.java",
-            "unsafe-receivers-stay-external-java-03",
-            "local.persist()",
-        ),
-        (
-            "kotlin",
-            "App.kt",
-            "unsafe-receivers-stay-external-kotlin-01",
-            "local.persist()",
-        ),
-        ("rust", "app.rs", "unsafe-receivers-stay-external-rust-01", "local.persist()"),
-        ("go", "app.go", "unsafe-receivers-stay-external-go-01", "local.persist()"),
-        ("go", "app.go", "unsafe-receivers-stay-external-go-02", "local.persist()"),
+        ("python", PY_INTAKE, "redirect_declared", "ledger.commit(order)"),
+        ("python", "src/coffee/orders/vendor_intake.py", "receive_remote", "ledger.commit(order)"),
+        ("python", PY_INTAKE, "receive_before_opening", "ledger.commit(order)"),
+        ("python", PY_INTAKE, "open_on_demand", "ledger.commit(order)"),
+        ("python", PY_INTAKE, "open_declared_on_demand", "ledger.commit(order)"),
+        ("python", PY_LEDGER, "RecoveryStation.redirect", "self.ledger.commit(order)"),
+        ("python", PY_LEDGER, "RemoteRecoveryStation.replace_station", "self.ledger.commit(order)"),
+        ("python", PY_INTAKE, "restore_batch", "ledger.commit(order)"),
+        ("javascript", "reservations/Ledger.js", "RecoveryStation.redirect", "this.ledger.commit(order)"),
+        ("javascript", "reservations/VendorMigration.js", "replaceMember", "ledger.commit(order)"),
+        ("javascript", "reservations/Intake.js", "advanceReceiver", "ledger.commit(order)"),
+        ("javascript", "reservations/Intake.js", "restoreBatch", "ledger.commit(order)"),
+        ("java", JAVA_INTAKE, "StaticDispatch.fulfill", "ledger.commit(order)"),
+        ("java", JAVA_INTAKE, "AuditedIntake.fulfill", "ledger.commit(order)"),
+        ("java", JAVA_INTAKE, "ReservationIntake.shadow", "ledger.commit(order)"),
+        ("kotlin", KOTLIN_INTAKE, "TemporaryIntake.fulfill", "ledger.commit(order)"),
+        ("rust", RUST_INTAKE, "restore", "ledger.commit(order)"),
+        ("go", GO_LEDGER, "ReceiveDynamic", "ledger.Commit(order)"),
+        *[(language, f"reservations/Intake.{ext}", "receiveUnion", "ledger.commit(order)")
+          for language, ext in (("typescript", "ts"), ("tsx", "tsx"))],
     ],
 )
 def test_unsafe_receivers_stay_external(case):
-    language, path, source, evidence = case
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_safety:test_unsafe_receivers_stay_external:57-4", case=case
-        ),
-        (evidence, False),
-    )
+    language, *site = case
+    assert_lifetime_call(language, site)
 
 
 @pytest.mark.parametrize(
-    "language, sources, evidence",
+    "case",
     [
-        (
-            "java",
-            {
-                "service/OrderService.java": "type-visibility-follows-import-and-namespace-context-java-01",
-                "app/App.java": "type-visibility-follows-import-and-namespace-context-java-01",
-            },
-            "orderService.saveOrder(1)",
-        ),
-        (
-            "kotlin",
-            {
-                "service/OrderService.kt": "type-visibility-follows-import-and-namespace-context-kotlin-01",
-                "app/App.kt": "type-visibility-follows-import-and-namespace-context-kotlin-01",
-            },
-            "orderService.persist(1)",
-        ),
-        (
-            "python",
-            {
-                "tools.py": "type-visibility-follows-import-and-namespace-context-python-01",
-                "app.py": "type-visibility-follows-import-and-namespace-context-python-01",
-            },
-            "local.persist()",
-        ),
-        (
-            "typescript",
-            {
-                "tools.ts": "type-visibility-follows-import-and-namespace-context-typescript-01",
-                "app.ts": "type-visibility-follows-import-and-namespace-context-typescript-01",
-            },
-            "local.persist()",
-        ),
-        (
-            "go",
-            {
-                "tools/tools.go": "type-visibility-follows-import-and-namespace-context-go-01",
-                "app.go": "type-visibility-follows-import-and-namespace-context-go-01",
-            },
-            "local.persist()",
-        ),
-        (
-            "rust",
-            {
-                "tools.rs": "type-visibility-follows-import-and-namespace-context-rust-01",
-                "main.rs": "type-visibility-follows-import-and-namespace-context-rust-01",
-            },
-            "local.persist()",
-        ),
+        ("python", PY_INTAKE, "fulfill", "ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("java", JAVA_INTAKE, "ReservationIntake.fulfill", "ledger.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+        ("kotlin", KOTLIN_INTAKE, "ReservationIntake.fulfill", "ledger.commit(order)", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+        ("go", "intake/orders.go", "Fulfill", "ledger.Commit(order)", (GO_LEDGER, "Commit")),
+        ("rust", RUST_INTAKE, "receive_qualified", "ledger.commit(order)", (RUST_INTAKE, "ReservationLedger.commit")),
+        *[(language, f"reservations/Intake.{ext}", "fulfill", "ledger.commit(order)", (f"reservations/Ledger.{ext}", "ReservationLedger.commit"))
+          for language, ext in (("typescript", "ts"), ("tsx", "tsx"))],
     ],
 )
-def test_type_visibility_follows_import_and_namespace_context(
-    language, sources, evidence
-):
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_safety:test_type_visibility_follows_import_and_namespace_context:69-4",
-            language=language,
-        ),
-        (evidence, True),
-    )
+def test_type_visibility_follows_import_and_namespace_context(case):
+    language, path, owner, evidence, target = case
+    assert_lifetime_call(language, (path, owner, evidence), target)
 
 
-@pytest.mark.parametrize(
-    "language, sources",
-    [
-        (
-            "python",
-            {
-                "tools.py": "type-visibility-follows-import-and-namespace-context-python-01",
-                "app.py": "imported-receiver-member-rebinding-is-not-ignored-python-01",
-            },
-        ),
-        (
-            "javascript",
-            {
-                "tools.js": "type-visibility-follows-import-and-namespace-context-typescript-01",
-                "app.js": "imported-receiver-member-rebinding-is-not-ignored-javascript-01",
-            },
-        ),
-    ],
-)
-def test_imported_receiver_member_rebinding_is_not_ignored(language, sources):
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_safety:test_imported_receiver_member_rebinding_is_not_ignored:77-4",
-            language=language,
-        ),
-        ("local.persist()", False),
-    )
+@pytest.mark.parametrize("language,ext", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")])
+def test_imported_receiver_member_rebinding_is_not_ignored(language, ext):
+    assert_lifetime_call(language, (f"reservations/Intake.{ext}", "installVendor", "ledger.commit(order)"))
 
 
-def test_exchange_broker_constructor_injected_websocket_client():
-    assert_target(
-        "java",
-        fixture_sources(
-            "receiver_safety:test_exchange_broker_constructor_injected_websocket_client:100-4"
-        ),
-        ("orderService.saveOrder(order)", True),
-    )
-    assert_target(
-        "java",
-        fixture_sources(
-            "receiver_safety:test_exchange_broker_constructor_injected_websocket_client:101-4"
-        ),
-        ("orderCreatedWebSocketClient.sendAndWait(event)", True),
-    )
+def test_imported_python_receiver_member_rebinding_is_not_ignored():
+    assert_lifetime_call("python", ("src/coffee/orders/vendor_intake.py", "install_vendor", "ledger.commit(order)"))
+
+
+def test_constructor_injected_order_created_client():
+    assert_lifetime_call("java", (JAVA_INTAKE, "ReservationIntake.fulfill", "ledger.commit(order)"),
+                         ("reservations/ReservationLedger.java", "ReservationLedger.commit"))
+    assert_lifetime_call("java", (JAVA_INTAKE, "ReservationIntake.fulfill", "client.sendAndWait(saved)"),
+                         ("reservations/OrderCreatedClient.java", "OrderCreatedClient.sendAndWait"))
 
 
 def test_unrelated_constructor_assignments_are_separate_scopes():
-    assert_target(
-        "python",
-        fixture_sources(
-            "receiver_safety:test_unrelated_constructor_assignments_are_separate_scopes:106-4"
-        ),
-        ("self.service.persist()", True),
-    )
+    assert_lifetime_call("python", (PY_LEDGER, "OpeningStation.fulfill", "self.ledger.commit(order)"),
+                         (PY_LEDGER, "ReservationLedger.commit"))
 
 
 def test_unimported_type_is_not_guessed_globally():
-    assert_target(
-        "python",
-        fixture_sources(
-            "receiver_safety:test_unimported_type_is_not_guessed_globally:111-4"
-        ),
-        ("local.persist()", False),
-    )
+    assert_lifetime_call("python", ("src/coffee/orders/unconfigured_intake.py", "receive", "ledger.commit(order)"))

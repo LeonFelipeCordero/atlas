@@ -1,1 +1,0 @@
-package drinks.recipe; class Recipe {static int portions(){return 1;}}

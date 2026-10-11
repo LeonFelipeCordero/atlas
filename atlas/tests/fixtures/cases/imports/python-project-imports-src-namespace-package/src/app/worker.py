@@ -1,1 +1,0 @@
-def work(): pass

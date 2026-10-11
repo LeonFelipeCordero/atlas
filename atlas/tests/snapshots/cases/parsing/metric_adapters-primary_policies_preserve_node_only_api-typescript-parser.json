@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e6374696f6e2072756e28783a20626f6f6c65616e29207b2072657475726e2078203f2031203a20303b207d"}, "language": "typescript", "path": "sample.ts"},
-"content_hash": "27ecd3b57a3b31c52c21098342923858531ee8959bc86febd8e66ac0dc41a75e",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 46, "end_column": 47, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::run:0", "kind": "function", "language": "typescript", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::run", "signature": "function run(x: boolean)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

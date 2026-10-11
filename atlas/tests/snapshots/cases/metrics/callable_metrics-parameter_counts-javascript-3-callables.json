@@ -1,7 +1,0 @@
-{
-"file_record": {"kind": "file", "language": "javascript", "level": "file", "name": "sample.js", "parentStableKey": "module:.", "path": "sample.js", "properties": {"bytes": 7, "lineCount": 1, "sha256": "93c1f9f2f346a14d2673ee1b6c0f1423db2bcf66e255ff2dc332ac51f958ca26"}, "qualifiedName": "sample.js", "stableKey": "file:sample.js", "type": "file"},
-"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.js"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.js"}}}, "default_limits": [], "disabled": []},
-"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
-"records": [{"complexity": null, "decorators": [], "end_byte": 5, "end_column": 6, "end_line": 1, "file_path": "sample.js", "key": "symbol:sample.js::<anonymous>:0", "kind": "class", "language": "javascript", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::<anonymous>", "signature": "class", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"thresholds": []
-}

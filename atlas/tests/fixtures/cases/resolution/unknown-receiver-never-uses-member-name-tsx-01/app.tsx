@@ -1,1 +1,0 @@
-class Service { persist() {} } function run(parameter: Service) { const local: Service = new Service(); parameter.persist(); unknown.persist(); }

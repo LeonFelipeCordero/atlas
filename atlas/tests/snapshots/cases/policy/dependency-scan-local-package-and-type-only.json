@@ -1,7 +1,0 @@
-[
-  "atlas.domain.models",
-  "atlas.metrics.adapters.go",
-  "atlas.metrics.adapters.java",
-  "atlas.metrics.adapters.kotlin",
-  "atlas.metrics.adapters.rust"
-]

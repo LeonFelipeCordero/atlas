@@ -1,9 +1,4 @@
-"""Whole-source coffee access for consolidated regression tests.
-
-No helper reparses selected source bytes: declaration nodes come from the complete
-SourceFile tree. Exact assertions remain in the tests; the per-variant coverage
-ledger is coffee_consolidation.json.
-"""
+"""Select declaration nodes from whole application source, never reparse snippets."""
 
 from pathlib import Path
 

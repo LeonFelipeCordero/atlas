@@ -1,20 +1,18 @@
-from tests.source_snapshot_fixture import case_text
+"""Exact complexity contracts from complete coffee application syntax trees."""
 
 import unittest
 
-from tree_sitter_language_pack import get_parser
-
 from atlas.domain.models import Complexity
-from atlas.metrics.complexity import calculate_complexity
 from atlas.indexer import analyze_repository
+from atlas.metrics.complexity import calculate_complexity
 from tests.coffee_consolidation import COFFEE_ROOT, coffee_node
 
 
 class ComplexityTests(unittest.TestCase):
-    def measure(self, source: str, language: str = "typescript") -> Complexity:
-        return calculate_complexity(
-            get_parser(language).parse(source.encode()).root_node.named_children[0]
-        )
+    def assert_fulfillment(self, name: str, expected: Complexity) -> None:
+        self.assertEqual(calculate_complexity(coffee_node(
+            "typescript", "ordering/Fulfillment.ts", f"Fulfillment.{name}",
+        )), expected)
 
     def test_entry_and_sequential_decisions(self) -> None:
         self.assertEqual(calculate_complexity(coffee_node(
@@ -37,55 +35,37 @@ class ComplexityTests(unittest.TestCase):
         }
         for language, (path, name) in samples.items():
             with self.subTest(language=language):
-                # Entry + two loops + if + conjunction. The if is depth three;
-                # only the inner loop has a loop ancestor.
+                # Entry + two loops + if + conjunction; inner loop has a loop ancestor.
                 self.assertEqual(calculate_complexity(coffee_node(language, path, name)),
                                  Complexity(5, 1, 1, 7, 3))
 
     def test_depths_three_and_five(self) -> None:
-        for depth, case_id in ((3, 'complexity-depth-3-typescript'),
-                               (5, 'complexity-depth-5-typescript')):
+        for depth, name in ((3, "dispatch"), (5, "release")):
             with self.subTest(depth=depth):
-                source = case_text('metrics', case_id, 'sample.ts')
-                self.assertEqual(
-                    self.measure(source),
-                    Complexity(depth + 1, depth - 2, 0, 2 * depth - 1, depth),
-                )
+                self.assert_fulfillment(name, Complexity(
+                    depth + 1, depth - 2, 0, 2 * depth - 1, depth,
+                ))
 
     def test_penalty_per_deep_decision_not_only_maximum(self) -> None:
-        self.assertEqual(
-            self.measure(case_text('metrics', 'complexity-penalty_per_deep_decision_not_only_maximum-typescript', 'sample.ts')), Complexity(5, 2, 0, 7, 3)
-        )
+        self.assert_fulfillment("audit", Complexity(5, 2, 0, 7, 3))
 
     def test_loop_ancestor_need_not_be_immediate_parent(self) -> None:
-        self.assertEqual(
-            self.measure(case_text('metrics', 'complexity-loop_ancestor_need_not_be_immediate_parent-typescript', 'sample.ts')),
-            Complexity(5, 2, 2, 9, 4),
-        )
-        self.assertEqual(
-            self.measure(case_text('metrics', 'complexity-loop_ancestor_need_not_be_immediate_parent-typescript-2', 'sample.ts')), Complexity(3, 0, 0, 3, 1)
-        )
+        self.assert_fulfillment("pack", Complexity(5, 2, 2, 9, 4))
+        self.assert_fulfillment("countQueues", Complexity(3, 0, 0, 3, 1))
 
     def test_boolean_ternary_and_catch(self) -> None:
-        self.assertEqual(
-            self.measure(case_text('metrics', 'complexity-boolean_ternary_and_catch-typescript', 'sample.ts')), Complexity(4, 0, 0, 4, 1)
-        )
-        self.assertEqual(
-            self.measure(case_text('metrics', 'complexity-boolean_ternary_and_catch-typescript-2', 'sample.ts')),
-            Complexity(3, 0, 0, 3, 1),
-        )
+        self.assert_fulfillment("label", Complexity(4, 0, 0, 4, 1))
+        self.assert_fulfillment("notify", Complexity(3, 0, 0, 3, 1))
 
     def test_else_if_is_not_nesting(self) -> None:
-        self.assertEqual(
-            self.measure(case_text('metrics', 'complexity-else_if_is_not_nesting-typescript', 'sample.ts')),
-            Complexity(5, 0, 0, 5, 1),
-        )
-        source = case_text('metrics', 'complexity-else_if_is_not_nesting-python', 'sample.py')
-        self.assertEqual(self.measure(source, "python"), Complexity(4, 0, 0, 4, 1))
+        self.assert_fulfillment("priority", Complexity(5, 0, 0, 5, 1))
+        self.assertEqual(calculate_complexity(coffee_node(
+            "python", "src/coffee/orders/fulfillment.py", "Fulfillment.priority",
+        )), Complexity(4, 0, 0, 4, 1))
 
     def test_nested_scopes_are_not_counted(self) -> None:
-        source = case_text('metrics', 'complexity-nested_scopes_are_not_counted-typescript', 'sample.ts')
-        self.assertEqual(self.measure(source), Complexity(2, 0, 0, 2, 1))
+        self.assert_fulfillment("schedule", Complexity(2, 0, 0, 2, 1))
+        self.assert_fulfillment("schedule.eligible", Complexity(2, 0, 0, 2, 1))
 
     def test_python_method_and_inner_function_are_independent(self) -> None:
         artifact = analyze_repository(COFFEE_ROOT / "python")

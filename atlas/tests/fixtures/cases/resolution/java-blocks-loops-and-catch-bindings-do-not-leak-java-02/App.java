@@ -1,1 +1,0 @@
-package app; import tools.R; class App {void run(){for (Thing R : items) {R.work();} R.work(2);}}

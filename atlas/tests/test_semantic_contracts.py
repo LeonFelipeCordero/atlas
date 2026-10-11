@@ -1,106 +1,79 @@
-"""End-to-end extraction/resolution contracts, with no injected source facts."""
+"""End-to-end extraction contracts over whole coffee application dictionaries."""
 
-from tests.resolution_snapshot_support import fixture_sources
-from tests.test_semantic_resolution import ResolutionAssertions, call_edges, repository
+import pytest
+
+from tests.test_resolution_lexical_safety import PYTHON_PATH, assert_order_call, lexical_repository
+from tests.test_resolution_review_regressions import RUST_PATH
+from tests.test_semantic_resolution import call_edges
 
 
-class ExtractionContractTest(ResolutionAssertions):
-    def test_macro_inner_calls_have_original_source_spans_and_hints(self):
-        repo = repository(
-            "rust",
-            fixture_sources(
-                "semantic_contracts:test_macro_inner_calls_have_original_source_spans_and_hints:9-15"
-            ),
-        )
-        file = repo.files[0]
-        calls = [call for call in file.calls if call.name == "brew"]
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0].start_byte, file.source.source.rindex(b"brew()"))
-        self.assertEqual(calls[0].evidence, "brew()")
-        self.assertIn("println!", {call.name for call in file.calls})
+def test_macro_inner_calls_have_original_utf8_source_spans_and_hints():
+    repo = lexical_repository("rust")
+    file = next(f for f in repo.files if f.source.path == RUST_PATH)
+    symbol = next(s for s in file.symbols if s.qualified_name == f"{RUST_PATH}::original_span")
+    calls = [c for c in file.calls if c.name == "brew" and symbol.start_byte <= c.start_byte < symbol.end_byte]
+    assert len(calls) == 1
+    call = calls[0]
+    assert call.start_byte == file.source.source.index(b"brew(names)", symbol.start_byte)
+    assert call.end_byte == call.start_byte + len(b"brew(names)")
+    assert file.source.source[call.start_byte:call.end_byte] == b"brew(names)"
+    assert call.evidence == "brew(names)"
+    assert call.bare_target
+    assert call.qualifier is None
+    assert_order_call(repo, (RUST_PATH, "original_span", "brew(names)"), (RUST_PATH, "brew"))
 
-    def test_constructor_identity_never_uses_global_type_guessing(self):
-        for language, extension, declaration, usage in [
-            (
-                "python",
-                "py",
-                "constructor-identity-never-uses-global-type-guessing-python-01",
-                "Maker().brew()",
-            ),
-            (
-                "typescript",
-                "ts",
-                "constructor-identity-never-uses-global-type-guessing-typescript-01",
-                "new Maker().brew()",
-            ),
-        ]:
-            with self.subTest(language=language):
-                repo = repository(
-                    language,
-                    fixture_sources(
-                        "semantic_contracts:test_constructor_identity_never_uses_global_type_guessing:35-23",
-                        language=language,
-                    ),
-                )
-                self.external(repo, usage)
-                self.external(
-                    repo, "Maker()" if language == "python" else "new Maker()"
-                )
 
-    def test_java_static_member_import(self):
-        repo = repository(
-            "java",
-            fixture_sources("semantic_contracts:test_java_static_member_import:45-15"),
-        )
-        self.internal(repo, "portions(1)", "R.portions")
+@pytest.mark.parametrize("case", [
+    ("python", PYTHON_PATH, "unlinked", "Brewer()", "Brewer().brew(names)"),
+    ("typescript", "ordering/ReceiptOrders.ts", "unlinked", "new Brewer()", "new Brewer().brew(names)"),
+])
+def test_constructor_identity_never_uses_global_type_guessing(case):
+    language, path, owner, constructor, evidence = case
+    repo = lexical_repository(language)
+    assert any(s.name == "Brewer" and s.kind == "class" for s in repo.symbols)
+    assert_order_call(repo, (path, owner, constructor))
+    assert_order_call(repo, (path, owner, evidence))
 
-    def test_elixir_clause_arity_and_unrelated_modules_remain_ambiguous(self):
-        repo = repository(
-            "elixir",
-            fixture_sources(
-                "semantic_contracts:test_elixir_clause_arity_and_unrelated_modules_remain_ambiguous:55-15"
-            ),
-        )
-        edges = call_edges(repo, "retry(n-1)")
-        self.assertEqual(len(edges), 2)
-        self.assertTrue(all(("Maker.retry" in e.target_key for e in edges)))
-        other_arity = next(
-            (
-                s.key
-                for s in repo.symbols
-                if s.signature and "retry(n, x)" in s.signature
-            )
-        )
-        self.assertNotIn(other_arity, {e.target_key for e in edges})
 
-    def test_rust_object_dot_is_not_a_module_reference(self):
-        repo = repository(
-            "rust",
-            fixture_sources(
-                "semantic_contracts:test_rust_object_dot_is_not_a_module_reference:71-15"
-            ),
-        )
-        self.external(repo, "recipe.portions(1)")
+def test_java_static_member_import_retains_recipe_identity():
+    repo = lexical_repository("java")
+    assert_order_call(repo, ("inventory/Inventory.java", "Inventory.reserve", "portions(line.drink)"),
+                      ("brewing/Recipe.java", "Recipe.portions"))
 
-    def test_receiver_rebinding_and_prototype_replacement(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "semantic_contracts:test_receiver_rebinding_and_prototype_replacement:81-15"
-            ),
-        )
-        self.external(repo, "self.retry(n-1)")
-        repo = repository(
-            "typescript",
-            fixture_sources(
-                "semantic_contracts:test_receiver_rebinding_and_prototype_replacement:88-15"
-            ),
-        )
-        self.external(repo, "new Maker().brew()")
-        repo = repository(
-            "typescript",
-            fixture_sources(
-                "semantic_contracts:test_receiver_rebinding_and_prototype_replacement:95-15"
-            ),
-        )
-        self.external(repo, "new R().brew()")
+
+def is_retry_clause(symbol, path):
+    return (symbol.qualified_name == f"{path}::Coffee.Brewing.RetryOrders.retry"
+            and symbol.signature is not None and "retry(names, attempts)" in symbol.signature)
+
+
+def retry_candidates(repo, path):
+    return [s for s in repo.symbols if is_retry_clause(s, path)]
+
+
+def assert_other_retry_targets_excluded(repo, candidates, edges):
+    excluded = {s.key for s in repo.symbols if "RetryOrders.retry" in s.qualified_name and s not in candidates}
+    assert excluded
+    assert not excluded.intersection(e.target_key for e in edges)
+
+
+def test_elixir_clause_arity_and_unrelated_modules_remain_ambiguous():
+    repo = lexical_repository("elixir")
+    path = "brewing/retry_orders.ex"
+    edges = [e for e in call_edges(repo, "retry(names, attempts - 1)") if path in e.source_key]
+    candidates = retry_candidates(repo, path)
+    assert len(candidates) == len(edges) == 2
+    assert {e.target_key for e in edges} == {s.key for s in candidates}
+    assert_other_retry_targets_excluded(repo, candidates, edges)
+
+
+def test_rust_object_dot_is_not_a_module_reference():
+    repo = lexical_repository("rust")
+    assert_order_call(repo, (RUST_PATH, "method_receiver", "recipe.portions(name)"))
+
+
+def test_receiver_rebinding_and_prototype_replacement():
+    repo = lexical_repository("python")
+    assert_order_call(repo, (PYTHON_PATH, "RetryOrders.retry", "self.retry(names, attempts - 1, replacement)"))
+    repo = lexical_repository("typescript")
+    for owner in ("replacedPrototype", "replacedMethod"):
+        assert_order_call(repo, ("ordering/ReceiptOrders.ts", owner, "new ReceiptPrinter().render(names)"))

@@ -1,3 +1,0 @@
-[
-  "migration operation must be schema DDL: alembic.op.bulk_insert"
-]

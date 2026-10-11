@@ -1,1 +1,0 @@
-import { Recipe as R } from './recipe'; class Maker { retry(n) { return n ? this.retry(n-1) : 0; } brew() {return R.portions(1);} } new Maker().brew(); unknown.brew();

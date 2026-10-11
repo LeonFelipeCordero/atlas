@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "6465662063686f6f736528782920646f0a2063617365207820646f0a2074727565202d3e2061636365707428290a2066616c7365202d3e2072656a65637428290a205f202d3e2066616c6c6261636b28290a20656e640a656e64"}, "language": "elixir", "path": "sample.ex"},
-"content_hash": "bf1ff1a814402021a08fbca6528c5d435ca74319610b6ecbee335e6d36388986",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 90, "end_column": 4, "end_line": 7, "file_path": "sample.ex", "key": "symbol:sample.ex::choose:0", "kind": "function", "language": "elixir", "line_count": null, "name": "choose", "parameter_count": null, "parent_key": "file:sample.ex", "qualified_name": "sample.ex::choose", "signature": "def choose(x)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}],
-"calls": [{"bare_target": true, "end_byte": 45, "evidence": "accept()", "file_path": "sample.ex", "line": 3, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 37}, {"bare_target": true, "end_byte": 64, "evidence": "reject()", "file_path": "sample.ex", "line": 4, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 56}, {"bare_target": true, "end_byte": 81, "evidence": "fallback()", "file_path": "sample.ex", "line": 5, "name": "fallback", "qualifier": null, "relationship": "CALLS", "start_byte": 71}],
-"imports": [],
-"inheritances": []
-}

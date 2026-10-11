@@ -1,1 +1,0 @@
-session.bulk_insert_mappings(Row, records)

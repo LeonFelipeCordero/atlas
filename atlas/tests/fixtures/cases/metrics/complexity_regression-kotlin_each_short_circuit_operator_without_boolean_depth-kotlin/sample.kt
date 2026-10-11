@@ -1,1 +1,0 @@
-fun choose() { if (a && b || c && d) accept() }

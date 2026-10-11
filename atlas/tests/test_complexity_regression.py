@@ -1,12 +1,8 @@
-"""Source-derived complexity expectations, independent of graph snapshots."""
-
-from tests.source_snapshot_fixture import case_text
-from tests.parsing_snapshot_support import source_variants
+"""Grammar regressions measured on declarations from entire coffee files."""
 
 import unittest
 
 from tree_sitter import Node
-from tree_sitter_language_pack import get_parser
 
 from atlas.domain.models import Complexity
 from atlas.metrics.complexity import calculate_complexity
@@ -14,117 +10,71 @@ from tests.coffee_consolidation import coffee_node
 
 
 class GrammarComplexityRegressionTests(unittest.TestCase):
-    def parse(self, language: str, source: str) -> Node:
-        root = get_parser(language).parse(source.encode()).root_node
-        self.assertFalse(root.has_error, str(root))
-        return root.named_children[0]
-
     def assert_metrics(
         self, node: Node, expected: tuple[int, int, int, int, int]
     ) -> None:
         self.assertEqual(calculate_complexity(node), Complexity(*expected))
 
-    def measure(
-        self, language: str, source: str, expected: tuple[int, int, int, int, int]
-    ) -> None:
-        self.assert_metrics(self.parse(language, source), expected)
+    def assert_python(self, name: str, expected: tuple[int, int, int, int, int]) -> None:
+        self.assert_metrics(coffee_node(
+            "python", "src/coffee/orders/fulfillment.py", f"Fulfillment.{name}",
+        ), expected)
+
+    def assert_elixir(self, name: str, expected: tuple[int, int, int, int, int]) -> None:
+        self.assert_metrics(coffee_node(
+            "elixir", "brewing/fulfillment.ex", f"Coffee.Brewing.Fulfillment.{name}",
+        ), expected)
 
     def test_kotlin_each_short_circuit_operator_without_boolean_depth(self) -> None:
-        self.measure(
-            "kotlin",
-            case_text('metrics', 'complexity_regression-kotlin_each_short_circuit_operator_without_boolean_depth-kotlin', 'sample.kt'),
-            (5, 0, 0, 5, 1),  # Entry, if, three operators.
-        )
+        self.assert_metrics(coffee_node(
+            "kotlin", "orders/Fulfillment.kt", "Fulfillment.ready",
+        ), (5, 0, 0, 5, 1))  # Entry, if, three operators.
         self.assert_metrics(coffee_node("kotlin", "brewing/Brewer.kt", "Brewer.score"),
                             (5, 1, 1, 7, 3))
 
     def test_python_refutable_match_patterns_and_fallbacks(self) -> None:
-        self.measure(
-            "python",
-            case_text('metrics', 'complexity-python-match-refutable-alternatives', 'sample.py'),
-            (4, 0, 0, 4, 1),
-        )
-        fallbacks = ("_", "captured", "_ as captured", "(captured)", "0 | _")
-        cases = source_variants('test_complexity_regression', 'test_python_refutable_match_patterns_and_fallbacks', 'python')[1:]
-        for pattern, case in zip(fallbacks, cases, strict=True):
-            with self.subTest(pattern=pattern):
-                self.measure(
-                    "python",
-                    case_text(case['family'], case['case_id'], case['path']),
-                    (1, 0, 0, 1, 0),
-                )
+        self.assert_python("event", (4, 0, 0, 4, 1))
+        for name in ("ignore_event", "retain_event", "record_event", "wrap_event", "normalize_event"):
+            with self.subTest(name=name):
+                self.assert_python(name, (1, 0, 0, 1, 0))
 
     def test_python_fallback_guards_are_decisions(self) -> None:
-        cases = source_variants('test_complexity_regression', 'test_python_fallback_guards_are_decisions', 'python')
-        for pattern, case in zip(("_", "captured", "_ as captured"), cases, strict=True):
-            with self.subTest(pattern=pattern):
-                self.measure(
-                    "python",
-                    case_text(case['family'], case['case_id'], case['path']),
-                    (3, 0, 0, 3, 1),  # Guard and its conjunction, not the fallback.
-                )
+        for name in ("accept_event", "retain_paid_event", "record_paid_event"):
+            with self.subTest(name=name):
+                self.assert_python(name, (3, 0, 0, 3, 1))
 
     def test_python_case_guard_depth_does_not_leak_into_body(self) -> None:
-        self.measure(
-            "python",
-            case_text('metrics', 'complexity_regression-python_case_guard_depth_does_not_leak_into_body-python', 'sample.py'),
-            (6, 2, 0, 8, 3),
-            # Active=1; case=2; guard/body-if=3; fallback body-if=2.
-        )
+        # Active=1; case=2; guard/body-if=3; fallback body-if=2.
+        self.assert_python("dispatch", (6, 2, 0, 8, 3))
 
     def test_python_match_nesting_and_nested_functions(self) -> None:
-        self.measure(
-            "python",
-            case_text('metrics', 'complexity_regression-python_match_nesting_and_nested_functions-python', 'sample.py'),
-            (6, 2, 0, 8, 4),
-        )
+        self.assert_python("scan", (6, 2, 0, 8, 4))
+        self.assert_python("scan.collect", (3, 0, 0, 3, 2))
 
     def test_elixir_if_unless_and_qualified_non_controls(self) -> None:
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_if_unless_and_qualified_non_controls-elixir', 'sample.ex'),
-            (5, 0, 0, 5, 2),
-        )
+        self.assert_elixir("dispatch", (5, 0, 0, 5, 2))
 
     def test_elixir_case_and_cond_default_arm_exclusion(self) -> None:
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_case_and_cond_default_arm_exclusion-elixir', 'sample.ex'),
-            (3, 0, 0, 3, 1),  # Unlike cond, true is a refutable case pattern.
-        )
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_case_and_cond_default_arm_exclusion-elixir-2', 'sample.ex'),
-            (5, 0, 0, 5, 2),
-        )
+        self.assert_elixir("acknowledge", (3, 0, 0, 3, 1))
+        self.assert_elixir("priority", (5, 0, 0, 5, 2))
 
     def test_elixir_guarded_case_alternatives_and_deep_penalties(self) -> None:
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_guarded_case_alternatives_and_deep_penalties-elixir', 'sample.ex'),
-            (7, 3, 0, 10, 4),
-            # Case arm=3; guard=4; body if=4; boolean adds no depth.
-        )
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_guarded_case_alternatives_and_deep_penalties-elixir-2', 'sample.ex'),
-            (3, 0, 0, 3, 2),  # Guarded wildcard is not a default arm.
-        )
+        # Case arm=3; guard=4; body if=4; boolean adds no depth.
+        self.assert_elixir("release", (7, 3, 0, 10, 4))
+        self.assert_elixir("accept_event", (3, 0, 0, 3, 2))
 
     def test_elixir_declaration_and_lambda_guards(self) -> None:
         self.assert_metrics(coffee_node(
             "elixir", "brewing/recipe.ex", "Coffee.Brewing.Recipe.new",
-        ), (3, 0, 0, 3, 1))  # Entry, declaration guard, conjunction.
+        ), (3, 0, 0, 3, 1))
         self.assert_metrics(coffee_node(
             "elixir", "brewing/inventory.ex", "Coffee.Brewing.Inventory.available.<anonymous>",
-        ), (3, 0, 0, 3, 1))  # Guard and conjunction; fn clauses are not case arms.
+        ), (3, 0, 0, 3, 1))
         self.assert_metrics(coffee_node(
             "elixir", "brewing/brewer.ex", "Coffee.Brewing.Brewer.serve.<anonymous>",
-        ), (4, 0, 0, 4, 2))  # Entry, two case arms, unless inside the error arm.
+        ), (4, 0, 0, 4, 2))
 
-    def test_elixir_reducer_calls_are_not_loops_and_fn_scopes_are_independent(
-        self,
-    ) -> None:
+    def test_elixir_reducer_calls_are_not_loops_and_fn_scopes_are_independent(self) -> None:
         node = coffee_node("elixir", "brewing/brewer.ex", "Coffee.Brewing.Brewer.score")
         self.assert_metrics(node, (1, 0, 0, 1, 0))
         stack = [node]
@@ -139,28 +89,30 @@ class GrammarComplexityRegressionTests(unittest.TestCase):
         self.assert_metrics(callables[1], (3, 0, 0, 3, 1))
 
     def test_elixir_nested_declaration_scopes(self) -> None:
-        cases = source_variants('test_complexity_regression', 'test_elixir_nested_declaration_scopes', 'elixir')
-        for declaration, case in zip(('def', 'defp', 'defmacro'), cases, strict=True):
-            with self.subTest(declaration=declaration):
-                self.measure(
-                    "elixir",
-                    case_text(case['family'], case['case_id'], case['path']),
-                    (2, 0, 0, 2, 1),
-                )
+        for name in ("install_public", "install_private", "install_macro"):
+            with self.subTest(name=name):
+                self.assert_elixir(name, (2, 0, 0, 2, 1))
+
+    def test_elixir_quoted_declarations_have_independent_bodies(self) -> None:
+        self.assert_elixir("install_public.pickup", (3, 0, 0, 3, 1))
+        self.assert_elixir("install_private.authorize_pickup", (3, 0, 0, 3, 1))
+        self.assert_elixir("install_macro.pickup_due", (3, 0, 0, 3, 1))
+        self.assert_elixir("install_public.Receipt", (1, 0, 0, 1, 0))
+        self.assert_elixir("install_public.Receipt.label", (2, 0, 0, 2, 1))
 
     def test_else_if_chains_share_depth_across_grammars(self) -> None:
         samples = {
-            "typescript": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-typescript', 'sample.ts'),
-            "javascript": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-typescript', 'sample.ts'),
-            "java": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-java', 'sample.java'),
-            "kotlin": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-kotlin', 'sample.kt'),
-            "go": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-go', 'sample.go'),
-            "rust": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-rust', 'sample.rs'),
-            "python": case_text('metrics', 'complexity_regression-else_if_chains_share_depth_across_grammars-python', 'sample.py'),
+            "typescript": ("ordering/Fulfillment.ts", "Fulfillment.route"),
+            "javascript": ("ordering/Fulfillment.js", "Fulfillment.route"),
+            "java": ("orders/Fulfillment.java", "Fulfillment.route"),
+            "kotlin": ("orders/Fulfillment.kt", "Fulfillment.route"),
+            "go": ("brewing/fulfillment.go", "route"),
+            "rust": ("brewing/fulfillment.rs", "route"),
+            "python": ("src/coffee/orders/fulfillment.py", "Fulfillment.route"),
         }
-        for language, source in samples.items():
+        for language, (path, name) in samples.items():
             with self.subTest(language=language):
-                self.measure(language, source, (5, 0, 0, 5, 2))
+                self.assert_metrics(coffee_node(language, path, name), (5, 0, 0, 5, 2))
 
     def test_default_arms_remain_excluded_across_grammars(self) -> None:
         samples = {
@@ -175,34 +127,32 @@ class GrammarComplexityRegressionTests(unittest.TestCase):
         }
         for language, (path, name) in samples.items():
             with self.subTest(language=language):
-                # Exactly two named drinks, not the fallback, are decisions.
                 self.assert_metrics(coffee_node(language, path, name), (3, 0, 0, 3, 1))
 
     def test_braced_else_is_real_nesting_not_else_if(self) -> None:
-        for language, source in (
-            ("kotlin", case_text('metrics', 'complexity_regression-braced_else_is_real_nesting_not_else_if-kotlin', 'sample.kt')),
-            ("typescript", case_text('metrics', 'complexity_regression-braced_else_is_real_nesting_not_else_if-typescript', 'sample.ts')),
-        ):
+        for language, path in (("kotlin", "orders/Fulfillment.kt"),
+                               ("typescript", "ordering/Fulfillment.ts")):
             with self.subTest(language=language):
-                self.measure(language, source, (4, 1, 0, 5, 3))
+                self.assert_metrics(coffee_node(language, path, "Fulfillment.reassign"),
+                                    (4, 1, 0, 5, 3))
 
-    def test_callable_roots_use_bodies_not_parameter_defaults(self) -> None:
-        samples = {
-            "python": case_text('metrics', 'complexity_regression-callable_roots_use_bodies_not_parameter_defaults-python', 'sample.py'),
-            "typescript": case_text('metrics', 'complexity_regression-callable_roots_use_bodies_not_parameter_defaults-typescript', 'sample.ts'),
-            "kotlin": case_text('metrics', 'complexity_regression-callable_roots_use_bodies_not_parameter_defaults-kotlin', 'sample.kt'),
-        }
-        for language, source in samples.items():
-            with self.subTest(language=language):
-                self.assert_callable_body_metrics(language, source)
-
-    def assert_callable_body_metrics(self, language: str, source: str) -> None:
-        node = self.parse(language, source)
-        self.assert_metrics(node, (2, 0, 0, 2, 1))
+    def assert_callable_body(self, node: Node) -> None:
         body = node.child_by_field_name("body")
         if body is None:
             body = next(c for c in node.named_children if c.type == "function_body")
         self.assert_metrics(body, (2, 0, 0, 2, 1))
+
+    def test_callable_roots_use_bodies_not_parameter_defaults(self) -> None:
+        samples = {
+            "python": "src/coffee/orders/fulfillment.py",
+            "typescript": "ordering/Fulfillment.ts",
+            "kotlin": "orders/Fulfillment.kt",
+        }
+        for language, path in samples.items():
+            with self.subTest(language=language):
+                node = coffee_node(language, path, "Fulfillment.quote")
+                self.assert_metrics(node, (2, 0, 0, 2, 1))
+                self.assert_callable_body(node)
 
 
 if __name__ == "__main__":

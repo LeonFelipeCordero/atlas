@@ -1,5 +1,0 @@
-[
-  "migration cannot query or mutate domain data: connection",
-  "migration cannot query or mutate domain data: connection.exec_driver_sql",
-  "raw SQL statement"
-]

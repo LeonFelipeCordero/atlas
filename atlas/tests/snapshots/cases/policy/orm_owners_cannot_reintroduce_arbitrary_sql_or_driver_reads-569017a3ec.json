@@ -1,6 +1,0 @@
-[
-  "database handle/operation session.execute",
-  "database operation session.execute",
-  "raw SQL execution",
-  "raw SQL statement"
-]

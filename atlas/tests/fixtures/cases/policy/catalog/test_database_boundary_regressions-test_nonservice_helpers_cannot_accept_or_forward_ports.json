@@ -1,5 +1,0 @@
-[
-  {"allowed": false, "id": "nonservice_helpers_cannot_accept_or_forward_ports-f8121142fc", "module": "atlas.helpers", "old_test": "test_database_boundary_regressions.py::test_nonservice_helpers_cannot_accept_or_forward_ports", "operation": "boundary", "package": "atlas"},
-  {"allowed": false, "id": "nonservice_helpers_cannot_accept_or_forward_ports-47fd4e0d0c", "module": "atlas.helpers", "old_test": "test_database_boundary_regressions.py::test_nonservice_helpers_cannot_accept_or_forward_ports", "operation": "boundary", "package": "atlas"},
-  {"allowed": false, "id": "nonservice_helpers_cannot_accept_or_forward_ports-5ae0bdd2a5", "module": "atlas.helpers", "old_test": "test_database_boundary_regressions.py::test_nonservice_helpers_cannot_accept_or_forward_ports", "operation": "boundary", "package": "atlas"}
-]

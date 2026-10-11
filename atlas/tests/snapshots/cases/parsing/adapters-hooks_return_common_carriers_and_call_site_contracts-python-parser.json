@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "6465662072756e28293a0a2020202068656c70657228290a"}, "language": "python", "path": "sample"},
-"content_hash": "584e5dd50b9a35eeb03cb2bc761ef574b484774543a8b0035449e69a9779d1bf",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 23, "end_column": 13, "end_line": 2, "file_path": "sample", "key": "symbol:sample::run:0", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::run", "signature": "def run():", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 23, "evidence": "helper()", "file_path": "sample", "line": 2, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 15}],
-"imports": [],
-"inheritances": []
-}

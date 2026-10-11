@@ -1,1 +1,0 @@
-cursor.execute('PRAGMA query_only=ON')

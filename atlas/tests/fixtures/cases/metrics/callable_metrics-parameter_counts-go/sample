@@ -1,3 +1,0 @@
-package p
-func (r R) f(a,b int, c ...string) {}
-var g = func(int, string) {}

@@ -1,1 +1,0 @@
-class ChannelRepository { fun findById() = context.select(CHANNELS.asterisk()).from(CHANNELS) }

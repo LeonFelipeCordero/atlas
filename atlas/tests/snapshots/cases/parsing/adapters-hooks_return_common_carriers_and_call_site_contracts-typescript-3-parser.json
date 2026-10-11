@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "696e746572666163652053657276696365207b7d"}, "language": "typescript", "path": "sample.ts"},
-"content_hash": "80da8612e9e560238108bb108fe284aae798eae0e7bb2a841f94ee9cf4e04e9f",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 20, "end_column": 21, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::Service:0", "kind": "interface", "language": "typescript", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::Service", "signature": "interface Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

@@ -1,20 +1,27 @@
-"""Loading shared projects must not apply universal-newline translation."""
+"""Snapshot serialization preserves byte boundaries and record ordering."""
 
-import pytest
+from dataclasses import dataclass
+from pathlib import Path
 
-from tests.source_snapshot_fixture import case_bytes, case_sources, case_text
+from tests.coffee_fixture import coffee_sources
+from tests.source_snapshot_fixture import snapshot_value
 
 
-@pytest.mark.parametrize(
-    "case_id",
-    [
-        "graph-source-spans-crlf-form-feed",
-        "graph-source-spans-crlf-next-line",
-        "graph-source-spans-crlf-line-separator",
-    ],
-)
-def test_project_loading_preserves_source_bytes(case_id):
-    expected = case_bytes("operational", case_id, "src/app.py")
-    assert b"\r\n" in expected
-    assert case_text("operational", case_id, "src/app.py").encode() == expected
-    assert case_sources("operational", case_id)["src/app.py"].encode() == expected
+@dataclass
+class Record:
+    path: Path
+    source: bytes
+    calls: list[str]
+
+
+def test_bytes_paths_and_native_record_order_are_lossless():
+    source = coffee_sources("python")[0].source.replace(b"\n", b"\r\n")
+    value = snapshot_value(Record(Path("brewing/brewer.py"), source, ["brew", "retry", "brew"]))
+    assert value["path"] == "brewing/brewer.py"
+    assert bytes.fromhex(value["source"]["hex"]) == source
+    assert value["calls"] == ["brew", "retry", "brew"]
+
+
+def test_only_unordered_collections_are_sorted():
+    assert snapshot_value({"targets": {"recipe", "brew"}}) == {"targets": ["brew", "recipe"]}
+    assert snapshot_value(("recipe", "brew", "recipe")) == ["recipe", "brew", "recipe"]

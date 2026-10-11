@@ -1,1 +1,0 @@
-class Child extends Base implements Service {}

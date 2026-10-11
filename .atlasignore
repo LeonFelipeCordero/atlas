@@ -1,7 +1,4 @@
-# Source examples, generated baselines and coverage metadata are test inputs,
-# not implementation code. Direct sample analysis remains unaffected.
-/atlas/tests/fixtures/coffee/
-/atlas/tests/fixtures/cases/
+# Application samples and generated baselines are inputs, not implementation.
+# Analyzing a sample project directly still includes all of its files.
+/atlas/tests/fixtures/
 /atlas/tests/snapshots/
-/atlas/tests/migration/
-/atlas/tests/coffee_*.json

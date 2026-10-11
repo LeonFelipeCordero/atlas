@@ -1,1 +1,0 @@
-class App { void run() { context.select(X).from(X); from(X); } }

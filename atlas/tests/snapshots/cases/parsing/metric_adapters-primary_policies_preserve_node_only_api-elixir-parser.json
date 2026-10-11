@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "6465666d6f64756c6520436f6666656520646f0a206465662072756e287829207768656e2078203e203020646f0a2020636f6e6420646f0a20202078203e2031202d3e20320a20202074727565202d3e20310a2020656e640a20656e640a656e64"}, "language": "elixir", "path": "sample.ex"},
-"content_hash": "600774ccbedef1dd0504786ec858b0862e38cb533a6e59398d1e08501037b384",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 97, "end_column": 4, "end_line": 8, "file_path": "sample.ex", "key": "symbol:sample.ex::Coffee:0", "kind": "module", "language": "elixir", "line_count": null, "name": "Coffee", "parameter_count": null, "parent_key": "file:sample.ex", "qualified_name": "sample.ex::Coffee", "signature": "defmodule Coffee", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 93, "end_column": 5, "end_line": 7, "file_path": "sample.ex", "key": "symbol:sample.ex::Coffee.run:21", "kind": "function", "language": "elixir", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.ex::Coffee:0", "qualified_name": "sample.ex::Coffee.run", "signature": "def run(x) when x > 0", "start_byte": 21, "start_column": 2, "start_line": 2, "visibility": "public"}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

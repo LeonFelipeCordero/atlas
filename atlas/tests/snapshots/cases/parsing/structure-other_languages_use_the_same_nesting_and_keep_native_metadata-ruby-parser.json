@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "6d6f64756c652044656d6f0a2020636c61737320536572766963650a202020206465662072756e0a20202020656e640a2020656e640a656e640a"}, "language": "ruby", "path": "sample.rb"},
-"content_hash": "6c5c24c2cf3970dba4207f4435c328010389736ccee37a2e7b64c8b41403daf2",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 57, "end_column": 4, "end_line": 6, "file_path": "sample.rb", "key": "symbol:sample.rb::Demo:0", "kind": "module", "language": "ruby", "line_count": null, "name": "Demo", "parameter_count": null, "parent_key": "file:sample.rb", "qualified_name": "sample.rb::Demo", "signature": "module Demo", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 53, "end_column": 6, "end_line": 5, "file_path": "sample.rb", "key": "symbol:sample.rb::Demo.Service:14", "kind": "class", "language": "ruby", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "symbol:sample.rb::Demo:0", "qualified_name": "sample.rb::Demo.Service", "signature": "class Service", "start_byte": 14, "start_column": 3, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 47, "end_column": 8, "end_line": 4, "file_path": "sample.rb", "key": "symbol:sample.rb::Demo.Service.run:32", "kind": "method", "language": "ruby", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.rb::Demo.Service:14", "qualified_name": "sample.rb::Demo.Service.run", "signature": "def run\n    end", "start_byte": 32, "start_column": 5, "start_line": 3, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

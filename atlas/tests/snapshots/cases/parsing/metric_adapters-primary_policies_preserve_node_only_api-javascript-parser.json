@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e6374696f6e2072756e287829207b2072657475726e207820262620782e7265616479203f2031203a20303b207d"}, "language": "javascript", "path": "sample.js"},
-"content_hash": "be2aa42150f65637f506d78a487f5aea312f2cf91a4e70274ddbb9283b068f9d",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 48, "end_column": 49, "end_line": 1, "file_path": "sample.js", "key": "symbol:sample.js::run:0", "kind": "function", "language": "javascript", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::run", "signature": "function run(x)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

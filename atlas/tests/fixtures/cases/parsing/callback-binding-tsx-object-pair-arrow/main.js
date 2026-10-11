@@ -1,1 +1,0 @@
-const holder = { apply: (((() => { function local() {} return local(); }))) };

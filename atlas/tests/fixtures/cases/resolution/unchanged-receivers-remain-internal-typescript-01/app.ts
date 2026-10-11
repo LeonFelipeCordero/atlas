@@ -1,1 +1,0 @@
-class Service {persist(){}} function run(local:Service){local.persist();}

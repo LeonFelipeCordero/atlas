@@ -1,3 +1,0 @@
-[
-  {"allowed": false, "id": "repository_ownership_is_frozen_and_pure_records_are_not_orm-7689bb7874", "module": "atlas.persistence.graph_records", "old_test": "test_database_boundaries.py::test_repository_ownership_is_frozen_and_pure_records_are_not_orm", "operation": "boundary", "package": "atlas.persistence"}
-]

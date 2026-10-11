@@ -1,1 +1,0 @@
-class Service {void persist(){}} class Other extends Service {void persist(){}} class App {void run(Service local){local=new Other();local.persist();}}

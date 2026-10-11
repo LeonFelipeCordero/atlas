@@ -6,8 +6,8 @@ import pytest
 from click.testing import CliRunner
 
 from atlas.cli import main
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT, coffee_graph
-from tests.coffee_scenarios import CORE_LANGUAGES, OBSERVED
+from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT, coffee_graph, coffee_snapshot
+from tests.coffee_scenarios import CORE_LANGUAGES
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -19,9 +19,9 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
     assert "Cyclomatic complexity" in result.output and "Weighted complexity" in result.output
     assert "Decision depth" in result.output and "Parameters" in result.output
     assert "Internal instability" in result.output and "Change impact" in result.output
-    assert ("## Circular imports" in result.output) == bool(OBSERVED.get(language, (0,))[-1])
+    assert ("## Circular imports" in result.output) == bool(coffee_snapshot(coffee_graph(language))["circularDependencies"]["groups"])
     assert "limit" not in result.output and "finding" not in result.output.lower()
-    expected = (SNAPSHOT_ROOT / f"{language}-coffee-report.md").read_text(encoding="utf-8")
+    expected = json.loads((SNAPSHOT_ROOT / "coffee" / language / "cli.json").read_text())["report-markdown"]["output"]
     assert result.output == expected
 
 

@@ -1,1 +1,0 @@
-return_value = service._reader

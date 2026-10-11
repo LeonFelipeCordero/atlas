@@ -1,3 +1,0 @@
-open class Service {open fun persist(){}}
-class Other:Service(){override fun persist(){}}
-fun run(local:Service){local.persist()}

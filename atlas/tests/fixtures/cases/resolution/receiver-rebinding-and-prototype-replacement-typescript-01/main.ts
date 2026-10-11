@@ -1,1 +1,0 @@
-class Maker {brew(){return 1;}} Maker.prototype.brew = other; new Maker().brew();

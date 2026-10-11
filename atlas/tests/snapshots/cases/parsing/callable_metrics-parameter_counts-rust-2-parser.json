@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "696d706c2043207b20666e20662873656c663a20426f783c53656c663e2c20783a2069333229207b7d207d"}, "language": "rust", "path": "sample"},
-"content_hash": "c4b81437ecb2284f196df8f50b3e1886332a8ea6b5e6413ad690ebe5acbe66b5",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 43, "end_column": 44, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C:0", "kind": "impl", "language": "rust", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::C", "signature": "impl C", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 41, "end_column": 42, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C.f:9", "kind": "function", "language": "rust", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "symbol:sample::C:0", "qualified_name": "sample::C.f", "signature": "fn f(self: Box<Self>, x: i32)", "start_byte": 9, "start_column": 10, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

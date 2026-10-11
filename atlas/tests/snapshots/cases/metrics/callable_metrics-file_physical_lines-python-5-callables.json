@@ -1,7 +1,0 @@
-{
-"file_record": {"kind": "file", "language": "python", "level": "file", "name": "sample.py", "parentStableKey": "module:.", "path": "sample.py", "properties": {"bytes": 3, "lineCount": 2, "sha256": "d1329c6d1284e888680db5b03619fc08bdf1ee0b172c946ca6d1f18f5ea40d61"}, "qualifiedName": "sample.py", "stableKey": "file:sample.py", "type": "file"},
-"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 2, "details": ["Lines is 2 (maximum: 1)."], "files": [{"line": 1, "path": "sample.py"}], "limit": 1, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.py"}}}, "default_limits": [], "disabled": []},
-"parse_error": null,
-"records": [],
-"thresholds": []
-}

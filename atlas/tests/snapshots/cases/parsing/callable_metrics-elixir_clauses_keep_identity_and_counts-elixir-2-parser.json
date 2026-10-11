@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "666e2061202d3e20613b20612c62202d3e206120656e64"}, "language": "elixir", "path": "sample.ex"},
-"content_hash": "cfdba20e48654c2a6a9dfc414a9a1fe5556f56393f57041bb7777ea68736ef0e",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 23, "end_column": 24, "end_line": 1, "file_path": "sample.ex", "key": "symbol:sample.ex::<anonymous>:0", "kind": "function", "language": "elixir", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.ex", "qualified_name": "sample.ex::<anonymous>", "signature": "fn a -> a; a,b -> a end", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

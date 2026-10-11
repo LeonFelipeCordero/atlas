@@ -1,121 +1,167 @@
-"""Python project layouts must produce local dependencies, not external guesses."""
-
-from tests.import_snapshot_support import import_case_sources as case_sources
+"""Whole-shop layouts, package attributes and competing roots resolve conservatively."""
 
 from dataclasses import asdict
-from pathlib import Path
 
 import pytest
 
 from atlas.metrics.report import build_artifact_report
-from atlas.indexer import analyze_repository
+from tests.import_project_support import (
+    analyze, assert_call, assert_external, imports_at, project_sources, repository, symbols,
+)
+
+RECIPE = "src/coffee/brewing/recipe.py"
+PROBE = "tasting.py"
 
 
-def analyze(root: Path, sources: dict[str, str]):
-    for path, source in sources.items():
-        target = root / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(source)
-    return analyze_repository(root)
+def package_sources():
+    sources = project_sources("python")
+    for package in ("coffee", "coffee/brewing", "coffee/reporting", "coffee/inventory", "coffee/orders"):
+        sources[f"src/{package}/__init__.py"] = ""
+    return sources
 
 
-@pytest.mark.parametrize('case_id,prefix,relationship', [('python-project-imports-package-imports-resolve-independently-of-analysis-root-1', '', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-1', '', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-1', '', 'INHERITS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-4', 'src/', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-4', 'src/', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-4', 'src/', 'INHERITS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-7', 'services/backend/', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-7', 'services/backend/', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-7', 'services/backend/', 'INHERITS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-10', 'services/backend/src/', 'IMPORTS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-10', 'services/backend/src/', 'CALLS'), ('python-project-imports-package-imports-resolve-independently-of-analysis-root-10', 'services/backend/src/', 'INHERITS')])
-def test_package_imports_resolve_independently_of_analysis_root(package_artifact, prefix, relationship):
-    artifact = package_artifact
-    edges = [edge for edge in artifact.edges if edge["type"] == relationship]
-    assert edges
-    assert all(prefix + "app/worker.py" in edge["targetStableKey"] for edge in edges)
-    assert build_artifact_report(asdict(artifact))["summary"]["circularImportGroups"] == 0
+def child_probe(form):
+    if form == "relative":
+        return "from . import recipe\ndef tasting(): return recipe.portions('espresso')\n"
+    if form == "absolute":
+        return "from coffee.brewing import recipe\ndef tasting(): return recipe.portions('espresso')\n"
+    return "from coffee.brewing import recipe as menu\ndef tasting(): return menu.portions('espresso')\n"
 
 
-@pytest.fixture
-def package_artifact(tmp_path: Path, case_id: str):
-    return analyze(tmp_path, case_sources("imports", case_id))
+@pytest.mark.parametrize("prefix", ["", "src/", "services/backend/", "services/backend/src/"])
+def test_package_imports_resolve_independently_of_analysis_root(tmp_path, prefix):
+    sources = {prefix + path.removeprefix("src/"): text for path, text in package_sources().items()}
+    path = prefix + "coffee/tasting.py"
+    sources[path] = ("from coffee.brewing.brewer import Brewing\n"
+                     "from coffee.brewing.recipe import portions\n"
+                     "class Tasting(Brewing):\n    def brew(self, names): return portions('espresso')\n")
+    artifact = analyze(tmp_path, sources)
+    edges = [edge for edge in artifact.edges if edge["path"] == path]
+    repo = repository("python", sources)
+    targets = {
+        "IMPORTS": {"file:" + prefix + "coffee/brewing/brewer.py", "file:" + prefix + "coffee/brewing/recipe.py"},
+        "CALLS": {symbol.key for symbol in symbols(repo, prefix + "coffee/brewing/recipe.py", "portions")},
+        "INHERITS": {symbol.key for symbol in symbols(repo, prefix + "coffee/brewing/brewer.py", "Brewing")},
+    }
+    for relationship, expected in targets.items():
+        assert_relationship_targets(edges, relationship, expected)
+    # Existing coffee cycles remain visible regardless of root layout.
+    assert build_artifact_report(asdict(artifact))["summary"]["circularImportGroups"] >= 1
 
 
-def test_src_namespace_package(tmp_path):
-    artifact = analyze(tmp_path, case_sources("imports", "python-project-imports-src-namespace-package"))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all("src/app/worker.py" in edge["targetStableKey"] for edge in edges)
+def assert_relationship_targets(edges, relationship, expected):
+    assert {edge["targetStableKey"] for edge in edges if edge["type"] == relationship} == expected
 
 
-@pytest.mark.parametrize(('case_id',), [('python-project-imports-child-module-imports-link-and-bind-namespace-1',), ('python-project-imports-child-module-imports-link-and-bind-namespace-2',), ('python-project-imports-child-module-imports-link-and-bind-namespace-3',)])
-def test_child_module_imports_link_and_bind_namespace(tmp_path, case_id):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all("src/app/worker.py" in edge["targetStableKey"] for edge in edges)
+@pytest.mark.parametrize("packaged", [False, True])
+@pytest.mark.parametrize("form", ["relative", "absolute", "alias"])
+def test_child_module_imports_link_and_bind_namespace(packaged, form):
+    sources = package_sources() if packaged else project_sources("python")
+    path = "src/coffee/brewing/" + PROBE
+    sources[path] = child_probe(form)
+    repo = repository("python", sources)
+    evidence = "from . import recipe" if form == "relative" else "from coffee.brewing import recipe"
+    if form == "alias":
+        evidence += " as menu"
+    assert {edge.target_key for edge in imports_at(repo, path, evidence)} == {"file:" + RECIPE}
+    assert_call(repo, (path, ("menu" if form == "alias" else "recipe") + ".portions('espresso')"), (RECIPE, "portions"))
 
 
-def test_comma_separated_module_imports(tmp_path):
-    artifact = analyze(tmp_path, case_sources("imports", "python-project-imports-comma-separated-module-imports"))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 4
-    assert all(not edge["targetStableKey"].startswith("external:") for edge in edges)
+def test_comma_separated_module_imports():
+    sources = package_sources()
+    path = "src/coffee/" + PROBE
+    evidence = "import coffee.brewing.recipe as menu, coffee.reporting.report as receipt"
+    sources[path] = evidence + "\ndef tasting():\n    menu.portions('espresso')\n    return receipt.render(['espresso'])\n"
+    repo = repository("python", sources)
+    assert {edge.target_key for edge in imports_at(repo, path, evidence)} == {
+        "file:" + RECIPE, "file:src/coffee/reporting/report.py",
+    }
+    assert_call(repo, (path, "menu.portions('espresso')"), (RECIPE, "portions"))
+    assert_call(repo, (path, "receipt.render(['espresso'])"), ("src/coffee/reporting/report.py", "render"))
 
 
-def test_duplicate_source_roots_are_ambiguous(tmp_path):
-    artifact = analyze(tmp_path, case_sources("imports", "python-project-imports-duplicate-source-roots-are-ambiguous"))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all(edge["targetStableKey"].startswith("external:") for edge in edges)
+@pytest.mark.parametrize("form", ["absolute", "alias"])
+def test_duplicate_source_roots_and_ambiguous_parent_cannot_choose_child(form):
+    sources = package_sources()
+    # Both packages exist, but the second has no recipe child. A unique child
+    # cannot rescue an ambiguous parent namespace.
+    sources["services/backend/src/coffee/__init__.py"] = ""
+    sources["services/backend/src/coffee/brewing/__init__.py"] = ""
+    sources[PROBE] = child_probe(form)
+    repo = repository("python", sources)
+    assert_external(repo, PROBE, ("menu" if form == "alias" else "recipe") + ".portions('espresso')")
+    imports = imports_at(repo, PROBE, "from coffee.brewing import recipe" + (" as menu" if form == "alias" else ""))
+    assert all(edge.target_key.startswith("external:") for edge in imports)
 
 
-def test_unrelated_suffix_is_not_an_import_root(tmp_path):
-    artifact = analyze(tmp_path, case_sources("imports", "python-project-imports-unrelated-suffix-is-not-an-import-root"))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all(edge["targetStableKey"].startswith("external:") for edge in edges)
+def test_duplicate_complete_source_roots_are_ambiguous():
+    sources = package_sources()
+    sources.update({"services/backend/" + path: text for path, text in list(sources.items())})
+    sources[PROBE] = "from coffee.brewing.recipe import portions\ndef tasting(): return portions('espresso')\n"
+    repo = repository("python", sources)
+    assert_external(repo, PROBE, "portions('espresso')")
+    assert all(edge.target_key.startswith("external:") for edge in imports_at(repo, PROBE, "from coffee.brewing.recipe import portions"))
 
 
-@pytest.mark.parametrize('case_id,module', [('python-project-imports-runtime-modules-take-precedence-over-type-stubs-1', 'app/worker'), ('python-project-imports-runtime-modules-take-precedence-over-type-stubs-2', 'app/worker/__init__')])
-def test_runtime_modules_take_precedence_over_type_stubs(tmp_path, case_id, module):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all("src/" + module + ".py" in edge["targetStableKey"] for edge in edges)
-    assert all(".pyi" not in edge["targetStableKey"] for edge in edges)
+def test_unrelated_suffix_is_not_an_import_root():
+    sources = project_sources("python")
+    sources["examples/roast.py"] = "def portions(name): return 2\n"
+    sources[PROBE] = "import roast\ndef tasting(): return roast.portions('espresso')\n"
+    repo = repository("python", sources)
+    assert_external(repo, PROBE, "roast.portions('espresso')")
+    assert all(edge.target_key.startswith("external:") for edge in imports_at(repo, PROBE, "import roast"))
 
 
-@pytest.mark.parametrize(('case_id',), [('python-project-imports-package-attributes-prevent-child-module-guesses-1',), ('python-project-imports-package-attributes-prevent-child-module-guesses-2',), ('python-project-imports-package-attributes-prevent-child-module-guesses-3',), ('python-project-imports-package-attributes-prevent-child-module-guesses-4',), ('python-project-imports-package-attributes-prevent-child-module-guesses-5',), ('python-project-imports-package-attributes-prevent-child-module-guesses-6',)])
-def test_package_attributes_prevent_child_module_guesses(tmp_path, case_id):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
-    calls = [edge for edge in artifact.edges if edge["type"] == "CALLS"]
-    assert len(calls) == 1
-    assert calls[0]["targetStableKey"].startswith("external:")
-    imports = [edge for edge in artifact.edges if edge["type"] == "IMPORTS"]
-    assert all("app/worker.py" not in edge["targetStableKey"] for edge in imports)
+@pytest.mark.parametrize("package", [False, True])
+def test_runtime_modules_take_precedence_over_type_stubs(package):
+    sources = package_sources()
+    runtime = RECIPE if not package else "src/coffee/brewing/recipe/__init__.py"
+    if package:
+        sources[runtime] = sources.pop(RECIPE)
+    stub = runtime.removesuffix(".py") + ".pyi"
+    sources[stub] = "def portions(name: str) -> int: ...\n"
+    sources[PROBE] = child_probe("absolute")
+    repo = repository("python", sources)
+    assert_call(repo, (PROBE, "recipe.portions('espresso')"), (runtime, "portions"))
+    assert {edge.target_key for edge in imports_at(repo, PROBE, "from coffee.brewing import recipe")} == {"file:" + runtime}
 
 
-@pytest.mark.parametrize(('case_id',), [('python-project-imports-annotation-only-attribute-does-not-hide-child-module-1',), ('python-project-imports-annotation-only-attribute-does-not-hide-child-module-2',)])
-def test_annotation_only_attribute_does_not_hide_child_module(tmp_path, case_id):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all("src/app/worker.py" in edge["targetStableKey"] for edge in edges)
+@pytest.mark.parametrize("binding", ["recipe = None", "from coffee.reporting import report as recipe", "import sys as recipe"])
+@pytest.mark.parametrize("form", ["absolute", "alias"])
+def test_package_attributes_prevent_child_module_guesses(binding, form):
+    sources = package_sources()
+    sources["src/coffee/brewing/__init__.py"] = binding + "\n"
+    sources[PROBE] = child_probe(form)
+    repo = repository("python", sources)
+    assert_external(repo, PROBE, ("menu" if form == "alias" else "recipe") + ".portions('espresso')")
+    imports = imports_at(repo, PROBE, "from coffee.brewing import recipe" + (" as menu" if form == "alias" else ""))
+    assert all(edge.target_key != "file:" + RECIPE for edge in imports)
 
 
-@pytest.mark.parametrize(('case_id',), [('python-project-imports-ambiguous-parent-package-cannot-resolve-unique-child-1',), ('python-project-imports-ambiguous-parent-package-cannot-resolve-unique-child-2',)])
-def test_ambiguous_parent_package_cannot_resolve_unique_child(tmp_path, case_id):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
-    edges = [edge for edge in artifact.edges if edge["type"] in {"IMPORTS", "CALLS"}]
-    assert len(edges) == 2
-    assert all(edge["targetStableKey"].startswith("external:") for edge in edges)
+@pytest.mark.parametrize("form", ["absolute", "alias"])
+def test_annotation_only_attribute_does_not_hide_child_module(form):
+    sources = package_sources()
+    sources["src/coffee/brewing/__init__.py"] = "recipe: object\n"
+    sources[PROBE] = child_probe(form)
+    repo = repository("python", sources)
+    assert_call(repo, (PROBE, ("menu" if form == "alias" else "recipe") + ".portions('espresso')"), (RECIPE, "portions"))
 
 
-@pytest.mark.parametrize(('case_id',), [('python-project-imports-ordinary-module-cannot-have-child-modules-1',), ('python-project-imports-ordinary-module-cannot-have-child-modules-2',)])
-def test_ordinary_module_cannot_have_child_modules(tmp_path, case_id):
-    artifact = analyze(tmp_path, case_sources("imports", case_id))
-    calls = [edge for edge in artifact.edges if edge["type"] == "CALLS"]
-    assert len(calls) == 1
-    assert calls[0]["targetStableKey"].startswith("external:")
-    imports = [edge for edge in artifact.edges if edge["type"] == "IMPORTS"]
-    assert all("app/worker.py" not in edge["targetStableKey"] for edge in imports)
+@pytest.mark.parametrize("form", ["absolute", "alias"])
+def test_ordinary_module_cannot_have_child_modules(form):
+    sources = project_sources("python")
+    sources["src/coffee/brewing.py"] = ""
+    sources[PROBE] = child_probe(form)
+    repo = repository("python", sources)
+    assert_external(repo, PROBE, ("menu" if form == "alias" else "recipe") + ".portions('espresso')")
+    assert all(edge.target_key != "file:" + RECIPE for edge in imports_at(repo, PROBE, "from coffee.brewing import recipe" + (" as menu" if form == "alias" else "")))
 
 
 def test_absolute_src_import_cycle_is_reported(tmp_path):
-    artifact = analyze(tmp_path, case_sources("imports", "python-project-imports-absolute-src-import-cycle-is-reported"))
-    report = build_artifact_report(asdict(artifact))
-    assert report["summary"]["circularImportGroups"] == 1
-    assert report["circularImports"][0]["groupSize"] == 2
+    sources = project_sources("python")
+    sources["src/coffee/dispatch.py"] = "from coffee import delivery\n"
+    sources["src/coffee/delivery.py"] = "from coffee import dispatch\n"
+    artifact = analyze(tmp_path, sources)
+    assert artifact.circularDependencies is not None
+    assert any(group["nodeStableKeys"] == ["file:src/coffee/delivery.py", "file:src/coffee/dispatch.py"]
+               for group in artifact.circularDependencies["groups"])

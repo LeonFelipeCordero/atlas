@@ -1,1 +1,0 @@
-import static drinks.R.portions; class App {int f(){return portions(1);}}

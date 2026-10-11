@@ -1,1 +1,0 @@
-from atlas.persistence.navigation import navigation_reader as _operation

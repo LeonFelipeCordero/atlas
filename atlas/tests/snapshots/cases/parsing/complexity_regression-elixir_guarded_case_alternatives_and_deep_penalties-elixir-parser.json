@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "6465662063686f6f736528782920646f0a20696620656e61626c656420646f0a20756e6c6573732073746f7070656420646f0a2063617365207820646f0a2031207768656e20726561647920616e642076616c6964202d3e206966206163746976652c20646f3a2061636365707428290a205f202d3e2066616c6c6261636b28290a20656e640a20656e640a20656e640a656e64"}, "language": "elixir", "path": "sample.ex"},
-"content_hash": "aac156ba6173224f7997f0baa4907cd22834d4f1b165b4d7c126c8207b34e45e",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 148, "end_column": 4, "end_line": 10, "file_path": "sample.ex", "key": "symbol:sample.ex::choose:0", "kind": "function", "language": "elixir", "line_count": null, "name": "choose", "parameter_count": null, "parent_key": "file:sample.ex", "qualified_name": "sample.ex::choose", "signature": "def choose(x)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}],
-"calls": [{"bare_target": true, "end_byte": 112, "evidence": "accept()", "file_path": "sample.ex", "line": 5, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 104}, {"bare_target": true, "end_byte": 129, "evidence": "fallback()", "file_path": "sample.ex", "line": 6, "name": "fallback", "qualifier": null, "relationship": "CALLS", "start_byte": 119}],
-"imports": [],
-"inheritances": []
-}

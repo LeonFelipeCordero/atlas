@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "696e74657266616365204368696c6420657874656e647320706b672e426173652c2053657276696365207b7d"}, "language": "typescript", "path": "sample.ts"},
-"content_hash": "bb1481cd0a53112ef16be4a71b4aed7186003aa6b104608a531d6d3f2fca12c7",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 44, "end_column": 45, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::Child:0", "kind": "interface", "language": "typescript", "line_count": null, "name": "Child", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::Child", "signature": "interface Child extends pkg.Base, Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": [{"evidence": "interface Child extends pkg.Base, Service", "file_path": "sample.ts", "language": "typescript", "line": 1, "source_key": "symbol:sample.ts::Child:0", "target_name": "pkg.Base"}, {"evidence": "interface Child extends pkg.Base, Service", "file_path": "sample.ts", "language": "typescript", "line": 1, "source_key": "symbol:sample.ts::Child:0", "target_name": "Service"}]
-}

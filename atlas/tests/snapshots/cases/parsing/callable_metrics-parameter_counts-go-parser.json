@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "7061636b61676520700a66756e63202872205229206628612c6220696e742c2063202e2e2e737472696e6729207b7d0a7661722067203d2066756e6328696e742c20737472696e6729207b7d"}, "language": "go", "path": "sample"},
-"content_hash": "620b025739b6c083c1decd4391583f8b3f025399dbb41de261231e77f475c960",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 47, "end_column": 38, "end_line": 2, "file_path": "sample", "key": "symbol:sample::f:10", "kind": "method", "language": "go", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "func (r R) f(a,b int, c ...string)", "start_byte": 10, "start_column": 1, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 76, "end_column": 29, "end_line": 3, "file_path": "sample", "key": "symbol:sample::g:56", "kind": "function", "language": "go", "line_count": null, "name": "g", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::g", "signature": "func(int, string) {}", "start_byte": 56, "start_column": 9, "start_line": 3, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

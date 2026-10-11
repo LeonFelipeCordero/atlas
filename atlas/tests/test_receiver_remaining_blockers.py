@@ -1,174 +1,96 @@
-"""Fresh-review receiver mutation, initializer and Rust owner regressions."""
+"""Whole order projects: alias writes, initializer identity and compound updates."""
 
-from tests.resolution_snapshot_support import fixture_sources
 import pytest
-from tests.test_receiver_safety import assert_target
 
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        (
-            "javascript",
-            "app.js",
-            "alias-field-mutation-javascript-01",
-            "this.service.persist()",
-        ),
-        (
-            "typescript",
-            "app.ts",
-            "alias-field-mutation-typescript-01",
-            "this.service.persist()",
-        ),
-        (
-            "python",
-            "app.py",
-            "alias-field-mutation-python-01",
-            "self.service.persist()",
-        ),
-        ("go", "app.go", "alias-field-mutation-go-01", "holder.service.persist()"),
-        (
-            "python",
-            "app.py",
-            "alias-field-mutation-python-02",
-            "self.inner.service.persist()",
-        ),
-    ],
+from tests.test_receiver_safety import (
+    GO_LEDGER,
+    JAVA_INTAKE,
+    KOTLIN_INTAKE,
+    PY_INTAKE,
+    PY_LEDGER,
+    RUST_INTAKE,
+    assert_lifetime_call,
 )
+
+
+@pytest.mark.parametrize("case", [
+    ("python", PY_LEDGER, "PickupStation.transfer", "self.ledger.commit(order)"),
+    ("python", PY_LEDGER, "PickupWindow.transfer", "self.station.ledger.commit(order)"),
+    ("javascript", "reservations/Ledger.js", "PickupStation.transfer", "this.ledger.commit(order)"),
+    ("typescript", "reservations/Ledger.ts", "PickupStation.transfer", "this.ledger.commit(order)"),
+    ("tsx", "reservations/Ledger.tsx", "PickupStation.transfer", "this.ledger.commit(order)"),
+    ("go", GO_LEDGER, "Transfer", "station.ledger.Commit(order)"),
+])
 def test_alias_field_mutation(case):
-    language, path, source, evidence = case
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_remaining_blockers:test_alias_field_mutation:17-4", case=case
-        ),
-        (evidence, False),
-    )
+    language, *site = case
+    assert_lifetime_call(language, site)
 
 
-@pytest.mark.parametrize(
-    "language_case", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")]
-)
-@pytest.mark.parametrize("target", ["Alias.prototype.persist", "local.persist"])
-@pytest.mark.parametrize(
-    "operation",
-    ["&&=replacement", "||=replacement", "??=replacement", "+=replacement", "++"],
-)
-def test_script_member_write_forms(language_case, target, operation):
-    language, extension = language_case
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_remaining_blockers:test_script_member_write_forms:29-4",
-            language_case=language_case,
-            target=target,
-            operation=operation,
-        ),
-        ("local.persist()", False),
-    )
+@pytest.mark.parametrize("language_case", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")])
+@pytest.mark.parametrize("scope", ["Prototype", "Instance"])
+@pytest.mark.parametrize("operation", ["retain", "fallback", "initialize", "append", "advance"])
+def test_script_member_write_forms(language_case, scope, operation):
+    language, ext = language_case
+    assert_lifetime_call(language, (f"reservations/vendor/{operation}{scope}.{ext}", f"{operation}{scope}", "ledger.commit(order)"))
 
 
-@pytest.mark.parametrize(
-    "language,extension", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")]
-)
+@pytest.mark.parametrize("language_case", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")])
 @pytest.mark.parametrize("same", [False, True])
-def test_annotated_constructor_initializer_identity(language, extension, same):
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_remaining_blockers:test_annotated_constructor_initializer_identity:38-4",
-            language=language,
-            same=same,
-        ),
-        ("local.persist()", same),
-    )
+@pytest.mark.parametrize("initializer", ["constructor", "identifier"])
+def test_annotated_initializer_identity(language_case, same, initializer):
+    language, ext = language_case
+    if language == "python":
+        owner = ("open_" if initializer == "constructor" else "resume_") + ("pickup" if same else "delivery")
+        path, target_path = PY_INTAKE, PY_LEDGER
+    else:
+        owner = ("open" if initializer == "constructor" else "resume") + ("Pickup" if same else "Delivery")
+        path, target_path = f"reservations/Intake.{ext}", f"reservations/Ledger.{ext}"
+    target = (target_path, "ReservationLedger.commit") if same else None
+    assert_lifetime_call(language, (path, owner, "ledger.commit(order)"), target)
 
 
-@pytest.mark.parametrize(
-    "language,extension", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")]
-)
-@pytest.mark.parametrize("same", [False, True])
-def test_annotated_identifier_initializer_identity(language, extension, same):
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_remaining_blockers:test_annotated_identifier_initializer_identity:47-4",
-            language=language,
-            same=same,
-        ),
-        ("local.persist()", same),
-    )
+@pytest.mark.parametrize("case", [
+    ("python", PY_INTAKE, "open_alias", (PY_LEDGER, "ReservationLedger.commit")),
+    ("typescript", "reservations/Intake.ts", "openAlias", ("reservations/Ledger.ts", "ReservationLedger.commit")),
+    ("tsx", "reservations/Intake.tsx", "openAlias", ("reservations/Ledger.tsx", "ReservationLedger.commit")),
+    ("java", JAVA_INTAKE, "ReservationIntake.receive", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+    ("kotlin", KOTLIN_INTAKE, "receive", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+    ("kotlin", KOTLIN_INTAKE, "openAlias", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+])
+def test_import_alias_identity_and_static_parameter_types(case):
+    language, path, owner, target = case
+    evidence = "parameter.commit(order)" if language == "java" else "ledger.commit(order)"
+    assert_lifetime_call(language, (path, owner, evidence), target)
 
 
-@pytest.mark.parametrize(
-    "language,sources",
-    [
-        (
-            "python",
-            {
-                "service.py": "import-alias-identity-and-static-parameter-types-python-01",
-                "app.py": "import-alias-identity-and-static-parameter-types-python-01",
-            },
-        ),
-        (
-            "typescript",
-            {
-                "service.ts": "import-alias-identity-and-static-parameter-types-typescript-01",
-                "app.ts": "import-alias-identity-and-static-parameter-types-typescript-01",
-            },
-        ),
-        (
-            "java",
-            {"App.java": "import-alias-identity-and-static-parameter-types-java-01"},
-        ),
-        (
-            "kotlin",
-            {"app.kt": "import-alias-identity-and-static-parameter-types-kotlin-01"},
-        ),
-    ],
-)
-def test_import_alias_identity_and_static_parameter_types(language, sources):
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_remaining_blockers:test_import_alias_identity_and_static_parameter_types:57-4",
-            language=language,
-        ),
-        ("local.persist()", True),
-    )
+@pytest.mark.parametrize("path,owner,target", [
+    (RUST_INTAKE, "ReservationLedger.fulfill", "ReservationLedger.commit"),
+    ("reservation_intake/delivery.rs", "<anonymous>.fulfill", "<anonymous>.commit"),
+    (RUST_INTAKE, "PickupStatus.fulfill", "PickupStatus.commit"),
+    ("reservation_intake/delivery_status.rs", "<anonymous>.fulfill", "<anonymous>.commit"),
+])
+def test_rust_self_impl_identity(path, owner, target):
+    assert_lifetime_call("rust", (path, owner, "self.commit(order)"), (path, target))
 
 
-@pytest.mark.parametrize("kind,declaration", [("struct", "{}"), ("enum", "{One}")])
-@pytest.mark.parametrize("qualified", [False, True])
-def test_rust_self_impl_identity(kind, declaration, qualified):
-    assert_target(
-        "rust",
-        fixture_sources(
-            "receiver_remaining_blockers:test_rust_self_impl_identity:66-4",
-            kind=kind,
-            qualified=qualified,
-        ),
-        ("self.persist()", True),
-    )
+@pytest.mark.parametrize("language,path,owner", [
+    ("rust", RUST_INTAKE, "adjust"),
+    ("go", GO_LEDGER, "Adjust"),
+    ("go", GO_LEDGER, "Advance"),
+    ("java", JAVA_INTAKE, "ReservationIntake.advance"),
+    ("kotlin", KOTLIN_INTAKE, "advance"),
+    ("kotlin", KOTLIN_INTAKE, "advanceBefore"),
+])
+def test_compound_receiver_assignment(language, path, owner):
+    receiver = "local" if language == "java" else "ledger"
+    method = "Commit" if language == "go" else "commit"
+    assert_lifetime_call(language, (path, owner, f"{receiver}.{method}(order)"))
 
 
-@pytest.mark.parametrize(
-    "language,path,source",
-    [
-        ("rust", "app.rs", "compound-receiver-assignment-rust-01"),
-        ("go", "app.go", "compound-receiver-assignment-go-01"),
-        ("go", "app.go", "compound-receiver-assignment-go-02"),
-        ("java", "App.java", "compound-receiver-assignment-java-01"),
-        ("kotlin", "app.kt", "compound-receiver-assignment-kotlin-01"),
-        ("kotlin", "app.kt", "compound-receiver-assignment-kotlin-02"),
-    ],
-)
-def test_compound_receiver_assignment(language, path, source):
-    assert_target(
-        language,
-        fixture_sources(
-            "receiver_remaining_blockers:test_compound_receiver_assignment:78-4",
-            source=source,
-        ),
-        ("local.persist()", False),
-    )
+def test_go_block_shadow_is_not_a_declared_receiver():
+    assert_lifetime_call("go", (GO_LEDGER, "Restore", 'ledger.Commit("recovery:" + order)'))
+
+
+def test_go_range_binding_does_not_leak():
+    assert_lifetime_call("go", (GO_LEDGER, "VisitRange", 'ledger.Commit("batch:" + order)'))
+    assert_lifetime_call("go", (GO_LEDGER, "VisitRange", "ledger.Commit(order)"), (GO_LEDGER, "Commit"))

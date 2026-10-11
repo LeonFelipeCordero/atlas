@@ -1,1 +1,0 @@
-package real; class Base {}

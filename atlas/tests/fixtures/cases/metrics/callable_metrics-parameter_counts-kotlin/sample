@@ -1,1 +1,0 @@
-fun <T> X.f(a: Int, vararg b: T): Int

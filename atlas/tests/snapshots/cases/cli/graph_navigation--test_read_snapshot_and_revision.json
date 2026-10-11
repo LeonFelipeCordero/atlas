@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "cli",
-    "exit_code": 1,
-    "output": "{\"error\": \"Stale graph revision: expected <revision>, current new\"}\n",
-    "stdout": "",
-    "stderr": "{\"error\": \"Stale graph revision: expected <revision>, current new\"}\n"
-  }
-]

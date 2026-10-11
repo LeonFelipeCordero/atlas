@@ -1,1 +1,0 @@
-{"adapter_path": "..pkg.tools", "import_path": "..pkg.tools", "namespace": null, "source": "from ..pkg.tools import run as execute"}

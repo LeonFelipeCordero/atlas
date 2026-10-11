@@ -4,7 +4,6 @@ import json
 from dataclasses import replace
 from functools import cache
 from itertools import product
-from pathlib import Path
 
 from click.testing import CliRunner
 from tree_sitter_language_pack import ProcessConfig, process
@@ -13,15 +12,20 @@ from atlas.cli import main
 from atlas.metrics.artifact import build_artifact
 from atlas.metrics.callables import add_callable_metrics
 from atlas.metrics.resolver import resolve_connections
-from atlas.parsing.parser import parse_file, parse_files
+from atlas.parsing.parser import parse_files
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT, coffee_snapshot, coffee_sources
-from tests.parsing_snapshot_support import parsed_value, structure_value
+from tests.project_snapshot_support import parsed_value, structure_value
 from tests.source_snapshot_fixture import snapshot_value
 
 PIPELINE_ROOT = SNAPSHOT_ROOT / "coffee"
-SEAMS = ("extraction", "analysis", "cli")
+SEAMS = ("extraction", "analysis", "graph", "cli")
+GRAMMAR_VARIANTS = {
+    "typescript": {"ordering/Order.ts": ("tsx",), "ordering/Scheduling.ts": ("tsx",)},
+    "javascript": {"ordering/Dispatch.js": ("typescript", "tsx"),
+                   "ordering/DispatchView.jsx": ("tsx",)},
+}
 
 
 def project_analysis(language):
@@ -43,19 +47,36 @@ def project_analysis(language):
 
 
 def shared_grammar_variants(language, sources):
-    if language != "typescript":
-        return {}
-    source = next(source for source in sources if source.path == "ordering/Order.ts")
-    variant = replace(source, language="tsx")
-    return {source.path: {"tsx": {
-        "parser": snapshot_value(parsed_value(parse_file(variant))),
+    variants = GRAMMAR_VARIANTS.get(language, {})
+    by_path = {source.path: source for source in sources}
+    return {path: {grammar: grammar_variant(by_path[path], sources, grammar)
+                   for grammar in grammars} for path, grammars in variants.items()}
+
+
+def grammar_variant(source, sources, grammar):
+    variant = replace(source, language=grammar)
+    repository = parse_files([variant if item.path == source.path else item for item in sources])
+    file = next(file for file in repository.files if file.source.path == source.path)
+    parser = snapshot_value(parsed_value(file))
+    add_callable_metrics(repository)
+    return {
+        "parser": parser,
         "structures": source_structures(variant),
-    }}}
+        "analysis": snapshot_value({"symbols": file.symbols,
+                                    **grammar_resolution(source.path, resolve_connections(repository))}),
+    }
+
+
+def grammar_resolution(path, resolved):
+    connections = [edge for edge in resolved.connections if edge.path == path]
+    targets = {edge.target_key for edge in connections}
+    return {"connections": connections,
+            "external_nodes": [node for node in resolved.external_nodes if node.key in targets]}
 
 
 def source_structures(source):
     native = process(
-        source.source.decode(), ProcessConfig(language=source.language)
+        source.source.decode("utf-8", errors="replace"), ProcessConfig(language=source.language)
     ).structure
     syntax = ParsedSyntax(source)
     before = structure_value(native)
@@ -87,14 +108,6 @@ def project_cli(language):
 @cache
 def coffee_pipeline(language):
     return {**project_analysis(language), "cli": project_cli(language)}
-
-
-def coffee_features():
-    features = {}
-    for group in ("oo", "systems", "scripts"):
-        path = Path(__file__).parent / f"coffee_features_{group}.json"
-        features.update(json.loads(path.read_text(encoding="utf-8")))
-    return features
 
 
 def write_pipeline(language):

@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "2f2a20636166c3a920f09f9880202a2f0a636f6e737420686f6c646572203d207b206170706c793a2028282866756e6374696f6e20696e7465726e616c2829207b2066756e6374696f6e206c6f63616c2829207b7d2072657475726e206c6f63616c28293b207d292929207d3b"}, "language": "javascript", "path": "sample.js"},
-"content_hash": "7173668cf9a6706a924d966f936528861a4a210e81671edf234c77272904ed4e",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 103, "end_column": 87, "end_line": 2, "file_path": "sample.js", "key": "symbol:sample.js::apply:44", "kind": "function", "language": "javascript", "line_count": null, "name": "apply", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::apply", "signature": "function internal() { function local() {} return local(); }", "start_byte": 44, "start_column": 28, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 85, "end_column": 69, "end_line": 2, "file_path": "sample.js", "key": "symbol:sample.js::apply.local:66", "kind": "function", "language": "javascript", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:sample.js::apply:44", "qualified_name": "sample.js::apply.local", "signature": "function local()", "start_byte": 66, "start_column": 50, "start_line": 2, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 100, "evidence": "local()", "file_path": "sample.js", "line": 2, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 93}],
-"imports": [],
-"inheritances": []
-}

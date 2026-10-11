@@ -1,4 +1,0 @@
-[
-  {"allowed": false, "id": "public_config_exception_does_not_allow_other_reflection-9c0f132187", "module": "atlas.metrics.check", "old_test": "test_database_boundary_regressions.py::test_public_config_exception_does_not_allow_other_reflection", "operation": "boundary", "package": "atlas.metrics"},
-  {"allowed": false, "id": "public_config_exception_does_not_allow_other_reflection-930659cbce", "module": "atlas.metrics.check", "old_test": "test_database_boundary_regressions.py::test_public_config_exception_does_not_allow_other_reflection", "operation": "boundary", "package": "atlas.metrics"}
-]

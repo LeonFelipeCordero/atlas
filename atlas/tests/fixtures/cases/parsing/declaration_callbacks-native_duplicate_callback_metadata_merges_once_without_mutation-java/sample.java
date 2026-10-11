@@ -1,1 +1,0 @@
-class Owner { java.util.function.IntUnaryOperator field = x -> x; void outer() { use(x -> x); } }

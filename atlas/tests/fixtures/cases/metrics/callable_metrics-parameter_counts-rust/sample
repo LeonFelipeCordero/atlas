@@ -1,1 +1,0 @@
-trait C { fn f<T>(&self, (a,b): (i32,i32), c: T); }

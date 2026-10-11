@@ -1,7 +1,0 @@
-{
-  "files": [
-    {"calls": [], "imports": [], "parse_error": null, "path": "data.json", "symbols": []}
-  ],
-  "graph": {"connections": [], "external_nodes": []},
-  "inheritances": []
-}

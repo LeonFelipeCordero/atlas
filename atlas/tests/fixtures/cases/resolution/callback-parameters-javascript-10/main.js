@@ -1,1 +1,0 @@
-import {R} from './tools'; use(function R() { return R.work(); }); R.work(2);

@@ -79,7 +79,7 @@ def assert_elixir_recursion(test, graph):
     from_main = calls_from_owner(nodes, retry_calls, "main")
     test.assertEqual(len(from_main), 2)
     test.assertEqual({edge["evidence"] for edge in from_main}, {"retry(2)"})
-    assert_elixir_inner_metrics(test, nodes)
+    assert_elixir_inner_metrics(test, graph, nodes)
 
 
 def calls_from_owner(nodes, calls, name):
@@ -93,13 +93,10 @@ def assert_recursive_dispatch(test, calls):
     test.assertTrue(any(edge["sourceStableKey"] == edge["targetStableKey"] for edge in calls))
 
 
-def assert_elixir_inner_metrics(test, nodes):
-    test.assertFalse(
-        any(
-            node["level"] == "external" and node["name"] in {"if", "case"}
-            for node in nodes.values()
-        )
-    )
+def assert_elixir_inner_metrics(test, graph, nodes):
+    controls = [edge for edge in call_edges(graph)
+                if nodes[edge["targetStableKey"]]["name"] in {"if", "case"}]
+    test.assertTrue(all(edge["evidence"].startswith("Client.") for edge in controls))
     inner = next(
         node
         for node in nodes.values()
@@ -213,6 +210,7 @@ def assert_go_module_limitations(test, graph):
         ("brewing/brewer.go", 'menu "example.com/coffee/recipe"'),
         ("brewing/brewer.go", '"example.com/coffee/reporting"'),
         ("brewing/inventory.go", '"example.com/coffee/recipe"'),
+        ("brewing/fulfillment.go", '"example.com/coffee/recipe"'),
         ("brewing/order.go", '"example.com/coffee/recipe"'),
         ("main.go", '"example.com/coffee/brewing"'),
         ("reporting/report.go", '"example.com/coffee/recipe"'),
@@ -228,6 +226,7 @@ def assert_go_module_limitations(test, graph):
         ("brewing/brewer.go", "menu.Portions(name)"),
         ("brewing/brewer.go", 'reporting.Preview("espresso")'),
         ("brewing/inventory.go", "recipe.Portions(name)"),
+        ("brewing/fulfillment.go", "recipe.Portions(name)"),
         ("brewing/order.go", 'recipe.New("filter", len(order.Names))'),
         ("brewing/order.go", "drink.Scale(len(order.Names), 0)"),
         ("brewing/order.go", "scaled.Dose()"),

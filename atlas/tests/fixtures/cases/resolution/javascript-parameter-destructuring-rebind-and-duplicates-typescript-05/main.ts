@@ -1,1 +1,0 @@
-import {Recipe as R} from './recipe'; import {Recipe as R} from './other'; R.portions(1);

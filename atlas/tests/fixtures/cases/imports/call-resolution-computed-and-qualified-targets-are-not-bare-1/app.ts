@@ -1,1 +1,0 @@
-obj.convert(x); handlers[key](argument); factory(argument)(x); helper(x)

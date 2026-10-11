@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c61737320413a"}, "language": "python", "path": "sample.py"},
-"content_hash": "69ef3db3032ef8ff4266ef15b942df795903abe4e06decd1d078ab69c55445ba",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 8, "end_column": 9, "end_line": 1, "file_path": "sample.py", "key": "symbol:sample.py::A:0", "kind": "class", "language": "python", "line_count": null, "name": "A", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::A", "signature": "class A:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

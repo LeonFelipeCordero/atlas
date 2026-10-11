@@ -1,1 +1,0 @@
-globals()[computed_name]

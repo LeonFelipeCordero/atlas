@@ -1,3 +1,0 @@
-[
-  "service leaks private dependency self._reader.snapshot"
-]

@@ -3,8 +3,7 @@
 import ast
 from importlib.util import resolve_name
 from itertools import chain
-
-from tests.source_snapshot_fixture import case_text
+from pathlib import Path
 
 
 def belongs_to(name: str, package: str) -> bool:
@@ -100,7 +99,9 @@ def import_targets(source: str, package: str) -> set[str]:
     return targets
 
 
-CHECK_LIMIT_LOOKUP = case_text("policy", "check-limit-lookup-template")
+CHECK_LIMIT_LOOKUP = (
+    Path(__file__).parent / "fixtures/variants/policy/check-config/check_limits.py"
+).read_text(encoding="utf-8")
 
 
 def main_config_reflection_ids(tree: ast.AST, aliases: dict[str, str]) -> set[int]:
@@ -114,7 +115,7 @@ def main_config_reflection_ids(tree: ast.AST, aliases: dict[str, str]) -> set[in
 
 
 def exact_lookup_definitions(candidates: list[ast.AST]) -> bool:
-    expected = ast.parse(CHECK_LIMIT_LOOKUP).body
+    expected = [node for node in ast.parse(CHECK_LIMIT_LOOKUP).body if check_lookup_definition(node)]
     return [ast.dump(node) for node in candidates] == [ast.dump(node) for node in expected]
 
 

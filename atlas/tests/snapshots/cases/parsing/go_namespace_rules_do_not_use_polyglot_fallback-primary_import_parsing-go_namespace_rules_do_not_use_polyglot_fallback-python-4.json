@@ -1,1 +1,0 @@
-{"adapter_path": "example.org/pkg/tools", "import_path": "example.org/pkg/tools", "namespace": "tools", "source": "require \"example.org/pkg/tools\""}

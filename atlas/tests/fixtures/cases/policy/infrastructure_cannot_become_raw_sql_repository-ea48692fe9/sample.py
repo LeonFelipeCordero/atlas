@@ -1,1 +1,0 @@
-connection.execute('PRAGMA query_only=' + option)

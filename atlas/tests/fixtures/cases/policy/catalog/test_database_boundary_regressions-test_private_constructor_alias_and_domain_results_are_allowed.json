@@ -1,4 +1,0 @@
-[
-  {"allowed": true, "id": "private_constructor_alias_and_domain_results_are_allowed-a13e07b00b", "module": "atlas.services.repositories", "old_test": "test_database_boundary_regressions.py::test_private_constructor_alias_and_domain_results_are_allowed", "operation": "boundary", "package": "atlas.services"},
-  {"allowed": true, "id": "private_constructor_alias_and_domain_results_are_allowed-6616998475", "module": "atlas.services.repositories", "old_test": "test_database_boundary_regressions.py::test_private_constructor_alias_and_domain_results_are_allowed", "operation": "boundary", "package": "atlas.services"}
-]

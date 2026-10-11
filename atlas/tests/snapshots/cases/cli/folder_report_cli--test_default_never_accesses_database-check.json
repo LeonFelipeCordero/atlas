@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "cli",
-    "exit_code": 1,
-    "output": "{\n  \"findings\": [\n    {\n      \"rule\": \"maxCircularImportGroups\",\n      \"metric\": \"circularImportGroups\",\n      \"subject\": \"Circular imports\",\n      \"actual\": 1,\n      \"limit\": 0,\n      \"files\": [\n        {\n          \"path\": \"a.py\"\n        },\n        {\n          \"path\": \"b.py\"\n        }\n      ],\n      \"details\": [\n        \"Circular import groups: 1 (maximum: 0).\",\n        \"Example cycle: a.py → b.py → a.py\"\n      ]\n    }\n  ]\n}\n",
-    "stdout": "{\n  \"findings\": [\n    {\n      \"rule\": \"maxCircularImportGroups\",\n      \"metric\": \"circularImportGroups\",\n      \"subject\": \"Circular imports\",\n      \"actual\": 1,\n      \"limit\": 0,\n      \"files\": [\n        {\n          \"path\": \"a.py\"\n        },\n        {\n          \"path\": \"b.py\"\n        }\n      ],\n      \"details\": [\n        \"Circular import groups: 1 (maximum: 0).\",\n        \"Example cycle: a.py → b.py → a.py\"\n      ]\n    }\n  ]\n}\n",
-    "stderr": ""
-  }
-]

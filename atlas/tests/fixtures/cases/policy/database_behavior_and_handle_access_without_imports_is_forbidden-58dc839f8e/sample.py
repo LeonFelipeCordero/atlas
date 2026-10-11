@@ -1,1 +1,0 @@
-session.get(Row, key)

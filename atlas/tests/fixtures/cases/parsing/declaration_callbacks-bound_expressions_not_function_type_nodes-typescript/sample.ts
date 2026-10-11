@@ -1,1 +1,0 @@
-type Callback = (x: number) => number; const top: Callback = x => x; function outer(cb: Callback) { use((x: number) => x); }

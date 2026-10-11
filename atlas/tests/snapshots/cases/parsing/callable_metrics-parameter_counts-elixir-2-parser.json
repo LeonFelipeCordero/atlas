@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "646566207a65726f2c20646f3a20300a78203d20666e20612c62207768656e2061203e2030202d3e206120656e640a79203d20666e202d3e203020656e64"}, "language": "elixir", "path": "sample"},
-"content_hash": "aacb24cab79ada9f8b5badc00eae379ec3e6835d764964b1c7d92afb7fc46944",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 15, "end_column": 16, "end_line": 1, "file_path": "sample", "key": "symbol:sample::zero:0", "kind": "function", "language": "elixir", "line_count": null, "name": "zero", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::zero", "signature": "def zero, do:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}, {"complexity": null, "decorators": [], "end_byte": 46, "end_column": 31, "end_line": 2, "file_path": "sample", "key": "symbol:sample::<anonymous>:20", "kind": "function", "language": "elixir", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::<anonymous>", "signature": "fn a,b when a > 0 -> a end", "start_byte": 20, "start_column": 5, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 62, "end_column": 16, "end_line": 3, "file_path": "sample", "key": "symbol:sample::<anonymous>:51", "kind": "function", "language": "elixir", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::<anonymous>", "signature": "fn -> 0 end", "start_byte": 51, "start_column": 5, "start_line": 3, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

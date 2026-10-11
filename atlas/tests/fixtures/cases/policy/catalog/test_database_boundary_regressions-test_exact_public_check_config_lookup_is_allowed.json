@@ -1,4 +1,0 @@
-[
-  {"allowed": true, "id": "exact_public_check_config_lookup_is_allowed-eb11106a61", "module": "atlas.metrics.check", "old_test": "test_database_boundary_regressions.py::test_exact_public_check_config_lookup_is_allowed", "operation": "boundary", "package": "atlas.metrics"},
-  {"allowed": false, "id": "exact_public_check_config_lookup_is_allowed-7295955dcf", "module": "atlas.metrics.other", "old_test": "test_database_boundary_regressions.py::test_exact_public_check_config_lookup_is_allowed", "operation": "boundary", "package": "atlas.metrics"}
-]

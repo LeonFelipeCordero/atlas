@@ -1,1 +1,0 @@
-def f(a=call(1, 2), /, *args, b=0, **kwargs): pass

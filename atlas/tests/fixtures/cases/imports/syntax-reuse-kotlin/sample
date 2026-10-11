@@ -1,2 +1,0 @@
-import demo.helper
-fun run(value: Int) { if (value > 0) { helper(value) } }

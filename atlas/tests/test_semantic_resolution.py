@@ -1,24 +1,18 @@
 """Source-grounded coffee resolution and isolated ambiguity/grammar regressions."""
 
-from tests.resolution_snapshot_support import fixture_sources
 import unittest
-from pathlib import Path
 
 import pytest
 
 from tests.coffee_fixture import FIXTURE_ROOT
-from atlas.parsing.discovery import SourceFile, discover_files
+from atlas.parsing.discovery import discover_files
 from atlas.parsing.parser import parse_files
 from atlas.metrics.resolver import resolve_connections
 
 
 def repository(language, sources):
-    return parse_files(
-        [
-            SourceFile(path, Path("/semantic") / path, language, source.encode())
-            for path, source in sources.items()
-        ]
-    )
+    from tests.import_project_support import repository as parse_project
+    return parse_project(language, sources)
 
 
 def call_edges(repo, evidence=None):
@@ -160,212 +154,177 @@ class ResolutionAssertions(unittest.TestCase):
 
 
 class SemanticResolutionTest(ResolutionAssertions):
-    def test_python_dotted_module_import_and_nonstatic_member(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "semantic_resolution:test_python_dotted_module_import_and_nonstatic_member:62-15"
-            ),
-        )
-        # Coffee covers dotted imports; this fixture isolates nonstatic class access.
-        self.external(repo, "Recipe.instance()")
+    def project(self, language, variant):
+        from tests.import_project_support import project_sources, repository
 
-    def test_python_self_and_immediate_construction_are_precise(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "semantic_resolution:test_python_self_and_immediate_construction_are_precise:73-15"
-            ),
-        )
-        # Positive construction/recursion moved to coffee; unknown results stay isolated.
-        self.external(repo, "unknown.brew()")
-        self.external(repo, "factory().brew()")
+        return repository(language, project_sources(language, variant))
 
-    def test_import_shadowing_and_rebinding_never_guess(self):
-        usages = [
-            "import-shadowing-and-rebinding-never-guess-python-01",
-            "import-shadowing-and-rebinding-never-guess-python-02",
-            "import-shadowing-and-rebinding-never-guess-python-03",
-            "import-shadowing-and-rebinding-never-guess-python-04",
-            "import-shadowing-and-rebinding-never-guess-python-05",
-            "import-shadowing-and-rebinding-never-guess-python-06",
-        ]
-        for usage in usages:
-            with self.subTest(usage=usage):
-                repo = repository(
-                    "python",
-                    fixture_sources(
-                        "semantic_resolution:test_import_shadowing_and_rebinding_never_guess:105-23",
-                        usage=usage,
-                    ),
-                )
-                self.external(repo, "R.portions(1)")
+    def unresolved(self, repo, case):
+        language, path, owner, evidence, name = case
+        return assert_coffee_call(repo, (
+            path, owner, evidence, None, f"external:{language}:callable:{name}"
+        ))
 
-    def test_nested_import_does_not_leak_and_strings_are_not_writes(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "semantic_resolution:test_nested_import_does_not_leak_and_strings_are_not_writes:115-15"
-            ),
-        )
-        assert_coffee_call(repo, ("main.py", "inside", "R.portions(1)", "recipe.py", "Recipe.portions"))
-        self.external(repo, "R.portions(2)")
-        repo = repository(
-            "typescript",
-            fixture_sources(
-                "semantic_resolution:test_nested_import_does_not_leak_and_strings_are_not_writes:124-15"
-            ),
-        )
-        assert_coffee_call(repo, ("main.ts", None, "R.portions(1)", "recipe.ts", "Recipe.portions"))
-
-    def test_javascript_imported_classes_static_recursion_and_new_receiver(self):
-        for language, extension in [("javascript", "js"), ("typescript", "ts")]:
-            with self.subTest(language=language):
-                repo = repository(
-                    language,
-                    fixture_sources(
-                        "semantic_resolution:test_javascript_imported_classes_static_recursion_and_new_receiver:136-23",
-                        language=language,
-                    ),
-                )
-                # Recursion/new moved to coffee, but aliased static class imports
-                # are absent from these JS/TS coffee projects; keep exact coverage.
-                assert_coffee_call(repo, (f"main.{extension}", "Maker.brew", "R.portions(1)", f"recipe.{extension}", "Recipe.portions"))
-                self.external(repo, "unknown.brew()")
-
-    def test_javascript_default_exports_and_type_only_imports(self):
-        # Coffee uses named exports, so retain the differently-named default class.
-        repo = repository(
-            "typescript",
-            fixture_sources(
-                "semantic_resolution:test_javascript_default_exports_and_type_only_imports:152-15"
-            ),
-        )
-        assert_coffee_call(repo, ("main.ts", None, "R.portions(1)", "recipe.ts", "Actual.portions"))
-        for imported in [
-            "javascript-default-exports-and-type-only-imports-typescript-02",
-            "javascript-default-exports-and-type-only-imports-typescript-03",
+    def test_python_nonstatic_access_and_unknown_factory_results(self):
+        repo = self.project("python", "semantic-orders")
+        path = "src/coffee/orders/semantic.py"
+        for owner, evidence, name in [
+            ("class_receipt", "Brewer.brew(names)", "brew"),
+            ("supplied_receipt", "unknown.brew(names)", "brew"),
+            ("supplied_receipt", "factory().brew(names)", "brew"),
         ]:
-            repo = repository(
-                "typescript",
-                fixture_sources(
-                    "semantic_resolution:test_javascript_default_exports_and_type_only_imports:164-19",
-                    imported=imported,
-                ),
-            )
-            self.external(repo, "R.portions(1)")
+            with self.subTest(evidence=evidence):
+                self.unresolved(repo, ("python", path, owner, evidence, name))
 
-    def test_javascript_parameter_destructuring_rebind_and_duplicates(self):
-        usages = [
-            "javascript-parameter-destructuring-rebind-and-duplicates-typescript-01",
-            "javascript-parameter-destructuring-rebind-and-duplicates-typescript-02",
-            "R = other; R.portions(1);",
-            "javascript-parameter-destructuring-rebind-and-duplicates-typescript-04",
-            "javascript-parameter-destructuring-rebind-and-duplicates-typescript-05",
-            "factory().portions(1);",
-            "object.portions(1);",
-        ]
-        for usage in usages:
-            with self.subTest(usage=usage):
-                repo = repository(
-                    "typescript",
-                    fixture_sources(
-                        "semantic_resolution:test_javascript_parameter_destructuring_rebind_and_duplicates:185-23",
-                        usage=usage,
-                    ),
-                )
-                evidence = (
-                    "factory().portions(1)"
-                    if usage.startswith("factory")
-                    else "object.portions(1)"
-                    if usage.startswith("object")
-                    else "R.portions(1)"
-                )
-                self.external(repo, evidence)
+    def test_python_import_shadowing_and_rebinding(self):
+        repo = self.project("python", "semantic-orders")
+        path = "src/coffee/orders/semantic.py"
+        for owner in ("parameter", "unpacked", "rebound", "replaced_import"):
+            with self.subTest(owner=owner):
+                self.unresolved(repo, ("python", path, owner, "Drink.portions(name)", "portions"))
+        assert_coffee_call(repo, (
+            path, "local_recipe", "LocalDrink.portions(name)",
+            "src/coffee/brewing/recipe.py", "Recipe.portions"
+        ))
+        self.unresolved(repo, ("python", path, "missing_recipe", "LocalDrink.portions(name)", "portions"))
 
-    def test_java_declared_packages_and_same_package_types(self):
-        # Deliberately mismatched directory/package layout is absent from coffee.
-        repo = repository(
-            "java",
-            fixture_sources(
-                "semantic_resolution:test_java_declared_packages_and_same_package_types:203-15"
-            ),
-        )
-        assert_coffee_call(repo, ("physical/Report.java", "Report.total", "Recipe.portions(2)", "odd/Recipe.java", "Recipe.portions"))
-        assert_coffee_call(repo, ("elsewhere/App.java", "App.run", "Recipe.portions(1)", "odd/Recipe.java", "Recipe.portions"))
-        imports = [
-            e for e in resolve_connections(repo).connections if e.type == "IMPORTS"
-        ]
+    def test_python_conditional_bindings_do_not_select_house_recipe(self):
+        repo = self.project("python", "lexical-orders")
+        path = "src/coffee/orders/lexical.py"
+        for owner in (
+            "conditional", "loop", "with_stock", "exception", "future_assignment",
+            "conditional_callable", "conditional_class",
+        ):
+            with self.subTest(owner=owner):
+                self.unresolved(repo, ("python", path, owner, "Drink.portions(name)", "portions"))
+        assert_coffee_call(repo, (
+            path, "outside", "Drink.portions(name)",
+            "src/coffee/brewing/recipe.py", "Recipe.portions"
+        ))
+
+    def test_receiver_rebinding_and_destructuring_preserve_ambiguity(self):
+        for case in [
+            ("python", "src/coffee/orders/reservations.py", ("redirect_inferred", "restore_batch")),
+            ("javascript", "reservations/Intake.js", ("redirectInferred", "restoreBatch")),
+            ("typescript", "reservations/Intake.ts", ("redirectInferred", "restoreBatch")),
+        ]:
+            self.assert_receiver_ambiguity(case)
+
+    def assert_receiver_ambiguity(self, case):
+        language, path, owners = case
+        repo = self.project(language, "receiver-lifetime")
+        for owner in owners:
+            with self.subTest(language=language, owner=owner):
+                self.unresolved(repo, (language, path, owner, "ledger.commit(order)", "commit"))
+
+    def test_javascript_aliases_defaults_strings_and_unknown_factories(self):
+        for language, extension in (("javascript", "js"), ("typescript", "ts")):
+            self.assert_javascript_aliases(language, extension)
+
+    def assert_javascript_aliases(self, language, extension):
+        repo = self.project(language, "semantic-orders")
+        path = f"ordering/SemanticOrders.{extension}"
+        for evidence, target_path, target_name in [
+            ("Drink.portions(name)", f"brewing/Recipe.{extension}", "Recipe.portions"),
+            ("DefaultDrink.portions(name)", f"reporting/HouseRecipe.{extension}", "HouseRecipe.portions"),
+        ]:
+            with self.subTest(language=language, evidence=evidence):
+                assert_coffee_call(repo, (path, "house", evidence, target_path, target_name))
+        for owner, evidence, name in [
+            ("replaceRecipe", "Drink.portions(name)", "portions"),
+            ("parameterRecipe", "Drink.portions(name)", "portions"),
+            ("unpackedRecipe", "Drink.portions(name)", "portions"),
+            ("suppliedRecipe", "factory().portions(name)", "portions"),
+            ("suppliedRecipe", "object.portions(name)", "portions"),
+            ("unknownBrewer", "unknown.brew(names)", "brew"),
+            ("unknownBrewer", "factory().brew(names)", "brew"),
+        ]:
+            with self.subTest(language=language, evidence=evidence):
+                self.unresolved(repo, (language, path, owner, evidence, name))
+
+    def test_typescript_type_only_and_conflicting_imports(self):
+        repo = self.project("typescript", "semantic-orders")
+        for name in ("TypedRecipeOrders", "TypedDefaultOrders", "ConflictingRecipes"):
+            with self.subTest(module=name):
+                self.unresolved(repo, ("typescript", f"ordering/{name}.ts", "portions", "Drink.portions(name)", "portions"))
+
+    def test_javascript_callback_destructuring_shadows_only_callback(self):
+        for language, extension in (("javascript", "js"), ("typescript", "ts")):
+            self.assert_callback_shadowing(language, extension)
+
+    def assert_callback_shadowing(self, language, extension):
+        callbacks = {
+            "single": "single.<anonymous>",
+            "parenthesized": "parenthesized.<anonymous>",
+            "objectParameter": "objectParameter.<anonymous>",
+            "arrayParameter": "arrayParameter.<anonymous>",
+            "nestedParameter": "nestedParameter.<anonymous>",
+            "renamedParameter": "renamedParameter.<anonymous>",
+        }
+        repo = self.project(language, "lexical-orders")
+        path = f"ordering/LexicalOrders.{extension}"
+        for owner, callback in callbacks.items():
+            with self.subTest(language=language, owner=owner):
+                self.unresolved(repo, (language, path, callback, "Drink.portions(name)", "portions"))
+                assert_coffee_call(repo, (
+                    path, owner, "Drink.portions(name)", f"brewing/Recipe.{extension}", "Recipe.portions"
+                ))
+
+    def test_java_declared_packages_same_package_and_static_imports(self):
+        repo = self.project("java", "semantic-orders")
+        target_path = "physical/catalog/PortionSchedule.java"
+        for path, owner, evidence in [
+            ("physical/reporting/ReceiptOrders.java", "ReceiptOrders.total", "PortionSchedule.portions(name)"),
+            ("physical/counter/TastingOrders.java", "TastingOrders.total", "PortionSchedule.portions(name)"),
+            ("physical/counter/TastingOrders.java", "TastingOrders.total", "portions(name)"),
+        ]:
+            with self.subTest(path=path, evidence=evidence):
+                assert_coffee_call(repo, (path, owner, evidence, target_path, "PortionSchedule.portions"))
+        target, = coffee_symbols(repo, target_path, "PortionSchedule")
+        imports = [edge for edge in resolve_connections(repo).connections
+                   if edge.type == "IMPORTS" and edge.path == "physical/counter/TastingOrders.java"]
+        method, = coffee_symbols(repo, target_path, "PortionSchedule.portions")
+        self.assertEqual(len(imports), 2)
+        self.assertEqual({edge.target_key for edge in imports}, {target.key, method.key})
+
+    def test_java_wrong_namespace_and_duplicate_types_are_not_guessed(self):
+        repo = self.project("java", "semantic-orders")
+        self.unresolved(repo, ("java", "orders/WrongRecipeOrders.java", "WrongRecipeOrders.total", "Recipe.portions(name)", "portions"))
+        self.unresolved(repo, ("java", "orders/SeasonalOrders.java", "SeasonalOrders.total", "SeasonalRecipe.portions(name)", "portions"))
+        self.unresolved(repo, ("java", "orders/OverloadedOrders.java", "OverloadedOrders.total", "ReceiptRecipe.portions(name)", "portions"))
+        imports = [edge for edge in resolve_connections(repo).connections
+                   if edge.type == "IMPORTS" and edge.path == "orders/WrongRecipeOrders.java"]
         self.assertEqual(len(imports), 1)
-        target, = coffee_symbols(repo, "odd/Recipe.java", "Recipe")
-        self.assertEqual(imports[0].target_key, target.key)
-
-    def test_declared_import_identity_not_terminal_name(self):
-        repo = repository(
-            "java",
-            fixture_sources(
-                "semantic_resolution:test_declared_import_identity_not_terminal_name:220-15"
-            ),
-        )
-        self.external(repo, "Recipe.portions()")
-        imports = [
-            e for e in resolve_connections(repo).connections if e.type == "IMPORTS"
-        ]
         self.assertTrue(imports[0].target_key.startswith("external:"))
+        wrong = self.project("java", "wrong-brewing-package")
+        inherits = [edge for edge in resolve_connections(wrong).connections
+                    if edge.type == "INHERITS" and edge.path == "orders/Tasting.java"]
+        self.assertEqual(len(inherits), 1)
+        self.assertTrue(inherits[0].target_key.startswith("external:"))
 
-    def test_rust_path_modules_and_crate_imports(self):
-        # Explicit #[path] relocation is a layout probe, not coffee's mod.rs tree.
-        repo = repository(
-            "rust",
-            fixture_sources(
-                "semantic_resolution:test_rust_path_modules_and_crate_imports:254-15"
-            ),
-        )
-        assert_coffee_call(repo, ("src/main.rs", "main", "recipe::portions(1)", "odd/recipe.rs", "portions"))
-        assert_coffee_call(repo, ("odd/recipe.rs", "preview", "report::render()", "view/report.rs", "render"))
-        assert_coffee_call(repo, ("view/report.rs", "render", "crate::recipe::portions(2)", "odd/recipe.rs", "portions"))
-        imports = [
-            e for e in resolve_connections(repo).connections if e.type == "IMPORTS"
-        ]
-        self.assertEqual(len(imports), 4)
-        self.assertEqual({(e.source_key, e.target_key) for e in imports}, {
-            ("file:src/main.rs", "file:odd/recipe.rs"),
-            ("file:src/main.rs", "file:view/report.rs"),
-            ("file:odd/recipe.rs", "file:view/report.rs"),
-            ("file:view/report.rs", "file:odd/recipe.rs"),
-        })
+    def test_rust_declared_modules_and_path_relocations(self):
+        repo = self.project("rust", "receipt-module-layout")
+        for path, owner, evidence, target_path, target_name in [
+            ("main.rs", "counter.close", "printer::render(names)", "receipt/print.rs", "render"),
+            ("main.rs", "main", "crate::receipt::print::render(&names)", "receipt/print.rs", "render"),
+            ("receipt.rs", "close", "custom::render(names)", "special/receipt_printer.rs", "render"),
+            ("receipt.rs", "close", "seasonal::print::render(names)", "special/receipt_printer.rs", "render"),
+            ("receipt.rs", "close", "alternate::print::render(names)", "receipt/alternate/print.rs", "render"),
+            ("receipt.rs", "close", "daily::ledger::print::render(names)", "receipt/daily/ledger/print/mod.rs", "render"),
+        ]:
+            with self.subTest(evidence=evidence):
+                assert_coffee_call(repo, (path, owner, evidence, target_path, target_name))
+        self.unresolved(repo, ("rust", "main.rs", "main", "crate::print::render(&names)", "render"))
+        self.unresolved(repo, ("rust", "main.rs", "main", "printer::render(&names)", "render"))
 
     def test_rust_duplicate_module_roots_are_ambiguous(self):
-        repo = repository(
-            "rust",
-            fixture_sources(
-                "semantic_resolution:test_rust_duplicate_module_roots_are_ambiguous:272-15"
-            ),
-        )
-        self.external(repo, "crate::tools::work()")
+        repo = self.project("rust", "semantic-orders")
+        self.unresolved(repo, ("rust", "src/main.rs", "main", "crate::receipt::render(&names)", "render"))
 
-    def test_named_go_closure_and_rebinding(self):
-        # The normal bound closure is coffee's brew.accept; retain only mutation.
-        self.check_go_closure(True)
-
-    def check_go_closure(self, rebind):
-        repo = repository(
-            "go",
-            fixture_sources(
-                "semantic_resolution:check_go_closure:301-15", rebind=rebind
-            ),
-        )
-        file = repo.files[0]
-        owner = next((s for s in file.symbols if s.name == "brew"))
-        closure = next((s for s in file.symbols if s.name == "accept"))
+    def test_go_rebound_closure_keeps_owner_but_not_target(self):
+        repo = self.project("go", "semantic-orders")
+        path = "brewing/semantic_orders.go"
+        owner, = coffee_symbols(repo, path, "seasonalOrders")
+        closure, = coffee_symbols(repo, path, "seasonalOrders.accept")
         self.assertEqual(closure.parent_key, owner.key)
-        self.external(repo, "accept(1)")
-
-    def test_ambiguous_types_and_methods_do_not_choose_first(self):
-        repo = repository(
-            "java",
-            fixture_sources(
-                "semantic_resolution:test_ambiguous_types_and_methods_do_not_choose_first:319-15"
-            ),
-        )
-        self.external(repo, "R.work()")
+        self.unresolved(repo, ("go", path, "seasonalOrders", "accept(name)", "accept"))

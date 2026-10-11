@@ -1,23 +1,33 @@
 """Exact whole-coffee import identities and isolated namespace/layout probes."""
 
-import tempfile
-import unittest
-from pathlib import Path
-
 import pytest
 
-from atlas.indexer import analyze_repository
 from atlas.metrics.resolver import resolve_connections
-from atlas.parsing.discovery import discover_files
-from atlas.parsing.parser import parse_files
-from tests.import_snapshot_support import write_import_case
-from tests.test_semantic_resolution import (
-    assert_coffee_call,
-    call_edges,
-    coffee_repository,
-    coffee_symbols,
-    coffee_target_keys,
+from tests.import_project_support import (
+    assert_call, assert_external, edges_at, project_repository, project_sources,
+    repository, symbols,
 )
+
+
+def coffee_repository(language):
+    return project_repository(language)
+
+
+def coffee_target_keys(repo, target):
+    path, name = target
+    return {symbol.key for symbol in symbols(repo, path, name)} if path else {name}
+
+
+def assert_coffee_call(repo, case):
+    path, owner, evidence, target_path, target_name = case
+    owners = {symbol.key for symbol in symbols(repo, path, owner)}
+    edges = [edge for edge in edges_at(repo, path, evidence) if edge.source_key in owners]
+    targets = ({symbol.key for symbol in symbols(repo, target_path, target_name)}
+               if target_path else {target_name})
+    assert len(edges) == len(targets)
+    assert {edge.target_key for edge in edges} == targets
+    return edges
+
 
 COFFEE_IMPORTS = [
     ("python", "src/coffee/brewing/brewer.py", "from .recipe import Recipe", "src/coffee/brewing/recipe.py", None),
@@ -97,50 +107,51 @@ def test_coffee_go_module_namespace_limit_is_explicit():
     assert_coffee_call(repo, ("brewing/brewer.go", "score", "menu.Portions(name)", None, "external:go:callable:Portions"))
 
 
-class ImportResolutionTest(unittest.TestCase):
-    def test_namespace_import_forms_absent_from_coffee(self):
-        # Bare Go package paths and JS/TS `import *` are absent from those coffee
-        # projects. TSX namespace tags are a different grammar/relationship.
-        cases = [
-            ("namespace-1", "tools/worker.go", "Work", "tools.Work()", "file:tools/worker.go"),
-            ("namespace-2", "tools/worker.go", "Work", "worker.Work()", "file:tools/worker.go"),
-            ("namespace-5", "tools.ts", "work", "tools.work()", "file:tools.ts"),
-            ("namespace-6", "tools.js", "work", "worker.work()", "file:tools.js"),
-            ("import-resolution-package-import-with-multiple-files", "tools/a.go", "Work", "tools.Work()", "module:tools"),
-        ]
-        for case in cases:
-            with self.subTest(case=case[0]):
-                self.check_retained_namespace(case)
+@pytest.mark.parametrize("case", [
+    ("typescript", "roast-namespace", "brewing/preview.ts", 'roast.reserve("espresso")', "inventory/roast.ts", "reserve", "file:inventory/roast.ts"),
+    ("javascript", "roast-namespace", "brewing/preview.js", 'roast.reserve("espresso")', "inventory/roast.js", "reserve", "file:inventory/roast.js"),
+    ("go", "local-recipe-namespace", "brewing/tasting.go", 'recipe.Tasting("espresso")', "recipe/tasting.go", "Tasting", "module:recipe"),
+])
+def test_namespace_import_forms(case):
+    language, variant, path, evidence, target_path, target_name, import_target = case
+    repo = project_repository(language, variant)
+    assert_call(repo, (path, evidence), (target_path, target_name))
+    imports = [edge for edge in resolve_connections(repo).connections if edge.type == "IMPORTS" and edge.path == path]
+    assert len(imports) == 1
+    assert imports[0].target_key == import_target
 
-    def check_retained_namespace(self, case):
-        case_id, path, name, evidence, import_target = case
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_import_case(root, case_id)
-            repo = parse_files(discover_files(root))
-            target, = coffee_symbols(repo, path, name)
-            calls = call_edges(repo, evidence)
-            self.assertEqual(len(calls), 1)
-            self.assertEqual(calls[0].target_key, target.key)
-            imports = [edge for edge in resolve_connections(repo).connections if edge.type == "IMPORTS"]
-            self.assertEqual(len(imports), 1)
-            self.assertEqual(imports[0].target_key, import_target)
 
-    def test_shadowed_namespace_and_fluent_result_stay_unresolved(self) -> None:
-        for index in range(1, 4):
-            with self.subTest(case=index):
-                self.check_unresolved_namespace(f"namespace-shadow-{index}")
+@pytest.mark.parametrize("variant,evidence", [
+    ("parameter-roast-namespace", 'roast.reserve("espresso")'),
+    ("local-roast-namespace", 'roast.reserve("espresso")'),
+    ("fluent-roast-namespace", 'roast.reserve("espresso").reserve("filter")'),
+    ("reassigned-roast-namespace", 'roast.reserve("espresso")'),
+    ("competing-roast-namespace", 'roast.reserve("espresso")'),
+    ("unimported-roast-namespace", 'Unimported.reserve("espresso")'),
+    ("ambiguous-roast-namespace", 'Ambiguous.reserve("espresso")'),
+])
+def test_unsafe_namespace_bindings_stay_unresolved(variant, evidence):
+    repo = project_repository("typescript", variant)
+    assert_external(repo, "brewing/preview.ts", evidence)
 
-    def test_unimported_or_ambiguous_namespace_does_not_resolve(self) -> None:
-        for index in range(1, 3):
-            with self.subTest(case=index):
-                self.check_unresolved_namespace(f"namespace-ambiguous-{index}")
 
-    def check_unresolved_namespace(self, case_id) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_import_case(root, case_id)
-            artifact = analyze_repository(root)
-            calls = [edge for edge in artifact.edges if edge["type"] == "CALLS"]
-            self.assertTrue(calls)
-            self.assertTrue(all(str(edge["targetStableKey"]).startswith("external:") for edge in calls))
+@pytest.mark.parametrize("variant", ["parameter-roast-namespace", "local-roast-namespace"])
+def test_namespace_shadowing_does_not_poison_other_workflows(variant):
+    repo = project_repository("typescript", variant)
+    assert_call(repo, ("brewing/preview.ts", 'roast.reserve("filter")'), ("inventory/roast.ts", "reserve"))
+
+
+@pytest.mark.parametrize("alias", [False, True])
+@pytest.mark.parametrize("multiple_files", [False, True])
+def test_go_package_identity_and_explicit_alias(alias, multiple_files):
+    sources = project_sources("go", "tasting-package-namespace")
+    path = "brewing/tasting.go"
+    if multiple_files:
+        sources["tasting/aroma.go"] = "package tasting\nfunc Aroma() string { return \"coffee\" }\n"
+    if alias:
+        sources[path] = sources[path].replace('import "tasting"', 'import menu "tasting"').replace("tasting.Portions", "menu.Portions")
+    repo = repository("go", sources)
+    assert_call(repo, (path, ('menu' if alias else 'tasting') + '.Portions("espresso")'), ("tasting/menu.go", "Portions"))
+    imports = [edge for edge in resolve_connections(repo).connections if edge.type == "IMPORTS" and edge.path == path]
+    assert len(imports) == 1
+    assert imports[0].target_key == ("module:tasting" if multiple_files else "file:tasting/menu.go")

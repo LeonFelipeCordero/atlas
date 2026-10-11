@@ -1,1 +1,0 @@
-const f = (((function internal() { function local() {} return local(); })));

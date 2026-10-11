@@ -1,1 +1,0 @@
-fn brew()->i32{1} fn main(){stringify!(brew()); custom!(brew());}

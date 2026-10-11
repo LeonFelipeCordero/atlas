@@ -1,1 +1,0 @@
-import {Recipe as R} from './recipe'; factory().portions(1);

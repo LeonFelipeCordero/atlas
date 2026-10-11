@@ -1,1 +1,0 @@
-session.execute(statement)

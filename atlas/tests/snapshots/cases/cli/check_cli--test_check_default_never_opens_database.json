@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "cli",
-    "exit_code": 0,
-    "output": "{\n  \"findings\": []\n}\n",
-    "stdout": "{\n  \"findings\": []\n}\n",
-    "stderr": ""
-  }
-]

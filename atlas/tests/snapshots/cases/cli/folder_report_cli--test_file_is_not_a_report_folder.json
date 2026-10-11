@@ -1,9 +1,0 @@
-[
-  {
-    "kind": "cli",
-    "exit_code": 1,
-    "output": "Error: Repository does not exist: <tmp>/example/a.py\n",
-    "stdout": "",
-    "stderr": "Error: Repository does not exist: <tmp>/example/a.py\n"
-  }
-]

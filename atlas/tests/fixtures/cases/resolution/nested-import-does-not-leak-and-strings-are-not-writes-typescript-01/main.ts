@@ -1,1 +1,0 @@
-import {Recipe as R} from './recipe'; const s = 'R = other'; /* R = other */ R.portions(1);

@@ -1,7 +1,0 @@
-{
-  "files": [
-    {"calls": [{"file_path": "main.rb", "name": "helper", "start_byte": 0, "end_byte": 8, "line": 1, "evidence": "helper()", "bare_target": true, "qualifier": null, "relationship": "CALLS"}], "imports": [], "parse_error": null, "path": "main.rb", "symbols": []}
-  ],
-  "graph": {"connections": [{"source_key": "file:main.rb", "target_key": "external:ruby:callable:helper", "type": "CALLS", "confidence": "INFERRED", "path": "main.rb", "line": 1, "evidence": "helper()", "type_only": false}], "external_nodes": [{"key": "external:ruby:callable:helper", "language": "ruby", "kind": "callable", "name": "helper"}]},
-  "inheritances": []
-}

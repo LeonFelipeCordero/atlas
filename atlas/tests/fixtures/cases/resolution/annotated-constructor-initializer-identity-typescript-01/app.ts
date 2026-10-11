@@ -1,1 +1,0 @@
-class Service {persist(){}} class Other extends Service {persist(){}} function run(){const local:Service=new Other();local.persist();}

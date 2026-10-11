@@ -1,1 +1,0 @@
-setattr(service, computed_name, repository)

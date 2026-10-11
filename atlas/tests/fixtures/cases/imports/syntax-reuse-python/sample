@@ -1,3 +1,0 @@
-def run(value):
-    if value:
-        return helper(value)

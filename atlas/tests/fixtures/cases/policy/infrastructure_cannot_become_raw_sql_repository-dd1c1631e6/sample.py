@@ -1,1 +1,0 @@
-connection.exec_driver_sql('BEGIN' if ready else 'SELECT 1')

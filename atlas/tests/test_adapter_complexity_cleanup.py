@@ -1,6 +1,5 @@
 """Regression guards for the five refactored language policies."""
 
-from tests.resolution_snapshot_support import fixture_bytes
 from pathlib import Path
 import pytest
 from tree_sitter import Node
@@ -8,6 +7,7 @@ from tree_sitter_language_pack import get_parser
 from atlas.metrics.adapters.elixir import _call_arity, _clause_signature
 from atlas.metrics.adapters.python import irrefutable_pattern
 from atlas.metrics.complexity import calculate_complexity
+from tests.coffee_fixture import coffee_sources
 
 
 def nodes(root):
@@ -50,51 +50,37 @@ def test_adapter_callable_complexity_budget(phase, adapter):
         assert node.end_point.row - node.start_point.row < 100, label
 
 
-@pytest.mark.parametrize(
-    "pattern,expected",
-    [
-        ("python-irrefutable-patterns-python-01", True),
-        ("python-irrefutable-patterns-python-02", True),
-        ("python-irrefutable-patterns-python-03", False),
-        ("python-irrefutable-patterns-python-04", True),
-        ("python-irrefutable-patterns-python-05", False),
-        ("python-irrefutable-patterns-python-06", True),
-        ("python-irrefutable-patterns-python-07", False),
-        ("python-irrefutable-patterns-python-08", True),
-        ("python-irrefutable-patterns-python-09", False),
-    ],
-)
+@pytest.mark.parametrize("pattern,expected", [
+    ("_", True), ("remaining", True), ("1", False), ("(assigned)", True),
+    ("(drink,)", False), ("1 | _", True), ("1 as first", False),
+    ("_ as ticket", True), ("OrderStatus.QUEUED", False),
+])
 def test_python_irrefutable_patterns(pattern, expected):
-    root = (
-        get_parser("python")
-        .parse(
-            fixture_bytes(
-                "adapter_complexity_cleanup:test_python_irrefutable_patterns:54-11",
-                pattern=pattern,
-            )
-        )
-        .root_node
-    )
-    case = next((node for node in nodes(root) if node.type == "case_pattern"))
-    assert irrefutable_pattern(case) is expected
+    source = next(source for source in coffee_sources("python")
+                  if source.path.endswith("/scheduling.py"))
+    root = get_parser("python").parse(source.source).root_node
+    assert not root.has_error
+    cases = [node for node in nodes(root)
+             if node.type == "case_pattern" and node_text(node) == pattern]
+    assert cases, pattern
+    assert all(irrefutable_pattern(case) is expected for case in cases)
+
+
+def elixir_scheduling_calls():
+    source = next(source for source in coffee_sources("elixir")
+                  if source.path == "brewing/scheduling.ex")
+    root = get_parser("elixir").parse(source.source).root_node
+    assert not root.has_error
+    return {node_text(node): node for node in nodes(root) if node.type == "call"}
 
 
 def test_elixir_default_guard_and_pipeline_arities():
-    root = (
-        get_parser("elixir")
-        .parse(
-            fixture_bytes(
-                "adapter_complexity_cleanup:test_elixir_default_guard_and_pipeline_arities:65-11"
-            )
-        )
-        .root_node
-    )
-    assert not root.has_error
-    calls = {node_text(node): node for node in nodes(root) if node.type == "call"}
-    declaration = root.named_children[0]
+    calls = elixir_scheduling_calls()
+    declaration = next(node for node in calls.values()
+                       if node_text(node).startswith("defp plan("))
     assert _clause_signature(declaration) == (1, 2, True)
-    assert _call_arity(calls["next(extra)"]) == 2
-    finish = next((node for node in nodes(root) if node.text == b"finish"))
-    assert _call_arity(finish) == 1
+    assert _call_arity(calls["prepare(multiplier)"]) == 2
+    dispatch = next(node for node in nodes(declaration) if node.text == b"dispatch")
+    assert _call_arity(dispatch) == 1
     assert _clause_signature(None) == (0, 0, False)
     assert _call_arity(None) is None

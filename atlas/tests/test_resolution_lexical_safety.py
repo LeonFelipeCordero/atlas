@@ -1,340 +1,183 @@
-"""Independent lexical safety invariants over complete source fixture projects."""
+"""Lexical lifetime contracts over complete coffee applications and order overlays."""
 
-from tests.resolution_snapshot_support import fixture_sources
-import unittest
-from pathlib import Path
+import pytest
+
 from atlas.metrics.adapters import get_resolution_adapter
-from atlas.parsing.discovery import SourceFile
-from atlas.parsing.parser import parse_files
 from atlas.metrics.resolution_syntax import Syntax
-from atlas.metrics.resolver import resolve_connections
+from tests.test_semantic_resolution import call_edges, repository
+from tests.variant_snapshot_support import VARIANT_ROOT, scenario_sources
 
 
-def repository(language, sources):
-    return parse_files(
-        [
-            SourceFile(path, Path("/lexical") / path, language, source.encode())
-            for path, source in sources.items()
-        ]
-    )
+def lexical_sources(language):
+    return {
+        source.path: source.source.decode()
+        for source in scenario_sources(VARIANT_ROOT / language / "lexical-orders")
+    }
 
 
-class LexicalSafetyTest(unittest.TestCase):
-    def assert_call(self, repo, evidence, target=None):
-        edges = [
-            edge
-            for edge in resolve_connections(repo).connections
-            if edge.type == "CALLS" and edge.evidence == evidence
-        ]
-        self.assertTrue(edges, evidence)
-        if target is None:
-            self.assertTrue(
-                all((e.target_key.startswith("external:") for e in edges)), edges
-            )
-            return
-        self.assertTrue(
-            all(
-                (
-                    e.target_key.startswith("symbol:") and target in e.target_key
-                    for e in edges
-                )
-            ),
-            edges,
-        )
-
-    def test_python_blocks_bind_in_enclosing_function(self):
-        usages = [
-            "python-blocks-bind-in-enclosing-function-python-01",
-            "python-blocks-bind-in-enclosing-function-python-02",
-            "python-blocks-bind-in-enclosing-function-python-03",
-            "python-blocks-bind-in-enclosing-function-python-04",
-            "python-blocks-bind-in-enclosing-function-python-05",
-            "python-blocks-bind-in-enclosing-function-python-06",
-            "python-blocks-bind-in-enclosing-function-python-07",
-        ]
-        for usage in usages:
-            with self.subTest(usage=usage):
-                repo = repository(
-                    "python",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_python_blocks_bind_in_enclosing_function:64-23",
-                        usage=usage,
-                    ),
-                )
-                self.assert_call(repo, "R.work()")
-                self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_module_and_class_blocks_are_not_scopes(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_module_and_class_blocks_are_not_scopes:69-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()")
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_module_and_class_blocks_are_not_scopes:71-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()")
-        self.assert_call(repo, "R.work(1)", "tools.py::R.work")
-        self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-        self.assert_call(repo, "R.work(3)")
-        self.assert_call(repo, "R.work(4)", "tools.py::R.work")
-        self.assert_call(repo, "R.work(5)")
-
-    def test_python_conditional_import_persists_without_leaking_function(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_conditional_import_persists_without_leaking_function:85-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()", "tools.py::R.work")
-        self.assert_call(repo, "R.work(2)")
-        syntax = Syntax(
-            next((f for f in repo.files if f.source.path == "main.py")),
-            get_resolution_adapter("python"),
-        )
-        scope = syntax.import_scope(3)
-        self.assertIsNotNone(scope)
-        self.assertEqual(scope.type if scope else None, "function_definition")
-
-    def test_python_conditional_import_shadows_outer_import(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_conditional_import_shadows_outer_import:103-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()")
-        self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_class_import_cannot_be_captured_by_method(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_class_import_cannot_be_captured_by_method:110-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()", "other.py::R.work")
-        self.assert_call(repo, "R.work(1)")
-        self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_module_conditional_import_is_visible_after_block(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_module_conditional_import_is_visible_after_block:125-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()", "tools.py::R.work")
-
-    def test_python_lambda_parameters_are_callback_local(self):
-        parameters = [
-            "java-lambda-parameter-shapes-are-callback-local-java-01",
-            "python-lambda-parameters-are-callback-local-python-02",
-            "python-lambda-parameters-are-callback-local-python-03",
-            "python-lambda-parameters-are-callback-local-python-04",
-            "python-lambda-parameters-are-callback-local-python-05",
-        ]
-        for parameter in parameters:
-            with self.subTest(parameter=parameter):
-                repo = repository(
-                    "python",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_python_lambda_parameters_are_callback_local:138-23",
-                        parameter=parameter,
-                    ),
-                )
-                self.assert_call(repo, "R.work()")
-                self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_comprehension_and_generator_bindings_do_not_escape(self):
-        expressions = [
-            "[R.work() for R in items]",
-            "(R.work() for R in items)",
-            "{R.work() for R in items}",
-            "{R: R.work() for R in items}",
-            "python-comprehension-and-generator-bindings-do-not-escape-python-05",
-            "python-comprehension-and-generator-bindings-do-not-escape-python-06",
-        ]
-        for expression in expressions:
-            with self.subTest(expression=expression):
-                repo = repository(
-                    "python",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_python_comprehension_and_generator_bindings_do_not_escape:153-23",
-                        expression=expression,
-                    ),
-                )
-                self.assert_call(repo, "R.work()")
-                self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_first_comprehension_iterable_uses_outer_scope(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_first_comprehension_iterable_uses_outer_scope:158-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()")
-        self.assert_call(repo, "R.work(1)", "tools.py::R.work")
-        self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_comprehension_walrus_binds_enclosing_function(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_comprehension_walrus_binds_enclosing_function:164-15"
-            ),
-        )
-        self.assert_call(repo, "R.work()")
-        self.assert_call(repo, "R.work(2)", "tools.py::R.work")
-
-    def test_python_parameter_shadows_local_callable_without_hiding_module_call(self):
-        repo = repository(
-            "python",
-            fixture_sources(
-                "resolution_lexical_safety:test_python_parameter_shadows_local_callable_without_hiding_module_call:171-15"
-            ),
-        )
-        edges = [
-            edge
-            for edge in resolve_connections(repo).connections
-            if edge.type == "CALLS" and edge.evidence == "target()"
-        ]
-        self.assertEqual(len(edges), 2)
-        self.assertEqual(
-            {
-                edge.line: edge.target_key.startswith("symbol:main.py::target:")
-                for edge in edges
-            },
-            {2: False, 3: True},
-        )
-
-    def test_javascript_single_and_destructured_callback_parameters(self):
-        callbacks = [
-            "callback-parameters-javascript-01",
-            "callback-parameters-javascript-02",
-            "callback-parameters-javascript-03",
-            "callback-parameters-javascript-04",
-            "callback-parameters-javascript-05",
-            "callback-parameters-javascript-06",
-            "callback-parameters-javascript-07",
-            "callback-parameters-javascript-08",
-            "callback-parameters-javascript-09",
-            "callback-parameters-javascript-10",
-            "callback-parameters-javascript-11",
-        ]
-        for language, extension in [("javascript", "js"), ("typescript", "ts")]:
-            self.check_callback_parameters(language, extension, callbacks)
-
-    def check_callback_parameters(self, language, extension, callbacks):
-        for callback in callbacks:
-            with self.subTest(language=language, callback=callback):
-                repo = repository(
-                    language,
-                    fixture_sources(
-                        "resolution_lexical_safety:check_callback_parameters:209-23",
-                        language=language,
-                        callback=callback,
-                    ),
-                )
-                self.assert_call(repo, "R.work()")
-                self.assert_call(repo, "R.work(2)", f"tools.{extension}::R.work")
-
-    def test_javascript_property_keys_and_defaults_are_not_bindings(self):
-        for callback in [
-            "javascript-property-keys-and-defaults-are-not-bindings-javascript-01",
-            "javascript-property-keys-and-defaults-are-not-bindings-javascript-02",
-        ]:
-            with self.subTest(callback=callback):
-                repo = repository(
-                    "javascript",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_javascript_property_keys_and_defaults_are_not_bindings:222-23",
-                        callback=callback,
-                    ),
-                )
-                self.assert_call(repo, "R.work()", "tools.js::R.work")
-                self.assert_call(repo, "R.work(2)", "tools.js::R.work")
-
-    def test_java_lambda_parameter_shapes_are_callback_local(self):
-        for parameters in [
-            "java-lambda-parameter-shapes-are-callback-local-java-01",
-            "java-lambda-parameter-shapes-are-callback-local-java-02",
-            "java-lambda-parameter-shapes-are-callback-local-java-03",
-            "java-lambda-parameter-shapes-are-callback-local-java-04",
-            "java-lambda-parameter-shapes-are-callback-local-java-05",
-        ]:
-            with self.subTest(parameters=parameters):
-                repo = repository(
-                    "java",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_java_lambda_parameter_shapes_are_callback_local:235-23",
-                        parameters=parameters,
-                    ),
-                )
-                self.assert_call(repo, "R.work()")
-                self.assert_call(repo, "R.work(2)", "R.java::R.work")
-
-    def test_java_blocks_loops_and_catch_bindings_do_not_leak(self):
-        bodies = [
-            "java-blocks-loops-and-catch-bindings-do-not-leak-java-01",
-            "java-blocks-loops-and-catch-bindings-do-not-leak-java-02",
-            "java-blocks-loops-and-catch-bindings-do-not-leak-java-03",
-            "java-blocks-loops-and-catch-bindings-do-not-leak-java-04",
-        ]
-        for body in bodies:
-            with self.subTest(body=body):
-                repo = repository(
-                    "java",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_java_blocks_loops_and_catch_bindings_do_not_leak:259-23",
-                        body=body,
-                    ),
-                )
-                self.assert_call(repo, "R.work()")
-                self.assert_call(repo, "R.work(2)", "R.java::R.work")
-
-    def test_go_range_and_callback_bindings_do_not_leak(self):
-        for body in [
-            "go-range-and-callback-bindings-do-not-leak-go-01",
-            "go-range-and-callback-bindings-do-not-leak-go-02",
-            "go-range-and-callback-bindings-do-not-leak-go-03",
-        ]:
-            with self.subTest(body=body):
-                repo = repository(
-                    "go",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_go_range_and_callback_bindings_do_not_leak:270-23",
-                        body=body,
-                    ),
-                )
-                self.assert_call(repo, "R.Work()")
-                self.assert_call(repo, "R.Work(2)", "tools.go::Work")
-
-    def test_kotlin_lambda_and_range_bindings_do_not_leak(self):
-        for body in [
-            "kotlin-lambda-and-range-bindings-do-not-leak-kotlin-01",
-            "kotlin-lambda-and-range-bindings-do-not-leak-kotlin-02",
-            "for (R in items) {R()}; R(2)",
-            "kotlin-lambda-and-range-bindings-do-not-leak-kotlin-04",
-        ]:
-            with self.subTest(body=body):
-                repo = repository(
-                    "kotlin",
-                    fixture_sources(
-                        "resolution_lexical_safety:test_kotlin_lambda_and_range_bindings_do_not_leak:290-23",
-                        body=body,
-                    ),
-                )
-                self.assert_call(repo, "R()")
-                self.assert_call(repo, "R(2)", "tools.kt::work")
+def lexical_repository(language):
+    return repository(language, lexical_sources(language))
 
 
-if __name__ == "__main__":
-    unittest.main()
+def order_symbol_keys(repo, declaration):
+    path, name = declaration
+    keys = {s.key for s in repo.symbols if s.qualified_name == f"{path}::{name}"}
+    assert keys, declaration
+    return keys
+
+
+def assert_order_spans(file, edges, evidence):
+    lines = {e.line for e in edges}
+    calls = [c for c in file.calls if c.evidence == evidence and c.line in lines]
+    assert calls, evidence
+    assert all(file.source.source[c.start_byte:c.end_byte].decode() == evidence for c in calls)
+    assert len(edges) == len(calls), (evidence, edges)
+
+
+def assert_order_target(repo, edges, target):
+    if target is None:
+        assert all(e.target_key.startswith("external:") for e in edges), edges
+    else:
+        assert {e.target_key for e in edges} == order_symbol_keys(repo, target), edges
+
+
+def assert_order_call(repo, site, target=None):
+    """Match declaration identities and unmodified original byte ranges."""
+    path, owner, evidence = site
+    file = next(file for file in repo.files if file.source.path == path)
+    owners = order_symbol_keys(repo, (path, owner)) if owner is not None else {f"file:{path}"}
+    edges = [e for e in call_edges(repo, evidence) if e.source_key in owners]
+    assert_order_spans(file, edges, evidence)
+    assert_order_target(repo, edges, target)
+    return edges
+
+
+PYTHON_PATH = "src/coffee/orders/lexical.py"
+PYTHON_RECIPE = ("src/coffee/brewing/recipe.py", "Recipe.portions")
+
+
+def test_python_blocks_bind_in_enclosing_function():
+    repo = lexical_repository("python")
+    for owner in ("conditional", "future_assignment", "loop", "with_stock", "exception",
+                  "conditional_callable", "conditional_class"):
+        assert_order_call(repo, (PYTHON_PATH, owner, "Drink.portions(name)"))
+    assert_order_call(repo, (PYTHON_PATH, "outside", "Drink.portions(name)"), PYTHON_RECIPE)
+
+
+def test_python_module_and_class_blocks_are_not_scopes():
+    repo = lexical_repository("python")
+    assert_order_call(repo, (PYTHON_PATH, "Menu", "MenuDrink.preview(name)"),
+                      ("src/coffee/brewing/recipe.py", "Recipe.preview"))
+    assert_order_call(repo, (PYTHON_PATH, "Menu.receipt", "MenuDrink.preview(name)"))
+    assert_order_call(repo, (PYTHON_PATH, "Menu.portions", "Drink.portions(name)"), PYTHON_RECIPE)
+    assert_order_call(repo, (PYTHON_PATH, None, "ConditionalDrink.portions(name)"), PYTHON_RECIPE)
+    assert_order_call(repo, (PYTHON_PATH, "SeasonalMenu", "Drink.portions(name)"))
+    assert_order_call(repo, (PYTHON_PATH, "SeasonalMenu.receipt", "Drink.preview(name)"),
+                      ("src/coffee/brewing/recipe.py", "Recipe.preview"))
+    assert_order_call(repo, (PYTHON_PATH, "SeasonalMenu.default_receipt", "Drink.preview(name)"))
+    assert_order_call(repo, (PYTHON_PATH, "SeasonalMenu", "Drink.portions(drink_name)"), PYTHON_RECIPE)
+    assert_order_call(repo, (PYTHON_PATH, "SeasonalMenu", "Drink.preview(name)"))
+    assert_order_call(repo, ("src/coffee/orders/module_binding.py", None, "Drink.portions(name)"))
+
+
+def test_python_conditional_import_order_and_scope():
+    repo = lexical_repository("python")
+    assert_order_call(repo, (PYTHON_PATH, "import_order", "Drink.portions(before)"))
+    assert_order_call(repo, (PYTHON_PATH, "import_order", "Drink.portions(after)"))
+    assert_order_call(repo, (PYTHON_PATH, "local_import", "LocalDrink.portions(name)"), PYTHON_RECIPE)
+    assert_order_call(repo, (PYTHON_PATH, "missing_import", "LocalDrink.portions(name)"))
+    file = next(f for f in repo.files if f.source.path == PYTHON_PATH)
+    directive = next(i for i in file.imports if "LocalDrink" in file.source.source.decode().splitlines()[i.line - 1])
+    scope = Syntax(file, get_resolution_adapter("python")).import_scope(directive.line)
+    assert scope is not None and scope.type == "function_definition"
+
+
+def test_python_class_import_cannot_be_captured_by_method():
+    repo = lexical_repository("python")
+    assert_order_call(repo, (PYTHON_PATH, "Receipt", "Drink.render(names)"),
+                      ("src/coffee/reporting/report.py", "Report.render"))
+    assert_order_call(repo, (PYTHON_PATH, "Receipt.portions", "Drink.portions(name)"))
+
+
+def test_python_callback_and_comprehension_bindings():
+    repo = lexical_repository("python")
+    for owner in ("lambda_single", "lambda_default", "lambda_rest", "lambda_keyword", "lambda_keywords",
+                  "list_orders", "generator_orders", "set_orders", "dict_orders", "nested_orders", "paired_orders", "filtered_orders"):
+        callback_owner = owner + ".<anonymous>" if owner.startswith("lambda_") else owner
+        assert_order_call(repo, (PYTHON_PATH, callback_owner, "Drink.portions(name)"))
+        assert_order_call(repo, (PYTHON_PATH, owner, "Drink.preview(name)"),
+                          ("src/coffee/brewing/recipe.py", "Recipe.preview"))
+    assert_order_call(repo, (PYTHON_PATH, "first_iterable", "Drink.portions(name)"))
+    assert_order_call(repo, (PYTHON_PATH, "first_iterable", "Drink.preview(name)"),
+                      ("src/coffee/brewing/recipe.py", "Recipe.preview"))
+    assert_order_call(repo, (PYTHON_PATH, "walrus_order", "Drink.portions(name)"))
+    assert_order_call(repo, (PYTHON_PATH, "outside", "Drink.portions(name)"), PYTHON_RECIPE)
+
+
+def test_python_parameter_shadows_callable_without_hiding_module_call():
+    repo = lexical_repository("python")
+    assert_order_call(repo, (PYTHON_PATH, "custom_receipt", "receipt(names)"))
+    assert_order_call(repo, (PYTHON_PATH, "standard_receipt", "receipt(names)"), (PYTHON_PATH, "receipt"))
+
+
+@pytest.mark.parametrize("language,extension", [("javascript", "js"), ("typescript", "ts")])
+def test_javascript_and_typescript_callback_bindings(language, extension):
+    repo = lexical_repository(language)
+    path = f"ordering/LexicalOrders.{extension}"
+    target = (f"brewing/Recipe.{extension}", "Recipe.portions")
+    for owner in ("single", "parenthesized", "functionParameter", "namedFunction", "objectParameter",
+                  "arrayParameter", "restParameter", "nestedParameter", "renamedParameter",
+                  "defaultParameter", "restObject", "defaultObject", "selfNamed", "localCallable"):
+        callback_owner = owner + {"namedFunction": ".inspect", "selfNamed": ".Drink"}.get(owner, ".<anonymous>")
+        assert_order_call(repo, (path, callback_owner, "Drink.portions(name)"))
+        assert_order_call(repo, (path, owner, "Drink.portions(name)"), target)
+    for owner in ("propertyKey", "defaultValue"):
+        assert_order_call(repo, (path, owner + ".<anonymous>", "Drink.portions(name)"), target)
+        assert_order_call(repo, (path, owner, "Drink.portions(name)"), target)
+
+
+def test_java_blocks_loops_catches_and_lambda_parameters():
+    repo = lexical_repository("java")
+    path = "orders/LexicalOrders.java"
+    target = ("brewing/Recipe.java", "Recipe.portions")
+    for owner in ("single", "parenthesized", "typed", "inferred", "multiple"):
+        assert_order_call(repo, (path, f"LexicalOrders.{owner}.<anonymous>", "Recipe.portions(name)"))
+        assert_order_call(repo, (path, f"LexicalOrders.{owner}", "Recipe.portions(name)"), target)
+    for owner in ("block", "loop", "enhanced", "caught"):
+        assert_order_call(repo, (path, f"LexicalOrders.{owner}", "Recipe.portions(local)"))
+        assert_order_call(repo, (path, f"LexicalOrders.{owner}", "Recipe.portions(name)"), target)
+
+
+def test_go_range_and_callback_bindings():
+    repo = lexical_repository("go")
+    path = "brewing/lexical_orders.go"
+    target = ("recipe/recipe.go", "Portions")
+    for owner in ("rangeOrders", "declaredOrders"):
+        assert_order_call(repo, (path, owner, "Drink.Portions(local)"))
+        assert_order_call(repo, (path, owner, "Drink.Portions(name)"), target)
+    for owner in ("callbackOrders", "pairedCallbacks"):
+        assert_order_call(repo, (path, owner + ".inspect", "Drink.Portions(name)"))
+        assert_order_call(repo, (path, owner, "Drink.Portions(name)"), target)
+
+
+def test_kotlin_lambda_and_range_bindings():
+    repo = lexical_repository("kotlin")
+    path = "orders/LexicalOrders.kt"
+    target = ("brewing/Recipe.kt", "portions")
+    for owner in ("single", "destructured", "loop", "pairedLoop", "nested"):
+        callback_owner = {"loop": owner, "pairedLoop": owner, "nested": "nested.<anonymous>.<anonymous>"}.get(owner, owner + ".<anonymous>")
+        assert_order_call(repo, (path, callback_owner, "dose(local)"))
+        assert_order_call(repo, (path, owner, "dose(name)"), target)
+
+
+def test_resolution_does_not_mutate_parsed_projects():
+    from copy import deepcopy
+    from atlas.metrics.resolver import resolve_connections
+
+    for language in ("python", "javascript", "typescript", "java", "go", "kotlin", "rust"):
+        repo = lexical_repository(language)
+        original = deepcopy(repo)
+        first = resolve_connections(repo)
+        assert repo == original
+        assert resolve_connections(repo) == first
+        assert repo == original

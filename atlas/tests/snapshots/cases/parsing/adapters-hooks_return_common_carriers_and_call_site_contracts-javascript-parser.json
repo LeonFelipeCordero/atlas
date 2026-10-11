@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636f6e73742072756e203d202829203d3e2068656c70657228293b"}, "language": "javascript", "path": "sample"},
-"content_hash": "bdc376e55ec3da2107cea804d308e5cf2d08f679f12d38090d152fd44d844b88",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 26, "end_column": 27, "end_line": 1, "file_path": "sample", "key": "symbol:sample::run:12", "kind": "function", "language": "javascript", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::run", "signature": "() =>", "start_byte": 12, "start_column": 13, "start_line": 1, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 26, "evidence": "helper()", "file_path": "sample", "line": 1, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 18}],
-"imports": [],
-"inheritances": []
-}

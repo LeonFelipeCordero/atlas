@@ -1,1 +1,0 @@
-Row.__table__.select()

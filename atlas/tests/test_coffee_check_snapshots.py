@@ -19,5 +19,5 @@ def test_coffee_check_matches_snapshot(language: str) -> None:
     ])
     expected_exit = int(bool(json.loads(findings.output)["findings"]))
     assert findings.exit_code == result.exit_code == expected_exit, result.output
-    expected = (SNAPSHOT_ROOT / f"{language}-coffee-check.md").read_text(encoding="utf-8")
+    expected = json.loads((SNAPSHOT_ROOT / "coffee" / language / "cli.json").read_text())["check-markdown"]["output"]
     assert result.output == expected

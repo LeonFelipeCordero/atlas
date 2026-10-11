@@ -1,7 +1,0 @@
-{
-  "files": [
-    {"calls": [{"file_path": "main.py", "name": "x", "start_byte": 6, "end_byte": 9, "line": 2, "evidence": "x()", "bare_target": true, "qualifier": null, "relationship": "CALLS"}], "imports": [], "parse_error": null, "path": "main.py", "symbols": []}
-  ],
-  "graph": {"connections": [{"source_key": "file:main.py", "target_key": "external:python:callable:x", "type": "CALLS", "confidence": "INFERRED", "path": "main.py", "line": 2, "evidence": "x()", "type_only": false}], "external_nodes": [{"key": "external:python:callable:x", "language": "python", "kind": "callable", "name": "x"}]},
-  "inheritances": []
-}

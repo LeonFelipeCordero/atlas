@@ -1,3 +1,0 @@
-defmodule Service do
-  def run(), do: helper()
-end

@@ -1,6 +1,0 @@
-[
-  {"allowed": false, "id": "service_constructor_must_use_domain_protocol-ba3c943c9e", "module": "atlas.services.repositories", "old_test": "test_database_boundaries.py::test_service_constructor_must_use_domain_protocol", "operation": "boundary", "package": "atlas.services"},
-  {"allowed": false, "id": "service_constructor_must_use_domain_protocol-8f1fed75ce", "module": "atlas.services.repositories", "old_test": "test_database_boundaries.py::test_service_constructor_must_use_domain_protocol", "operation": "boundary", "package": "atlas.services"},
-  {"allowed": false, "id": "service_constructor_must_use_domain_protocol-54b5fb6f01", "module": "atlas.services.repositories", "old_test": "test_database_boundaries.py::test_service_constructor_must_use_domain_protocol", "operation": "boundary", "package": "atlas.services"},
-  {"allowed": false, "id": "service_constructor_must_use_domain_protocol-7086d67d28", "module": "atlas.services.repositories", "old_test": "test_database_boundaries.py::test_service_constructor_must_use_domain_protocol", "operation": "boundary", "package": "atlas.services"}
-]

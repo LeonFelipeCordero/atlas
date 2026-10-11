@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "766f6964206628297b69662861297b7d656c73652069662862297b7d656c73652069662863297b69662864297b7d7d7d"}, "language": "java", "path": "sample.java"},
-"content_hash": "9e6fea618777ad3e6146dd8a1589221fc43b76afb91bfdc9f262102e6e951f1d",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 48, "end_column": 49, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::f:0", "kind": "method", "language": "java", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::f", "signature": "void f()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

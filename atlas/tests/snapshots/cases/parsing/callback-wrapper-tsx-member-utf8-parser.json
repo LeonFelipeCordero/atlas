@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "2f2a20636166c3a920f09f9880202a2f0a6f626a6563742e616374696f6e203d2028282866756e6374696f6e20696e7465726e616c2829207b2066756e6374696f6e206c6f63616c2829207b7d2072657475726e206c6f63616c28293b207d2929293b"}, "language": "tsx", "path": "sample.tsx"},
-"content_hash": "b596a4a55930e2cf63dd63d2cac8fe9e82472f38dc6397ba21c8f9adc3b8fd8a",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 95, "end_column": 79, "end_line": 2, "file_path": "sample.tsx", "key": "symbol:sample.tsx::action:36", "kind": "function", "language": "tsx", "line_count": null, "name": "action", "parameter_count": null, "parent_key": "file:sample.tsx", "qualified_name": "sample.tsx::action", "signature": "function internal() { function local() {} return local(); }", "start_byte": 36, "start_column": 20, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 77, "end_column": 61, "end_line": 2, "file_path": "sample.tsx", "key": "symbol:sample.tsx::action.local:58", "kind": "function", "language": "tsx", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:sample.tsx::action:36", "qualified_name": "sample.tsx::action.local", "signature": "function local()", "start_byte": 58, "start_column": 42, "start_line": 2, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 92, "evidence": "local()", "file_path": "sample.tsx", "line": 2, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 85}],
-"imports": [],
-"inheritances": []
-}

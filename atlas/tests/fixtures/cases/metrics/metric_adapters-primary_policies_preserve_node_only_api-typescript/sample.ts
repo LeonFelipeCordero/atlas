@@ -1,1 +1,0 @@
-function run(x: boolean) { return x ? 1 : 0; }

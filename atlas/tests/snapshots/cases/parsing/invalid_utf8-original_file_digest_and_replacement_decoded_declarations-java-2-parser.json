@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c6173732041"}, "language": "java", "path": "sample.java"},
-"content_hash": "da4d9520d81ec6210f6fb604b3732c09a1ec5f00f089a41e974fe09af10caccb",
-"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 5, "end_column": 6, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::<anonymous>:0", "kind": "class", "language": "java", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::<anonymous>", "signature": "class", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

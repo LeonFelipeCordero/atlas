@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "666e206628297b69662061207b7d20656c73652069662062207b7d20656c73652069662063207b69662064207b7d7d7d"}, "language": "rust", "path": "sample.rs"},
-"content_hash": "7f793dd0e1b1a5b4235218a99a42c86f55d42538c5706652d46e99f706b30e79",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 48, "end_column": 49, "end_line": 1, "file_path": "sample.rs", "key": "symbol:sample.rs::f:0", "kind": "function", "language": "rust", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::f", "signature": "fn f()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

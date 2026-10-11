@@ -12,11 +12,10 @@ from click.testing import CliRunner
 
 from atlas.cli import main
 from atlas.persistence.database import migrate_database
-from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
-from tests.coffee_scenarios import DECLARATIONS as SOURCE_INVENTORIES
+from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT, coffee_sources
 from tests.coffee_scenarios import EMPTY_BREW_CALL
 
-NAVIGATION_SNAPSHOT_ROOT = SNAPSHOT_ROOT / "graph-navigation"
+NAVIGATION_SNAPSHOT_ROOT = SNAPSHOT_ROOT / "coffee"
 
 # Source-reviewed paths, qualified declarations and kinds, not saved graph keys.
 DECLARATIONS = {
@@ -79,7 +78,7 @@ def navigation_responses(language: str, database: Path) -> Record:
     with patch.dict(os.environ, {"DATABASE_PATH": str(database)}):
         root = FIXTURE_ROOT / language
         indexed = command(CliRunner(), "index", "--folder", str(root))
-        assert indexed["stats"]["files"] == len(SOURCE_INVENTORIES[language]) and indexed["stats"]["parseErrors"] == 0
+        assert indexed["stats"]["files"] == len(coffee_sources(language)) and indexed["stats"]["parseErrors"] == 0
         return CoffeeNavigation(root, indexed["repositoryId"]).collect()
 
 

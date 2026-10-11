@@ -1,2 +1,0 @@
-def f(a, # comma, comment
- *, b: tuple[int, int] = (1,2)) -> tuple[int,int]: pass

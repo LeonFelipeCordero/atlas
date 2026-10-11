@@ -1,1 +1,0 @@
-import {Maker as R} from './maker'; R.prototype.brew = other; new R().brew();

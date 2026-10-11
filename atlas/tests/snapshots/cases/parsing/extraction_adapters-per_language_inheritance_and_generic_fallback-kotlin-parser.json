@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c617373204368696c64203a204261736528292c2053657276696365207b7d"}, "language": "kotlin", "path": "sample.kt"},
-"content_hash": "462bfac694f70e8ce9bcceb6ce1f0694d358b60e7c247600f6e02dbcbefff4d4",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 32, "end_column": 33, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::Child:0", "kind": "class", "language": "kotlin", "line_count": null, "name": "Child", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::Child", "signature": "class Child : Base(), Service {}", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": [{"evidence": "class Child : Base(), Service {}", "file_path": "sample.kt", "language": "kotlin", "line": 1, "source_key": "symbol:sample.kt::Child:0", "target_name": "Base"}, {"evidence": "class Child : Base(), Service {}", "file_path": "sample.kt", "language": "kotlin", "line": 1, "source_key": "symbol:sample.kt::Child:0", "target_name": "Service"}]
-}

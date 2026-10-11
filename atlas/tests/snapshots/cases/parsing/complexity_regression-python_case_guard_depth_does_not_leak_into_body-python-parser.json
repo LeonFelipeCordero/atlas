@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "64656620726f7574652876616c7565293a0a206966206163746976653a0a20206d617463682076616c75653a0a2020206361736520312069662072656164793a0a20202020696620656e61626c65643a2061636365707428290a20202063617365205f3a0a2020202069662066616c6c6261636b3a2072656a65637428290a"}, "language": "python", "path": "sample.py"},
-"content_hash": "09bee50ef056f5899d4042e538d3ea7ba7a4d3882dca8471f8f9d6b2b4b46cec",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 126, "end_column": 26, "end_line": 7, "file_path": "sample.py", "key": "symbol:sample.py::route:0", "kind": "function", "language": "python", "line_count": null, "name": "route", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::route", "signature": "def route(value):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 89, "evidence": "accept()", "file_path": "sample.py", "line": 5, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 81}, {"bare_target": true, "end_byte": 126, "evidence": "reject()", "file_path": "sample.py", "line": 7, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 118}],
-"imports": [],
-"inheritances": []
-}

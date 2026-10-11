@@ -1,7 +1,0 @@
-[
-  "getattr",
-  "raw SQL/driver access ",
-  "raw SQL/driver access sqlalchemy.text",
-  "sqlalchemy",
-  "sqlalchemy.text"
-]

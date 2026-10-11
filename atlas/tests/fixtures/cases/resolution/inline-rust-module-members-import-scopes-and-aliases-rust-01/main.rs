@@ -1,1 +1,0 @@
-mod tools{pub fn work(){}} mod outer {use super::tools as t; pub mod inner; pub fn run(){t::work(); inner::work();}} fn main(){crate::outer::run(); t::work();}

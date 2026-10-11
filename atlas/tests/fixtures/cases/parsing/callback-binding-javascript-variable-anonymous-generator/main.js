@@ -1,1 +1,0 @@
-const f = (((function* () { function local() {} yield local(); })));

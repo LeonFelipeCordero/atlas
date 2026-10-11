@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "6465662066287b612c627d2c2063205c5c2063616c6c28312c322929207768656e2061203e20302c20646f3a2063"}, "language": "elixir", "path": "sample"},
-"content_hash": "96520c3fc685c248375638a3c3cd851ecb2dc7b34dfdeb4bc2fa99fba937088b",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 46, "end_column": 47, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "elixir", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "def f({a,b}, c \\\\ call(1,2)) when a > 0, do:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

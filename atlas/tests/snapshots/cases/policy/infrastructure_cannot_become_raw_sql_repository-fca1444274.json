@@ -1,5 +1,0 @@
-[
-  "infrastructure cannot build domain queries: query",
-  "raw SQL/driver access ",
-  "raw SQL/driver access sqlalchemy.text"
-]

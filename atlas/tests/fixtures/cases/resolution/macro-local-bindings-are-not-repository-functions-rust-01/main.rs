@@ -1,1 +1,0 @@
-fn brew()->i32{1} fn main(){let values=vec![{let brew=||2;brew()}]; let text=stringify!(brew());}

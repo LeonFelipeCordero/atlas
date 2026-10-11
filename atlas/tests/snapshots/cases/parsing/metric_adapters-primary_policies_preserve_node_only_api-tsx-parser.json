@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e6374696f6e2052756e28783a20626f6f6c65616e29207b2072657475726e2078203f203c646976202f3e203a203c7370616e202f3e3b207d"}, "language": "tsx", "path": "sample.tsx"},
-"content_hash": "7812021add202bcaa3c5cd24e8e38962b60a2eae2630681dc946c4131d2f4866",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 59, "end_column": 60, "end_line": 1, "file_path": "sample.tsx", "key": "symbol:sample.tsx::Run:0", "kind": "function", "language": "tsx", "line_count": null, "name": "Run", "parameter_count": null, "parent_key": "file:sample.tsx", "qualified_name": "sample.tsx::Run", "signature": "function Run(x: boolean)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

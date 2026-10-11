@@ -1,1 +1,0 @@
-import * as tools from './tools'; tools.work()

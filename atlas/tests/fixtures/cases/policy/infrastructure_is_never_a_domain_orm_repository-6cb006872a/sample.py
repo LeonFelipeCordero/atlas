@@ -1,1 +1,0 @@
-session.bulk_update_mappings(Row, records)

@@ -1,1 +1,0 @@
-cursor.execute('PRAGMA foreign_keys = ON')

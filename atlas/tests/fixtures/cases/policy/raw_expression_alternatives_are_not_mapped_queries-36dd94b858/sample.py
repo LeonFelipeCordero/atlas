@@ -1,1 +1,0 @@
-Row.__table__.c.name.is_literal = True

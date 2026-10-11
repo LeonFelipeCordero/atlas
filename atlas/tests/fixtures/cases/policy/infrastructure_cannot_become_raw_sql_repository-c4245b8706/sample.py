@@ -1,1 +1,0 @@
-sql = 'SELECT * FROM repositories'

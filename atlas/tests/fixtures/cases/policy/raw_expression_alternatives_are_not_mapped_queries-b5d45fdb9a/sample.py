@@ -1,1 +1,0 @@
-Row.id.op(fragment)(value)

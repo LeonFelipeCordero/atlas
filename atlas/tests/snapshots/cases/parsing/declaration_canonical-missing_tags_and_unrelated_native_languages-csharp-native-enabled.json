@@ -1,4 +1,0 @@
-{
-"native_input": [{"body_span": null, "children": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "run", "signature": null, "span": null, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": "Owner", "signature": null, "span": null, "visibility": null}],
-"declarations": [{"body_span": null, "children": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "run", "signature": null, "span": null, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": "Owner", "signature": null, "span": null, "visibility": null}]
-}

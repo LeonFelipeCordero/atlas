@@ -1,1 +1,0 @@
-import {Recipe as R} from './recipe'; object.portions(1);

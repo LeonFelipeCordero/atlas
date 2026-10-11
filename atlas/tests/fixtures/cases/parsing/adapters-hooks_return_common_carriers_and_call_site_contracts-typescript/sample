@@ -1,1 +1,0 @@
-interface Service { run: () => number; } function run() { helper(); }

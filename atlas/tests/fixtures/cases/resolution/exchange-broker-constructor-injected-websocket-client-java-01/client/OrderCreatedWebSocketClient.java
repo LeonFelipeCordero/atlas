@@ -1,1 +1,0 @@
-package client; public class OrderCreatedWebSocketClient { public void sendAndWait(Event event) {} }

@@ -1,4 +1,0 @@
-[
-  {"allowed": true, "id": "exact_orm_repository_modules_can_use_mapped_queries-2b2d7bff01", "module": "atlas.persistence.repositories", "old_test": "test_database_boundaries.py::test_exact_orm_repository_modules_can_use_mapped_queries", "operation": "boundary", "package": "atlas.persistence"},
-  {"allowed": true, "id": "exact_orm_repository_modules_can_use_mapped_queries-7d856c0d4d", "module": "atlas.persistence.repositories", "old_test": "test_database_boundaries.py::test_exact_orm_repository_modules_can_use_mapped_queries", "operation": "boundary", "package": "atlas.persistence"}
-]

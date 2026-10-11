@@ -1,5 +1,0 @@
-[
-  "database handle/operation connection.exec_driver_sql",
-  "database operation connection.exec_driver_sql",
-  "raw SQL/driver access connection.exec_driver_sql"
-]
