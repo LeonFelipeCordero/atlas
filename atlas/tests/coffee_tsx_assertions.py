@@ -28,6 +28,14 @@ def assert_component_references(test, symbols, edges):
     preview = owned_references(references, symbols, "Preview")
     test.assertEqual(len(preview), 1)
     test.assertTrue(preview[0].target_key.startswith("external:"))
+    menu = owned_references(references, symbols, "Menu")
+    test.assertEqual({edge.evidence for edge in menu}, {"cards.CoffeeCard", "$Card", "_Card"})
+    test.assertEqual(len(menu), 3)
+    test.assertTrue(all(symbols[edge.target_key].name == "CoffeeCard" for edge in menu))
+    counter = owned_references(references, symbols, "CoffeeCounter")
+    test.assertEqual(len(counter), 1)
+    test.assertEqual(symbols[counter[0].target_key].name, "Menu")
+    test.assertEqual(len(references), 7)
     assert_normal_calls(test, symbols, edges)
 
 

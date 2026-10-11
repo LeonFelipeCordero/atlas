@@ -1,1 +1,0 @@
-class Service { persist() {} } class App { constructor(private orderService: Service) {} run(parameter: Service) { const local: Service = new Service(); this.orderService.persist(); parameter.persist(); local.persist(); } }

@@ -18,16 +18,15 @@ LANGUAGES = (
     "typescript",
     "elixir",
     "python",
+    "tsx",
 )
+BREWING_LANGUAGES = tuple(language for language in LANGUAGES if language != "tsx")
 
 
 def coffee_sources(language: str):
     if language not in LANGUAGES:
         raise ValueError(f"Unknown coffee language: {language}")
-    return [
-        source for source in discover_files(FIXTURE_ROOT / language)
-        if source.language == language
-    ]
+    return list(discover_files(FIXTURE_ROOT / language))
 
 
 def coffee_graph(language: str) -> GraphArtifact:

@@ -1,104 +1,27 @@
-# Sample-code snapshot migration
+# Shared sample snapshot coverage
 
-Source plan: [Notion](https://app.notion.com/p/3f6a9915a6aa816dab64f6304b90175a).
-Baseline: cleanup commit `f7e9352`; no removed migration tests were restored.
+The positive corpus is nine realistic coffee-shop projects in `tests/fixtures/coffee/`: Python, Java, Kotlin, Go, Rust, JavaScript, TypeScript, Elixir and TSX. Their 63 source/configuration files implement brewing, orders, stock, receipts and UI flows. Numeric padding and deliberately oversized calibration functions are gone. Go uses real packages and `go.mod`; Rust uses a standard crate/module tree.
 
-`inventory.txt` preserves the plan's 363 function names (58 files), not a case count.
-`test_source_migration_manifest.py` checks that every name has a destination.
-Family manifests expand parameters, languages, helper inputs, metadata modes and
-mutation stages. Additional setup found during the source census is in `audit.json`.
+## One source project, every seam
 
-## Destinations
+`coffee_pipeline.py` collects ordered source bytes and hashes, parser records **before** metric enrichment, raw native metadata, tags-only and native-merged structures, enriched declarations, resolved connections, and production CLI report/check output in JSON and Markdown. `tests/snapshots/coffee/<language>/` holds extraction, analysis and CLI bundles. Complete graph, Markdown and saved-navigation baselines remain alongside them. The shared order contract is additionally captured by the actual TSX parser plus native/tags-only structures, without copying the TypeScript source; its migration entry points to that explicit grammar variant.
 
-| Family | Source/catalog location | Runner | Named snapshots |
-| --- | --- | --- | ---: |
-| Resolution and adapter probes | `fixtures/cases/resolution/`, `resolution.json` | `test_resolution_snapshots.py` | 313 |
-| Imports/indexing and namespace probes | `fixtures/cases/imports/`, `imports.json`, `import_cases.json` | `test_import_snapshots.py` | 107 |
-| Parsing and native metadata | `fixtures/cases/parsing/`, `parsing*.json` | `test_parsing_snapshots.py` | 590 |
-| Complexity, parameters and physical size | `fixtures/cases/metrics/`, `metric*.json` | `test_metric_snapshots.py` | 209 |
-| CLI and stateful operations | `fixtures/cases/cli/`, `fixtures/cases/operational/`, `cli.json` | `test_cli_case_snapshots.py` and scoped transcript fixture | 190 |
-| Python architecture snippets | `fixtures/cases/policy/`, `policy.json` | `test_policy_snapshots.py` | 627 |
-| Existing coffee source, parser-only metadata | `fixtures/coffee/`, `coffee.json` | `test_coffee_parsing_snapshots.py` | 48 |
-| Existing coffee quantitative CLI records | `fixtures/coffee/`, `coffee.json` | `test_coffee_metric_snapshots.py` | 8 |
+`uv run python -m tests.update_coffee_snapshots --navigation` regenerates all those seams. It deliberately does **not** regenerate the feature contracts or independently reviewed inventories.
 
-These 2,092 new baselines supplement the existing coffee graph, Markdown,
-check and navigation snapshots; coffee sources are not copied.
+The 280 contracts in `coffee_features_{oo,systems,scripts}.json` pin exact signatures, kinds, decorators, per-overload parameter/complexity records and outgoing relationships. Tests require each feature to reach parser, enrichment, native-merged structure, resolution, graph and applicable CLI metrics. Tags-only enum/constructor/impl-ownership differences are explicit expectations. Exact path-keyed inventories in `coffee_scenarios.py` prevent discovery omissions from disappearing from both sides of a comparison. Contract-regression tests reject extra receiver counts, lost generic inheritance/recursion, missing graph/CLI records and omitted source files.
 
-```mermaid
-flowchart LR
-  A[Old function and actual variants] --> B[Named central source case]
-  B --> C[Family-specific snapshot seam]
-  B --> D[Independent behavior and source checks]
-  E[Existing coffee corpus] --> C
-```
+Language-specific source includes Python decorators/full parameter signatures/pattern matching; Java generics, overloads, receivers and references; Kotlin companions, extension receivers and nested lambdas; Go methods, grouped inputs and closures; Rust inherent implementations, receivers, modules, closures and macro payloads; Elixir guards, clauses, captures and pipelines; script function/generator carriers, destructuring and defaults; TypeScript callable interface shapes, overloads and type-only imports; TSX components, namespaces, prop shadowing and event handlers.
 
-## Review and retained contracts
+## Consolidation and retained probes
 
-Baselines were checked against the original explicit assertions before adoption.
-Policy cases retain independent allowed/forbidden polarity; dependency-scan
-snapshots use the original exact expected sets. Resolution/import review traced
-original and migrated bytes/projects. Thirteen reordered import inputs were
-repaired; seven snapshots changed only by moving existing records. Independent
-HEAD-derived source/write-order tests guard the repaired ordering. Three source
-selector literals became symbolic IDs, leaving source exclusively in the corpus.
-A missing-folder CLI case now runs from its isolated temporary cwd; its error
-snapshot contains no checkout-specific path.
+`coffee_consolidation.json` and `coffee_resolution_consolidation.json` in `tests/` account for 131 parsing/metric and 64 receiver/import variants respectively. They distinguish replaced, partial and retained cases, name concrete project/declaration/assertion destinations, and explain retained discriminators. `migration/coffee_consolidation.json` records the 54 removed fixture-project destinations. Their 117 redundant snapshots are removed, along with 56 coffee-only micro baselines, one duplicate TSX import baseline and 64 static CLI source-state replays. There are now 27 full-project seam bundles instead.
 
-Deterministic outputs are snapshot-covered, not substitutes for operational
-properties. Original cache/lifetime/nonmutation, mock dispatch and call counts,
-error propagation, cold-process budget, filesystem/save/fresh behavior, rollback,
-transaction isolation, source verification and source-length/AST provenance checks
-remain. Source-grounded coffee and receiver/namespace invariants remain independent
-of baseline equality. Production-only architecture scans and synthetic graph/model
-unit tests remain separate. Setup-only cases do not invent analysis snapshots.
+The remaining focused corpus is not concatenated into healthy projects. Malformed/byte-exact input, missing/stale native metadata, ambiguous roots or identities, reassignment/mutation, forbidden architecture/SQL constructs, unsupported grammar carriers and exact metric discriminators remain independent. Stateful CLI transcripts still cover configuration, errors, fresh/save/reindex effects, rollback and isolation. Literal default size boundaries remain in dedicated tests rather than padding the domain examples.
 
-The symlink-loop source lookup remains an independent filesystem assertion:
-`Path.resolve` can classify it as `unsafe` or `unreadable` on different platforms.
-Its transcript is deliberately not pinned to one status or normalized to hide
-that distinction; shared central setup and the original structured-status check
-remain. No version-specific behavior or compatibility tests were added.
+Some valid language constructs still resolve externally under current production policies, notably Go module-prefixed imports, Elixir grouped aliases and selected inherited/injected receivers. These have exact source-grounded external-target assertions; snapshots do not disguise them as successful internal resolution. No production behavior or thresholds were changed.
 
-Record/list ordering, null/optional fields, evidence, diagnostics, ownership,
-byte spans, invalid UTF-8, CRLF and language-specific negative cases are preserved.
-Only volatile roots, timestamps and storage-generated identities are normalized.
-`test_source_snapshot_fixture.py` independently guards CRLF loading fidelity.
-No automatic baseline rewriting occurs during tests.
+`inventory.txt` preserves historical function provenance. The inventory gate now also verifies every concrete referenced fixture/snapshot destination exists. Byte-preserving Git attributes cover both source corpora; fixture and derived-bundle exclusions keep full-repository checks and the existing cold-process budget focused on implementation code. README and dashboard are unchanged.
 
-## Inventory/storage corrections
+## Validation
 
-The static map included source-free target/production-policy checks and omitted
-some helper-derived variants. Each family records its actual sources and retained
-checks; `audit.json` additionally maps three model-validation tests using the
-previously omitted `ModelsTest.artifact` source helper. The policy's exact public
-config AST template is also loaded from the corpus.
-
-Git cannot track a `.git` path component. One metadata decoy is therefore stored
-as `git-metadata/bad.py` and materialized as the original `.git/bad.py`; `cli.json`
-records both paths. Ignored `node_modules`, `dist` and temporary-file decoys are
-tracked explicitly. All 1,906 corpus files were compared with their staged Git
-blob hashes: zero omissions or byte changes. `.gitattributes` disables text/EOL
-conversion for the new byte-exact corpus. No tested path or source bytes are dropped.
-
-The new corpus is intentionally invalid, ambiguous or oversized in places.
-Atlas discovery, Pyright and Ruff exclude it as input data, not executable test
-harness code. Atlas also excludes the new derived snapshot JSON; analyzing those
-thousands of generated outputs caused a staged-tree cold-process timeout. The
-original 15-second budget and whole-project code-analysis assertions remain
-unchanged. Harness/support files and manifests meet the repository size/depth
-limits; oversized input files preserve the existing size-boundary scenarios.
-Production implementation and README are unchanged.
-
-## Final validation
-
-`(cd atlas && uv run pytest)`: 3,052 passed, the same 9 migration warnings.
-Pyright: zero errors/warnings. Ruff: passed. Full-repository Atlas report:
-341 files, 2,457 callables, zero parse errors. Strict Atlas CI check: zero findings,
-without raising thresholds or excluding harness code. An isolated run with CI's
-Python 3.14 also passes all 3,052 tests and 530 subtests (same 9 warnings). The
-15-second cold-process test passes unchanged. CI-required helper splits preserve
-all collected case IDs/order, callback matrices and existing baseline values.
-Both independent review rounds approved the ordering/selectors and portable CLI
-path. Final independent CI-repair review confirmed unchanged outputs for all
-107 import, 209 metric and 313 resolution cases, collected IDs/order, native
-callback matrices and serializer nonmutation. No known inventory gap remains.
-No dashboard changes.
+Full importer suite: **3,306 passed**, **635 subtests passed**, same nine existing SQLite migration warnings. Pyright: zero errors/warnings. Ruff and strict whole-project Atlas check: clean, with no threshold changes. Full-project Atlas report: zero parse errors. Language-specific compilation/runtime smoke checks also passed where available.

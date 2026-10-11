@@ -8,7 +8,7 @@ from atlas.indexer import analyze_repository
 from atlas.metrics.adapters.resolution import _namespace_binding
 from atlas.metrics.callables import add_callable_metrics
 from atlas.metrics.resolver import resolve_connections
-from atlas.parsing.discovery import SourceFile, discover_files
+from atlas.parsing.discovery import SourceFile
 from atlas.parsing.parser import parse_files
 from tests.source_snapshot_fixture import case_text, snapshot_value
 
@@ -60,13 +60,10 @@ def import_snapshot(root: Path, case_id: str, spec: dict[str, str | None]):
     if seam == "namespace-binding":
         source = next(iter(import_case_sources("imports", case_id).values()))
         return snapshot_value({"namespace_binding": _namespace_binding(source, "tools")})
-    if seam == "coffee":
-        repo = parse_files(discover_files(Path(__file__).parent / "fixtures/coffee/tsx"))
-    else:
-        repo = parse_files([
-            SourceFile(path, Path("/semantic") / path, language, source.encode())
-            for path, source in import_case_sources("imports", case_id).items()
-        ])
+    repo = parse_files([
+        SourceFile(path, Path("/semantic") / path, language, source.encode())
+        for path, source in import_case_sources("imports", case_id).items()
+    ])
     add_callable_metrics(repo)
     return snapshot_value({
         "files": [{

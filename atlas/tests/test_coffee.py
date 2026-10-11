@@ -12,7 +12,7 @@ from tests.coffee_fixture import (
     coffee_snapshot,
 )
 from tests.coffee_integrity import assert_coffee_integrity
-from tests.coffee_scenarios import CALL_SITES, DECLARATIONS, declaration_gaps
+from tests.coffee_scenarios import CALL_SITES, CORE_LANGUAGES, DECLARATIONS, declaration_gaps
 from tests.coffee_snapshot_assertions import (
     assert_call_sites,
     assert_layout,
@@ -67,13 +67,14 @@ class CoffeeSnapshotTest(unittest.TestCase):
         for language, graph in self.graphs.items():
             with self.subTest(language=language):
                 missing, extra = declaration_gaps(graph)
-                self.assertEqual(missing, [Counter(), Counter(), Counter()])
-                self.assertEqual(extra, [Counter(), Counter(), Counter()])
+                expected = [Counter()] * len(DECLARATIONS[language])
+                self.assertEqual(missing, expected)
+                self.assertEqual(extra, expected)
 
     def test_recursion_inheritance_callbacks_imports_and_file_cycles(self) -> None:
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_recursion_scenarios(self, language, graph)
+                assert_recursion_scenarios(self, language, self.graphs[language])
 
     def test_every_reviewed_call_site_is_grounded_in_sample_source(self) -> None:
         self.assertEqual(set(CALL_SITES), set(LANGUAGES))
@@ -82,16 +83,16 @@ class CoffeeSnapshotTest(unittest.TestCase):
                 assert_call_sites(self, language, graph)
 
     def test_empty_filter_preview_and_nonempty_render_paths(self) -> None:
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_render_paths(self, language, graph)
+                assert_render_paths(self, language, self.graphs[language])
 
     def test_nested_score_complexity(self) -> None:
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_score(self, language, graph)
+                assert_score(self, language, self.graphs[language])
 
-    def test_no_project_calls_are_classified_as_external(self) -> None:
+    def test_project_call_resolution_and_exact_known_limitations(self) -> None:
         for language, graph in self.graphs.items():
             with self.subTest(language=language):
                 assert_project_calls(self, graph)

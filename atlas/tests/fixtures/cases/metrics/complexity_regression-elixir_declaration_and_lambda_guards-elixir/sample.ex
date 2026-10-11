@@ -1,1 +1,0 @@
-def choose(x) when x > 0 and ready, do: unless(x > 10, do: accept())

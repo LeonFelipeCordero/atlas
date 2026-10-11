@@ -3,7 +3,7 @@
 import unittest
 
 from tests.coffee_fixture import LANGUAGES, coffee_graph, coffee_snapshot
-from tests.coffee_scenarios import COMPLEXITY_FIELDS
+from tests.coffee_scenarios import COMPLEXITY_FIELDS, CORE_LANGUAGES
 from tests.coffee_snapshot_assertions import nodes_by_key
 from tests.coffee_semantic_assertions import (
     assert_elixir_recursion,
@@ -122,9 +122,9 @@ class CoffeeSemanticsTest(unittest.TestCase):
 
     def test_workflow_edges_reach_the_actual_sample_files(self):
         """The recipe/report cycle must describe project calls, not same-name externals."""
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_workflow(self, language, graph)
+                assert_workflow(self, language, self.graphs[language])
 
     def test_library_output_dependencies_include_rust_macros(self):
         names = {

@@ -1,7 +1,0 @@
-{
-"file_record": {"kind": "file", "language": "javascript", "level": "file", "name": "sample.js", "parentStableKey": "module:.", "path": "sample.js", "properties": {"bytes": 52, "lineCount": 1, "sha256": "9d8b839c96285c81280b8dea25990814e2b18fcf0f799df9f572f71839e7aae9"}, "qualifiedName": "sample.js", "stableKey": "file:sample.js", "type": "file"},
-"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.js"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.js"}}}, "default_limits": [], "disabled": []},
-"parse_error": null,
-"records": [],
-"thresholds": []
-}

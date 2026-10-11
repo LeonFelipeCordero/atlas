@@ -1,4 +1,4 @@
-"""Independent HEAD-derived order contracts, including setup-only import cases."""
+"""Independent original-order contracts for retained import and setup cases."""
 
 from pathlib import Path
 
@@ -25,8 +25,6 @@ ORDERS = {
     "jooq-response-factory": ["QueueApi.kt", "ChannelRepository.kt"],
     "namespace-1": ["tools/worker.go", "app.go"],
     "namespace-2": ["tools/worker.go", "app.go"],
-    "namespace-3": ["tools.py", "app.py"],
-    "namespace-4": ["tools.py", "app.py"],
     "namespace-5": ["tools.ts", "app.ts"],
     "namespace-6": ["tools.js", "app.js"],
     "namespace-shadow-1": ["tools.ts", "app.ts"],

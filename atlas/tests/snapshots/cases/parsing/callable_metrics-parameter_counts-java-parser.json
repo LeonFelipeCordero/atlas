@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "696e746572666163652043207b203c543e20766f6964206628696e7420612c20537472696e672e2e2e2062293b207d"}, "language": "java", "path": "sample"},
-"content_hash": "ce06515b69ae970bc40bc4629ae6983eb0f967aa1c1d13e5fe998aabd47746b0",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 47, "end_column": 48, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C:0", "kind": "interface", "language": "java", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::C", "signature": "interface C", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 45, "end_column": 46, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C.f:14", "kind": "method", "language": "java", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "symbol:sample::C:0", "qualified_name": "sample::C.f", "signature": "<T> void f(int a, String... b);", "start_byte": 14, "start_column": 15, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

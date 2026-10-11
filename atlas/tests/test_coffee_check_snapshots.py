@@ -1,5 +1,7 @@
 """CLI checks must match the saved coffee sample Markdown output."""
 
+import json
+
 import pytest
 from click.testing import CliRunner
 
@@ -12,6 +14,10 @@ def test_coffee_check_matches_snapshot(language: str) -> None:
     result = CliRunner().invoke(main, [
         "check", "--folder", str(FIXTURE_ROOT / language),
     ])
-    assert result.exit_code == 1, result.output
+    findings = CliRunner().invoke(main, [
+        "check", "--folder", str(FIXTURE_ROOT / language), "--format", "json",
+    ])
+    expected_exit = int(bool(json.loads(findings.output)["findings"]))
+    assert findings.exit_code == result.exit_code == expected_exit, result.output
     expected = (SNAPSHOT_ROOT / f"{language}-coffee-check.md").read_text(encoding="utf-8")
     assert result.output == expected

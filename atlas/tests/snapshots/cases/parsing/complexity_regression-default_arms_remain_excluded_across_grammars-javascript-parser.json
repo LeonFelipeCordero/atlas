@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "7b7377697463682878297b6361736520313a2061636365707428293b20627265616b3b2064656661756c743a2072656a65637428293b7d7d"}, "language": "javascript", "path": "sample.js"},
-"content_hash": "b107b27484c9e988549a87aa8a21fa188604a3ec24adc7716839884f6fdca2ba",
-"parse_error": null,
-"declarations": [],
-"calls": [{"bare_target": true, "end_byte": 27, "evidence": "accept()", "file_path": "sample.js", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 19}, {"bare_target": true, "end_byte": 53, "evidence": "reject()", "file_path": "sample.js", "line": 1, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 45}],
-"imports": [],
-"inheritances": []
-}

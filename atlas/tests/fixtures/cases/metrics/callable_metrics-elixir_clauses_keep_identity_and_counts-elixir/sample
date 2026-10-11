@@ -1,2 +1,0 @@
-def f(0, x), do: x
-def f(n, x) when n > 0, do: x

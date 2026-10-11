@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e20662829207b20666f72286120696e2078297b666f72286220696e2078297b69662861297b69662862297b7d7d7d7d207d"}, "language": "kotlin", "path": "sample.kt"},
-"content_hash": "6d7348e4793ce4cb40ec40840941929d34a5b2c73a5b0ad366caa914ecfa0585",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 52, "end_column": 53, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::f:0", "kind": "function", "language": "kotlin", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::f", "signature": "fun f() { for(a in x){for(b in x){if(a){if(b){}}}} }", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

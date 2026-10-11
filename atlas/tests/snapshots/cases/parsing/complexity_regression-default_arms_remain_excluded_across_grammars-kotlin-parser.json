@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "66756e206628783a20496e74297b7768656e2878297b31202d3e2061636365707428293b20656c7365202d3e2072656a65637428297d7d"}, "language": "kotlin", "path": "sample.kt"},
-"content_hash": "bfa69f4e3416e2ea2dd698233da73d175d4212033340af4c4b38d9b0a065c31d",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 55, "end_column": 56, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::f:0", "kind": "function", "language": "kotlin", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::f", "signature": "fun f(x: Int){when(x){1 -> accept(); else -> reject()}}", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [{"bare_target": true, "end_byte": 35, "evidence": "accept()", "file_path": "sample.kt", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 27}, {"bare_target": true, "end_byte": 53, "evidence": "reject()", "file_path": "sample.kt", "line": 1, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 45}],
-"imports": [],
-"inheritances": []
-}

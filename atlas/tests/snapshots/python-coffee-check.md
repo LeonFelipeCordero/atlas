@@ -1,11 +1,3 @@
-## maxFileLines: `src/coffee/brewing/brewer.py`
-
-Measured: 601; maximum: 600.
-
-- `src/coffee/brewing/brewer.py`
-
-- Lines is 601 (maximum: 600).
-
 ## maxNestedLoops: `src/coffee/brewing/brewer.py::Brewer.score`
 
 Measured: 1; maximum: 0.
@@ -26,33 +18,25 @@ Measured: 9; maximum: 8.
 
 Measured: 4; maximum: 3.
 
-- `src/coffee/brewing/brewer.py:70`
+- `src/coffee/brewing/brewer.py:69`
 
 - Parameters is 4 (maximum: 3).
-
-## maxDecisionDepth: `src/coffee/brewing/brewer.py::Brewer.ready`
-
-Measured: 4; maximum: 3.
-
-- `src/coffee/brewing/brewer.py:70`
-
-- Decision depth is 4 (maximum: 3).
-
-## maxFunctionLines: `src/coffee/brewing/brewer.py::Brewer.calibrate`
-
-Measured: 105; maximum: 100.
-
-- `src/coffee/brewing/brewer.py:79`
-
-- Lines is 105 (maximum: 100).
 
 ## maxParameters: `src/coffee/brewing/brewer.py::Brewer.calibrate`
 
 Measured: 8; maximum: 3.
 
-- `src/coffee/brewing/brewer.py:79`
+- `src/coffee/brewing/brewer.py:72`
 
 - Parameters is 8 (maximum: 3).
+
+## maxParameters: `src/coffee/orders/service.py::OrderService.place`
+
+Measured: 7; maximum: 3.
+
+- `src/coffee/orders/service.py:40`
+
+- Parameters is 7 (maximum: 3).
 
 ## maxCircularImportGroups: `Circular imports`
 

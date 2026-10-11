@@ -1,2 +1,3 @@
 # Source fixtures are byte-exact inputs, including CRLF and invalid UTF-8.
 atlas/tests/fixtures/cases/** -text
+atlas/tests/fixtures/coffee/** -text

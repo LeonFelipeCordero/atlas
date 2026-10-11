@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c61737320536572766963653a0a20202020407374617469636d6574686f640a202020206465662072756e28293a0a20202020202020206465662068656c70657228293a0a202020202020202020202020706173730a"}, "language": "python", "path": "sample.py"},
-"content_hash": "e245eb57d40d80adda216d4d885a6452b1804ac62cf48c6e49f3f1a73c3a2426",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 86, "end_column": 17, "end_line": 5, "file_path": "sample.py", "key": "symbol:sample.py::Service:0", "kind": "class", "language": "python", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::Service", "signature": "class Service:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": ["@staticmethod"], "end_byte": 86, "end_column": 17, "end_line": 5, "file_path": "sample.py", "key": "symbol:sample.py::Service.run:37", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.py::Service:0", "qualified_name": "sample.py::Service.run", "signature": "def run():", "start_byte": 37, "start_column": 5, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 86, "end_column": 17, "end_line": 5, "file_path": "sample.py", "key": "symbol:sample.py::Service.run.helper:56", "kind": "function", "language": "python", "line_count": null, "name": "helper", "parameter_count": null, "parent_key": "symbol:sample.py::Service.run:37", "qualified_name": "sample.py::Service.run.helper", "signature": "def helper():", "start_byte": 56, "start_column": 9, "start_line": 4, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

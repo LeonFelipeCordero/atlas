@@ -10,6 +10,7 @@ from tree_sitter_language_pack import get_parser
 
 from atlas.domain.models import Complexity
 from atlas.metrics.complexity import calculate_complexity
+from tests.coffee_consolidation import coffee_node
 
 
 class GrammarComplexityRegressionTests(unittest.TestCase):
@@ -34,11 +35,8 @@ class GrammarComplexityRegressionTests(unittest.TestCase):
             case_text('metrics', 'complexity_regression-kotlin_each_short_circuit_operator_without_boolean_depth-kotlin', 'sample.kt'),
             (5, 0, 0, 5, 1),  # Entry, if, three operators.
         )
-        self.measure(
-            "kotlin",
-            case_text('metrics', 'complexity_regression-kotlin_each_short_circuit_operator_without_boolean_depth-kotlin-2', 'sample.kt'),
-            (5, 1, 1, 7, 3),
-        )
+        self.assert_metrics(coffee_node("kotlin", "brewing/Brewer.kt", "Brewer.score"),
+                            (5, 1, 1, 7, 3))
 
     def test_python_refutable_match_patterns_and_fallbacks(self) -> None:
         self.measure(
@@ -114,24 +112,20 @@ class GrammarComplexityRegressionTests(unittest.TestCase):
         )
 
     def test_elixir_declaration_and_lambda_guards(self) -> None:
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_declaration_and_lambda_guards-elixir', 'sample.ex'),
-            (4, 0, 0, 4, 1),
-        )
-        self.measure(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_declaration_and_lambda_guards-elixir-2', 'sample.ex'),
-            (5, 0, 0, 5, 1),  # Fn clauses are not case alternatives.
-        )
+        self.assert_metrics(coffee_node(
+            "elixir", "brewing/recipe.ex", "Coffee.Brewing.Recipe.new",
+        ), (3, 0, 0, 3, 1))  # Entry, declaration guard, conjunction.
+        self.assert_metrics(coffee_node(
+            "elixir", "brewing/inventory.ex", "Coffee.Brewing.Inventory.available.<anonymous>",
+        ), (3, 0, 0, 3, 1))  # Guard and conjunction; fn clauses are not case arms.
+        self.assert_metrics(coffee_node(
+            "elixir", "brewing/brewer.ex", "Coffee.Brewing.Brewer.serve.<anonymous>",
+        ), (4, 0, 0, 4, 2))  # Entry, two case arms, unless inside the error arm.
 
     def test_elixir_reducer_calls_are_not_loops_and_fn_scopes_are_independent(
         self,
     ) -> None:
-        node = self.parse(
-            "elixir",
-            case_text('metrics', 'complexity_regression-elixir_reducer_calls_are_not_loops_and_fn_scopes_are_independent-elixir', 'sample.ex'),
-        )
+        node = coffee_node("elixir", "brewing/brewer.ex", "Coffee.Brewing.Brewer.score")
         self.assert_metrics(node, (1, 0, 0, 1, 0))
         stack = [node]
         callables = []
@@ -141,7 +135,7 @@ class GrammarComplexityRegressionTests(unittest.TestCase):
                 callables.append(child)
             stack.extend(reversed(child.named_children))
         self.assertEqual(len(callables), 2)
-        self.assert_metrics(callables[0], (2, 0, 0, 2, 1))
+        self.assert_metrics(callables[0], (1, 0, 0, 1, 0))
         self.assert_metrics(callables[1], (3, 0, 0, 3, 1))
 
     def test_elixir_nested_declaration_scopes(self) -> None:
@@ -170,16 +164,19 @@ class GrammarComplexityRegressionTests(unittest.TestCase):
 
     def test_default_arms_remain_excluded_across_grammars(self) -> None:
         samples = {
-            "typescript": case_text('metrics', 'complexity_regression-default_arms_remain_excluded_across_grammars-typescript', 'sample.ts'),
-            "javascript": case_text('metrics', 'complexity_regression-default_arms_remain_excluded_across_grammars-typescript', 'sample.ts'),
-            "java": case_text('metrics', 'complexity_regression-default_arms_remain_excluded_across_grammars-java', 'sample.java'),
-            "kotlin": case_text('metrics', 'complexity_regression-default_arms_remain_excluded_across_grammars-kotlin', 'sample.kt'),
-            "go": case_text('metrics', 'complexity_regression-default_arms_remain_excluded_across_grammars-go', 'sample.go'),
-            "rust": case_text('metrics', 'complexity_regression-default_arms_remain_excluded_across_grammars-rust', 'sample.rs'),
+            "typescript": ("brewing/Recipe.ts", "Recipe.portions"),
+            "javascript": ("brewing/Recipe.js", "Recipe.portions"),
+            "java": ("brewing/Recipe.java", "Recipe.portions"),
+            "kotlin": ("brewing/Recipe.kt", "portions"),
+            "go": ("recipe/recipe.go", "Portions"),
+            "rust": ("brewing/recipe.rs", "portions"),
+            "python": ("src/coffee/brewing/recipe.py", "Recipe.portions"),
+            "elixir": ("brewing/recipe.ex", "Coffee.Brewing.Recipe.portions"),
         }
-        for language, source in samples.items():
+        for language, (path, name) in samples.items():
             with self.subTest(language=language):
-                self.measure(language, source, (2, 0, 0, 2, 1))
+                # Exactly two named drinks, not the fallback, are decisions.
+                self.assert_metrics(coffee_node(language, path, name), (3, 0, 0, 3, 1))
 
     def test_braced_else_is_real_nesting_not_else_if(self) -> None:
         for language, source in (

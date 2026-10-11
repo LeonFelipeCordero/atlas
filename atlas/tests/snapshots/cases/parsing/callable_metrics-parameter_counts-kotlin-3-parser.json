@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "76616c2066203d2066756e28613a20496e742c20623a20496e74293a20496e74207b2072657475726e2061207d"}, "language": "kotlin", "path": "sample"},
-"content_hash": "c35ac152cf3faca9f8b9ebac7dfc035c2b7df7eabb6c92b387fa8eea622b7d0a",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 45, "end_column": 46, "end_line": 1, "file_path": "sample", "key": "symbol:sample::<anonymous>:8", "kind": "function", "language": "kotlin", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::<anonymous>", "signature": "fun(a: Int, b: Int): Int { return a }", "start_byte": 8, "start_column": 9, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

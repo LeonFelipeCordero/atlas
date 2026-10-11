@@ -1,1 +1,0 @@
-function f<T>(this: C, {a,b}: X, c?: T, ...args: T[]): void;

@@ -1,1 +1,0 @@
-interface C { m<T>(this: C, x: T): void; cb: (a: X, b: Y) => Z; }

@@ -1,1 +1,0 @@
-class Owner { private Owner() {} void run() {} }

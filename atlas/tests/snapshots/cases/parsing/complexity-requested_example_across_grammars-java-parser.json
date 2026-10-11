@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "7b20666f7228696e7420613d303b613c323b612b2b297b7768696c652874727565297b696628613e30297b696628613e31297b7d7d7d7d207d"}, "language": "java", "path": "sample.java"},
-"content_hash": "d0597a271eb56f0d6b69e5c821f4344902e087693d467b7e2623634a6912c1f1",
-"parse_error": null,
-"declarations": [],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

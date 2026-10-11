@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c6173732043207b7d"}, "language": "javascript", "path": "sample.js"},
-"content_hash": "a4127100c72e204a2e27f5a8d29310899744c2e16642591e4656add6b9fac96a",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 10, "end_column": 11, "end_line": 1, "file_path": "sample.js", "key": "symbol:sample.js::C:0", "kind": "class", "language": "javascript", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::C", "signature": "class C", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}

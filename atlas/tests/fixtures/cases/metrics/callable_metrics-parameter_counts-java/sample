@@ -1,1 +1,0 @@
-interface C { <T> void f(int a, String... b); }

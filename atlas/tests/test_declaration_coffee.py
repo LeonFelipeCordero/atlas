@@ -8,7 +8,7 @@ from atlas.parsing.discovery import SourceFile
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_fixture import coffee_sources
-from tests.coffee_scenarios import DECLARATIONS
+from tests.coffee_scenarios import DECLARATIONS, NATIVE_DECLARATIONS
 from tests.test_declaration_callbacks import flatten
 
 
@@ -32,13 +32,11 @@ class CoffeeDeclarationTests(unittest.TestCase):
 
     def assert_source_inventories(self, language, inventories):
         sources = coffee_sources(language)
-        self.assertEqual(len(sources), 3)
-        for file, inventory in zip(sources, inventories):
+        self.assertEqual({file.path for file in sources}, set(inventories))
+        for file in sources:
             source = file.source
-            native = process(
-                source.decode(), ProcessConfig(language=language)
-            ).structure
-            self.assert_inventory(file, inventory, native)
+            native = process(source.decode(), ProcessConfig(language=language)).structure if file.language == language else []
+            self.assert_inventory(file, inventories[file.path], native)
 
     def assert_inventory(
         self,
@@ -50,7 +48,8 @@ class CoffeeDeclarationTests(unittest.TestCase):
             with self.subTest(
                 language=file.language, filename=file.path, native=bool(existing)
             ):
-                self.assert_inventory_variant(file, inventory, existing)
+                expected = NATIVE_DECLARATIONS[file.language][file.path] if existing else inventory
+                self.assert_inventory_variant(file, expected, existing)
 
     def assert_inventory_variant(self, file, inventory, existing):
         items = extract_structure(ParsedSyntax(file), existing)

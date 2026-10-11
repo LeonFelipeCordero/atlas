@@ -1,11 +1,3 @@
-## maxFileLines: `brewing/Brewer.java`
-
-Measured: 601; maximum: 600.
-
-- `brewing/Brewer.java`
-
-- Lines is 601 (maximum: 600).
-
 ## maxNestedLoops: `brewing/Brewer.java::Brewer.score`
 
 Measured: 1; maximum: 0.
@@ -26,33 +18,25 @@ Measured: 9; maximum: 8.
 
 Measured: 4; maximum: 3.
 
-- `brewing/Brewer.java:52`
+- `brewing/Brewer.java:51`
 
 - Parameters is 4 (maximum: 3).
-
-## maxDecisionDepth: `brewing/Brewer.java::Brewer.ready`
-
-Measured: 4; maximum: 3.
-
-- `brewing/Brewer.java:52`
-
-- Decision depth is 4 (maximum: 3).
-
-## maxFunctionLines: `brewing/Brewer.java::Brewer.calibrate`
-
-Measured: 104; maximum: 100.
-
-- `brewing/Brewer.java:66`
-
-- Lines is 104 (maximum: 100).
 
 ## maxParameters: `brewing/Brewer.java::Brewer.calibrate`
 
 Measured: 8; maximum: 3.
 
-- `brewing/Brewer.java:66`
+- `brewing/Brewer.java:55`
 
 - Parameters is 8 (maximum: 3).
+
+## maxParameters: `orders/OrderService.java::OrderService.place`
+
+Measured: 4; maximum: 3.
+
+- `orders/OrderService.java:31`
+
+- Parameters is 4 (maximum: 3).
 
 ## maxCircularImportGroups: `Circular imports`
 

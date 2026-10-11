@@ -1,11 +1,3 @@
-## maxFileLines: `brewing/Brewer.kt`
-
-Measured: 601; maximum: 600.
-
-- `brewing/Brewer.kt`
-
-- Lines is 601 (maximum: 600).
-
 ## maxParameters: `brewing/Brewer.kt::Brewer.brew.<anonymous>`
 
 Measured: N/A; maximum: 3.
@@ -34,33 +26,81 @@ Measured: 9; maximum: 8.
 
 Measured: 4; maximum: 3.
 
-- `brewing/Brewer.kt:48`
+- `brewing/Brewer.kt:47`
 
 - Parameters is 4 (maximum: 3).
-
-## maxDecisionDepth: `brewing/Brewer.kt::Brewer.ready`
-
-Measured: 4; maximum: 3.
-
-- `brewing/Brewer.kt:48`
-
-- Decision depth is 4 (maximum: 3).
-
-## maxFunctionLines: `brewing/Brewer.kt::Brewer.calibrate`
-
-Measured: 104; maximum: 100.
-
-- `brewing/Brewer.kt:61`
-
-- Lines is 104 (maximum: 100).
 
 ## maxParameters: `brewing/Brewer.kt::Brewer.calibrate`
 
 Measured: 8; maximum: 3.
 
-- `brewing/Brewer.kt:61`
+- `brewing/Brewer.kt:51`
 
 - Parameters is 8 (maximum: 3).
+
+## maxParameters: `inventory/Inventory.kt::Inventory.receive.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `inventory/Inventory.kt:30`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
+
+## maxParameters: `orders/Order.kt::Order.total.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `orders/Order.kt:21`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
+
+## maxParameters: `orders/Order.kt::Order.names.<anonymous>.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `orders/Order.kt:23`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
+
+## maxParameters: `orders/OrderService.kt::OrderService.place`
+
+Measured: 4; maximum: 3.
+
+- `orders/OrderService.kt:21`
+
+- Parameters is 4 (maximum: 3).
+
+## maxParameters: `orders/OrderService.kt::OrderService.receipts.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `orders/OrderService.kt:38`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
+
+## maxParameters: `reporting/SalesReport.kt::SalesReport.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `reporting/SalesReport.kt:12`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
+
+## maxParameters: `reporting/SalesReport.kt::SalesReport.totals.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `reporting/SalesReport.kt:23`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
+
+## maxParameters: `reporting/SalesReport.kt::SalesReport.résumé.<anonymous>`
+
+Measured: N/A; maximum: 3.
+
+- `reporting/SalesReport.kt:40`
+
+- Parameters is unavailable; cannot evaluate maximum 3.
 
 ## maxCircularImportGroups: `Circular imports`
 

@@ -9,6 +9,18 @@ export class Recipe {
     }
   }
 
+  static price(name) {
+    return { espresso: 2.5, filter: 3 }[name] ?? 0;
+  }
+
+  static dose(name) {
+    return { espresso: 18, filter: 20 }[name] ?? 0;
+  }
+
+  describe(name) {
+    return `${name}: ${Recipe.dose(name)}g beans`;
+  }
+
   static preview(name) {
     return Report.render([name]);
   }

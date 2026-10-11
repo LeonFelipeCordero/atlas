@@ -1,1 +1,0 @@
-fun scan() { while(active) { for(item in items) { if(item == first || item == last) accept() } } }

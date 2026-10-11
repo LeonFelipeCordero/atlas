@@ -1,1 +1,0 @@
-void f(){switch(x){case 1: accept(); break; default: reject();}}

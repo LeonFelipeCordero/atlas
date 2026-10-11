@@ -27,7 +27,8 @@ class TsxCoffeeTest(unittest.TestCase):
         symbols = {symbol.key: symbol for symbol in repo.symbols}
         edges = resolve_connections(repo).connections
         assert_component_references(self, symbols, edges)
-        self.assertFalse(any(call.name in {"main", "article"} for call in repo.calls))
+        intrinsics = {"main", "article", "h1", "h2", "p", "button", "section", "aside", "ul", "li", "output"}
+        self.assertFalse(any(call.name in intrinsics for call in repo.calls))
 
     def test_fixture_references_and_attribute_calls_retain_source_and_owner(self):
         repo = parse_files(discover_files(FIXTURE))
@@ -48,11 +49,36 @@ class TsxCoffeeTest(unittest.TestCase):
             actual,
             Counter(
                 {
-                    ("REFERENCES", "App", "CoffeeCard", 7, "CoffeeCard"): 1,
-                    ("REFERENCES", "App", "Cards.CoffeeCard", 8, "CoffeeCard"): 1,
-                    ("REFERENCES", "Preview", "CoffeeCard", 15, "external"): 1,
-                    ("CALLS", "App", "label('espresso')", 7, "label"): 1,
-                    ("CALLS", "CoffeeCard", "label(name)", 10, "label"): 1,
+                    ("REFERENCES", "App", "CoffeeCard", 12, "CoffeeCard"): 1,
+                    ("REFERENCES", "App", "Cards.CoffeeCard", 13, "CoffeeCard"): 1,
+                    ("REFERENCES", "Preview", "CoffeeCard", 20, "external"): 1,
+                    ("REFERENCES", "Menu", "cards.CoffeeCard", 32, "CoffeeCard"): 1,
+                    ("REFERENCES", "Menu", "$Card", 33, "CoffeeCard"): 1,
+                    ("REFERENCES", "Menu", "_Card", 34, "CoffeeCard"): 1,
+                    ("REFERENCES", "CoffeeCounter", "Menu", 46, "Menu"): 1,
+                    ("CALLS", "App", "label('espresso')", 12, "label"): 1,
+                    ("CALLS", "Menu", "useState<BasketItem[]>(() => basket.snapshot())", 24, "external"): 1,
+                    ("CALLS", "<anonymous>", "basket.snapshot()", 24, "external"): 1,
+                    ("CALLS", "addDrink", "basket.add(name, quantity)", 26, "external"): 1,
+                    ("CALLS", "addDrink", "setItems(basket.snapshot())", 27, "external"): 1,
+                    ("CALLS", "addDrink", "basket.snapshot()", 27, "external"): 1,
+                    ("CALLS", "<anonymous>", "addDrink(name)", 33, "addDrink"): 1,
+                    ("CALLS", "Menu", "items.map(({ name, quantity }) => <li key={name}>{quantity} x {name}</li>)", 37, "external"): 1,
+                    ("CALLS", "Menu", "orderTotal(basket).toFixed(2)", 38, "external"): 1,
+                    ("CALLS", "Menu", "orderTotal(basket)", 38, "orderTotal"): 1,
+                    ("CALLS", "CoffeeCounter", "useState<Basket>(() => new Basket())", 45, "external"): 1,
+                    ("CALLS", "<anonymous>", "new Basket()", 45, "Basket"): 1,
+                    ("CALLS", "add", "this.items.find(item => item.name === name)", 12, "external"): 1,
+                    ("CALLS", "add", "this.items.push({ name, quantity })", 14, "external"): 1,
+                    ("CALLS", "total", "this.items.reduce((sum, { name, quantity }) => sum + this.prices[name] * quantity, 0)", 18, "external"): 1,
+                    ("CALLS", "total", "fees.reduce((sum, fee) => sum + fee, 0)", 19, "external"): 1,
+                    ("CALLS", "snapshot", "this.items.map(item => ({ ...item }))", 23, "external"): 1,
+                    ("CALLS", "startOrder", "new Basket()", 28, "Basket"): 1,
+                    ("CALLS", "startOrder", "basket.add(name, quantity)", 29, "add"): 1,
+                    ("CALLS", "orderTotal", "basket.total(discount)", 34, "total"): 1,
+                    ("CALLS", "CoffeeCard", "label(name)", 16, "label"): 1,
+                    ("CALLS", "CoffeeCard", "price.toFixed(2)", 17, "external"): 1,
+                    ("CALLS", "<anonymous>", "onOrder(name)", 18, "external"): 1,
                 }
             ),
         )

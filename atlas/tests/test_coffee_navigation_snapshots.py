@@ -6,14 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES
+from tests.coffee_fixture import FIXTURE_ROOT
+from tests.coffee_scenarios import CORE_LANGUAGES
 from tests.coffee_navigation import (
     NAVIGATION_SNAPSHOT_ROOT, CoffeeNavigation, Declaration, declaration,
     navigation_responses, normalize_responses,
 )
 
 
-@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("language", CORE_LANGUAGES)
 def test_coffee_navigation_matches_snapshot(language: str, tmp_path: Path) -> None:
     actual = navigation_responses(language, tmp_path / "atlas.sqlite")
     expected = json.loads((NAVIGATION_SNAPSHOT_ROOT / f"{language}-coffee.json").read_text(encoding="utf-8"))

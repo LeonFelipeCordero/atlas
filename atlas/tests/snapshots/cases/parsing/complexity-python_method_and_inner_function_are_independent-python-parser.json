@@ -1,9 +1,0 @@
-{
-"source": {"bytes": {"hex": "636c61737320413a0a206465662072756e2873656c662c2064656661756c743d3120696620666c616720656c73652030293a0a2020666f72206120696e20783a0a20202064656620696e6e657228293a0a20202020666f72206220696e20783a0a2020202020696620623a20706173730a"}, "language": "python", "path": "example.py"},
-"content_hash": "d1de84cacd203803568de4088ec92eefcb6de0b4e2d1cccb0b06c9c6fd55c814",
-"parse_error": null,
-"declarations": [{"complexity": null, "decorators": [], "end_byte": 112, "end_column": 16, "end_line": 6, "file_path": "example.py", "key": "symbol:example.py::A:0", "kind": "class", "language": "python", "line_count": null, "name": "A", "parameter_count": null, "parent_key": "file:example.py", "qualified_name": "example.py::A", "signature": "class A:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 112, "end_column": 16, "end_line": 6, "file_path": "example.py", "key": "symbol:example.py::A.run:10", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:example.py::A:0", "qualified_name": "example.py::A.run", "signature": "def run(self, default=1 if flag else 0):", "start_byte": 10, "start_column": 2, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 112, "end_column": 16, "end_line": 6, "file_path": "example.py", "key": "symbol:example.py::A.run.inner:68", "kind": "function", "language": "python", "line_count": null, "name": "inner", "parameter_count": null, "parent_key": "symbol:example.py::A.run:10", "qualified_name": "example.py::A.run.inner", "signature": "def inner():", "start_byte": 68, "start_column": 4, "start_line": 4, "visibility": null}],
-"calls": [],
-"imports": [],
-"inheritances": []
-}
