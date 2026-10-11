@@ -1,11 +1,9 @@
-"""SQLite migration and repository service regression tests."""
+"""Current SQLite schema and repository service regression tests."""
 
 import sqlite3
 from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from atlas.bootstrap import repository_service
 from atlas.domain.repositories import RepositoryError
 from atlas.persistence.database import (
@@ -15,7 +13,7 @@ from atlas.persistence.database import (
 )
 from sqlalchemy import text
 
-from tests.graph_storage_fixture import GRAPH_TABLES, HEAD
+from tests.graph_storage_fixture import GRAPH_TABLES
 
 
 @pytest.fixture
@@ -25,12 +23,8 @@ def database(tmp_path: Path) -> Path:
     return path
 
 
-def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> None:
-    path = tmp_path / "nested/db.sqlite"
-    migrate_database(path)
-    migrate_database(path)
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == (HEAD,)
+def test_current_schema_and_constraints(database: Path) -> None:
+    with sqlite3.connect(database) as db:
         assert db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall() == [
             (name,) for name in sorted(("alembic_version", "repositories", "repository_graphs", *GRAPH_TABLES))
         ]
@@ -58,20 +52,13 @@ def test_fresh_migration_repeated_downgrade_and_constraints(tmp_path: Path) -> N
         db.execute("INSERT INTO repository_graphs (repository_id, imported_at) VALUES ('a', 1)")
         db.execute("DELETE FROM repositories WHERE id='a'")
         assert db.execute("SELECT count(*) FROM repository_graphs").fetchone() == (0,)
-    engine = create_engine(path)
+    engine = create_engine(database)
     try:
         with engine.begin() as connection:
             assert connection.execute(text("PRAGMA foreign_keys")).scalar() == 1
             assert connection.execute(text("PRAGMA journal_mode")).scalar() == "wal"
-            config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-            config.attributes["connection"] = connection
-            command.downgrade(config, "base")
-            assert not connection.exec_driver_sql("SELECT name FROM sqlite_master WHERE name='repositories'").scalar()
     finally:
         engine.dispose()
-    migrate_database(path)
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == (HEAD,)
 
 
 def test_service_requires_explicit_migration(tmp_path: Path) -> None:

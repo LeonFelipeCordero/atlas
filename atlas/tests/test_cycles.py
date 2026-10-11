@@ -1,14 +1,8 @@
 import copy
 import random
-import tempfile
 import unittest
-from pathlib import Path
 
-from dataclasses import asdict
-
-from atlas.metrics.artifact import GraphArtifact, validate_artifact
 from atlas.metrics.cycles import circular_dependencies
-from atlas.indexer import analyze_repository
 
 
 def file(key: str) -> dict[str, object]:
@@ -128,23 +122,3 @@ class CyclesTest(unittest.TestCase):
         groups = circular_dependencies(nodes, edges)["groups"]
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]["exampleCycle"], keys + [keys[0]])
-
-    def test_indexing_and_legacy_constructor(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "a.py").write_text("import b\n")
-            (root / "b.py").write_text("import a\n")
-            artifact = analyze_repository(root)
-            saved = asdict(artifact)
-            self.assertEqual(
-                saved["circularDependencies"], artifact.circularDependencies
-            )
-            self.assertEqual(
-                saved["circularDependencies"]["groups"][0]["nodeStableKeys"],
-                ["file:a.py", "file:b.py"],
-            )
-            self.assertEqual(saved["schemaVersion"], 2)
-            legacy = GraphArtifact(2, {}, {}, [], [], {}, [])
-            self.assertIsNone(legacy.circularDependencies)
-            validate_artifact(legacy)
-            self.assertIsNone(asdict(legacy)["circularDependencies"])

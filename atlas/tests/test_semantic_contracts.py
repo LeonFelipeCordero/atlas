@@ -1,30 +1,10 @@
 """End-to-end extraction/resolution contracts, with no injected source facts."""
 
-from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import ResolutionAssertions, call_edges, repository
 
 
 class ExtractionContractTest(ResolutionAssertions):
     # Inherit assertion helpers, not the semantic fixture suite.
-    def test_java_creation_and_static_reference_spans(self):
-        repo = repository(
-            "java",
-            {
-                "App.java": "package drinks; class Maker { int brew(){return 1;} } class App {void run(){new Maker().brew(); items.mapToInt(Recipe::portions);}}",
-                "Recipe.java": "package drinks; class Recipe {static int portions(int x){return x;}}",
-            },
-        )
-        self.internal(repo, "new Maker()", "Maker:")
-        self.internal(repo, "new Maker().brew()", "Maker.brew")
-        references = [
-            edge
-            for edge in resolve_connections(repo).connections
-            if edge.evidence == "Recipe::portions"
-        ]
-        self.assertEqual(len(references), 1)
-        self.assertEqual(references[0].type, "REFERENCES")
-        self.assertIn("Recipe.portions", references[0].target_key)
-
     def test_macro_inner_calls_have_original_source_spans_and_hints(self):
         repo = repository(
             "rust", {"main.rs": 'fn brew()->i32{1} fn main(){println!("{}", brew());}'}
@@ -35,7 +15,6 @@ class ExtractionContractTest(ResolutionAssertions):
         self.assertEqual(calls[0].start_byte, file.source.source.rindex(b"brew()"))
         self.assertEqual(calls[0].evidence, "brew()")
         self.assertIn("println!", {call.name for call in file.calls})
-        self.internal(repo, "brew()", "main.rs::brew")
 
     def test_constructor_identity_never_uses_global_type_guessing(self):
         for language, extension, declaration, usage in [

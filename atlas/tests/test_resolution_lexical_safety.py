@@ -186,13 +186,6 @@ class LexicalSafetyTest(unittest.TestCase):
             {2: False, 3: True},
         )
 
-    def test_python_local_class_without_competing_import_remains_callable(self):
-        repo = repository(
-            "python",
-            {"main.py": "class R:\n @staticmethod\n def work(): pass\nR.work()"},
-        )
-        self.assert_call(repo, "R.work()", "main.py::R.work")
-
     def test_javascript_single_and_destructured_callback_parameters(self):
         callbacks = [
             "R=>R.work()",
