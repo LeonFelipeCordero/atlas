@@ -1,5 +1,7 @@
-# Intentional source examples and derived snapshots used by deterministic tests.
+# Source examples, generated baselines and coverage metadata are test inputs,
+# not implementation code. Direct sample analysis remains unaffected.
 /atlas/tests/fixtures/coffee/
 /atlas/tests/fixtures/cases/
-/atlas/tests/snapshots/cases/
-/atlas/tests/snapshots/coffee/
+/atlas/tests/snapshots/
+/atlas/tests/migration/
+/atlas/tests/coffee_*.json

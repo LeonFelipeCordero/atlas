@@ -20,8 +20,8 @@ The remaining focused corpus is not concatenated into healthy projects. Malforme
 
 Some valid language constructs still resolve externally under current production policies, notably Go module-prefixed imports, Elixir grouped aliases and selected inherited/injected receivers. These have exact source-grounded external-target assertions; snapshots do not disguise them as successful internal resolution. No production behavior or thresholds were changed.
 
-`inventory.txt` preserves historical function provenance. The inventory gate now also verifies every concrete referenced fixture/snapshot destination exists. Byte-preserving Git attributes cover both source corpora; fixture and derived-bundle exclusions keep full-repository checks and the existing cold-process budget focused on implementation code. README and dashboard are unchanged.
+`inventory.txt` preserves historical function provenance. The inventory gate now also verifies every concrete referenced fixture/snapshot destination exists. Byte-preserving Git attributes cover both source corpora; fixture, baseline and coverage-metadata exclusions keep full-repository checks and the existing 15-second cold-process budget focused on implementation code. A discovery regression test protects the exclusion scope and verifies direct metadata analysis still works. README and dashboard are unchanged.
 
 ## Validation
 
-Full importer suite: **3,306 passed**, **635 subtests passed**, same nine existing SQLite migration warnings. Pyright: zero errors/warnings. Ruff and strict whole-project Atlas check: clean, with no threshold changes. Full-project Atlas report: zero parse errors. Language-specific compilation/runtime smoke checks also passed where available.
+Full importer suite on Python 3.14: **3,307 passed**, **635 subtests passed**, same nine existing SQLite migration warnings. Pyright: zero errors/warnings. Ruff and strict whole-project Atlas check: clean, with no threshold changes. Full-project Atlas report: zero parse errors. Language-specific compilation/runtime smoke checks also passed where available.

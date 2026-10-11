@@ -205,6 +205,23 @@ def test_repository_atlasignore_excludes_coffee_only_when_scanning_repository() 
     assert source_paths(coffee / "python")
 
 
+def test_repository_atlasignore_excludes_data_not_snapshot_test_implementation() -> None:
+    root = Path(__file__).resolve().parents[2]
+    paths = {path.relative_to(root).as_posix() for path in _repository_paths(root)}
+    metadata = {
+        "atlas/tests/coffee_features_oo.json",
+        "atlas/tests/coffee_consolidation.json",
+        "atlas/tests/migration/parsing.json",
+        "atlas/tests/snapshots/python-coffee.json",
+        "atlas/tests/snapshots/graph-navigation/python-coffee.json",
+    }
+    assert metadata.isdisjoint(paths)
+    assert {"atlas/tests/coffee_pipeline.py", "atlas/tests/coffee_feature_assertions.py",
+            "atlas/tests/test_coffee_pipeline.py"} <= paths
+    direct = {path.name for path in _repository_paths(root / "atlas/tests/migration")}
+    assert "parsing.json" in direct
+
+
 @pytest.mark.parametrize("command", ["index", "report"])
 def test_cli_reanalysis_removes_atlasignored_files_and_findings(
     tmp_path: Path, command: str
