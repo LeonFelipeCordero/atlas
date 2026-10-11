@@ -16,7 +16,8 @@ from .parameters import parameter_children, parameter_node
 
 from ..resolution_contract import SCOPES
 
-from ...syntax import field
+from ...syntax import field, text
+from ..receiver_syntax import go_bindings, type_name
 
 
 def parameter_count(node: Node) -> int | None:
@@ -33,6 +34,35 @@ def parameter_count(node: Node) -> int | None:
 
 
 class GoResolution(ResolutionAdapter):
+    receiver_bindings = staticmethod(go_bindings)
+
+    def instance_members(self, resolver, parent, name):
+        symbols = self._package_symbols(resolver, resolver.files[parent.file_path])
+        return [s for s in symbols if s.name == name and self._receiver_method(resolver, s, parent)]
+
+    def _package_symbols(self, ctx, source):
+        return chain.from_iterable(f.symbols for f in self._package_files(ctx, source))
+
+    def _receiver_method(self, resolver, symbol, parent):
+        if symbol.kind != "method":
+            return False
+        node = resolver.syntax[symbol.file_path].node(symbol.start_byte, symbol.end_byte)
+        receiver = field(node, "receiver") if node else None
+        parameter = receiver.named_children[0] if receiver and receiver.named_children else None
+        return bool(parameter and type_name(field(parameter, "type")) == parent.name)
+
+    def _package_files(self, resolver, source):
+        package = self._package(resolver, source)
+        files = (syntax.file for syntax in resolver.syntax.values())
+        return [f for f in files if f.source.language == "go" and self._package(resolver, f) == package]
+
+    def _package(self, resolver, file):
+        syntax = resolver.syntax[file.source.path]
+        return (file.source.path.rpartition("/")[0], next((text(n) for n in syntax.nodes if n.type == "package_clause"), ""))
+
+    def same_package(self, modules, source, name):
+        return [s for file in self._package_files(modules, source)
+                for s in file.symbols if s.name == name and s.kind == "type"]
     def import_path(self, source: str) -> str:
         return quoted_path(source) or source.strip()
 
@@ -54,6 +84,7 @@ class GoResolution(ResolutionAdapter):
     scopes = SCOPES | {"for_statement"}
     import_nodes = {"import_declaration"}
     assignments = {"assignment_statement", "short_var_declaration"}
+    receiver_updates = {"inc_statement", "dec_statement"}
     declarations = {"var_spec"}
     member_nodes = {"selector_expression": (("operand",), ("field",))}
     receiver_class_nodes = {"compound_literal_expression"}

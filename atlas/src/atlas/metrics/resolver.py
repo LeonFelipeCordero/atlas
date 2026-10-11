@@ -18,6 +18,7 @@ from .adapters.resolution import (
 )
 from ..syntax import text
 from .resolution_syntax import IDENTIFIERS, Syntax
+from .receiver_resolution import ReceiverTypes
 
 from pydantic.dataclasses import dataclass
 
@@ -281,6 +282,7 @@ class CallResolver:
         self.modules = Modules(repository, self.syntax)
         self.imports = ImportBindings(repository, self.syntax, self.modules)
         self.identity = CallableIdentity(repository, self.syntax)
+        self.receivers = ReceiverTypes(self)
 
     def owner(self, call: Call) -> Symbol | None:
         enclosing = [
@@ -398,7 +400,7 @@ class CallResolver:
             syntax, parent, name
         ):
             return []
-        declarations = self._member_declarations(parent, name)
+        declarations = get_resolution_adapter(parent.language).instance_members(self, parent, name)
         if not static:
             return declarations
         return self._static_members(parent, declarations)
@@ -471,6 +473,9 @@ class CallResolver:
     def _matches(self, request: ResolutionRequest, node, target: CallTarget) -> list[Symbol]:
         file = request.file
         receiver, qualifier = target.receiver, request.qualifier
+        typed = self._typed_matches(request)
+        if typed is not None:
+            return typed
         if get_resolution_adapter(file.source.language).receiver_rejected(
             receiver, qualifier
         ):
@@ -487,6 +492,11 @@ class CallResolver:
         if _is_bare_target(request.call, target.callee):
             return self._bare(request, node)
         return []
+
+    def _typed_matches(self, request: ResolutionRequest) -> list[Symbol] | None:
+        if request.qualifier and not self.syntax[request.file.source.path].member_rebound(request.qualifier, request.name):
+            return self.receivers.resolve(request)
+        return None
 
     def _receiver_matches(self, request: ResolutionRequest, receiver) -> list[Symbol]:
         if re.fullmatch(r"[\w$]+(?:\.|::)[\w.$:]+", request.qualifier or ""):

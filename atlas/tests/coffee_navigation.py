@@ -206,9 +206,9 @@ class CoffeeNavigation:
         assert len(pairs) == (2 if python_out else 1)
         assert not payload["truncated"]
         if python_out:
-            external, = [node for node in payload["nodes"] if node["level"] == "external"]
-            assert external["name"] == "ABC"
-            assert (base["stableKey"], external["stableKey"]) in pairs
+            unresolved, = [node for node in payload["nodes"] if node["level"] == "unresolved"]
+            assert unresolved["name"] == "ABC"
+            assert (base["stableKey"], unresolved["stableKey"]) in pairs
 
     def callback(self) -> None:
         brew, portions = self.selected["brew"], self.selected["portions"]
@@ -261,7 +261,7 @@ class CoffeeNavigation:
 def internal_import_targets(payload: Record, seed: str) -> list[Record]:
     nodes = {node["stableKey"]: node for node in payload["nodes"]}
     direct = [nodes[edge["targetStableKey"]] for edge in payload["edges"] if edge["sourceStableKey"] == seed]
-    return [node for node in direct if node["level"] != "external"]
+    return [node for node in direct if node["level"] != "unresolved"]
 
 
 def assert_recursion(context: Record, retry: str, expected: set[str]) -> None:

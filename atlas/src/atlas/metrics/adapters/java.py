@@ -2,6 +2,8 @@
 
 import re
 
+from ..receiver_syntax import java_bindings
+
 from tree_sitter import Node
 
 from .resolution import ResolutionAdapter
@@ -38,11 +40,13 @@ def package(syntax) -> str:
 
 
 class JavaResolution(ResolutionAdapter):
+    receiver_bindings = staticmethod(java_bindings)
     def import_path(self, source: str) -> str:
         match = re.search(r"\bimport\s+(?:static\s+)?([\w.]+)", source)
         return quoted_path(source) or (match[1] if match else source.strip())
 
     family = "java"
+    bare_instance_fields = True
     scopes = SCOPES | {"for_statement", "enhanced_for_statement", "catch_clause"}
     import_nodes = {"import_declaration"}
     self_qualifiers = {"this"}
@@ -54,7 +58,7 @@ class JavaResolution(ResolutionAdapter):
     loop_bindings = {"for_statement"}
     static_nodes = {"static"}
     static_containers = {"modifiers"}
-    member_writes = {"assignment_expression"}
+    member_writes = {"assignment_expression", "update_expression"}
     single_parameter_functions = {"lambda_expression"}
 
     def call_target(self, node):

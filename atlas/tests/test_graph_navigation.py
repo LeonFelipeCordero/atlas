@@ -113,10 +113,28 @@ def test_context_cutoffs(graph, cutoff) -> None:
     assert len(payload["edges"]) <= payload["filters"]["maxEdges"]
 
 
-def test_external_and_type_only(graph) -> None:
+def test_unresolved_and_type_only(graph) -> None:
     payload = command("context", "run", "--relations", "IMPORTS")
     assert payload["edges"][0]["typeOnly"] is True
-    assert payload["boundaries"] == [{"stableKey": "external", "reason": "external_unresolved_or_ambiguous", "expandable": False}]
+    assert payload["boundaries"] == [{"stableKey": "external", "reason": "unresolved_or_ambiguous", "expandable": False}]
+    node = next(node for node in payload["nodes"] if node["stableKey"] == "external")
+    assert node["type"] == node["level"] == "unresolved"
+    assert node["external"] is False and node["unresolved"] is True
+
+
+def test_cli_unresolved_labels_leave_storage_and_service_unchanged(graph) -> None:
+    shown = command("show", "external")["node"]
+    assert shown["stableKey"] == "external"
+    assert shown["type"] == shown["level"] == "unresolved"
+    levels = {row["level"]: row["count"] for row in command("overview")["levels"]}
+    assert levels["unresolved"] == 1 and "external" not in levels
+    children = command("children", "repository")["nodes"]
+    assert next(node for node in children if node["stableKey"] == "external")["level"] == "unresolved"
+    with navigation_service("Local") as service:
+        stored = service.show("external")["node"]
+        assert stored["type"] == stored["level"] == "external"
+        assert stored["external"] is True
+        assert "unresolved" not in stored
 
 
 def driver(reader: GraphReader) -> sqlite3.Connection:
