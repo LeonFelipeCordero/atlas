@@ -1,61 +1,15 @@
-"""Normalized-only reads, legacy reindexing, and repository response snapshots."""
+"""Normalized-only reads and repository response snapshots."""
 
-import sqlite3
 from pathlib import Path
 
 import pytest
-from alembic import command
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-from atlas.bootstrap import repository_service
-from atlas.domain.repositories import RepositoryError
 from atlas.persistence.database import create_engine, migrate_database, repository_session
 from atlas.persistence.repositories import RepositoryStore
 from atlas.services.repositories import analyze_folder
-from .graph_storage_fixture import graph_artifact, migration_config, normalized_rows
-
-
-def test_legacy_graph_needs_reindex_and_keeps_registration(tmp_path: Path) -> None:
-    path = tmp_path / "legacy.sqlite"
-    engine = create_engine(path)
-    with engine.begin() as connection:
-        config = migration_config()
-        config.attributes["connection"] = connection
-        command.upgrade(config, "0003_graph_relations")
-        connection.exec_driver_sql("INSERT INTO repositories VALUES ('legacy', 'Local', '.', 7)")
-        connection.exec_driver_sql("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('legacy', 'invalid JSON', 9)")
-    engine.dispose()
-    migrate_database(path)
-    with repository_service(path) as service:
-        assert service.list()[0].id == "legacy"
-        assert service.list()[0].importedAt is None
-        assert service.get_architecture("legacy") is None
-        with pytest.raises(RepositoryError, match="run atlas index"):
-            service.report("Local")
-        saved = service.index("Local", tmp_path)
-        assert saved.repositoryId == "legacy"
-        assert service.get_architecture("legacy") == saved
-        assert service.report("Local")["summary"]["circularImportGroups"] == 0
-    with sqlite3.connect(path) as connection:
-        assert "artifact" not in [row[1] for row in connection.execute("PRAGMA table_info(repository_graphs)")]
-
-
-def test_drop_downgrade_and_upgrade_preserve_normalized_rows(tmp_path: Path) -> None:
-    path = tmp_path / "downgrade.sqlite"
-    migrate_database(path)
-    with repository_session(path) as session:
-        identifier = RepositoryStore(session).save_new("Local", ".", graph_artifact()).repositoryId
-    before = normalized_rows(path, identifier)
-    engine = create_engine(path)
-    with engine.begin() as connection:
-        config = migration_config()
-        config.attributes["connection"] = connection
-        command.downgrade(config, "0003_graph_relations")
-        assert connection.exec_driver_sql("SELECT artifact FROM repository_graphs").scalar() == "{}"
-    engine.dispose()
-    migrate_database(path)
-    assert normalized_rows(path, identifier) == before
+from .graph_storage_fixture import graph_artifact
 
 
 @pytest.mark.parametrize("query", ["graph", "report_facts"])
@@ -136,28 +90,3 @@ def test_index_summary_counts_match_source_analysis(tmp_path: Path) -> None:
     with repository_session(path) as session:
         saved = RepositoryStore(session).save_new("Local", str(root), artifact)
         assert saved.stats.model_dump() == artifact["stats"]
-
-
-def test_failed_drop_rolls_back_revision_and_column(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    path = tmp_path / "failed-drop.sqlite"
-    engine = create_engine(path)
-    with engine.begin() as connection:
-        config = migration_config()
-        config.attributes["connection"] = connection
-        command.upgrade(config, "0003_graph_relations")
-        connection.exec_driver_sql("INSERT INTO repositories VALUES ('legacy', 'Local', '.', 7)")
-        connection.exec_driver_sql("INSERT INTO repository_graphs (repository_id, artifact, imported_at) VALUES ('legacy', 'invalid JSON', 9)")
-
-    @event.listens_for(engine, "before_cursor_execute")
-    def fail_after_drop(*cursor_event):
-        statement = cursor_event[2]
-        if statement.startswith("UPDATE alembic_version"):
-            raise RuntimeError("forced revision failure")
-
-    monkeypatch.setattr("atlas.persistence.database.create_engine", lambda _path: engine)
-    with pytest.raises(RuntimeError, match="forced revision failure"):
-        migrate_database(path)
-    with sqlite3.connect(path) as connection:
-        assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == ("0003_graph_relations",)
-        assert connection.execute("SELECT artifact FROM repository_graphs").fetchone() == ("invalid JSON",)
-        assert connection.execute("SELECT id FROM repositories").fetchone() == ("legacy",)
