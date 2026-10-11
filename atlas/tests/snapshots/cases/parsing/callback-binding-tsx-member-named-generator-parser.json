@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "6f626a6563742e616374696f6e203d2028282866756e6374696f6e2a20696e7465726e616c2829207b2066756e6374696f6e206c6f63616c2829207b7d207969656c64206c6f63616c28293b207d2929293b"}, "language": "tsx", "path": "main.js"},
+"content_hash": "e402350400b6b353ddf91de8e7d30ec7d18b609bae34e95daf32dd1704bf5847",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 78, "end_column": 79, "end_line": 1, "file_path": "main.js", "key": "symbol:main.js::action:19", "kind": "function", "language": "tsx", "line_count": null, "name": "action", "parameter_count": null, "parent_key": "file:main.js", "qualified_name": "main.js::action", "signature": "function* internal() { function local() {} yield local(); }", "start_byte": 19, "start_column": 20, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 61, "end_column": 62, "end_line": 1, "file_path": "main.js", "key": "symbol:main.js::action.local:42", "kind": "function", "language": "tsx", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:main.js::action:19", "qualified_name": "main.js::action.local", "signature": "function local()", "start_byte": 42, "start_column": 43, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 75, "evidence": "local()", "file_path": "main.js", "line": 1, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 68}],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "4072656769737465720a636c617373204f776e65723a0a20407374617469636d6574686f640a206465662072756e28293a20706173730a"}, "language": "python", "path": "sample.py"},
+"content_hash": "258ec19ab37b5cab43be87a034a8631e73843a3027baec6a505ce8180d0cc1e1",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": ["@register"], "end_byte": 54, "end_column": 17, "end_line": 4, "file_path": "sample.py", "key": "symbol:sample.py::Owner:10", "kind": "class", "language": "python", "line_count": null, "name": "Owner", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::Owner", "signature": "class Owner:", "start_byte": 10, "start_column": 1, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": ["@staticmethod"], "end_byte": 54, "end_column": 17, "end_line": 4, "file_path": "sample.py", "key": "symbol:sample.py::Owner.run:39", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.py::Owner:10", "qualified_name": "sample.py::Owner.run", "signature": "def run():", "start_byte": 39, "start_column": 2, "start_line": 4, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

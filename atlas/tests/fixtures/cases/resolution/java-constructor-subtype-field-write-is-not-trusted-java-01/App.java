@@ -1,0 +1,1 @@
+class Service {void persist(){}} class Other extends Service {void persist(){}} class App {Service local; App(){this.local=new Other();} void run(){local.persist();}}

@@ -1,0 +1,4 @@
+[
+  "infrastructure cannot build domain queries: query",
+  "infrastructure cannot build domain queries: sqlalchemy.sql.Select"
+]

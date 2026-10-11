@@ -1,0 +1,78 @@
+[
+  {
+    "kind": "Class",
+    "name": "Recipe",
+    "visibility": null,
+    "span": {
+      "start_byte": 57,
+      "end_byte": 314,
+      "start_line": 2,
+      "start_column": 7,
+      "end_line": 14,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "Method",
+        "name": "portions",
+        "visibility": null,
+        "span": {
+          "start_byte": 74,
+          "end_byte": 232,
+          "start_line": 3,
+          "start_column": 2,
+          "end_line": 9,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "static portions(name: string): number",
+        "body_span": {
+          "start_byte": 112,
+          "end_byte": 232,
+          "start_line": 3,
+          "start_column": 40,
+          "end_line": 9,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "preview",
+        "visibility": null,
+        "span": {
+          "start_byte": 236,
+          "end_byte": 312,
+          "start_line": 11,
+          "start_column": 2,
+          "end_line": 13,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "static preview(name: string): string",
+        "body_span": {
+          "start_byte": 273,
+          "end_byte": 312,
+          "start_line": 11,
+          "start_column": 39,
+          "end_line": 13,
+          "end_column": 3
+        }
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Recipe",
+    "body_span": {
+      "start_byte": 70,
+      "end_byte": 314,
+      "start_line": 2,
+      "start_column": 20,
+      "end_line": 14,
+      "end_column": 1
+    }
+  }
+]

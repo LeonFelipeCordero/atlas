@@ -1,0 +1,1 @@
+function* internal() { function local() {} yield local(); }

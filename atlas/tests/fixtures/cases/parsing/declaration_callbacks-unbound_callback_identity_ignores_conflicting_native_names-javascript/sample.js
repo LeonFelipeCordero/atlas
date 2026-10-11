@@ -1,0 +1,1 @@
+function outer() { use(x => x + 1); }

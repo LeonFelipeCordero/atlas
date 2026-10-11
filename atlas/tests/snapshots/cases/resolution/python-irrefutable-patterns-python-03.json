@@ -1,0 +1,15 @@
+{
+"files": [
+{"calls": [], "content_hash": "93126da176f1192a05a2c00542e58b57967a50e6106a3c64ee08655fd0caa220", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "sample.py", "symbols": []}
+],
+"resolved": {
+"connections": [
+
+],
+"external_nodes": [
+
+]
+},
+"syntax": {"children": [{"children": [{"children": [], "end_byte": 5, "end_point": [0, 5], "error": false, "missing": false, "named": false, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "6d61746368"}, "type": "match"}, {"children": [], "end_byte": 11, "end_point": [0, 11], "error": false, "missing": false, "named": true, "start_byte": 6, "start_point": [0, 6], "text": {"hex": "76616c7565"}, "type": "identifier"}, {"children": [], "end_byte": 12, "end_point": [0, 12], "error": false, "missing": false, "named": false, "start_byte": 11, "start_point": [0, 11], "text": {"hex": "3a"}, "type": ":"}, {"children": [{"children": [{"children": [], "end_byte": 18, "end_point": [1, 5], "error": false, "missing": false, "named": false, "start_byte": 14, "start_point": [1, 1], "text": {"hex": "63617365"}, "type": "case"}, {"children": [{"children": [], "end_byte": 20, "end_point": [1, 7], "error": false, "missing": false, "named": true, "start_byte": 19, "start_point": [1, 6], "text": {"hex": "31"}, "type": "integer"}], "end_byte": 20, "end_point": [1, 7], "error": false, "missing": false, "named": true, "start_byte": 19, "start_point": [1, 6], "text": {"hex": "31"}, "type": "case_pattern"}, {"children": [], "end_byte": 21, "end_point": [1, 8], "error": false, "missing": false, "named": false, "start_byte": 20, "start_point": [1, 7], "text": {"hex": "3a"}, "type": ":"}, {"children": [{"children": [{"children": [], "end_byte": 26, "end_point": [1, 13], "error": false, "missing": false, "named": false, "start_byte": 22, "start_point": [1, 9], "text": {"hex": "70617373"}, "type": "pass"}], "end_byte": 26, "end_point": [1, 13], "error": false, "missing": false, "named": true, "start_byte": 22, "start_point": [1, 9], "text": {"hex": "70617373"}, "type": "pass_statement"}], "end_byte": 26, "end_point": [1, 13], "error": false, "missing": false, "named": true, "start_byte": 22, "start_point": [1, 9], "text": {"hex": "70617373"}, "type": "block"}], "end_byte": 26, "end_point": [1, 13], "error": false, "missing": false, "named": true, "start_byte": 14, "start_point": [1, 1], "text": {"hex": "6361736520313a2070617373"}, "type": "case_clause"}], "end_byte": 26, "end_point": [1, 13], "error": false, "missing": false, "named": true, "start_byte": 12, "start_point": [0, 12], "text": {"hex": "0a206361736520313a2070617373"}, "type": "block"}], "end_byte": 26, "end_point": [1, 13], "error": false, "missing": false, "named": true, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "6d617463682076616c75653a0a206361736520313a2070617373"}, "type": "match_statement"}], "end_byte": 27, "end_point": [2, 0], "error": false, "missing": false, "named": true, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "6d617463682076616c75653a0a206361736520313a20706173730a"}, "type": "module"},
+"adapter": {"irrefutable": false}
+}

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636f6e73756d6528282829203d3e207b2066756e6374696f6e206c6f63616c2829207b7d2072657475726e206c6f63616c28293b207d29293b"}, "language": "javascript", "path": "sample.js"},
+"content_hash": "97a8d99c724701589900abedd6e1bc8926369057b1b02baef20dca931c8e989a",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 54, "end_column": 55, "end_line": 1, "file_path": "sample.js", "key": "symbol:sample.js::<anonymous>:9", "kind": "function", "language": "javascript", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::<anonymous>", "signature": "() =>", "start_byte": 9, "start_column": 10, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 36, "end_column": 37, "end_line": 1, "file_path": "sample.js", "key": "symbol:sample.js::<anonymous>.local:17", "kind": "function", "language": "javascript", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:sample.js::<anonymous>:9", "qualified_name": "sample.js::<anonymous>.local", "signature": "function local()", "start_byte": 17, "start_column": 18, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 56, "evidence": "consume((() => { function local() {} return local(); }))", "file_path": "sample.js", "line": 1, "name": "consume", "qualifier": null, "relationship": "CALLS", "start_byte": 0}, {"bare_target": true, "end_byte": 51, "evidence": "local()", "file_path": "sample.js", "line": 1, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 44}],
+"imports": [],
+"inheritances": []
+}

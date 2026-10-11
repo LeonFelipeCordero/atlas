@@ -1,0 +1,4 @@
+[
+  "migration operation must be schema DDL: alembic.op.execute",
+  "raw SQL statement"
+]

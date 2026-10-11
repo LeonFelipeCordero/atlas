@@ -1,0 +1,499 @@
+{
+  "exit_code": 0,
+  "output": {
+    "summary": {
+      "files": 3,
+      "modules": 3,
+      "types": 4,
+      "callables": 15,
+      "circularImportGroups": 1,
+      "parseErrors": 0
+    },
+    "nodes": [
+      {
+        "stableKey": "module:.",
+        "subject": "javascript",
+        "kind": "directory",
+        "level": "module",
+        "path": ".",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "module:brewing",
+        "subject": "brewing",
+        "kind": "directory",
+        "level": "module",
+        "path": "brewing",
+        "line": null,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "file:brewing/Brewer.js",
+        "subject": "brewing/Brewer.js",
+        "kind": "file",
+        "level": "file",
+        "path": "brewing/Brewer.js",
+        "line": null,
+        "metrics": {
+          "lineCount": 601,
+          "functionCount": 9,
+          "measuredFunctionCount": 9,
+          "weightedComplexitySum": 31,
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewing:127",
+        "subject": "brewing/Brewer.js::Brewing",
+        "kind": "class",
+        "level": "type",
+        "path": "brewing/Brewer.js",
+        "line": 5,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 0,
+          "transitiveChangeImpact": 1,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewing.brew:145",
+        "subject": "brewing/Brewer.js::Brewing.brew",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 6,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer:213",
+        "subject": "brewing/Brewer.js::Brewer",
+        "kind": "class",
+        "level": "type",
+        "path": "brewing/Brewer.js",
+        "line": 11,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 3,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.brew:246",
+        "subject": "brewing/Brewer.js::Brewer.brew",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 12,
+        "metrics": {
+          "lineCount": 4,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.brew.<anonymous>:352",
+        "subject": "brewing/Brewer.js::Brewer.brew.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 14,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.retry:396",
+        "subject": "brewing/Brewer.js::Brewer.retry",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 17,
+        "metrics": {
+          "lineCount": 4,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.score:495",
+        "subject": "brewing/Brewer.js::Brewer.score",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 22,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 1,
+          "nestedLoops": 1,
+          "maxDecisionDepth": 3,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.classify:841",
+        "subject": "brewing/Brewer.js::Brewer.classify",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 36,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 9,
+          "weightedComplexity": 9,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.ready:1233",
+        "subject": "brewing/Brewer.js::Brewer.ready",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 50,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 4,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 2,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 4,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::Brewer.calibrate:1550",
+        "subject": "brewing/Brewer.js::Brewer.calibrate",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 63,
+        "metrics": {
+          "lineCount": 104,
+          "parameterCount": 8,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Brewer.js::main:3459",
+        "subject": "brewing/Brewer.js::main",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/Brewer.js",
+        "line": 169,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 0,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "file:brewing/Recipe.js",
+        "subject": "brewing/Recipe.js",
+        "kind": "file",
+        "level": "file",
+        "path": "brewing/Recipe.js",
+        "line": null,
+        "metrics": {
+          "lineCount": 15,
+          "functionCount": 2,
+          "measuredFunctionCount": 2,
+          "weightedComplexitySum": 4,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Recipe.js::Recipe:57",
+        "subject": "brewing/Recipe.js::Recipe",
+        "kind": "class",
+        "level": "type",
+        "path": "brewing/Recipe.js",
+        "line": 3,
+        "metrics": {
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Recipe.js::Recipe.portions:74",
+        "subject": "brewing/Recipe.js::Recipe.portions",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Recipe.js",
+        "line": 4,
+        "metrics": {
+          "lineCount": 7,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 3,
+          "weightedComplexity": 3,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 4,
+          "fanOut": 0,
+          "transitiveChangeImpact": 4,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/Recipe.js::Recipe.preview:220",
+        "subject": "brewing/Recipe.js::Recipe.preview",
+        "kind": "method",
+        "level": "callable",
+        "path": "brewing/Recipe.js",
+        "line": 12,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "module:reporting",
+        "subject": "reporting",
+        "kind": "directory",
+        "level": "module",
+        "path": "reporting",
+        "line": null,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "file:reporting/Report.js",
+        "subject": "reporting/Report.js",
+        "kind": "file",
+        "level": "file",
+        "path": "reporting/Report.js",
+        "line": null,
+        "metrics": {
+          "lineCount": 12,
+          "functionCount": 4,
+          "measuredFunctionCount": 4,
+          "weightedComplexitySum": 4,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/Report.js::Report:55",
+        "subject": "reporting/Report.js::Report",
+        "kind": "class",
+        "level": "type",
+        "path": "reporting/Report.js",
+        "line": 3,
+        "metrics": {
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/Report.js::Report.total:72",
+        "subject": "reporting/Report.js::Report.total",
+        "kind": "method",
+        "level": "callable",
+        "path": "reporting/Report.js",
+        "line": 4,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 0,
+          "transitiveChangeImpact": 4,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/Report.js::Report.total.<anonymous>:118",
+        "subject": "reporting/Report.js::Report.total.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/Report.js",
+        "line": 5,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 2,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/Report.js::Report.render:173",
+        "subject": "reporting/Report.js::Report.render",
+        "kind": "method",
+        "level": "callable",
+        "path": "reporting/Report.js",
+        "line": 8,
+        "metrics": {
+          "lineCount": 4,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 3,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/Report.js::Report.render.<anonymous>:226",
+        "subject": "reporting/Report.js::Report.render.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/Report.js",
+        "line": 9,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      }
+    ],
+    "circularImports": [
+      {
+        "id": "import-cycle:7bfc6228eb606bfeebaf3de9abefe0079e9a9723111aa094149a067a298b8625",
+        "groupSize": 2,
+        "internalDependencyCount": 2,
+        "files": [
+          "brewing/Recipe.js",
+          "reporting/Report.js"
+        ],
+        "exampleCycle": [
+          "brewing/Recipe.js",
+          "reporting/Report.js",
+          "brewing/Recipe.js"
+        ]
+      }
+    ],
+    "diagnostics": []
+  }
+}

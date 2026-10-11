@@ -1,5 +1,7 @@
 """Focused extraction-policy tests independent of graph resolution."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,17 +30,17 @@ class ExtractionAdapterTest(unittest.TestCase):
         for language, signature, expected in [
             (
                 "java",
-                "class Child extends Base implements Service {}",
+                case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-java', 'sample.java'),
                 ["Base", "Service"],
             ),
-            ("kotlin", "class Child : Base(), Service {}", ["Base", "Service"]),
+            ("kotlin", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-kotlin', 'sample.kt'), ["Base", "Service"]),
             (
                 "typescript",
-                "class Child extends Base implements Service {}",
+                case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-java', 'sample.java'),
                 ["Base", "Service"],
             ),
-            ("python", "class Child(Base, pkg.Mixin):\n pass", ["Base", "pkg.Mixin"]),
-            ("javascript", "class Child extends Base {}", ["Base"]),
+            ("python", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-python', 'sample.py'), ["Base", "pkg.Mixin"]),
+            ("javascript", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-javascript', 'sample.js'), ["Base"]),
         ]:
             with self.subTest(language=language):
                 self.assertEqual(
@@ -47,14 +49,14 @@ class ExtractionAdapterTest(unittest.TestCase):
                 )
         self.assertEqual(
             get_adapter("typescript").inheritance(
-                DeclarationHeader("typescript", "interface", "interface Child extends pkg.Base, Service {}"),
+                DeclarationHeader("typescript", "interface", case_text('parsing', 'extraction_adapters-per_language_inheritance_and_generic_fallback-typescript-2', 'sample.ts')),
             ),
             ["pkg.Base", "Service"],
         )
         self.assertIs(get_adapter("ruby"), DEFAULT_ADAPTER)
 
     def test_jsx_tag_name_sites_are_references_without_swallowing_attribute_calls(self):
-        sample = b"const App = () => <><Card onClick={() => brew()}/><UI.Card/><div/><custom-card/><svg:path/><Card></Card></>;"
+        sample = case_bytes('parsing', 'extraction_adapters-jsx_tag_name_sites_are_references_without_swallowing_attribute_calls-javascript', 'App.jsx')
         for language in ("javascript", "tsx"):
             with self.subTest(language=language):
                 self.assert_jsx_reference_calls(language, sample)
@@ -84,20 +86,20 @@ class ExtractionAdapterTest(unittest.TestCase):
         for language, code, node_type, visibility, decorators in [
             (
                 "java",
-                b"@Deprecated public class Service {}",
+                case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-java', 'sample.java'),
                 "class_declaration",
                 "public",
                 ["@Deprecated"],
             ),
-            ("rust", b"pub struct Service {}", "struct_item", None, []),
+            ("rust", case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-rust', 'sample.rs'), "struct_item", None, []),
         ]:
             with self.subTest(language=language):
                 self.assert_declaration_metadata(
                     MetadataCase(parsing_syntax(code, language), node_type, visibility, decorators)
                 )
         for language, code, expected in [
-            ("kotlin", b"import demo.Service\n", [("import demo.Service", 1)]),
-            ("rust", b"mod external;\nmod inline {}", [("mod external;", 1)]),
+            ("kotlin", case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-kotlin', 'sample.kt'), [("import demo.Service", 1)]),
+            ("rust", case_bytes('parsing', 'extraction_adapters-decorators_visibility_and_import_supplement_owned_by_adapters-rust-2', 'sample.rs'), [("mod external;", 1)]),
         ]:
             source = SourceFile("sample", Path("sample"), language, code)
             self.assertEqual(get_adapter(language).imports(ParsedSyntax(source), []), expected)
@@ -109,7 +111,7 @@ class ExtractionAdapterTest(unittest.TestCase):
         self.assertEqual(actual_decorators, case.decorators)
 
     def test_rust_macro_payload_remains_rust_only(self):
-        code = b'fn run() { println!("{}", helper()); }'
+        code = case_bytes('parsing', 'extraction_adapters-rust_macro_payload_remains_rust_only-rust', 'sample.rs')
         root = get_parser("rust").parse(code).root_node
         rust = get_adapter("rust")
         sites = list(rust.call_sites(root))
@@ -117,7 +119,7 @@ class ExtractionAdapterTest(unittest.TestCase):
             [rust.normalize_call(site)[0] for site in sites], ["println!", "helper"]
         )
         self.assertEqual([site[2] for site in sites], [False, True])
-        self.assertTrue(extract_structure(parsing_syntax(b"def run():\n pass\n", "python")))
+        self.assertTrue(extract_structure(parsing_syntax(case_bytes('parsing', 'extraction_adapters-rust_macro_payload_remains_rust_only-python', 'sample.py'), "python")))
 
 
 if __name__ == "__main__":

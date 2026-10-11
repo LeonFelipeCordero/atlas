@@ -12,13 +12,16 @@ from atlas.parsing.discovery import SourceFile
 from atlas.domain.models import ParsedFile
 from atlas.indexer import analyze_repository
 from atlas.metrics.resolver import Connection
+from tests.source_snapshot_fixture import case_bytes
 
 
 class ModelsTest(unittest.TestCase):
     def artifact(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "example.py").write_text("def hello():\n    return 1\nhello()\n")
+            (root / "example.py").write_bytes(
+                case_bytes("operational", "model-artifact", "example.py")
+            )
             return analyze_repository(root)
 
     def test_language_graphs_round_trip_without_field_changes(self):
@@ -42,9 +45,13 @@ class ModelsTest(unittest.TestCase):
 
     def test_strict_constructor_and_assignment_validation(self):
         with self.assertRaises(ValidationError):
-            SourceFile("example.py", Path("example.py"), "python", cast(Any, "not bytes"))
+            SourceFile(
+                "example.py", Path("example.py"), "python", cast(Any, "not bytes")
+            )
         with self.assertRaises(ValidationError):
-            Connection("a", "b", cast(Any, "UNKNOWN"), "INFERRED", "example.py", 1, None)
+            Connection(
+                "a", "b", cast(Any, "UNKNOWN"), "INFERRED", "example.py", 1, None
+            )
         source = SourceFile("example.py", Path("example.py"), "python", b"")
         with self.assertRaises(ValidationError):
             setattr(source, "language", 123)

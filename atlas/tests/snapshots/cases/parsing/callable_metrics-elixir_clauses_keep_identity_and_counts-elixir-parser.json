@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566206628302c2078292c20646f3a20780a6465662066286e2c207829207768656e206e203e20302c20646f3a20780a"}, "language": "elixir", "path": "sample"},
+"content_hash": "5b04aa97a541ede15141ff495c4bd2191748fcdc70f7f6182dc042389b521d13",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 18, "end_column": 19, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "elixir", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "def f(0, x), do:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}, {"complexity": null, "decorators": [], "end_byte": 48, "end_column": 30, "end_line": 2, "file_path": "sample", "key": "symbol:sample::f:19", "kind": "function", "language": "elixir", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "def f(n, x) when n > 0, do:", "start_byte": 19, "start_column": 1, "start_line": 2, "visibility": "public"}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

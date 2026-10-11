@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566207363616e2876616c756573293a0a207768696c65206163746976653a0a2020696620656e61626c65643a0a2020206d617463682076616c75653a0a202020206361736520313a0a2020202020696620726561647920616e642076616c69643a2061636365707428290a202020202064656620696e6e657228293a0a202020202020666f72207820696e2076616c7565733a0a20202020202020696620783a20706173730a2020202063617365205f3a20706173730a"}, "language": "python", "path": "sample.py"},
+"content_hash": "202bec88f6866a479338e6712dc79ba271c5611bff1ad94e001885914f059042",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 184, "end_column": 17, "end_line": 10, "file_path": "sample.py", "key": "symbol:sample.py::scan:0", "kind": "function", "language": "python", "line_count": null, "name": "scan", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::scan", "signature": "def scan(values):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 167, "end_column": 18, "end_line": 9, "file_path": "sample.py", "key": "symbol:sample.py::scan.inner:114", "kind": "function", "language": "python", "line_count": null, "name": "inner", "parameter_count": null, "parent_key": "symbol:sample.py::scan:0", "qualified_name": "sample.py::scan.inner", "signature": "def inner():", "start_byte": 114, "start_column": 6, "start_line": 7, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 108, "evidence": "accept()", "file_path": "sample.py", "line": 6, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 100}],
+"imports": [],
+"inheritances": []
+}

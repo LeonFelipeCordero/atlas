@@ -1,0 +1,1 @@
+import {Service, Service as Alias} from './service';function run(){const local:Service=new Alias();local.persist();}

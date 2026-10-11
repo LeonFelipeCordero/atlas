@@ -1,0 +1,1 @@
+import {R} from './tools'; use(({key: R=other})=>R.work()); R.work(2);

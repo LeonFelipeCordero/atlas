@@ -1,0 +1,1 @@
+func f(x int){switch x {case 1: accept(); default: reject()}}

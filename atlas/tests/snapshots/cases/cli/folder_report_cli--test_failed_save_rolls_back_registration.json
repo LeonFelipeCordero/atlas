@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 1,
+    "output": "Error: (sqlite3.IntegrityError) forced write failure\n[SQL: INSERT INTO repository_graphs (repository_id, imported_at, graph_revision, schema_version, indexed_at, root_name, root_path) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (repository_id) DO UPDATE SET imported_at = excluded.imported_at, graph_revision = excluded.graph_revision, schema_version = excluded.schema_version, indexed_at = excluded.indexed_at, root_name = excluded.root_name, root_path = excluded.root_path]\n[parameters: ('<uuid>', <epoch-ms>, '<revision>', 2, '<timestamp>', 'example', '<tmp>/example')]\n(Background on this error at: https://sqlalche.me/e/21/gkpj)\n",
+    "stdout": "",
+    "stderr": "Error: (sqlite3.IntegrityError) forced write failure\n[SQL: INSERT INTO repository_graphs (repository_id, imported_at, graph_revision, schema_version, indexed_at, root_name, root_path) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (repository_id) DO UPDATE SET imported_at = excluded.imported_at, graph_revision = excluded.graph_revision, schema_version = excluded.schema_version, indexed_at = excluded.indexed_at, root_name = excluded.root_name, root_path = excluded.root_path]\n[parameters: ('<uuid>', <epoch-ms>, '<revision>', 2, '<timestamp>', 'example', '<tmp>/example')]\n(Background on this error at: https://sqlalche.me/e/21/gkpj)\n"
+  }
+]

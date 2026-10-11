@@ -1,0 +1,4 @@
+[
+  {"allowed": true, "id": "domain_graph_repository_is_not_a_database_repository-884893eb45", "module": "atlas.metrics.adapters.resolution", "old_test": "test_database_boundaries.py::test_domain_graph_repository_is_not_a_database_repository", "operation": "boundary", "package": "atlas.metrics.adapters"},
+  {"allowed": false, "id": "domain_graph_repository_is_not_a_database_repository-4d0576616c", "module": "atlas.metrics.adapters.resolution", "old_test": "test_database_boundaries.py::test_domain_graph_repository_is_not_a_database_repository", "operation": "boundary", "package": "atlas.metrics.adapters"}
+]

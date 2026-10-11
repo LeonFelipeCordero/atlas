@@ -1,0 +1,1 @@
+function* outer() { const f = ((function* internal() { function local() {} yield local(); })); yield f(); }

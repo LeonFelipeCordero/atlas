@@ -1,0 +1,203 @@
+[
+  {
+    "kind": "interface",
+    "name": "Brewing",
+    "visibility": null,
+    "span": {
+      "start_byte": 127,
+      "end_byte": 190,
+      "start_line": 4,
+      "start_column": 0,
+      "end_line": 6,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "method",
+        "name": "brew",
+        "visibility": null,
+        "span": {
+          "start_byte": 149,
+          "end_byte": 187,
+          "start_line": 5,
+          "start_column": 2,
+          "end_line": 5,
+          "end_column": 40
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "brew: (names: Array<string>) => string",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "interface Brewing {\n  brew: (names: Array<string>) => string;\n}",
+    "body_span": null
+  },
+  {
+    "kind": "class",
+    "name": "Brewer",
+    "visibility": null,
+    "span": {
+      "start_byte": 199,
+      "end_byte": 3637,
+      "start_line": 8,
+      "start_column": 7,
+      "end_line": 164,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "method",
+        "name": "brew",
+        "visibility": null,
+        "span": {
+          "start_byte": 235,
+          "end_byte": 404,
+          "start_line": 9,
+          "start_column": 2,
+          "end_line": 12,
+          "end_column": 3
+        },
+        "children": [
+          {
+            "kind": "function",
+            "name": null,
+            "visibility": null,
+            "span": {
+              "start_byte": 364,
+              "end_byte": 397,
+              "start_line": 11,
+              "start_column": 38,
+              "end_line": 11,
+              "end_column": 71
+            },
+            "children": [],
+            "decorators": [],
+            "doc_comment": null,
+            "signature": "name => Recipe.portions(name) > 0",
+            "body_span": null
+          }
+        ],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "brew(names: Array<string>): string {\n    if (names.length === 0) return Report.render([]);\n    return Report.render(names.filter(name => Recipe.portions(name) > 0));\n  }",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "retry",
+        "visibility": null,
+        "span": {
+          "start_byte": 408,
+          "end_byte": 519,
+          "start_line": 14,
+          "start_column": 2,
+          "end_line": 17,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "retry(attempts: number): number {\n    if (attempts <= 0) return 0;\n    return 1 + this.retry(attempts - 1);\n  }",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "score",
+        "visibility": null,
+        "span": {
+          "start_byte": 523,
+          "end_byte": 816,
+          "start_line": 19,
+          "start_column": 2,
+          "end_line": 30,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "score(batches: Array<Array<string>>): number {\n    let result = 0;\n    for (const batch of batches) {\n      for (const name of batch) {\n        const count = Recipe.portions(name);\n        if (count > 0 && count <= 3) {\n          result += count;\n        }\n      }\n    }\n    return result;\n  }",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "classify",
+        "visibility": null,
+        "span": {
+          "start_byte": 899,
+          "end_byte": 1236,
+          "start_line": 33,
+          "start_column": 2,
+          "end_line": 44,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "classify(amount: number): number {\n    let category = 0;\n    if (amount > 0) category++;\n    if (amount > 1) category++;\n    if (amount > 2) category++;\n    if (amount > 3) category++;\n    if (amount > 4) category++;\n    if (amount > 5) category++;\n    if (amount > 6) category++;\n    if (amount > 7) category++;\n    return category;\n  }",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "ready",
+        "visibility": null,
+        "span": {
+          "start_byte": 1307,
+          "end_byte": 1572,
+          "start_line": 47,
+          "start_column": 2,
+          "end_line": 58,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "ready(water: number, beans: number, cups: number, temperature: number): boolean {\n    if (water > 0) {\n      if (beans > 0) {\n        if (cups > 0) {\n          if (temperature > 0) {\n            return true;\n          }\n        }\n      }\n    }\n    return false;\n  }",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "calibrate",
+        "visibility": null,
+        "span": {
+          "start_byte": 1665,
+          "end_byte": 3635,
+          "start_line": 60,
+          "start_column": 2,
+          "end_line": 163,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "calibrate(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number): number {\n    let result = a + b + c + d + e + f + g + h;\n    result += 1;\n    result += 2;\n    result += 3;\n    result += 4;\n    result += 5;\n    result += 6;\n    result += 7;\n    result += 8;\n    result += 9;\n    result += 10;\n    result += 11;\n    result += 12;\n    result += 13;\n    result += 14;\n    result += 15;\n    result += 16;\n    result += 17;\n    result += 18;\n    result += 19;\n    result += 20;\n    result += 21;\n    result += 22;\n    result += 23;\n    result += 24;\n    result += 25;\n    result += 26;\n    result += 27;\n    result += 28;\n    result += 29;\n    result += 30;\n    result += 31;\n    result += 32;\n    result += 33;\n    result += 34;\n    result += 35;\n    result += 36;\n    result += 37;\n    result += 38;\n    result += 39;\n    result += 40;\n    result += 41;\n    result += 42;\n    result += 43;\n    result += 44;\n    result += 45;\n    result += 46;\n    result += 47;\n    result += 48;\n    result += 49;\n    result += 50;\n    result += 51;\n    result += 52;\n    result += 53;\n    result += 54;\n    result += 55;\n    result += 56;\n    result += 57;\n    result += 58;\n    result += 59;\n    result += 60;\n    result += 61;\n    result += 62;\n    result += 63;\n    result += 64;\n    result += 65;\n    result += 66;\n    result += 67;\n    result += 68;\n    result += 69;\n    result += 70;\n    result += 71;\n    result += 72;\n    result += 73;\n    result += 74;\n    result += 75;\n    result += 76;\n    result += 77;\n    result += 78;\n    result += 79;\n    result += 80;\n    result += 81;\n    result += 82;\n    result += 83;\n    result += 84;\n    result += 85;\n    result += 86;\n    result += 87;\n    result += 88;\n    result += 89;\n    result += 90;\n    result += 91;\n    result += 92;\n    result += 93;\n    result += 94;\n    result += 95;\n    result += 96;\n    result += 97;\n    result += 98;\n    result += 99;\n    result += 100;\n    return result;\n  }",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Brewer implements Brewing {\n  brew(names: Array<string>): string {\n    if (names.length === 0) return Report.render([]);\n    return Report.render(names.filter(name => Recipe.portions(name) > 0));\n  }\n\n  retry(attempts: number): number {\n    if (attempts <= 0) return 0;\n    return 1 + this.retry(attempts - 1);\n  }\n\n  score(batches: Array<Array<string>>): number {\n    let result = 0;\n    for (const batch of batches) {\n      for (const name of batch) {\n        const count = Recipe.portions(name);\n        if (count > 0 && count <= 3) {\n          result += count;\n        }\n      }\n    }\n    return result;\n  }\n\n  // Deliberately exceed the cyclomatic-complexity limit without deep nesting.\n  classify(amount: number): number {\n    let category = 0;\n    if (amount > 0) category++;\n    if (amount > 1) category++;\n    if (amount > 2) category++;\n    if (amount > 3) category++;\n    if (amount > 4) category++;\n    if (amount > 5) category++;\n    if (amount > 6) category++;\n    if (amount > 7) category++;\n    return category;\n  }\n\n  // Deliberately exceed the decision-nesting limit without loops.\n  ready(water: number, beans: number, cups: number, temperature: number): boolean {\n    if (water > 0) {\n      if (beans > 0) {\n        if (cups > 0) {\n          if (temperature > 0) {\n            return true;\n          }\n        }\n      }\n    }\n    return false;\n  }\n  // Deliberately exceed callable length and input-count limits with numeric adjustments.\n  calibrate(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number): number {\n    let result = a + b + c + d + e + f + g + h;\n    result += 1;\n    result += 2;\n    result += 3;\n    result += 4;\n    result += 5;\n    result += 6;\n    result += 7;\n    result += 8;\n    result += 9;\n    result += 10;\n    result += 11;\n    result += 12;\n    result += 13;\n    result += 14;\n    result += 15;\n    result += 16;\n    result += 17;\n    result += 18;\n    result += 19;\n    result += 20;\n    result += 21;\n    result += 22;\n    result += 23;\n    result += 24;\n    result += 25;\n    result += 26;\n    result += 27;\n    result += 28;\n    result += 29;\n    result += 30;\n    result += 31;\n    result += 32;\n    result += 33;\n    result += 34;\n    result += 35;\n    result += 36;\n    result += 37;\n    result += 38;\n    result += 39;\n    result += 40;\n    result += 41;\n    result += 42;\n    result += 43;\n    result += 44;\n    result += 45;\n    result += 46;\n    result += 47;\n    result += 48;\n    result += 49;\n    result += 50;\n    result += 51;\n    result += 52;\n    result += 53;\n    result += 54;\n    result += 55;\n    result += 56;\n    result += 57;\n    result += 58;\n    result += 59;\n    result += 60;\n    result += 61;\n    result += 62;\n    result += 63;\n    result += 64;\n    result += 65;\n    result += 66;\n    result += 67;\n    result += 68;\n    result += 69;\n    result += 70;\n    result += 71;\n    result += 72;\n    result += 73;\n    result += 74;\n    result += 75;\n    result += 76;\n    result += 77;\n    result += 78;\n    result += 79;\n    result += 80;\n    result += 81;\n    result += 82;\n    result += 83;\n    result += 84;\n    result += 85;\n    result += 86;\n    result += 87;\n    result += 88;\n    result += 89;\n    result += 90;\n    result += 91;\n    result += 92;\n    result += 93;\n    result += 94;\n    result += 95;\n    result += 96;\n    result += 97;\n    result += 98;\n    result += 99;\n    result += 100;\n    return result;\n  }\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "main",
+    "visibility": null,
+    "span": {
+      "start_byte": 3646,
+      "end_byte": 3748,
+      "start_line": 166,
+      "start_column": 7,
+      "end_line": 168,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "function main(): void {\n  stdout.write(`${new Brewer().brew([\"espresso\", \"filter\", \"invalid\"])}\\n`);\n}",
+    "body_span": null
+  }
+]

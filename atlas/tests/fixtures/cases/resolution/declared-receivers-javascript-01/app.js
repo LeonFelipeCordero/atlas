@@ -1,0 +1,1 @@
+class Service { persist() {} } function run() { const local = new Service(); local.persist(); }

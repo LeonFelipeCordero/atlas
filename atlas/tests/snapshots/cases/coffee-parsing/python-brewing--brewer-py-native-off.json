@@ -1,0 +1,204 @@
+[
+  {
+    "kind": "class",
+    "name": "Brewing",
+    "visibility": null,
+    "span": {
+      "start_byte": 691,
+      "end_byte": 809,
+      "start_line": 20,
+      "start_column": 0,
+      "end_line": 23,
+      "end_column": 33
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": "brew",
+        "visibility": null,
+        "span": {
+          "start_byte": 735,
+          "end_byte": 809,
+          "start_line": 22,
+          "start_column": 4,
+          "end_line": 23,
+          "end_column": 33
+        },
+        "children": [],
+        "decorators": [
+          "@abstractmethod"
+        ],
+        "doc_comment": null,
+        "signature": "def brew(self, names: list[str]) -> str:\n        raise NotImplementedError",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Brewing(ABC):\n    @abstractmethod\n    def brew(self, names: list[str]) -> str:\n        raise NotImplementedError",
+    "body_span": null
+  },
+  {
+    "kind": "class",
+    "name": "Brewer",
+    "visibility": null,
+    "span": {
+      "start_byte": 812,
+      "end_byte": 4713,
+      "start_line": 26,
+      "start_column": 0,
+      "end_line": 182,
+      "end_column": 21
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": "brew",
+        "visibility": null,
+        "span": {
+          "start_byte": 839,
+          "end_byte": 1044,
+          "start_line": 27,
+          "start_column": 4,
+          "end_line": 31,
+          "end_column": 35
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def brew(self, names: list[str]) -> str:\n        if not names:\n            return Report.render([])\n        valid = [name for name in names if Recipe.portions(name) > 0]\n        return Report.render(valid)",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "retry",
+        "visibility": null,
+        "span": {
+          "start_byte": 1050,
+          "end_byte": 1179,
+          "start_line": 33,
+          "start_column": 4,
+          "end_line": 36,
+          "end_column": 43
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def retry(self, attempts: int) -> int:\n        if attempts <= 0:\n            return 0\n        return 1 + self.retry(attempts - 1)",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "score",
+        "visibility": null,
+        "span": {
+          "start_byte": 1185,
+          "end_byte": 1463,
+          "start_line": 38,
+          "start_column": 4,
+          "end_line": 45,
+          "end_column": 21
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def score(self, batches: list[list[str]]) -> int:\n        result = 0\n        for batch in batches:\n            for name in batch:\n                count = Recipe.portions(name)\n                if count > 0 and count <= 3:\n                    result += count\n        return result",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "classify",
+        "visibility": null,
+        "span": {
+          "start_byte": 1549,
+          "end_byte": 2025,
+          "start_line": 48,
+          "start_column": 4,
+          "end_line": 66,
+          "end_column": 23
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def classify(self, amount: int) -> int:\n        category = 0\n        if amount > 0:\n            category += 1\n        if amount > 1:\n            category += 1\n        if amount > 2:\n            category += 1\n        if amount > 3:\n            category += 1\n        if amount > 4:\n            category += 1\n        if amount > 5:\n            category += 1\n        if amount > 6:\n            category += 1\n        if amount > 7:\n            category += 1\n        return category",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "ready",
+        "visibility": null,
+        "span": {
+          "start_byte": 2099,
+          "end_byte": 2350,
+          "start_line": 69,
+          "start_column": 4,
+          "end_line": 75,
+          "end_column": 20
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def ready(self, water: int, beans: int, cups: int, temperature: int) -> bool:\n        if water > 0:\n            if beans > 0:\n                if cups > 0:\n                    if temperature > 0:\n                        return True\n        return False",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "calibrate",
+        "visibility": null,
+        "span": {
+          "start_byte": 2447,
+          "end_byte": 4713,
+          "start_line": 78,
+          "start_column": 4,
+          "end_line": 182,
+          "end_column": 21
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def calibrate(\n        self, a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int\n    ) -> int:\n        result = a + b + c + d + e + f + g + h\n        result += 1\n        result += 2\n        result += 3\n        result += 4\n        result += 5\n        result += 6\n        result += 7\n        result += 8\n        result += 9\n        result += 10\n        result += 11\n        result += 12\n        result += 13\n        result += 14\n        result += 15\n        result += 16\n        result += 17\n        result += 18\n        result += 19\n        result += 20\n        result += 21\n        result += 22\n        result += 23\n        result += 24\n        result += 25\n        result += 26\n        result += 27\n        result += 28\n        result += 29\n        result += 30\n        result += 31\n        result += 32\n        result += 33\n        result += 34\n        result += 35\n        result += 36\n        result += 37\n        result += 38\n        result += 39\n        result += 40\n        result += 41\n        result += 42\n        result += 43\n        result += 44\n        result += 45\n        result += 46\n        result += 47\n        result += 48\n        result += 49\n        result += 50\n        result += 51\n        result += 52\n        result += 53\n        result += 54\n        result += 55\n        result += 56\n        result += 57\n        result += 58\n        result += 59\n        result += 60\n        result += 61\n        result += 62\n        result += 63\n        result += 64\n        result += 65\n        result += 66\n        result += 67\n        result += 68\n        result += 69\n        result += 70\n        result += 71\n        result += 72\n        result += 73\n        result += 74\n        result += 75\n        result += 76\n        result += 77\n        result += 78\n        result += 79\n        result += 80\n        result += 81\n        result += 82\n        result += 83\n        result += 84\n        result += 85\n        result += 86\n        result += 87\n        result += 88\n        result += 89\n        result += 90\n        result += 91\n        result += 92\n        result += 93\n        result += 94\n        result += 95\n        result += 96\n        result += 97\n        result += 98\n        result += 99\n        result += 100\n        return result",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Brewer(Brewing):\n    def brew(self, names: list[str]) -> str:\n        if not names:\n            return Report.render([])\n        valid = [name for name in names if Recipe.portions(name) > 0]\n        return Report.render(valid)\n\n    def retry(self, attempts: int) -> int:\n        if attempts <= 0:\n            return 0\n        return 1 + self.retry(attempts - 1)\n\n    def score(self, batches: list[list[str]]) -> int:\n        result = 0\n        for batch in batches:\n            for name in batch:\n                count = Recipe.portions(name)\n                if count > 0 and count <= 3:\n                    result += count\n        return result\n\n    # Deliberately exceed the cyclomatic-complexity limit without deep nesting.\n    def classify(self, amount: int) -> int:\n        category = 0\n        if amount > 0:\n            category += 1\n        if amount > 1:\n            category += 1\n        if amount > 2:\n            category += 1\n        if amount > 3:\n            category += 1\n        if amount > 4:\n            category += 1\n        if amount > 5:\n            category += 1\n        if amount > 6:\n            category += 1\n        if amount > 7:\n            category += 1\n        return category\n\n    # Deliberately exceed the decision-nesting limit without loops.\n    def ready(self, water: int, beans: int, cups: int, temperature: int) -> bool:\n        if water > 0:\n            if beans > 0:\n                if cups > 0:\n                    if temperature > 0:\n                        return True\n        return False\n\n    # Deliberately exceed callable length and input-count limits with numeric adjustments.\n    def calibrate(\n        self, a: int, b: int, c: int, d: int, e: int, f: int, g: int, h: int\n    ) -> int:\n        result = a + b + c + d + e + f + g + h\n        result += 1\n        result += 2\n        result += 3\n        result += 4\n        result += 5\n        result += 6\n        result += 7\n        result += 8\n        result += 9\n        result += 10\n        result += 11\n        result += 12\n        result += 13\n        result += 14\n        result += 15\n        result += 16\n        result += 17\n        result += 18\n        result += 19\n        result += 20\n        result += 21\n        result += 22\n        result += 23\n        result += 24\n        result += 25\n        result += 26\n        result += 27\n        result += 28\n        result += 29\n        result += 30\n        result += 31\n        result += 32\n        result += 33\n        result += 34\n        result += 35\n        result += 36\n        result += 37\n        result += 38\n        result += 39\n        result += 40\n        result += 41\n        result += 42\n        result += 43\n        result += 44\n        result += 45\n        result += 46\n        result += 47\n        result += 48\n        result += 49\n        result += 50\n        result += 51\n        result += 52\n        result += 53\n        result += 54\n        result += 55\n        result += 56\n        result += 57\n        result += 58\n        result += 59\n        result += 60\n        result += 61\n        result += 62\n        result += 63\n        result += 64\n        result += 65\n        result += 66\n        result += 67\n        result += 68\n        result += 69\n        result += 70\n        result += 71\n        result += 72\n        result += 73\n        result += 74\n        result += 75\n        result += 76\n        result += 77\n        result += 78\n        result += 79\n        result += 80\n        result += 81\n        result += 82\n        result += 83\n        result += 84\n        result += 85\n        result += 86\n        result += 87\n        result += 88\n        result += 89\n        result += 90\n        result += 91\n        result += 92\n        result += 93\n        result += 94\n        result += 95\n        result += 96\n        result += 97\n        result += 98\n        result += 99\n        result += 100\n        return result",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "import_styles",
+    "visibility": null,
+    "span": {
+      "start_byte": 4716,
+      "end_byte": 5048,
+      "start_line": 185,
+      "start_column": 0,
+      "end_line": 195,
+      "end_column": 5
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "def import_styles(name: str) -> str:\n    recipe.portions(name)\n    coffee.brewing.recipe.portions(name)\n    relative_recipe.portions(name)\n    portion_count(name)\n    return (\n        module_report.render([name])\n        + absolute_report.render([name])\n        + relative_report.render([name])\n        + render_coffee([name])\n    )",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "main",
+    "visibility": null,
+    "span": {
+      "start_byte": 5051,
+      "end_byte": 5178,
+      "start_line": 198,
+      "start_column": 0,
+      "end_line": 200,
+      "end_column": 29
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "def main() -> None:\n    sys.stdout.write(Brewer().brew([\"espresso\", \"filter\", \"invalid\"]) + \"\\n\")\n    import_styles(\"espresso\")",
+    "body_span": null
+  }
+]

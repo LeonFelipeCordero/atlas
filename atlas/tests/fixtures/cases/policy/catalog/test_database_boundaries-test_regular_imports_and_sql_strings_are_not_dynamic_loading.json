@@ -1,0 +1,5 @@
+[
+  {"allowed": true, "id": "regular_imports_and_sql_strings_are_not_dynamic_loading-d3301a2a52", "module": "", "old_test": "test_database_boundaries.py::test_regular_imports_and_sql_strings_are_not_dynamic_loading", "operation": "dynamic", "package": "atlas.persistence"},
+  {"allowed": true, "id": "regular_imports_and_sql_strings_are_not_dynamic_loading-9a1eb58a25", "module": "", "old_test": "test_database_boundaries.py::test_regular_imports_and_sql_strings_are_not_dynamic_loading", "operation": "dynamic", "package": "atlas.persistence"},
+  {"allowed": true, "id": "regular_imports_and_sql_strings_are_not_dynamic_loading-bd9761dd27", "module": "", "old_test": "test_database_boundaries.py::test_regular_imports_and_sql_strings_are_not_dynamic_loading", "operation": "dynamic", "package": "atlas.persistence"}
+]

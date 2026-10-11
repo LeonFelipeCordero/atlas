@@ -1,0 +1,232 @@
+[
+  {
+    "kind": "Module",
+    "name": "recipe",
+    "visibility": null,
+    "span": {
+      "start_byte": 22,
+      "end_byte": 33,
+      "start_line": 1,
+      "start_column": 0,
+      "end_line": 1,
+      "end_column": 11
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "mod recipe;",
+    "body_span": null
+  },
+  {
+    "kind": "Module",
+    "name": "report",
+    "visibility": null,
+    "span": {
+      "start_byte": 69,
+      "end_byte": 80,
+      "start_line": 3,
+      "start_column": 0,
+      "end_line": 3,
+      "end_column": 11
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "mod report;",
+    "body_span": null
+  },
+  {
+    "kind": "Function",
+    "name": "brew",
+    "visibility": null,
+    "span": {
+      "start_byte": 82,
+      "end_byte": 329,
+      "start_line": 5,
+      "start_column": 0,
+      "end_line": 12,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": null,
+        "visibility": null,
+        "span": {
+          "start_byte": 255,
+          "end_byte": 288,
+          "start_line": 10,
+          "start_column": 16,
+          "end_line": 10,
+          "end_column": 49
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "|name| recipe::portions(name) > 0",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn brew(names: &[&str]) -> String",
+    "body_span": {
+      "start_byte": 120,
+      "end_byte": 329,
+      "start_line": 5,
+      "start_column": 38,
+      "end_line": 12,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "retry",
+    "visibility": null,
+    "span": {
+      "start_byte": 331,
+      "end_byte": 444,
+      "start_line": 14,
+      "start_column": 0,
+      "end_line": 19,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn retry(attempts: i32) -> i32",
+    "body_span": {
+      "start_byte": 366,
+      "end_byte": 444,
+      "start_line": 14,
+      "start_column": 35,
+      "end_line": 19,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "score",
+    "visibility": null,
+    "span": {
+      "start_byte": 446,
+      "end_byte": 734,
+      "start_line": 21,
+      "start_column": 0,
+      "end_line": 32,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn score(batches: &[Vec<&str>]) -> i32",
+    "body_span": {
+      "start_byte": 489,
+      "end_byte": 734,
+      "start_line": 21,
+      "start_column": 43,
+      "end_line": 32,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "classify",
+    "visibility": null,
+    "span": {
+      "start_byte": 813,
+      "end_byte": 1187,
+      "start_line": 35,
+      "start_column": 0,
+      "end_line": 46,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn classify(amount: i32) -> i32",
+    "body_span": {
+      "start_byte": 849,
+      "end_byte": 1187,
+      "start_line": 35,
+      "start_column": 36,
+      "end_line": 46,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "ready",
+    "visibility": null,
+    "span": {
+      "start_byte": 1254,
+      "end_byte": 1527,
+      "start_line": 49,
+      "start_column": 0,
+      "end_line": 60,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn ready(water: i32, beans: i32, cups: i32, temperature: i32) -> bool",
+    "body_span": {
+      "start_byte": 1328,
+      "end_byte": 1527,
+      "start_line": 49,
+      "start_column": 74,
+      "end_line": 60,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "calibrate",
+    "visibility": null,
+    "span": {
+      "start_byte": 1617,
+      "end_byte": 3563,
+      "start_line": 63,
+      "start_column": 0,
+      "end_line": 166,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn calibrate(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) -> i32",
+    "body_span": {
+      "start_byte": 1705,
+      "end_byte": 3563,
+      "start_line": 63,
+      "start_column": 88,
+      "end_line": 166,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "main",
+    "visibility": null,
+    "span": {
+      "start_byte": 3565,
+      "end_byte": 3640,
+      "start_line": 168,
+      "start_column": 0,
+      "end_line": 170,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "fn main()",
+    "body_span": {
+      "start_byte": 3575,
+      "end_byte": 3640,
+      "start_line": 168,
+      "start_column": 10,
+      "end_line": 170,
+      "end_column": 1
+    }
+  }
+]

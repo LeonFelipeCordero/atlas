@@ -1,0 +1,1 @@
+mod outer; fn run(){crate::inner::work(); crate::outer::inner::work();}

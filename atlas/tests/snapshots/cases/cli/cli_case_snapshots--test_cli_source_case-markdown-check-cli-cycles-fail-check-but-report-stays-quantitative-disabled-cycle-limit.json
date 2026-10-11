@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "# Metrics\n\n- files: 3\n- modules: 1\n- types: 0\n- callables: 0\n- circularImportGroups: 1\n- parseErrors: 0\n\n## Files\n\n| Item | Location | Lines | Functions/methods | Measured functions/methods | Weighted complexity sum |\n| --- | --- | --- | --- | --- | --- |\n| `a.py` | `a.py` | 1 | 0 | 0 | 0 |\n| `atlas.json` | `atlas.json` | 1 | 0 | 0 | 0 |\n| `b.py` | `b.py` | 1 | 0 | 0 | 0 |\n\n## Dependencies\n\n| Item | Location | Fan-in | Fan-out | Change impact | Internal instability |\n| --- | --- | --- | --- | --- | --- |\n| `source` | `.` | 0 | 0 | 0 | N/A |\n| `a.py` | `a.py` | 1 | 1 | 1 | 0.50 |\n| `atlas.json` | `atlas.json` | 0 | 0 | 0 | N/A |\n| `b.py` | `b.py` | 1 | 1 | 1 | 0.50 |\n\nDependency metrics count distinct internal peers at each item's level, including tests and type-only dependencies. Impact excludes the item itself. Instability = fan-out / (fan-in + fan-out); isolated items are N/A.\n\n## Circular imports\n\n### Group 1\n\nFiles: 2. Internal dependencies: 2.\n- `a.py`\n- `b.py`\n\nExample cycle: `a.py` → `b.py` → `a.py`\n",
+    "stdout": "# Metrics\n\n- files: 3\n- modules: 1\n- types: 0\n- callables: 0\n- circularImportGroups: 1\n- parseErrors: 0\n\n## Files\n\n| Item | Location | Lines | Functions/methods | Measured functions/methods | Weighted complexity sum |\n| --- | --- | --- | --- | --- | --- |\n| `a.py` | `a.py` | 1 | 0 | 0 | 0 |\n| `atlas.json` | `atlas.json` | 1 | 0 | 0 | 0 |\n| `b.py` | `b.py` | 1 | 0 | 0 | 0 |\n\n## Dependencies\n\n| Item | Location | Fan-in | Fan-out | Change impact | Internal instability |\n| --- | --- | --- | --- | --- | --- |\n| `source` | `.` | 0 | 0 | 0 | N/A |\n| `a.py` | `a.py` | 1 | 1 | 1 | 0.50 |\n| `atlas.json` | `atlas.json` | 0 | 0 | 0 | N/A |\n| `b.py` | `b.py` | 1 | 1 | 1 | 0.50 |\n\nDependency metrics count distinct internal peers at each item's level, including tests and type-only dependencies. Impact excludes the item itself. Instability = fan-out / (fan-in + fan-out); isolated items are N/A.\n\n## Circular imports\n\n### Group 1\n\nFiles: 2. Internal dependencies: 2.\n- `a.py`\n- `b.py`\n\nExample cycle: `a.py` → `b.py` → `a.py`\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "All checks passed.\n",
+    "stdout": "All checks passed.\n",
+    "stderr": ""
+  }
+]

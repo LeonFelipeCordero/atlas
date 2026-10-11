@@ -1,0 +1,1 @@
+const f = (((function* internal() { function local() {} yield local(); })));

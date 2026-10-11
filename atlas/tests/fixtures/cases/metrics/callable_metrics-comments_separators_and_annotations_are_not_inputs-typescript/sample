@@ -1,0 +1,1 @@
+function f<T,U>(a: Map<T,U>, /* , */ b = [1,2]): [T,U] { return b; }

@@ -1,5 +1,7 @@
 """Normalized-only reads and repository response snapshots."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 from pathlib import Path
 
 import pytest
@@ -39,7 +41,7 @@ def test_repository_multi_query_response_uses_one_revision(tmp_path: Path, query
     try:
         with Session(reader_engine) as session:
             store = RepositoryStore(session)
-            response = getattr(store, query)(original.repositoryId)
+            response = snapshot_result(getattr(store, query)(original.repositoryId), query)
             assert changed
             assert response.graphRevision == original.graphRevision
             if query == "graph":
@@ -48,7 +50,7 @@ def test_repository_multi_query_response_uses_one_revision(tmp_path: Path, query
                 assert response.nodes[0].lineCount == 0
                 assert len(response.nodes) == 5
                 assert len(response.imports) == 1
-            latest = store.graph(original.repositoryId)
+            latest = snapshot_result(store.graph(original.repositoryId), 'graph')
             assert latest is not None and latest.graphRevision != original.graphRevision
     finally:
         reader_engine.dispose()
@@ -61,7 +63,7 @@ def test_report_facts_isolate_repositories_with_identical_node_keys(tmp_path: Pa
     with repository_session(path) as session:
         store = RepositoryStore(session)
         first = store.save_new("First", ".", graph_artifact())
-        expected = store.report_facts(first.repositoryId)
+        expected = snapshot_result(store.report_facts(first.repositoryId), 'report_facts')
         assert expected is not None
         assert len(expected.nodes) == 5
         assert expected.nodes[0].lineCount == 0
@@ -70,20 +72,20 @@ def test_report_facts_isolate_repositories_with_identical_node_keys(tmp_path: Pa
         other["nodes"][0]["properties"]["lineCount"] = 777
         other["edges"][-1]["evidence"] = "other repository import"
         second = store.save_new("Second", ".", other)
-        assert store.report_facts(first.repositoryId) == expected
-        latest = store.report_facts(second.repositoryId)
+        assert snapshot_result(store.report_facts(first.repositoryId), 'report_facts') == expected
+        latest = snapshot_result(store.report_facts(second.repositoryId), 'report_facts')
         assert latest is not None
         assert len(latest.nodes) == 5
         assert latest.nodes[0].lineCount == 777
         assert [edge.evidence for edge in latest.imports] == ["other repository import"]
-        assert store.graph(first.repositoryId) == first
+        assert snapshot_result(store.graph(first.repositoryId), 'graph') == first
 
 
 def test_index_summary_counts_match_source_analysis(tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
     (root / "nested").mkdir()
-    (root / "nested/app.py").write_text("import os\nclass App:\n    def run(self): return os.getcwd()\n")
+    (root / "nested/app.py").write_text(case_text('cli', 'normalized-runtime-index-summary-counts-match-source-analysis', 'nested/app.py'))
     artifact = analyze_folder(root)
     path = tmp_path / "summary.sqlite"
     migrate_database(path)

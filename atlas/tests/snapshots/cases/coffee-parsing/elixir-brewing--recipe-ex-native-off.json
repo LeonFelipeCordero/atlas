@@ -1,0 +1,57 @@
+[
+  {
+    "kind": "module",
+    "name": "Coffee.Brewing.Recipe",
+    "visibility": null,
+    "span": {
+      "start_byte": 0,
+      "end_byte": 229,
+      "start_line": 0,
+      "start_column": 0,
+      "end_line": 12,
+      "end_column": 3
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": "portions",
+        "visibility": null,
+        "span": {
+          "start_byte": 70,
+          "end_byte": 177,
+          "start_line": 3,
+          "start_column": 2,
+          "end_line": 9,
+          "end_column": 5
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def portions(name) do\n    case name do\n      \"espresso\" -> 2\n      \"filter\" -> 3\n      _ -> 0\n    end\n  end",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "preview",
+        "visibility": null,
+        "span": {
+          "start_byte": 181,
+          "end_byte": 225,
+          "start_line": 11,
+          "start_column": 2,
+          "end_line": 11,
+          "end_column": 46
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "def preview(name), do: Report.render([name])",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "defmodule Coffee.Brewing.Recipe do\n  alias Coffee.Reporting.Report\n\n  def portions(name) do\n    case name do\n      \"espresso\" -> 2\n      \"filter\" -> 3\n      _ -> 0\n    end\n  end\n\n  def preview(name), do: Report.render([name])\nend",
+    "body_span": null
+  }
+]

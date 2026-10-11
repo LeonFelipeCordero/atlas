@@ -1,0 +1,90 @@
+[
+  {
+    "kind": "Function",
+    "name": "total",
+    "visibility": null,
+    "span": {
+      "start_byte": 20,
+      "end_byte": 117,
+      "start_line": 2,
+      "start_column": 0,
+      "end_line": 4,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": null,
+        "visibility": null,
+        "span": {
+          "start_byte": 79,
+          "end_byte": 108,
+          "start_line": 3,
+          "start_column": 21,
+          "end_line": 3,
+          "end_column": 50
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "|name| recipe::portions(name)",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn total(names: &[&str]) -> i32",
+    "body_span": {
+      "start_byte": 56,
+      "end_byte": 117,
+      "start_line": 2,
+      "start_column": 36,
+      "end_line": 4,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "render",
+    "visibility": null,
+    "span": {
+      "start_byte": 119,
+      "end_byte": 361,
+      "start_line": 6,
+      "start_column": 0,
+      "end_line": 11,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": null,
+        "visibility": null,
+        "span": {
+          "start_byte": 218,
+          "end_byte": 271,
+          "start_line": 8,
+          "start_column": 13,
+          "end_line": 8,
+          "end_column": 66
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "|name| format!(\"{}={}\", name, recipe::portions(name))",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn render(names: &[&str]) -> String",
+    "body_span": {
+      "start_byte": 159,
+      "end_byte": 361,
+      "start_line": 6,
+      "start_column": 40,
+      "end_line": 11,
+      "end_column": 1
+    }
+  }
+]

@@ -1,0 +1,1 @@
+package service; public class OrderService { public Order saveOrder(Order order){ return order; } }

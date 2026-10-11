@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 1,
+    "output": "Error: (sqlite3.OperationalError) no such table: repositories\n[SQL: SELECT repositories.id, repositories.name, repositories.location, repositories.created_at, CASE WHEN (repository_graphs.graph_revision IS NOT NULL) THEN repository_graphs.imported_at END AS anon_1 \nFROM repositories LEFT OUTER JOIN repository_graphs ON repositories.id = repository_graphs.repository_id ORDER BY repositories.created_at, repositories.id]\n(Background on this error at: https://sqlalche.me/e/21/e3q8)\n",
+    "stdout": "",
+    "stderr": "Error: (sqlite3.OperationalError) no such table: repositories\n[SQL: SELECT repositories.id, repositories.name, repositories.location, repositories.created_at, CASE WHEN (repository_graphs.graph_revision IS NOT NULL) THEN repository_graphs.imported_at END AS anon_1 \nFROM repositories LEFT OUTER JOIN repository_graphs ON repositories.id = repository_graphs.repository_id ORDER BY repositories.created_at, repositories.id]\n(Background on this error at: https://sqlalche.me/e/21/e3q8)\n"
+  }
+]

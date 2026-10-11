@@ -1,0 +1,48 @@
+[
+  {
+    "kind": "graph",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "Analyzed root",
+      "rootPath": "/unavailable",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 2,
+        "edges": 3,
+        "externalNodes": 1,
+        "files": 1,
+        "modules": 0,
+        "nodes": 5,
+        "parseErrors": 1,
+        "symbols": 2,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "graph",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "Analyzed root",
+      "rootPath": "/unavailable",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 2,
+        "edges": 2,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 0,
+        "nodes": 4,
+        "parseErrors": 1,
+        "symbols": 2,
+        "types": 0
+      }
+    }
+  }
+]

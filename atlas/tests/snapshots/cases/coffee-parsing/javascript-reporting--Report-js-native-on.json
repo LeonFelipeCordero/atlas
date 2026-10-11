@@ -1,0 +1,130 @@
+[
+  {
+    "kind": "Class",
+    "name": "Report",
+    "visibility": null,
+    "span": {
+      "start_byte": 55,
+      "end_byte": 347,
+      "start_line": 2,
+      "start_column": 7,
+      "end_line": 11,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "Method",
+        "name": "total",
+        "visibility": null,
+        "span": {
+          "start_byte": 72,
+          "end_byte": 169,
+          "start_line": 3,
+          "start_column": 2,
+          "end_line": 5,
+          "end_column": 3
+        },
+        "children": [
+          {
+            "kind": "function",
+            "name": null,
+            "visibility": null,
+            "span": {
+              "start_byte": 118,
+              "end_byte": 160,
+              "start_line": 4,
+              "start_column": 24,
+              "end_line": 4,
+              "end_column": 66
+            },
+            "children": [],
+            "decorators": [],
+            "doc_comment": null,
+            "signature": "(sum, name) =>",
+            "body_span": {
+              "start_byte": 133,
+              "end_byte": 160,
+              "start_line": 4,
+              "start_column": 39,
+              "end_line": 4,
+              "end_column": 66
+            }
+          }
+        ],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "static total(names)",
+        "body_span": {
+          "start_byte": 92,
+          "end_byte": 169,
+          "start_line": 3,
+          "start_column": 22,
+          "end_line": 5,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "render",
+        "visibility": null,
+        "span": {
+          "start_byte": 173,
+          "end_byte": 345,
+          "start_line": 7,
+          "start_column": 2,
+          "end_line": 10,
+          "end_column": 3
+        },
+        "children": [
+          {
+            "kind": "function",
+            "name": null,
+            "visibility": null,
+            "span": {
+              "start_byte": 226,
+              "end_byte": 268,
+              "start_line": 8,
+              "start_column": 30,
+              "end_line": 8,
+              "end_column": 72
+            },
+            "children": [],
+            "decorators": [],
+            "doc_comment": null,
+            "signature": "name =>",
+            "body_span": {
+              "start_byte": 234,
+              "end_byte": 268,
+              "start_line": 8,
+              "start_column": 38,
+              "end_line": 8,
+              "end_column": 72
+            }
+          }
+        ],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "static render(names)",
+        "body_span": {
+          "start_byte": 194,
+          "end_byte": 345,
+          "start_line": 7,
+          "start_column": 23,
+          "end_line": 10,
+          "end_column": 3
+        }
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Report",
+    "body_span": {
+      "start_byte": 68,
+      "end_byte": 347,
+      "start_line": 2,
+      "start_column": 20,
+      "end_line": 11,
+      "end_column": 1
+    }
+  }
+]

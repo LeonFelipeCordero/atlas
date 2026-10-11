@@ -1,0 +1,147 @@
+[
+  {
+    "kind": "function",
+    "name": "brew",
+    "visibility": null,
+    "span": {
+      "start_byte": 30,
+      "end_byte": 326,
+      "start_line": 4,
+      "start_column": 0,
+      "end_line": 16,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": "accept",
+        "visibility": null,
+        "span": {
+          "start_byte": 162,
+          "end_byte": 214,
+          "start_line": 9,
+          "start_column": 11,
+          "end_line": 9,
+          "end_column": 63
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "func(name string) bool { return portions(name) > 0 }",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func brew(names []string) string {\n\tif len(names) == 0 {\n\t\treturn render(nil)\n\t}\n\tvalid := make([]string, 0, len(names))\n\taccept := func(name string) bool { return portions(name) > 0 }\n\tfor _, name := range names {\n\t\tif accept(name) {\n\t\t\tvalid = append(valid, name)\n\t\t}\n\t}\n\treturn render(valid)\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "retry",
+    "visibility": null,
+    "span": {
+      "start_byte": 328,
+      "end_byte": 424,
+      "start_line": 18,
+      "start_column": 0,
+      "end_line": 23,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func retry(attempts int) int {\n\tif attempts <= 0 {\n\t\treturn 0\n\t}\n\treturn 1 + retry(attempts-1)\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "score",
+    "visibility": null,
+    "span": {
+      "start_byte": 426,
+      "end_byte": 647,
+      "start_line": 25,
+      "start_column": 0,
+      "end_line": 36,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func score(batches [][]string) int {\n\tresult := 0\n\tfor _, batch := range batches {\n\t\tfor _, name := range batch {\n\t\t\tcount := portions(name)\n\t\t\tif count > 0 && count <= 3 {\n\t\t\t\tresult += count\n\t\t\t}\n\t\t}\n\t}\n\treturn result\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "classify",
+    "visibility": null,
+    "span": {
+      "start_byte": 726,
+      "end_byte": 1031,
+      "start_line": 39,
+      "start_column": 0,
+      "end_line": 50,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func classify(amount int) int {\n\tcategory := 0\n\tif amount > 0 { category++ }\n\tif amount > 1 { category++ }\n\tif amount > 2 { category++ }\n\tif amount > 3 { category++ }\n\tif amount > 4 { category++ }\n\tif amount > 5 { category++ }\n\tif amount > 6 { category++ }\n\tif amount > 7 { category++ }\n\treturn category\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "ready",
+    "visibility": null,
+    "span": {
+      "start_byte": 1098,
+      "end_byte": 1278,
+      "start_line": 53,
+      "start_column": 0,
+      "end_line": 64,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func ready(water, beans, cups, temperature int) bool {\n\tif water > 0 {\n\t\tif beans > 0 {\n\t\t\tif cups > 0 {\n\t\t\t\tif temperature > 0 {\n\t\t\t\t\treturn true\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\treturn false\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "calibrate",
+    "visibility": null,
+    "span": {
+      "start_byte": 1368,
+      "end_byte": 2894,
+      "start_line": 67,
+      "start_column": 0,
+      "end_line": 170,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func calibrate(a int, b int, c int, d int, e int, f int, g int, h int) int {\n\tresult := a + b + c + d + e + f + g + h\n\tresult += 1\n\tresult += 2\n\tresult += 3\n\tresult += 4\n\tresult += 5\n\tresult += 6\n\tresult += 7\n\tresult += 8\n\tresult += 9\n\tresult += 10\n\tresult += 11\n\tresult += 12\n\tresult += 13\n\tresult += 14\n\tresult += 15\n\tresult += 16\n\tresult += 17\n\tresult += 18\n\tresult += 19\n\tresult += 20\n\tresult += 21\n\tresult += 22\n\tresult += 23\n\tresult += 24\n\tresult += 25\n\tresult += 26\n\tresult += 27\n\tresult += 28\n\tresult += 29\n\tresult += 30\n\tresult += 31\n\tresult += 32\n\tresult += 33\n\tresult += 34\n\tresult += 35\n\tresult += 36\n\tresult += 37\n\tresult += 38\n\tresult += 39\n\tresult += 40\n\tresult += 41\n\tresult += 42\n\tresult += 43\n\tresult += 44\n\tresult += 45\n\tresult += 46\n\tresult += 47\n\tresult += 48\n\tresult += 49\n\tresult += 50\n\tresult += 51\n\tresult += 52\n\tresult += 53\n\tresult += 54\n\tresult += 55\n\tresult += 56\n\tresult += 57\n\tresult += 58\n\tresult += 59\n\tresult += 60\n\tresult += 61\n\tresult += 62\n\tresult += 63\n\tresult += 64\n\tresult += 65\n\tresult += 66\n\tresult += 67\n\tresult += 68\n\tresult += 69\n\tresult += 70\n\tresult += 71\n\tresult += 72\n\tresult += 73\n\tresult += 74\n\tresult += 75\n\tresult += 76\n\tresult += 77\n\tresult += 78\n\tresult += 79\n\tresult += 80\n\tresult += 81\n\tresult += 82\n\tresult += 83\n\tresult += 84\n\tresult += 85\n\tresult += 86\n\tresult += 87\n\tresult += 88\n\tresult += 89\n\tresult += 90\n\tresult += 91\n\tresult += 92\n\tresult += 93\n\tresult += 94\n\tresult += 95\n\tresult += 96\n\tresult += 97\n\tresult += 98\n\tresult += 99\n\tresult += 100\n\treturn result\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "Main",
+    "visibility": null,
+    "span": {
+      "start_byte": 2973,
+      "end_byte": 3050,
+      "start_line": 173,
+      "start_column": 0,
+      "end_line": 175,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func Main() {\n\tfmt.Println(brew([]string{\"espresso\", \"filter\", \"invalid\"}))\n}",
+    "body_span": null
+  }
+]

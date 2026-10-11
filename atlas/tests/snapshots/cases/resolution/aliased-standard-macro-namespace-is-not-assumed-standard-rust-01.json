@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 107, "evidence": "std::dbg!(brew())", "file_path": "main.rs", "line": 1, "name": "std::dbg!", "qualifier": null, "relationship": "CALLS", "start_byte": 90}], "content_hash": "33e2c8b8160e2cf4b2433b159c52d4e8d956f5c9ae96195a2b49d7f8873feeb0", "imports": [{"file_path": "main.rs", "line": 1, "source": "pub use std::stringify as dbg;"}, {"file_path": "main.rs", "line": 1, "source": "use custom as std;"}], "inheritances": [], "language": "rust", "parse_error": null, "path": "main.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 42, "end_column": 43, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::custom:0", "kind": "module", "language": "rust", "line_count": null, "name": "custom", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::custom", "signature": "mod custom", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 79, "end_column": 80, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::brew:62", "kind": "function", "language": "rust", "line_count": null, "name": "brew", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::brew", "signature": "fn brew()->i32", "start_byte": 62, "start_column": 63, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 109, "end_column": 110, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::main:80", "kind": "function", "language": "rust", "line_count": null, "name": "main", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::main", "signature": "fn main()", "start_byte": 80, "start_column": 81, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "EXTRACTED", "evidence": "pub use std::stringify as dbg;", "line": 1, "path": "main.rs", "source_key": "file:main.rs", "target_key": "external:rust:module:std::stringify", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "use custom as std;", "line": 1, "path": "main.rs", "source_key": "file:main.rs", "target_key": "symbol:main.rs::custom:0", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "std::dbg!(brew())", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:80", "target_key": "external:rust:callable:std::dbg!", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:rust:module:std::stringify", "kind": "module", "language": "rust", "name": "std::stringify"},
+{"key": "external:rust:callable:std::dbg!", "kind": "callable", "language": "rust", "name": "std::dbg!"}
+]
+}
+}

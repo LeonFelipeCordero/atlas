@@ -1,0 +1,9 @@
+[
+  "database handle/operation session.execute",
+  "database operation session.execute",
+  "raw SQL statement",
+  "raw SQL/driver access ",
+  "raw SQL/driver access sqlalchemy.text",
+  "sqlalchemy",
+  "sqlalchemy.text"
+]

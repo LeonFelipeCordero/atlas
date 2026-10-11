@@ -1,0 +1,1 @@
+class Factory { static int Convert(int x) { return x; } }

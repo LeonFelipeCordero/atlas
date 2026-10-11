@@ -1,5 +1,8 @@
 """Physical source spans and grammar-backed declared input counts."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+from tests.metric_snapshot_support import assert_metric_snapshot
+
 from pathlib import Path
 
 import pytest
@@ -23,45 +26,45 @@ def parsed(language: str, code: str):
 @pytest.mark.parametrize(
     ("language", "code", "expected"),
     [
-        ("python", "def f(a=call(1, 2), /, *args, b=0, **kwargs): pass", [4]),
-        ("python", "x = lambda a, b=call(1, 2), *args: a", [3]),
-        ("python", "class C:\n    def f(*args: int, a=1,b=2,c=3,d=4,e=5,f=6,g=7): pass\n    def g(**kwargs: int): pass", [8, 1]),
-        ("javascript", "function f({a,b}, [x,y], z=call(1,2), ...args) {}", [4]),
+        ("python", case_text('metrics', 'callable_metrics-parameter_counts-python', 'sample'), [4]),
+        ("python", case_text('metrics', 'callable_metrics-parameter_counts-python-2', 'sample'), [3]),
+        ("python", case_text('metrics', 'callable_metrics-parameter_counts-python-3', 'sample'), [8, 1]),
+        ("javascript", case_text('metrics', 'callable_metrics-parameter_counts-javascript', 'sample'), [4]),
         (
             "javascript",
-            "const f = x => x; const g = () => 0; class C { m(a,b) {} }",
+            case_text('metrics', 'callable_metrics-parameter_counts-javascript-2', 'sample'),
             [1, 0, 2],
         ),
         (
             "typescript",
-            "function f<T>(this: C, {a,b}: X, c?: T, ...args: T[]): void;",
+            case_text('metrics', 'callable_metrics-parameter_counts-typescript', 'sample'),
             [3],
         ),
         (
             "typescript",
-            "interface C { m<T>(this: C, x: T): void; cb: (a: X, b: Y) => Z; }",
+            case_text('metrics', 'callable_metrics-parameter_counts-typescript-2', 'sample'),
             [1, 2],
         ),
-        ("tsx", "const f = ({a,b}: Props) => <div>{a}</div>;", [1]),
+        ("tsx", case_text('metrics', 'callable_metrics-parameter_counts-tsx', 'sample'), [1]),
         (
             "go",
-            "package p\nfunc (r R) f(a,b int, c ...string) {}\nvar g = func(int, string) {}",
+            case_text('metrics', 'callable_metrics-parameter_counts-go', 'sample'),
             [3, 2],
         ),
-        ("rust", "trait C { fn f<T>(&self, (a,b): (i32,i32), c: T); }", [2]),
-        ("rust", "impl C { fn f(self: Box<Self>, x: i32) {} }", [1]),
-        ("rust", "fn f(#[allow(unused_variables)] a:i32,b:i32,c:i32,d:i32,e:i32,f:i32,g:i32) {}", [7]),
-        ("rust", 'extern "C" { fn f(x: i32, ...); }', [2]),
-        ("rust", "fn f() { let g = |(a,b), c| a; }", [0, 2]),
-        ("java", "interface C { <T> void f(int a, String... b); }", [2]),
-        ("java", "class C { void f() { F g = (a,b) -> a; F h = x -> x; } }", [0, 2, 1]),
-        ("kotlin", "fun <T> X.f(a: Int, vararg b: T): Int", [2]),
-        ("kotlin", "val f = { (a,b): X, c: Int -> c }; val g = { -> 0 }", [2, 0]),
-        ("kotlin", "val f = fun(a: Int, b: Int): Int { return a }", [2]),
-        ("elixir", r"def f({a,b}, c \\ call(1,2)) when a > 0, do: c", [2]),
+        ("rust", case_text('metrics', 'callable_metrics-parameter_counts-rust', 'sample'), [2]),
+        ("rust", case_text('metrics', 'callable_metrics-parameter_counts-rust-2', 'sample'), [1]),
+        ("rust", case_text('metrics', 'callable_metrics-parameter_counts-rust-3', 'sample'), [7]),
+        ("rust", case_text('metrics', 'callable_metrics-parameter_counts-rust-4', 'sample'), [2]),
+        ("rust", case_text('metrics', 'callable_metrics-parameter_counts-rust-5', 'sample'), [0, 2]),
+        ("java", case_text('metrics', 'callable_metrics-parameter_counts-java', 'sample'), [2]),
+        ("java", case_text('metrics', 'callable_metrics-parameter_counts-java-2', 'sample'), [0, 2, 1]),
+        ("kotlin", case_text('metrics', 'callable_metrics-parameter_counts-kotlin', 'sample'), [2]),
+        ("kotlin", case_text('metrics', 'callable_metrics-parameter_counts-kotlin-2', 'sample'), [2, 0]),
+        ("kotlin", case_text('metrics', 'callable_metrics-parameter_counts-kotlin-3', 'sample'), [2]),
+        ("elixir", case_text('metrics', 'callable_metrics-parameter_counts-elixir', 'sample'), [2]),
         (
             "elixir",
-            "def zero, do: 0\nx = fn a,b when a > 0 -> a end\ny = fn -> 0 end",
+            case_text('metrics', 'callable_metrics-parameter_counts-elixir-2', 'sample'),
             [0, 2, 0],
         ),
     ],
@@ -72,26 +75,13 @@ def test_parameter_counts(language, code, expected):
     callables = [
         symbol for symbol in file.symbols if symbol.kind in {"function", "method"}
     ]
-    assert [symbol.parameter_count for symbol in callables] == expected
+    assert_metric_snapshot(file)
+    assert len(callables) == len(expected)
     assert all(symbol.line_count == 1 for symbol in callables)
 
 
 def test_python_receivers_only_in_methods():
-    code = """def f(self, cls): pass
-class C:
-    def m(self: C, x):
-        def inner(self, cls): pass
-    @classmethod
-    def c(cls, x): pass
-    @staticmethod
-    def s(self, cls): pass
-    def v(*self): pass
-    def renamed(me, a,b,c,d,e,f,g): pass
-    @classmethod
-    def renamed_class(klass, a,b,c,d,e,f,g): pass
-    @staticmethod # explanation
-    def commented_static(self, a,b,c,d,e,f,g): pass
-"""
+    code = case_text('metrics', 'callable_metrics-python_receivers_only_in_methods-python', 'sample')
     symbols = parsed("python", code).symbols
     counts = {
         symbol.name: symbol.parameter_count
@@ -109,7 +99,7 @@ def test_comments_separators_and_annotations_are_not_inputs():
     assert (
         parsed(
             "python",
-            "def f(a, # comma, comment\n *, b: tuple[int, int] = (1,2)) -> tuple[int,int]: pass",
+            case_text('metrics', 'callable_metrics-comments_separators_and_annotations_are_not_inputs-python', 'sample'),
         )
         .symbols[0]
         .parameter_count
@@ -118,7 +108,7 @@ def test_comments_separators_and_annotations_are_not_inputs():
     assert (
         parsed(
             "typescript",
-            "function f<T,U>(a: Map<T,U>, /* , */ b = [1,2]): [T,U] { return b; }",
+            case_text('metrics', 'callable_metrics-comments_separators_and_annotations_are_not_inputs-typescript', 'sample'),
         )
         .symbols[0]
         .parameter_count
@@ -128,23 +118,23 @@ def test_comments_separators_and_annotations_are_not_inputs():
 
 def test_unknown_counts_are_not_zero():
     assert (
-        parsed("kotlin", "val f = { println(it) }").symbols[0].parameter_count is None
+        parsed("kotlin", case_text('metrics', 'callable_metrics-unknown_counts_are_not_zero-kotlin', 'sample')).symbols[0].parameter_count is None
     )
     adapter = get_metric_adapter("python")
     malformed = (
-        get_parser("python").parse(b"def f(a,,b): pass").root_node.named_children[0]
+        get_parser("python").parse(case_bytes('metrics', 'callable_metrics-unknown_counts_are_not_zero-python', 'sample.py')).root_node.named_children[0]
     )
     assert adapter.parameter_count(malformed) is None
     assert (
         get_metric_adapter("ruby").parameter_count(
-            get_parser("ruby").parse(b"def f(x); end").root_node.named_children[0]
+            get_parser("ruby").parse(case_bytes('metrics', 'callable_metrics-unknown_counts_are_not_zero-ruby', 'sample.rb')).root_node.named_children[0]
         )
         is None
     )
 
 
 def test_elixir_clauses_keep_identity_and_counts():
-    file = parsed("elixir", "def f(0, x), do: x\ndef f(n, x) when n > 0, do: x\n")
+    file = parsed("elixir", case_text('metrics', 'callable_metrics-elixir_clauses_keep_identity_and_counts-elixir', 'sample'))
     assert [(symbol.name, symbol.parameter_count) for symbol in file.symbols] == [
         ("f", 2),
         ("f", 2),
@@ -153,7 +143,7 @@ def test_elixir_clauses_keep_identity_and_counts():
     assert (
         get_metric_adapter("elixir").parameter_count(
             get_parser("elixir")
-            .parse(b"fn a -> a; a,b -> a end")
+            .parse(case_bytes('metrics', 'callable_metrics-elixir_clauses_keep_identity_and_counts-elixir-2', 'sample.ex'))
             .root_node.named_children[0]
         )
         is None
@@ -163,12 +153,12 @@ def test_elixir_clauses_keep_identity_and_counts():
 @pytest.mark.parametrize(
     ("content", "expected"),
     [
-        (b"", 0),
-        (b"x", 1),
-        (b"x\n", 1),
-        (b"\n", 1),
-        (b"x\n\n", 2),
-        (b"# a\r\n# b\r\n", 2),
+        (case_bytes('metrics', 'callable_metrics-file_physical_lines-python', 'sample.py'), 0),
+        (case_bytes('metrics', 'callable_metrics-file_physical_lines-python-2', 'sample.py'), 1),
+        (case_bytes('metrics', 'callable_metrics-file_physical_lines-python-3', 'sample.py'), 1),
+        (case_bytes('metrics', 'callable_metrics-file_physical_lines-python-4', 'sample.py'), 1),
+        (case_bytes('metrics', 'callable_metrics-file_physical_lines-python-5', 'sample.py'), 2),
+        (case_bytes('metrics', 'callable_metrics-file_physical_lines-python-6', 'sample.py'), 2),
     ],
 )
 def test_file_physical_lines(tmp_path, content, expected):
@@ -179,7 +169,7 @@ def test_file_physical_lines(tmp_path, content, expected):
 
 
 def test_unknown_parameter_property_is_omitted(tmp_path):
-    (tmp_path / "sample.rb").write_text("def f(x); x; end\n")
+    (tmp_path / "sample.rb").write_text(case_text('metrics', 'callable_metrics-unknown_parameter_property_is_omitted-ruby', 'sample.rb'))
     graph = analyze_repository(tmp_path)
     callable_node = next(
         node for node in graph.nodes if node["type"] in {"function", "method"}
@@ -189,7 +179,7 @@ def test_unknown_parameter_property_is_omitted(tmp_path):
 
 
 def test_end_exclusive_column_zero_and_nested_physical_lines():
-    code = "def outer(a):\n\n    def inner(b):\n        return b\n    return inner(a)\n"
+    code = case_text('metrics', 'callable_metrics-end_exclusive_column_zero_and_nested_physical_lines-python', 'sample')
     file = parsed("python", code)
     assert [(symbol.line_count, symbol.parameter_count) for symbol in file.symbols] == [
         (5, 1),
@@ -214,7 +204,7 @@ def test_end_exclusive_column_zero_and_nested_physical_lines():
         [],
     )
     synthetic = ParsedFile(
-        SourceFile("sample", Path("sample"), "python", b"a\nb\nc"),
+        SourceFile("sample", Path("sample"), "python", case_bytes('metrics', 'callable_metrics-end_exclusive_column_zero_and_nested_physical_lines-python-2', 'sample.py')),
         "hash",
         None,
         [symbol],
@@ -227,7 +217,7 @@ def test_metrics_survive_snapshot_persistence(tmp_path):
     root = tmp_path / "source"
     root.mkdir()
     (root / "sample.py").write_text(
-        "def f(a, b=0):\n    return a\n\ndef zero(): pass\n"
+        case_text('metrics', 'callable_metrics-metrics_survive_snapshot_persistence-python', 'sample.py')
     )
     path = tmp_path / "db.sqlite"
     migrate_database(path)

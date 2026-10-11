@@ -1,0 +1,475 @@
+[
+  {
+    "kind": "report_facts",
+    "value": {
+      "diagnostics": [
+        {
+          "language": "python",
+          "message": "parse failed",
+          "path": "missing.py",
+          "severity": "error"
+        }
+      ],
+      "edges": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "worker",
+          "type": "CALLS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "worker",
+          "type": "CALLS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "external",
+          "type": "IMPORTS",
+          "typeOnly": true
+        }
+      ],
+      "graphRevision": "<revision>",
+      "imports": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "external",
+          "type": "IMPORTS",
+          "typeOnly": true
+        }
+      ],
+      "nodes": [
+        {
+          "baseCyclomaticComplexity": 1,
+          "cyclomaticComplexity": 1,
+          "kind": "function",
+          "level": "callable",
+          "lineCount": 0,
+          "loopNestedComplexity": 0,
+          "maxDecisionDepth": 0,
+          "name": "run",
+          "nestedCyclomaticComplexity": 0,
+          "parameterCount": 0,
+          "parentStableKey": "file",
+          "path": "src/app.py",
+          "qualifiedName": "run",
+          "stableKey": "run",
+          "startLine": 1,
+          "type": "function"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "function",
+          "level": "callable",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "worker",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "file",
+          "path": "src/app.py",
+          "qualifiedName": "worker",
+          "stableKey": "worker",
+          "startLine": null,
+          "type": "function"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "file",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": "src/app.py",
+          "qualifiedName": "file",
+          "stableKey": "file",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "external",
+          "level": "external",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": null,
+          "qualifiedName": "external",
+          "stableKey": "external",
+          "startLine": null,
+          "type": "external"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "repository",
+          "level": "repository",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "repository",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": null,
+          "path": "src/app.py",
+          "qualifiedName": "repository",
+          "stableKey": "repository",
+          "startLine": null,
+          "type": "repository"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "report_facts",
+    "value": {
+      "diagnostics": [
+        {
+          "language": "python",
+          "message": "parse failed",
+          "path": "missing.py",
+          "severity": "error"
+        }
+      ],
+      "edges": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "worker",
+          "type": "CALLS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "worker",
+          "type": "CALLS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "external",
+          "type": "IMPORTS",
+          "typeOnly": true
+        }
+      ],
+      "graphRevision": "<revision>",
+      "imports": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "external",
+          "type": "IMPORTS",
+          "typeOnly": true
+        }
+      ],
+      "nodes": [
+        {
+          "baseCyclomaticComplexity": 1,
+          "cyclomaticComplexity": 1,
+          "kind": "function",
+          "level": "callable",
+          "lineCount": 0,
+          "loopNestedComplexity": 0,
+          "maxDecisionDepth": 0,
+          "name": "run",
+          "nestedCyclomaticComplexity": 0,
+          "parameterCount": 0,
+          "parentStableKey": "file",
+          "path": "src/app.py",
+          "qualifiedName": "run",
+          "stableKey": "run",
+          "startLine": 1,
+          "type": "function"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "function",
+          "level": "callable",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "worker",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "file",
+          "path": "src/app.py",
+          "qualifiedName": "worker",
+          "stableKey": "worker",
+          "startLine": null,
+          "type": "function"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "file",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": "src/app.py",
+          "qualifiedName": "file",
+          "stableKey": "file",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "external",
+          "level": "external",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": null,
+          "qualifiedName": "external",
+          "stableKey": "external",
+          "startLine": null,
+          "type": "external"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "repository",
+          "level": "repository",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "repository",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": null,
+          "path": "src/app.py",
+          "qualifiedName": "repository",
+          "stableKey": "repository",
+          "startLine": null,
+          "type": "repository"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "report_facts",
+    "value": {
+      "diagnostics": [
+        {
+          "language": "python",
+          "message": "parse failed",
+          "path": "missing.py",
+          "severity": "error"
+        }
+      ],
+      "edges": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "worker",
+          "type": "CALLS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "worker()",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "worker",
+          "type": "CALLS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "other repository import",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "external",
+          "type": "IMPORTS",
+          "typeOnly": true
+        }
+      ],
+      "graphRevision": "<revision>",
+      "imports": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "other repository import",
+          "line": 2,
+          "path": "src/app.py",
+          "sourceStableKey": "run",
+          "targetStableKey": "external",
+          "type": "IMPORTS",
+          "typeOnly": true
+        }
+      ],
+      "nodes": [
+        {
+          "baseCyclomaticComplexity": 1,
+          "cyclomaticComplexity": 1,
+          "kind": "function",
+          "level": "callable",
+          "lineCount": 777,
+          "loopNestedComplexity": 0,
+          "maxDecisionDepth": 0,
+          "name": "run",
+          "nestedCyclomaticComplexity": 0,
+          "parameterCount": 0,
+          "parentStableKey": "file",
+          "path": "src/app.py",
+          "qualifiedName": "run",
+          "stableKey": "run",
+          "startLine": 1,
+          "type": "function"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "function",
+          "level": "callable",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "worker",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "file",
+          "path": "src/app.py",
+          "qualifiedName": "worker",
+          "stableKey": "worker",
+          "startLine": null,
+          "type": "function"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "file",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": "src/app.py",
+          "qualifiedName": "file",
+          "stableKey": "file",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "external",
+          "level": "external",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": null,
+          "qualifiedName": "external",
+          "stableKey": "external",
+          "startLine": null,
+          "type": "external"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "repository",
+          "level": "repository",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "repository",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": null,
+          "path": "src/app.py",
+          "qualifiedName": "repository",
+          "stableKey": "repository",
+          "startLine": null,
+          "type": "repository"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "graph",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "Analyzed root",
+      "rootPath": "/unavailable",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 2,
+        "edges": 3,
+        "externalNodes": 1,
+        "files": 1,
+        "modules": 0,
+        "nodes": 5,
+        "parseErrors": 1,
+        "symbols": 2,
+        "types": 0
+      }
+    }
+  }
+]

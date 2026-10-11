@@ -1,0 +1,1 @@
+class Service {fun persist(){}} fun run(local:Service){++local;local.persist()}

@@ -1,0 +1,1 @@
+class Service { void persist() {} } class App { void run() { var local = new Service(); local.persist(); } }

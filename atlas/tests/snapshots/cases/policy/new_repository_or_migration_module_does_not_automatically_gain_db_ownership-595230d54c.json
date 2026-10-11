@@ -1,0 +1,6 @@
+[
+  "database handle/operation sqlite3.connect",
+  "database operation sqlite3.connect",
+  "sqlite3",
+  "sqlite3.connect"
+]

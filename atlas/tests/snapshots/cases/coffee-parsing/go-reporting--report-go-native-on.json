@@ -1,0 +1,52 @@
+[
+  {
+    "kind": "Function",
+    "name": "total",
+    "visibility": null,
+    "span": {
+      "start_byte": 46,
+      "end_byte": 168,
+      "start_line": 7,
+      "start_column": 0,
+      "end_line": 13,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func total(names []string) int",
+    "body_span": {
+      "start_byte": 77,
+      "end_byte": 168,
+      "start_line": 7,
+      "start_column": 31,
+      "end_line": 13,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "render",
+    "visibility": null,
+    "span": {
+      "start_byte": 170,
+      "end_byte": 439,
+      "start_line": 15,
+      "start_column": 0,
+      "end_line": 21,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func render(names []string) string",
+    "body_span": {
+      "start_byte": 205,
+      "end_byte": 439,
+      "start_line": 15,
+      "start_column": 35,
+      "end_line": 21,
+      "end_column": 1
+    }
+  }
+]

@@ -1,0 +1,1 @@
+package app; import tools.R; class App {void run(){try {} catch (Exception R) {R.work();} R.work(2);}}

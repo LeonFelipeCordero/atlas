@@ -1,0 +1,93 @@
+[
+  {
+    "kind": "module",
+    "name": "coffee.brewing",
+    "visibility": null,
+    "span": {
+      "start_byte": 0,
+      "end_byte": 23,
+      "start_line": 0,
+      "start_column": 0,
+      "end_line": 0,
+      "end_column": 23
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "package coffee.brewing;",
+    "body_span": null
+  },
+  {
+    "kind": "class",
+    "name": "Recipe",
+    "visibility": "public",
+    "span": {
+      "start_byte": 81,
+      "end_byte": 421,
+      "start_line": 5,
+      "start_column": 0,
+      "end_line": 19,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "constructor",
+        "name": "Recipe",
+        "visibility": "private",
+        "span": {
+          "start_byte": 113,
+          "end_byte": 132,
+          "start_line": 6,
+          "start_column": 4,
+          "end_line": 6,
+          "end_column": 23
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "private Recipe() {}",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "portions",
+        "visibility": "public",
+        "span": {
+          "start_byte": 138,
+          "end_byte": 319,
+          "start_line": 8,
+          "start_column": 4,
+          "end_line": 14,
+          "end_column": 5
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "public static int portions(String name) {\n        return switch (name) {\n            case \"espresso\" -> 2;\n            case \"filter\" -> 3;\n            default -> 0;\n        };\n    }",
+        "body_span": null
+      },
+      {
+        "kind": "method",
+        "name": "preview",
+        "visibility": "public",
+        "span": {
+          "start_byte": 325,
+          "end_byte": 419,
+          "start_line": 16,
+          "start_column": 4,
+          "end_line": 18,
+          "end_column": 5
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "public static String preview(String name) {\n        return Report.render(List.of(name));\n    }",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "public final class Recipe {\n    private Recipe() {}\n\n    public static int portions(String name) {\n        return switch (name) {\n            case \"espresso\" -> 2;\n            case \"filter\" -> 3;\n            default -> 0;\n        };\n    }\n\n    public static String preview(String name) {\n        return Report.render(List.of(name));\n    }\n}",
+    "body_span": null
+  }
+]

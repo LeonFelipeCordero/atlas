@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "666e20662829207b206c65742067203d207c28612c62292c20637c20613b207d"}, "language": "rust", "path": "sample"},
+"content_hash": "620302edb8f63bded11f86da9fef224ad3b73110ce53c6bcdb2cdedeb9f09393",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 32, "end_column": 33, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "rust", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "fn f()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 29, "end_column": 30, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f.<anonymous>:17", "kind": "function", "language": "rust", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "symbol:sample::f:0", "qualified_name": "sample::f.<anonymous>", "signature": "|(a,b), c| a", "start_byte": 17, "start_column": 18, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "74726169742043"}, "language": "rust", "path": "sample.rs"},
+"content_hash": "1e805fa0f54993ca665877eb3f200411ead8006c66220c27a90e67758e761e76",
+"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
+"declarations": [],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,15 @@
+{
+"files": [
+{"calls": [{"bare_target": true, "end_byte": 102, "evidence": "new Service()", "file_path": "app.tsx", "line": 1, "name": "Service", "qualifier": null, "relationship": "CALLS", "start_byte": 89}, {"bare_target": false, "end_byte": 123, "evidence": "parameter.persist()", "file_path": "app.tsx", "line": 1, "name": "persist", "qualifier": "parameter", "relationship": "CALLS", "start_byte": 104}, {"bare_target": false, "end_byte": 142, "evidence": "unknown.persist()", "file_path": "app.tsx", "line": 1, "name": "persist", "qualifier": "unknown", "relationship": "CALLS", "start_byte": 125}], "content_hash": "002c6b4ae99705cb0db6162e8602f3a1995cdb76a6eaf7fc1fa8d014c5b13d4a", "imports": [], "inheritances": [], "language": "tsx", "parse_error": null, "path": "app.tsx", "symbols": [{"complexity": null, "decorators": [], "end_byte": 30, "end_column": 31, "end_line": 1, "file_path": "app.tsx", "key": "symbol:app.tsx::Service:0", "kind": "class", "language": "tsx", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.tsx", "qualified_name": "app.tsx::Service", "signature": "class Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 28, "end_column": 29, "end_line": 1, "file_path": "app.tsx", "key": "symbol:app.tsx::Service.persist:16", "kind": "method", "language": "tsx", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:app.tsx::Service:0", "qualified_name": "app.tsx::Service.persist", "signature": "persist()", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 145, "end_column": 146, "end_line": 1, "file_path": "app.tsx", "key": "symbol:app.tsx::run:31", "kind": "function", "language": "tsx", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:app.tsx", "qualified_name": "app.tsx::run", "signature": "function run(parameter: Service)", "start_byte": 31, "start_column": 32, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "new Service()", "line": 1, "path": "app.tsx", "source_key": "symbol:app.tsx::run:31", "target_key": "symbol:app.tsx::Service:0", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "parameter.persist()", "line": 1, "path": "app.tsx", "source_key": "symbol:app.tsx::run:31", "target_key": "symbol:app.tsx::Service.persist:16", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "unknown.persist()", "line": 1, "path": "app.tsx", "source_key": "symbol:app.tsx::run:31", "target_key": "external:tsx:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:tsx:callable:persist", "kind": "callable", "language": "tsx", "name": "persist"}
+]
+}
+}

@@ -1,0 +1,1 @@
+import Router, { type Options } from './router.tsx';

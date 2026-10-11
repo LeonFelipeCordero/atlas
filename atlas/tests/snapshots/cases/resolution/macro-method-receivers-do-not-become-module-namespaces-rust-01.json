@@ -1,0 +1,17 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 55, "evidence": "println!(\"{}\", recipe.portions())", "file_path": "main.rs", "line": 1, "name": "println!", "qualifier": null, "relationship": "CALLS", "start_byte": 22}, {"bare_target": false, "end_byte": 54, "evidence": "recipe.portions()", "file_path": "main.rs", "line": 1, "name": "portions", "qualifier": null, "relationship": "CALLS", "start_byte": 37}], "content_hash": "867f9e7ea73b7b7af5e469d639131bc0bbdadd9c4c8b775d999e2d548e7b0516", "imports": [{"file_path": "main.rs", "line": 1, "source": "mod recipe;"}], "inheritances": [], "language": "rust", "parse_error": null, "path": "main.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 11, "end_column": 12, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::recipe:0", "kind": "module", "language": "rust", "line_count": null, "name": "recipe", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::recipe", "signature": "mod recipe;", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 57, "end_column": 58, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::main:12", "kind": "function", "language": "rust", "line_count": null, "name": "main", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::main", "signature": "fn main()", "start_byte": 12, "start_column": 13, "start_line": 1, "visibility": null}]},
+{"calls": [], "content_hash": "6d063bf8a482a94601f335594357f9da34e4145fcd4150db77112a825fa954d8", "imports": [], "inheritances": [], "language": "rust", "parse_error": null, "path": "recipe.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 25, "end_column": 26, "end_line": 1, "file_path": "recipe.rs", "key": "symbol:recipe.rs::portions:0", "kind": "function", "language": "rust", "line_count": null, "name": "portions", "parameter_count": null, "parent_key": "file:recipe.rs", "qualified_name": "recipe.rs::portions", "signature": "pub fn portions()->i32", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "mod recipe;", "line": 1, "path": "main.rs", "source_key": "file:main.rs", "target_key": "file:recipe.rs", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "println!(\"{}\", recipe.portions())", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:12", "target_key": "external:rust:callable:println!", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "recipe.portions()", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:12", "target_key": "external:rust:callable:portions", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:rust:callable:println!", "kind": "callable", "language": "rust", "name": "println!"},
+{"key": "external:rust:callable:portions", "kind": "callable", "language": "rust", "name": "portions"}
+]
+}
+}

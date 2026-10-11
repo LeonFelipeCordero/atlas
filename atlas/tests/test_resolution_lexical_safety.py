@@ -1,8 +1,8 @@
-"""Independent lexical safety probes; no snapshot or coffee-name expectations."""
+"""Independent lexical safety invariants over complete source fixture projects."""
 
+from tests.resolution_snapshot_support import fixture_sources
 import unittest
 from pathlib import Path
-
 from atlas.metrics.adapters import get_resolution_adapter
 from atlas.parsing.discovery import SourceFile
 from atlas.parsing.parser import parse_files
@@ -29,50 +29,54 @@ class LexicalSafetyTest(unittest.TestCase):
         self.assertTrue(edges, evidence)
         if target is None:
             self.assertTrue(
-                all(e.target_key.startswith("external:") for e in edges), edges
+                all((e.target_key.startswith("external:") for e in edges)), edges
             )
             return
         self.assertTrue(
             all(
-                e.target_key.startswith("symbol:") and target in e.target_key
-                for e in edges
+                (
+                    e.target_key.startswith("symbol:") and target in e.target_key
+                    for e in edges
+                )
             ),
             edges,
         )
 
-    def python_repo(self, usage):
-        return repository(
-            "python",
-            {
-                "tools.py": "class R:\n @staticmethod\n def work(tag=None): return tag\n",
-                "main.py": "from tools import R\n" + usage,
-            },
-        )
-
     def test_python_blocks_bind_in_enclosing_function(self):
         usages = [
-            "def run(other):\n if True:\n  R = other\n return R.work()",
-            "def run(other):\n R.work()\n if True:\n  R = other",
-            "def run(items):\n if True:\n  for R in items: pass\n return R.work()",
-            "def run(other):\n with other as R: pass\n return R.work()",
-            "def run():\n try: pass\n except Exception as R: pass\n return R.work()",
-            "def run(other):\n if True:\n  def R(): pass\n return R.work()",
-            "def run():\n if True:\n  class R: pass\n return R.work()",
+            "python-blocks-bind-in-enclosing-function-python-01",
+            "python-blocks-bind-in-enclosing-function-python-02",
+            "python-blocks-bind-in-enclosing-function-python-03",
+            "python-blocks-bind-in-enclosing-function-python-04",
+            "python-blocks-bind-in-enclosing-function-python-05",
+            "python-blocks-bind-in-enclosing-function-python-06",
+            "python-blocks-bind-in-enclosing-function-python-07",
         ]
         for usage in usages:
             with self.subTest(usage=usage):
-                repo = self.python_repo(usage + "\nR.work(2)\n")
+                repo = repository(
+                    "python",
+                    fixture_sources(
+                        "resolution_lexical_safety:test_python_blocks_bind_in_enclosing_function:64-23",
+                        usage=usage,
+                    ),
+                )
                 self.assert_call(repo, "R.work()")
                 self.assert_call(repo, "R.work(2)", "tools.py::R.work")
 
     def test_python_module_and_class_blocks_are_not_scopes(self):
-        repo = self.python_repo("if True:\n R = other\nR.work()")
+        repo = repository(
+            "python",
+            fixture_sources(
+                "resolution_lexical_safety:test_python_module_and_class_blocks_are_not_scopes:69-15"
+            ),
+        )
         self.assert_call(repo, "R.work()")
-        repo = self.python_repo(
-            "class Container:\n if True:\n  R = other\n R.work()\n"
-            " def run(self): return R.work(1)\n"
-            " def default(self, value=R.work(3)): pass\n"
-            " [R.work(4) for item in R.work(5)]\nR.work(2)"
+        repo = repository(
+            "python",
+            fixture_sources(
+                "resolution_lexical_safety:test_python_module_and_class_blocks_are_not_scopes:71-15"
+            ),
         )
         self.assert_call(repo, "R.work()")
         self.assert_call(repo, "R.work(1)", "tools.py::R.work")
@@ -84,15 +88,14 @@ class LexicalSafetyTest(unittest.TestCase):
     def test_python_conditional_import_persists_without_leaking_function(self):
         repo = repository(
             "python",
-            {
-                "tools.py": "class R:\n @staticmethod\n def work(tag=None): pass",
-                "main.py": "def run():\n if True:\n  from tools import R\n return R.work()\nR.work(2)",
-            },
+            fixture_sources(
+                "resolution_lexical_safety:test_python_conditional_import_persists_without_leaking_function:85-15"
+            ),
         )
         self.assert_call(repo, "R.work()", "tools.py::R.work")
         self.assert_call(repo, "R.work(2)")
         syntax = Syntax(
-            next(f for f in repo.files if f.source.path == "main.py"),
+            next((f for f in repo.files if f.source.path == "main.py")),
             get_resolution_adapter("python"),
         )
         scope = syntax.import_scope(3)
@@ -100,8 +103,11 @@ class LexicalSafetyTest(unittest.TestCase):
         self.assertEqual(scope.type if scope else None, "function_definition")
 
     def test_python_conditional_import_shadows_outer_import(self):
-        repo = self.python_repo(
-            "def run():\n if True:\n  from unavailable import R\n return R.work()\nR.work(2)"
+        repo = repository(
+            "python",
+            fixture_sources(
+                "resolution_lexical_safety:test_python_conditional_import_shadows_outer_import:103-15"
+            ),
         )
         self.assert_call(repo, "R.work()")
         self.assert_call(repo, "R.work(2)", "tools.py::R.work")
@@ -109,33 +115,40 @@ class LexicalSafetyTest(unittest.TestCase):
     def test_python_class_import_cannot_be_captured_by_method(self):
         repo = repository(
             "python",
-            {
-                "tools.py": "class R:\n @staticmethod\n def work(tag=None): pass",
-                "other.py": "class R:\n @staticmethod\n def work(tag=None): pass",
-                "main.py": "from tools import R\nclass Container:\n from other import R\n R.work()\n"
-                " def run(self): return R.work(1)\nR.work(2)",
-            },
+            fixture_sources(
+                "resolution_lexical_safety:test_python_class_import_cannot_be_captured_by_method:110-15"
+            ),
         )
         self.assert_call(repo, "R.work()", "other.py::R.work")
-        # Reject rather than accidentally selecting the class import by its span.
         self.assert_call(repo, "R.work(1)")
         self.assert_call(repo, "R.work(2)", "tools.py::R.work")
 
     def test_python_module_conditional_import_is_visible_after_block(self):
         repo = repository(
             "python",
-            {
-                "tools.py": "class R:\n @staticmethod\n def work(): pass",
-                "main.py": "if True:\n from tools import R\nR.work()",
-            },
+            fixture_sources(
+                "resolution_lexical_safety:test_python_module_conditional_import_is_visible_after_block:125-15"
+            ),
         )
         self.assert_call(repo, "R.work()", "tools.py::R.work")
 
     def test_python_lambda_parameters_are_callback_local(self):
-        parameters = ["R", "R=other", "*R", "**R", "other, R=other"]
+        parameters = [
+            "java-lambda-parameter-shapes-are-callback-local-java-01",
+            "python-lambda-parameters-are-callback-local-python-02",
+            "python-lambda-parameters-are-callback-local-python-03",
+            "python-lambda-parameters-are-callback-local-python-04",
+            "python-lambda-parameters-are-callback-local-python-05",
+        ]
         for parameter in parameters:
             with self.subTest(parameter=parameter):
-                repo = self.python_repo(f"use(lambda {parameter}: R.work())\nR.work(2)")
+                repo = repository(
+                    "python",
+                    fixture_sources(
+                        "resolution_lexical_safety:test_python_lambda_parameters_are_callback_local:138-23",
+                        parameter=parameter,
+                    ),
+                )
                 self.assert_call(repo, "R.work()")
                 self.assert_call(repo, "R.work(2)", "tools.py::R.work")
 
@@ -145,24 +158,38 @@ class LexicalSafetyTest(unittest.TestCase):
             "(R.work() for R in items)",
             "{R.work() for R in items}",
             "{R: R.work() for R in items}",
-            "[R.work() for (other, R) in items]",
-            "[R.work() for other in items for R in other]",
+            "python-comprehension-and-generator-bindings-do-not-escape-python-05",
+            "python-comprehension-and-generator-bindings-do-not-escape-python-06",
         ]
         for expression in expressions:
             with self.subTest(expression=expression):
-                repo = self.python_repo(expression + "\nR.work(2)")
+                repo = repository(
+                    "python",
+                    fixture_sources(
+                        "resolution_lexical_safety:test_python_comprehension_and_generator_bindings_do_not_escape:153-23",
+                        expression=expression,
+                    ),
+                )
                 self.assert_call(repo, "R.work()")
                 self.assert_call(repo, "R.work(2)", "tools.py::R.work")
 
     def test_python_first_comprehension_iterable_uses_outer_scope(self):
-        repo = self.python_repo("[R.work() for R in R.work(1)]\nR.work(2)")
+        repo = repository(
+            "python",
+            fixture_sources(
+                "resolution_lexical_safety:test_python_first_comprehension_iterable_uses_outer_scope:158-15"
+            ),
+        )
         self.assert_call(repo, "R.work()")
         self.assert_call(repo, "R.work(1)", "tools.py::R.work")
         self.assert_call(repo, "R.work(2)", "tools.py::R.work")
 
     def test_python_comprehension_walrus_binds_enclosing_function(self):
-        repo = self.python_repo(
-            "def run(items):\n [(R := item) for item in items]\n return R.work()\nR.work(2)"
+        repo = repository(
+            "python",
+            fixture_sources(
+                "resolution_lexical_safety:test_python_comprehension_walrus_binds_enclosing_function:164-15"
+            ),
         )
         self.assert_call(repo, "R.work()")
         self.assert_call(repo, "R.work(2)", "tools.py::R.work")
@@ -170,7 +197,9 @@ class LexicalSafetyTest(unittest.TestCase):
     def test_python_parameter_shadows_local_callable_without_hiding_module_call(self):
         repo = repository(
             "python",
-            {"main.py": "def target(): pass\ndef caller(target): target()\ntarget()\n"},
+            fixture_sources(
+                "resolution_lexical_safety:test_python_parameter_shadows_local_callable_without_hiding_module_call:171-15"
+            ),
         )
         edges = [
             edge
@@ -188,17 +217,17 @@ class LexicalSafetyTest(unittest.TestCase):
 
     def test_javascript_single_and_destructured_callback_parameters(self):
         callbacks = [
-            "R=>R.work()",
-            "(R)=>R.work()",
-            "({R})=>R.work()",
-            "({key: R})=>R.work()",
-            "({key: R=other})=>R.work()",
-            "({nested: {R}})=>R.work()",
-            "([R])=>R.work()",
-            "(...R)=>R.work()",
-            "({ ...R })=>R.work()",
-            "function R() { return R.work(); }",
-            "()=>{function R() {} return R.work();}",
+            "callback-parameters-javascript-01",
+            "callback-parameters-javascript-02",
+            "callback-parameters-javascript-03",
+            "callback-parameters-javascript-04",
+            "callback-parameters-javascript-05",
+            "callback-parameters-javascript-06",
+            "callback-parameters-javascript-07",
+            "callback-parameters-javascript-08",
+            "callback-parameters-javascript-09",
+            "callback-parameters-javascript-10",
+            "callback-parameters-javascript-11",
         ]
         for language, extension in [("javascript", "js"), ("typescript", "ts")]:
             self.check_callback_parameters(language, extension, callbacks)
@@ -208,93 +237,100 @@ class LexicalSafetyTest(unittest.TestCase):
             with self.subTest(language=language, callback=callback):
                 repo = repository(
                     language,
-                    {
-                        f"tools.{extension}": "export class R { static work(tag) {} }",
-                        f"main.{extension}": f"import {{R}} from './tools'; use({callback}); R.work(2);",
-                    },
+                    fixture_sources(
+                        "resolution_lexical_safety:check_callback_parameters:209-23",
+                        language=language,
+                        callback=callback,
+                    ),
                 )
                 self.assert_call(repo, "R.work()")
                 self.assert_call(repo, "R.work(2)", f"tools.{extension}::R.work")
 
     def test_javascript_property_keys_and_defaults_are_not_bindings(self):
-        for callback in ["({R: other})=>R.work()", "({other=R})=>R.work()"]:
+        for callback in [
+            "javascript-property-keys-and-defaults-are-not-bindings-javascript-01",
+            "javascript-property-keys-and-defaults-are-not-bindings-javascript-02",
+        ]:
             with self.subTest(callback=callback):
                 repo = repository(
                     "javascript",
-                    {
-                        "tools.js": "export class R { static work(tag) {} }",
-                        "main.js": f"import {{R}} from './tools'; use({callback}); R.work(2);",
-                    },
+                    fixture_sources(
+                        "resolution_lexical_safety:test_javascript_property_keys_and_defaults_are_not_bindings:222-23",
+                        callback=callback,
+                    ),
                 )
                 self.assert_call(repo, "R.work()", "tools.js::R.work")
                 self.assert_call(repo, "R.work(2)", "tools.js::R.work")
 
     def test_java_lambda_parameter_shapes_are_callback_local(self):
-        for parameters in ["R", "(R)", "(R, other)", "(Thing R)", "(var R)"]:
+        for parameters in [
+            "java-lambda-parameter-shapes-are-callback-local-java-01",
+            "java-lambda-parameter-shapes-are-callback-local-java-02",
+            "java-lambda-parameter-shapes-are-callback-local-java-03",
+            "java-lambda-parameter-shapes-are-callback-local-java-04",
+            "java-lambda-parameter-shapes-are-callback-local-java-05",
+        ]:
             with self.subTest(parameters=parameters):
-                repo = self.java_repo(f"use({parameters} -> R.work()); R.work(2);")
+                repo = repository(
+                    "java",
+                    fixture_sources(
+                        "resolution_lexical_safety:test_java_lambda_parameter_shapes_are_callback_local:235-23",
+                        parameters=parameters,
+                    ),
+                )
                 self.assert_call(repo, "R.work()")
                 self.assert_call(repo, "R.work(2)", "R.java::R.work")
 
-    def java_repo(self, body):
-        return repository(
-            "java",
-            {
-                "R.java": "package tools; public class R {public static void work(Object... tags) {}}",
-                "App.java": "package app; import tools.R; class App {void run(){"
-                + body
-                + "}}",
-            },
-        )
-
     def test_java_blocks_loops_and_catch_bindings_do_not_leak(self):
         bodies = [
-            "{ Thing R = other; R.work(); } R.work(2);",
-            "for (Thing R : items) {R.work();} R.work(2);",
-            "for (Thing R = other; check(); next()) {R.work();} R.work(2);",
-            "try {} catch (Exception R) {R.work();} R.work(2);",
+            "java-blocks-loops-and-catch-bindings-do-not-leak-java-01",
+            "java-blocks-loops-and-catch-bindings-do-not-leak-java-02",
+            "java-blocks-loops-and-catch-bindings-do-not-leak-java-03",
+            "java-blocks-loops-and-catch-bindings-do-not-leak-java-04",
         ]
         for body in bodies:
             with self.subTest(body=body):
-                repo = self.java_repo(body)
+                repo = repository(
+                    "java",
+                    fixture_sources(
+                        "resolution_lexical_safety:test_java_blocks_loops_and_catch_bindings_do_not_leak:259-23",
+                        body=body,
+                    ),
+                )
                 self.assert_call(repo, "R.work()")
                 self.assert_call(repo, "R.work(2)", "R.java::R.work")
 
     def test_go_range_and_callback_bindings_do_not_leak(self):
         for body in [
-            "for R := range items {R.Work()}; R.Work(2)",
-            "use(func(R Thing) {R.Work()}); R.Work(2)",
-            "use(func(other, R Thing) {R.Work()}); R.Work(2)",
+            "go-range-and-callback-bindings-do-not-leak-go-01",
+            "go-range-and-callback-bindings-do-not-leak-go-02",
+            "go-range-and-callback-bindings-do-not-leak-go-03",
         ]:
             with self.subTest(body=body):
                 repo = repository(
                     "go",
-                    {
-                        "tools/tools.go": "package tools\nfunc Work(tag ...int) {}",
-                        "main.go": 'package main\nimport R "./tools"\nfunc run(){'
-                        + body
-                        + "}",
-                    },
+                    fixture_sources(
+                        "resolution_lexical_safety:test_go_range_and_callback_bindings_do_not_leak:270-23",
+                        body=body,
+                    ),
                 )
                 self.assert_call(repo, "R.Work()")
                 self.assert_call(repo, "R.Work(2)", "tools.go::Work")
 
     def test_kotlin_lambda_and_range_bindings_do_not_leak(self):
         for body in [
-            "use { R -> R() }; R(2)",
-            "use { (other, R) -> R() }; R(2)",
+            "kotlin-lambda-and-range-bindings-do-not-leak-kotlin-01",
+            "kotlin-lambda-and-range-bindings-do-not-leak-kotlin-02",
             "for (R in items) {R()}; R(2)",
-            "for ((other, R) in items) {R()}; R(2)",
+            "kotlin-lambda-and-range-bindings-do-not-leak-kotlin-04",
         ]:
             with self.subTest(body=body):
                 repo = repository(
                     "kotlin",
-                    {
-                        "tools.kt": "package tools\nfun work(tag: Int = 0) {}",
-                        "main.kt": "package app\nimport tools.work as R\nfun run() {"
-                        + body
-                        + "}",
-                    },
+                    fixture_sources(
+                        "resolution_lexical_safety:test_kotlin_lambda_and_range_bindings_do_not_leak:290-23",
+                        body=body,
+                    ),
                 )
                 self.assert_call(repo, "R()")
                 self.assert_call(repo, "R(2)", "tools.kt::work")

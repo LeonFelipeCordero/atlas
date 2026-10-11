@@ -1,0 +1,18 @@
+{
+"files": [
+{"calls": [], "content_hash": "7d50cca113128e53b574716ac347ccfebcb64e1e1c7cea763d99962f42c92847", "imports": [], "inheritances": [], "language": "go", "parse_error": null, "path": "tools/tools.go", "symbols": [{"complexity": null, "decorators": [], "end_byte": 38, "end_column": 25, "end_line": 2, "file_path": "tools/tools.go", "key": "symbol:tools/tools.go::Work:14", "kind": "function", "language": "go", "line_count": null, "name": "Work", "parameter_count": null, "parent_key": "file:tools/tools.go", "qualified_name": "tools/tools.go::Work", "signature": "func Work(tag ...int)", "start_byte": 14, "start_column": 1, "start_line": 2, "visibility": null}]},
+{"calls": [{"bare_target": true, "end_byte": 79, "evidence": "use(func(other, R Thing) {R.Work()})", "file_path": "main.go", "line": 3, "name": "use", "qualifier": null, "relationship": "CALLS", "start_byte": 43}, {"bare_target": false, "end_byte": 77, "evidence": "R.Work()", "file_path": "main.go", "line": 3, "name": "Work", "qualifier": "R", "relationship": "CALLS", "start_byte": 69}, {"bare_target": false, "end_byte": 90, "evidence": "R.Work(2)", "file_path": "main.go", "line": 3, "name": "Work", "qualifier": "R", "relationship": "CALLS", "start_byte": 81}], "content_hash": "4fb5397bbe1ec00fd74862f78bdeb8bb6dd543c1fd5cdacdc1566f2eefa0c995", "imports": [{"file_path": "main.go", "line": 2, "source": "R \"./tools\""}], "inheritances": [], "language": "go", "parse_error": null, "path": "main.go", "symbols": [{"complexity": null, "decorators": [], "end_byte": 91, "end_column": 60, "end_line": 3, "file_path": "main.go", "key": "symbol:main.go::run:32", "kind": "function", "language": "go", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:main.go", "qualified_name": "main.go::run", "signature": "func run()", "start_byte": 32, "start_column": 1, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 78, "end_column": 47, "end_line": 3, "file_path": "main.go", "key": "symbol:main.go::run.<anonymous>:47", "kind": "function", "language": "go", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "symbol:main.go::run:32", "qualified_name": "main.go::run.<anonymous>", "signature": "func(other, R Thing) {R.Work()}", "start_byte": 47, "start_column": 16, "start_line": 3, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "R \"./tools\"", "line": 2, "path": "main.go", "source_key": "file:main.go", "target_key": "file:tools/tools.go", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "use(func(other, R Thing) {R.Work()})", "line": 3, "path": "main.go", "source_key": "symbol:main.go::run:32", "target_key": "external:go:callable:use", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.Work()", "line": 3, "path": "main.go", "source_key": "symbol:main.go::run.<anonymous>:47", "target_key": "external:go:callable:Work", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.Work(2)", "line": 3, "path": "main.go", "source_key": "symbol:main.go::run:32", "target_key": "symbol:tools/tools.go::Work:14", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:go:callable:use", "kind": "callable", "language": "go", "name": "use"},
+{"key": "external:go:callable:Work", "kind": "callable", "language": "go", "name": "Work"}
+]
+}
+}

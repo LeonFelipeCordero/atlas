@@ -1,5 +1,7 @@
 """Project listing emits JSON without requiring a project or changing graphs."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 import json
 from pathlib import Path
 
@@ -21,7 +23,7 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_projects_lists_indexed_and_unindexed_projects(database: Path, tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
-    (root / "app.py").write_text("def main():\n    return 1\n")
+    (root / "app.py").write_text(case_text('cli', 'projects-cli-projects-lists-indexed-and-unindexed-projects', 'app.py'))
     with repository_service(database) as service:
         indexed = service.register({"name": "École", "location": str(root)})
         unindexed = service.register({"name": "Other", "location": "elsewhere"})
@@ -38,8 +40,8 @@ def test_projects_lists_indexed_and_unindexed_projects(database: Path, tmp_path:
     assert projects[0]["importedAt"] == graph.importedAt
     assert projects[1]["importedAt"] is None
     with repository_service(database) as service:
-        assert service.get_architecture(indexed.id) == graph
-        assert service.get_architecture(unindexed.id) is None
+        assert snapshot_result(service.get_architecture(indexed.id), 'get_architecture') == graph
+        assert snapshot_result(service.get_architecture(unindexed.id), 'get_architecture') is None
 
 
 def test_projects_empty_database_is_empty_json_array(database: Path) -> None:

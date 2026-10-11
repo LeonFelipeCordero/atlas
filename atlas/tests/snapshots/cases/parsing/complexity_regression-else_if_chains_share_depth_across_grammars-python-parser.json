@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566206628293a0a20696620613a20706173730a20656c696620623a20706173730a20656c696620633a0a2020696620643a20706173730a"}, "language": "python", "path": "sample.py"},
+"content_hash": "d01694080d305b847b5a972c4f603d87fe03dd7bd76750e9cb37c79f18e88be5",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 56, "end_column": 13, "end_line": 5, "file_path": "sample.py", "key": "symbol:sample.py::f:0", "kind": "function", "language": "python", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::f", "signature": "def f():", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,1 @@
+package app; import service.OrderService; class App { private final OrderService orderService; App(OrderService orderService){ this.orderService = orderService; } void run(){ orderService.saveOrder(1); } }

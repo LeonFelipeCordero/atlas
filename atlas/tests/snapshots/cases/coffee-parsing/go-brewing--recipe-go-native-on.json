@@ -1,0 +1,52 @@
+[
+  {
+    "kind": "Function",
+    "name": "portions",
+    "visibility": null,
+    "span": {
+      "start_byte": 168,
+      "end_byte": 297,
+      "start_line": 4,
+      "start_column": 0,
+      "end_line": 13,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func portions(name string) int",
+    "body_span": {
+      "start_byte": 199,
+      "end_byte": 297,
+      "start_line": 4,
+      "start_column": 31,
+      "end_line": 13,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "preview",
+    "visibility": null,
+    "span": {
+      "start_byte": 299,
+      "end_byte": 366,
+      "start_line": 15,
+      "start_column": 0,
+      "end_line": 17,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func preview(name string) string",
+    "body_span": {
+      "start_byte": 332,
+      "end_byte": 366,
+      "start_line": 15,
+      "start_column": 33,
+      "end_line": 17,
+      "end_column": 1
+    }
+  }
+]

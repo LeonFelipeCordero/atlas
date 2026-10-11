@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [], "content_hash": "5b55d011360741f1271e863d0b5d0bcad08615050190bc9da2c07f27dd1f7755", "imports": [{"file_path": "main.ts", "line": 1, "source": "import {a} from './a';"}, {"file_path": "main.ts", "line": 1, "source": "import {b} from './b';"}], "inheritances": [], "language": "typescript", "parse_error": null, "path": "main.ts", "symbols": []}
+],
+"resolved": {
+"connections": [
+{"confidence": "EXTRACTED", "evidence": "import {a} from './a';", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "external:typescript:module:./a", "type": "IMPORTS", "type_only": false},
+{"confidence": "EXTRACTED", "evidence": "import {b} from './b';", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "external:typescript:module:./b", "type": "IMPORTS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:typescript:module:./a", "kind": "module", "language": "typescript", "name": "./a"},
+{"key": "external:typescript:module:./b", "kind": "module", "language": "typescript", "name": "./b"}
+]
+},
+"adapter": {"ambiguous_line": null, "selected": {"end_byte": 45, "start_byte": 23, "text": {"hex": "696d706f7274207b627d2066726f6d20272e2f62273b"}, "type": "import_statement"}}
+}

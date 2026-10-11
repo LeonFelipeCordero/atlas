@@ -1,0 +1,1 @@
+class Factory { static int from(int x) { return x; } }

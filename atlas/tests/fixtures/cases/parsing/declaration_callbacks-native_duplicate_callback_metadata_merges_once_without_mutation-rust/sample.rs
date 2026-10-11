@@ -1,0 +1,1 @@
+type Callback = fn(i32) -> i32; const TOP: Callback = |x| x; fn outer(cb: Callback) { consume(|x: i32| x); }

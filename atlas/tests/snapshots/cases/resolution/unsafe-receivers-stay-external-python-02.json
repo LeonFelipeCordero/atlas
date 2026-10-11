@@ -1,0 +1,15 @@
+{
+"files": [
+{"calls": [{"bare_target": true, "end_byte": 97, "evidence": "Service()", "file_path": "app.py", "line": 5, "name": "Service", "qualifier": null, "relationship": "CALLS", "start_byte": 88}, {"bare_target": false, "end_byte": 114, "evidence": "local.persist()", "file_path": "app.py", "line": 6, "name": "persist", "qualifier": "local", "relationship": "CALLS", "start_byte": 99}], "content_hash": "bf89f58b282f04f6bfbb203ed50a95174b1d2d005582af2f387ff9ef5412a930", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "app.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 39, "end_column": 25, "end_line": 2, "file_path": "app.py", "key": "symbol:app.py::Service:0", "kind": "class", "language": "python", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.py", "qualified_name": "app.py::Service", "signature": "class Service:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 39, "end_column": 25, "end_line": 2, "file_path": "app.py", "key": "symbol:app.py::Service.persist:16", "kind": "function", "language": "python", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:app.py::Service:0", "qualified_name": "app.py::Service.persist", "signature": "def persist(self):", "start_byte": 16, "start_column": 2, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 67, "end_column": 28, "end_line": 3, "file_path": "app.py", "key": "symbol:app.py::Service:40", "kind": "function", "language": "python", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.py", "qualified_name": "app.py::Service", "signature": "def Service():", "start_byte": 40, "start_column": 1, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 114, "end_column": 17, "end_line": 6, "file_path": "app.py", "key": "symbol:app.py::run:68", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:app.py", "qualified_name": "app.py::run", "signature": "def run():", "start_byte": 68, "start_column": 1, "start_line": 4, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "Service()", "line": 5, "path": "app.py", "source_key": "symbol:app.py::run:68", "target_key": "external:python:callable:Service", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "local.persist()", "line": 6, "path": "app.py", "source_key": "symbol:app.py::run:68", "target_key": "external:python:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:python:callable:Service", "kind": "callable", "language": "python", "name": "Service"},
+{"key": "external:python:callable:persist", "kind": "callable", "language": "python", "name": "persist"}
+]
+}
+}

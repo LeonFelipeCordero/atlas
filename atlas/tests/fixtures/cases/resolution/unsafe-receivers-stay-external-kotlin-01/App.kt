@@ -1,0 +1,1 @@
+class Service { fun persist() {} } class App(local: Service) { fun run(){ local.persist() } }

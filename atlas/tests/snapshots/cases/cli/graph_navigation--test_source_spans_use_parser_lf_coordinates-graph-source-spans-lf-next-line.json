@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"query\": \"run\", \"limit\": 10}, \"nodes\": [{\"stableKey\": \"symbol:src/app.py::run:24\", \"parentStableKey\": \"file:src/app.py\", \"type\": \"function\", \"kind\": \"function\", \"level\": \"callable\", \"name\": \"run\", \"language\": \"python\", \"qualifiedName\": \"src/app.py::run\", \"path\": \"src/app.py\", \"startLine\": 2, \"startColumn\": 1, \"endLine\": 3, \"endColumn\": 14, \"signature\": \"def run():\", \"visibility\": null}], \"truncated\": false, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"query\": \"run\", \"limit\": 10}, \"nodes\": [{\"stableKey\": \"symbol:src/app.py::run:24\", \"parentStableKey\": \"file:src/app.py\", \"type\": \"function\", \"kind\": \"function\", \"level\": \"callable\", \"name\": \"run\", \"language\": \"python\", \"qualifiedName\": \"src/app.py::run\", \"path\": \"src/app.py\", \"startLine\": 2, \"startColumn\": 1, \"endLine\": 3, \"endColumn\": 14, \"signature\": \"def run():\", \"visibility\": null}], \"truncated\": false, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"symbol:src/app.py::run:24\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"ok\", \"path\": \"src/app.py\", \"startLine\": 2, \"endLine\": 3, \"lines\": [\"def run():\", \"    return 42\"], \"truncated\": false, \"nextStartLine\": null}, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"symbol:src/app.py::run:24\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"ok\", \"path\": \"src/app.py\", \"startLine\": 2, \"endLine\": 3, \"lines\": [\"def run():\", \"    return 42\"], \"truncated\": false, \"nextStartLine\": null}, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"file:src/app.py\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"ok\", \"path\": \"src/app.py\", \"startLine\": 1, \"endLine\": 3, \"lines\": [\"label = \\\"firstsecond\\\"\", \"def run():\", \"    return 42\"], \"truncated\": false, \"nextStartLine\": null}, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"file:src/app.py\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"ok\", \"path\": \"src/app.py\", \"startLine\": 1, \"endLine\": 3, \"lines\": [\"label = \\\"firstsecond\\\"\", \"def run():\", \"    return 42\"], \"truncated\": false, \"nextStartLine\": null}, \"diagnostics\": [], \"diagnosticsTruncated\": false}\n",
+    "stderr": ""
+  }
+]

@@ -1,0 +1,1 @@
+struct Service {} impl Service { fn persist(&self) {} } fn run(parameter: &Service) { let local: Service = Service {}; parameter.persist(); local.persist(); }

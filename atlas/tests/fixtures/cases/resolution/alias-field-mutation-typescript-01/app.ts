@@ -1,0 +1,1 @@
+class Service {persist(){}} class Holder {service:Service;run(){const alias=this;alias.service=other;this.service.persist();}}

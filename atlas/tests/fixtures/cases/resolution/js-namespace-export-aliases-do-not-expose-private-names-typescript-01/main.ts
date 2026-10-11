@@ -1,0 +1,1 @@
+import * as r from './r'; r.hidden(); r.api();

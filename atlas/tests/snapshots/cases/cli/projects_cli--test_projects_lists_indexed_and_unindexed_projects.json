@@ -1,0 +1,36 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "[\n  {\n    \"id\": \"<uuid>\",\n    \"name\": \"École\",\n    \"location\": \"<tmp>/source\",\n    \"createdAt\": \"<timestamp>\",\n    \"importedAt\": \"<timestamp>\"\n  },\n  {\n    \"id\": \"<uuid>\",\n    \"name\": \"Other\",\n    \"location\": \"elsewhere\",\n    \"createdAt\": \"<timestamp>\",\n    \"importedAt\": null\n  }\n]\n",
+    "stdout": "[\n  {\n    \"id\": \"<uuid>\",\n    \"name\": \"École\",\n    \"location\": \"<tmp>/source\",\n    \"createdAt\": \"<timestamp>\",\n    \"importedAt\": \"<timestamp>\"\n  },\n  {\n    \"id\": \"<uuid>\",\n    \"name\": \"Other\",\n    \"location\": \"elsewhere\",\n    \"createdAt\": \"<timestamp>\",\n    \"importedAt\": null\n  }\n]\n",
+    "stderr": ""
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 1,
+        "edges": 3,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 1,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "get_architecture",
+    "value": null
+  }
+]

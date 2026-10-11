@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c617373204368696c6428426173652c20706b672e4d6978696e293a0a2070617373"}, "language": "python", "path": "sample.py"},
+"content_hash": "a2a6158e6365ea439c9d498442103fca50e303a96ced6b367206a1e820a45d96",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 35, "end_column": 6, "end_line": 2, "file_path": "sample.py", "key": "symbol:sample.py::Child:0", "kind": "class", "language": "python", "line_count": null, "name": "Child", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::Child", "signature": "class Child(Base, pkg.Mixin):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": [{"evidence": "class Child(Base, pkg.Mixin):", "file_path": "sample.py", "language": "python", "line": 1, "source_key": "symbol:sample.py::Child:0", "target_name": "Base"}, {"evidence": "class Child(Base, pkg.Mixin):", "file_path": "sample.py", "language": "python", "line": 1, "source_key": "symbol:sample.py::Child:0", "target_name": "pkg.Mixin"}]
+}

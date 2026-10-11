@@ -1,0 +1,4 @@
+{
+"native_input": null,
+"declarations": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "run", "signature": "def run():\n pass", "span": {"end_byte": 16, "end_column": 5, "end_line": 1, "start_byte": 0, "start_column": 0, "start_line": 0}, "visibility": null}]
+}

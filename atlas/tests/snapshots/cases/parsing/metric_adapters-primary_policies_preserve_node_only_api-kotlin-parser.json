@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66756e2072756e28783a20496e7429207b206966202878203e2030292072756e28782d312920656c73652069662878203c2030292072756e28782b3129207d"}, "language": "kotlin", "path": "sample.kt"},
+"content_hash": "97d666148061a9bb70d3ea5b3954200aef812ec121623f894da8563b2f66cb23",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 63, "end_column": 64, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::run:0", "kind": "function", "language": "kotlin", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::run", "signature": "fun run(x: Int) { if (x > 0) run(x-1) else if(x < 0) run(x+1) }", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 37, "evidence": "run(x-1)", "file_path": "sample.kt", "line": 1, "name": "run", "qualifier": null, "relationship": "CALLS", "start_byte": 29}, {"bare_target": true, "end_byte": 61, "evidence": "run(x+1)", "file_path": "sample.kt", "line": 1, "name": "run", "qualifier": null, "relationship": "CALLS", "start_byte": 53}],
+"imports": [],
+"inheritances": []
+}

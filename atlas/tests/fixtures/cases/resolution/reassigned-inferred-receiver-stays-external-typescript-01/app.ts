@@ -1,0 +1,1 @@
+class Service { persist() {} } function run() { let local = new Service(); local = other; local.persist(); }

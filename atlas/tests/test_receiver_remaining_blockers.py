@@ -1,78 +1,174 @@
 """Fresh-review receiver mutation, initializer and Rust owner regressions."""
 
+from tests.resolution_snapshot_support import fixture_sources
 import pytest
-
 from tests.test_receiver_safety import assert_target
 
 
-@pytest.mark.parametrize("case", [
-    ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service();run(){const alias=this;alias.service=other;this.service.persist();}}", "this.service.persist()"),
-    ("typescript", "app.ts", "class Service {persist(){}} class Holder {service:Service;run(){const alias=this;alias.service=other;this.service.persist();}}", "this.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\n def run(self):\n  alias=self\n  alias.service=other\n  self.service.persist()", "self.service.persist()"),
-    ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist(){}\ntype Holder struct{service *Service}\nfunc run(holder *Holder){alias:=holder;alias.service=other;holder.service.persist()}", "holder.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Inner:\n service:Service\nclass Holder:\n inner:Inner\n def run(self):\n  alias=self.inner\n  alias.service=other\n  self.inner.service.persist()", "self.inner.service.persist()"),
-])
+@pytest.mark.parametrize(
+    "case",
+    [
+        (
+            "javascript",
+            "app.js",
+            "alias-field-mutation-javascript-01",
+            "this.service.persist()",
+        ),
+        (
+            "typescript",
+            "app.ts",
+            "alias-field-mutation-typescript-01",
+            "this.service.persist()",
+        ),
+        (
+            "python",
+            "app.py",
+            "alias-field-mutation-python-01",
+            "self.service.persist()",
+        ),
+        ("go", "app.go", "alias-field-mutation-go-01", "holder.service.persist()"),
+        (
+            "python",
+            "app.py",
+            "alias-field-mutation-python-02",
+            "self.inner.service.persist()",
+        ),
+    ],
+)
 def test_alias_field_mutation(case):
     language, path, source, evidence = case
-    assert_target(language, {path: source}, (evidence, False))
+    assert_target(
+        language,
+        fixture_sources(
+            "receiver_remaining_blockers:test_alias_field_mutation:17-4", case=case
+        ),
+        (evidence, False),
+    )
 
 
-@pytest.mark.parametrize("language_case", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")])
+@pytest.mark.parametrize(
+    "language_case", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")]
+)
 @pytest.mark.parametrize("target", ["Alias.prototype.persist", "local.persist"])
-@pytest.mark.parametrize("operation", ["&&=replacement", "||=replacement", "??=replacement", "+=replacement", "++"])
+@pytest.mark.parametrize(
+    "operation",
+    ["&&=replacement", "||=replacement", "??=replacement", "+=replacement", "++"],
+)
 def test_script_member_write_forms(language_case, target, operation):
     language, extension = language_case
-    sources = {
-        f"service.{extension}": "export class Service {persist(){}}",
-        f"app.{extension}": f"import {{Service as Alias, Service}} from './service'; function run(){{const local=new Service();{target}{operation};local.persist();}}",
-    }
-    assert_target(language, sources, ("local.persist()", False))
+    assert_target(
+        language,
+        fixture_sources(
+            "receiver_remaining_blockers:test_script_member_write_forms:29-4",
+            language_case=language_case,
+            target=target,
+            operation=operation,
+        ),
+        ("local.persist()", False),
+    )
 
 
-@pytest.mark.parametrize("language,extension", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")])
+@pytest.mark.parametrize(
+    "language,extension", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")]
+)
 @pytest.mark.parametrize("same", [False, True])
 def test_annotated_constructor_initializer_identity(language, extension, same):
-    initializer = "Service" if same else "Other"
-    source = (f"class Service:\n def persist(self):pass\nclass Other:\n def persist(self):pass\ndef run():\n local:Service={initializer}()\n local.persist()" if language == "python" else
-              f"class Service {{persist(){{}}}} class Other extends Service {{persist(){{}}}} function run(){{const local:Service=new {initializer}();local.persist();}}")
-    assert_target(language, {f"app.{extension}": source}, ("local.persist()", same))
+    assert_target(
+        language,
+        fixture_sources(
+            "receiver_remaining_blockers:test_annotated_constructor_initializer_identity:38-4",
+            language=language,
+            same=same,
+        ),
+        ("local.persist()", same),
+    )
 
 
-@pytest.mark.parametrize("language,extension", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")])
+@pytest.mark.parametrize(
+    "language,extension", [("python", "py"), ("typescript", "ts"), ("tsx", "tsx")]
+)
 @pytest.mark.parametrize("same", [False, True])
 def test_annotated_identifier_initializer_identity(language, extension, same):
-    initializer = "Service" if same else "Other"
-    source = (f"class Service:\n def persist(self):pass\nclass Other:\n def persist(self):pass\ndef run():\n other={initializer}()\n local:Service=other\n local.persist()" if language == "python" else
-              f"class Service {{persist(){{}}}} class Other {{persist(){{}}}} function run(){{const other=new {initializer}();const local:Service=other;local.persist();}}")
-    assert_target(language, {f"app.{extension}": source}, ("local.persist()", same))
+    assert_target(
+        language,
+        fixture_sources(
+            "receiver_remaining_blockers:test_annotated_identifier_initializer_identity:47-4",
+            language=language,
+            same=same,
+        ),
+        ("local.persist()", same),
+    )
 
 
-@pytest.mark.parametrize("language,sources", [
-    ("python", {"service.py": "class Service:\n def persist(self):pass", "app.py": "from service import Service, Service as Alias\ndef run():\n local:Service=Alias()\n local.persist()"}),
-    ("typescript", {"service.ts": "export class Service {persist(){}}", "app.ts": "import {Service, Service as Alias} from './service';function run(){const local:Service=new Alias();local.persist();}"}),
-    ("java", {"App.java": "class Service {void persist(){}} class Other extends Service {void persist(){}} class App {void run(Service local){local.persist();}}"}),
-    ("kotlin", {"app.kt": "open class Service {open fun persist(){}}\nclass Other:Service(){override fun persist(){}}\nfun run(local:Service){local.persist()}"}),
-])
+@pytest.mark.parametrize(
+    "language,sources",
+    [
+        (
+            "python",
+            {
+                "service.py": "import-alias-identity-and-static-parameter-types-python-01",
+                "app.py": "import-alias-identity-and-static-parameter-types-python-01",
+            },
+        ),
+        (
+            "typescript",
+            {
+                "service.ts": "import-alias-identity-and-static-parameter-types-typescript-01",
+                "app.ts": "import-alias-identity-and-static-parameter-types-typescript-01",
+            },
+        ),
+        (
+            "java",
+            {"App.java": "import-alias-identity-and-static-parameter-types-java-01"},
+        ),
+        (
+            "kotlin",
+            {"app.kt": "import-alias-identity-and-static-parameter-types-kotlin-01"},
+        ),
+    ],
+)
 def test_import_alias_identity_and_static_parameter_types(language, sources):
-    assert_target(language, sources, ("local.persist()", True))
+    assert_target(
+        language,
+        fixture_sources(
+            "receiver_remaining_blockers:test_import_alias_identity_and_static_parameter_types:57-4",
+            language=language,
+        ),
+        ("local.persist()", True),
+    )
 
 
 @pytest.mark.parametrize("kind,declaration", [("struct", "{}"), ("enum", "{One}")])
 @pytest.mark.parametrize("qualified", [False, True])
 def test_rust_self_impl_identity(kind, declaration, qualified):
-    implementation = "impl service::Service" if qualified else "use service::Service; impl Service"
-    sources = {"service.rs": f"pub {kind} Service{declaration}", "main.rs":
-               f"mod service; {implementation} {{fn persist(&self){{}} fn run(&self){{self.persist();}}}}"}
-    assert_target("rust", sources, ("self.persist()", True))
+    assert_target(
+        "rust",
+        fixture_sources(
+            "receiver_remaining_blockers:test_rust_self_impl_identity:66-4",
+            kind=kind,
+            qualified=qualified,
+        ),
+        ("self.persist()", True),
+    )
 
 
-@pytest.mark.parametrize("language,path,source", [
-    ("rust", "app.rs", "struct Service{} impl Service{fn persist(&self){}} fn run(local:Service){local+=other;local.persist();}"),
-    ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist(){}\nfunc run(local *Service){local+=other;local.persist()}"),
-    ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist(){}\nfunc run(local *Service){local++;local.persist()}"),
-    ("java", "App.java", "class Service {void persist(){}} class App {void run(Service local){local++;local.persist();}}"),
-    ("kotlin", "app.kt", "class Service {fun persist(){}} fun run(local:Service){local++;local.persist()}"),
-    ("kotlin", "app.kt", "class Service {fun persist(){}} fun run(local:Service){++local;local.persist()}"),
-])
+@pytest.mark.parametrize(
+    "language,path,source",
+    [
+        ("rust", "app.rs", "compound-receiver-assignment-rust-01"),
+        ("go", "app.go", "compound-receiver-assignment-go-01"),
+        ("go", "app.go", "compound-receiver-assignment-go-02"),
+        ("java", "App.java", "compound-receiver-assignment-java-01"),
+        ("kotlin", "app.kt", "compound-receiver-assignment-kotlin-01"),
+        ("kotlin", "app.kt", "compound-receiver-assignment-kotlin-02"),
+    ],
+)
 def test_compound_receiver_assignment(language, path, source):
-    assert_target(language, {path: source}, ("local.persist()", False))
+    assert_target(
+        language,
+        fixture_sources(
+            "receiver_remaining_blockers:test_compound_receiver_assignment:78-4",
+            source=source,
+        ),
+        ("local.persist()", False),
+    )

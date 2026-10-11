@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "666e206628783a20693332297b6d617463682078207b31203d3e2061636365707428292c205f203d3e2072656a65637428297d3b7d"}, "language": "rust", "path": "sample.rs"},
+"content_hash": "55f97a419ef5a28b73e31c74c5313aafb397339baba963649a2257253590d97c",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 53, "end_column": 54, "end_line": 1, "file_path": "sample.rs", "key": "symbol:sample.rs::f:0", "kind": "function", "language": "rust", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::f", "signature": "fn f(x: i32)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 35, "evidence": "accept()", "file_path": "sample.rs", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 27}, {"bare_target": true, "end_byte": 50, "evidence": "reject()", "file_path": "sample.rs", "line": 1, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 42}],
+"imports": [],
+"inheritances": []
+}

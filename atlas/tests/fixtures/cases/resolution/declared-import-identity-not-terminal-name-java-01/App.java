@@ -1,0 +1,1 @@
+package app; import other.Recipe; class App {int run(){return Recipe.portions();}}

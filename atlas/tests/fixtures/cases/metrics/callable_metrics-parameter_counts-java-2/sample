@@ -1,0 +1,1 @@
+class C { void f() { F g = (a,b) -> a; F h = x -> x; } }

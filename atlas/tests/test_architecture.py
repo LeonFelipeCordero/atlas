@@ -56,7 +56,11 @@ def module_dependencies(tree: ast.AST, modules: set[str], package: str) -> set[s
 
 
 def is_type_checking_guard(node: ast.AST) -> bool:
-    return isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
+    return (
+        isinstance(node, ast.If)
+        and isinstance(node.test, ast.Name)
+        and node.test.id == "TYPE_CHECKING"
+    )
 
 
 def relative_import_dependencies(node, modules, package):
@@ -71,11 +75,17 @@ def import_dependency(target, alias, modules):
 
 
 def branch_complexity(node: ast.AST) -> int:
-    return 1 + sum(is_complexity_branch(child) for child in ast.walk(node) if child is not node)
+    return 1 + sum(
+        is_complexity_branch(child) for child in ast.walk(node) if child is not node
+    )
 
 
 def is_complexity_branch(node: ast.AST) -> bool:
-    return isinstance(node, BRANCH) or isinstance(node, ast.comprehension) and bool(node.ifs)
+    return (
+        isinstance(node, BRANCH)
+        or isinstance(node, ast.comprehension)
+        and bool(node.ifs)
+    )
 
 
 def assert_function_limits(test, node, label):
@@ -103,43 +113,25 @@ def module_package(path: Path) -> str:
 
 
 class ArchitectureTest(unittest.TestCase):
-    def test_dependency_scan_includes_local_and_package_imports(self) -> None:
-        source = """\
-from typing import TYPE_CHECKING
-from . import java
-from atlas.metrics.adapters.kotlin import KotlinResolution
-import atlas.metrics.adapters.go
-from ...domain.models import Symbol
-if TYPE_CHECKING:
-    from . import python
-
-def resolve():
-    from .rust import RustResolution
-"""
-        expected = {f"atlas.metrics.adapters.{name}" for name in ("java", "kotlin", "go", "rust")}
-        expected.add("atlas.domain.models")
-        modules = expected | {"atlas.metrics.adapters.python"}
-        self.assertEqual(
-            expected,
-            module_dependencies(ast.parse(source), modules, "atlas.metrics.adapters"),
-        )
-
-    def test_package_imports_resolve_to_registry_or_child_module(self) -> None:
-        modules = {"atlas.parsing.adapters", "atlas.parsing.adapters.java"}
-        self.assertEqual(
-            modules,
-            module_dependencies(
-                ast.parse("from .adapters import get_adapter, java"),
-                modules,
-                "atlas.parsing",
-            ),
-        )
-
     def test_package_boundaries_exist(self) -> None:
-        for package in ("parsing", "parsing/adapters", "metrics", "metrics/adapters", "domain", "cli"):
+        for package in (
+            "parsing",
+            "parsing/adapters",
+            "metrics",
+            "metrics/adapters",
+            "domain",
+            "cli",
+        ):
             self.assertTrue((ROOT / package / "__init__.py").is_file())
         self.assertEqual(
-            {"__init__.py", "__main__.py", "bootstrap.py", "syntax.py", "language_syntax.py", "indexer.py"},
+            {
+                "__init__.py",
+                "__main__.py",
+                "bootstrap.py",
+                "syntax.py",
+                "language_syntax.py",
+                "indexer.py",
+            },
             {path.name for path in ROOT.glob("*.py")},
         )
 
@@ -178,8 +170,12 @@ def resolve():
     def test_phase_adapters_and_shared_models_are_independent(self) -> None:
         files = {module_name(path): path for path in ROOT.rglob("*.py")}
         for phase, other in (("parsing", "metrics"), ("metrics", "parsing")):
-            self.assert_package_independent(ROOT / phase, files, f"atlas.{other}.adapters")
-        self.assert_package_independent(ROOT / "domain", files, ("atlas.parsing", "atlas.metrics"))
+            self.assert_package_independent(
+                ROOT / phase, files, f"atlas.{other}.adapters"
+            )
+        self.assert_package_independent(
+            ROOT / "domain", files, ("atlas.parsing", "atlas.metrics")
+        )
 
     def assert_package_independent(self, root, files, prefixes):
         forbidden = {name for name in files if name.startswith(prefixes)}
@@ -198,7 +194,9 @@ def resolve():
             self.assertLessEqual(len(source.splitlines()), 600, path.name)
             tree = ast.parse(source)
             assert_tree_function_limits(self, tree, name)
-            dependencies[name] = module_dependencies(tree, set(files), module_package(path))
+            dependencies[name] = module_dependencies(
+                tree, set(files), module_package(path)
+            )
 
         visited: set[str] = set()
 

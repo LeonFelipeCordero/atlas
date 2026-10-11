@@ -1,5 +1,7 @@
 """Adapter contracts and the Python-only language support boundary."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -36,14 +38,14 @@ class AdapterContractTest(unittest.TestCase):
 
     def test_hooks_return_common_carriers_and_call_site_contracts(self):
         samples = {
-            "java": "class Service { Service() {} void run() { helper(); } }",
-            "kotlin": "class Service { fun run() = helper() }",
-            "go": "package demo\nfunc run() { f := func() { helper() }; f() }",
-            "rust": 'fn run() { println!("{}", helper()); }',
-            "javascript": "const run = () => helper();",
-            "typescript": "interface Service { run: () => number; } function run() { helper(); }",
-            "python": "def run():\n    helper()\n",
-            "elixir": "defmodule Service do\n  def run(), do: helper()\nend",
+            "java": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-java', 'sample'),
+            "kotlin": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-kotlin', 'sample'),
+            "go": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-go', 'sample'),
+            "rust": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-rust', 'sample'),
+            "javascript": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-javascript', 'sample'),
+            "typescript": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-typescript', 'sample'),
+            "python": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-python', 'sample'),
+            "elixir": case_text('parsing', 'adapters-hooks_return_common_carriers_and_call_site_contracts-elixir', 'sample'),
         }
         for language, sample in samples.items():
             with self.subTest(language=language):
@@ -81,13 +83,7 @@ class AdapterContractTest(unittest.TestCase):
         self.assertTrue(qualifier is None or isinstance(qualifier, str))
 
     def test_kotlin_recovery_and_hierarchy_remain_shared(self):
-        source = b"""package demo
-class Service {
-    companion object Factory {
-        fun run() = helper()
-    }
-}
-"""
+        source = case_bytes('parsing', 'adapters-kotlin_recovery_and_hierarchy_remain_shared-kotlin', 'sample.kt')
         structure = extract_structure(parsing_syntax(source, "kotlin"), [])
         self.assertEqual([item.name for item in structure], ["demo", "Service"])
         factory = structure[1].children[0]
@@ -98,10 +94,10 @@ class Service {
         for language, sample, imports in [
             (
                 "kotlin",
-                b"package demo\nimport demo.Helper\nclass Service {}",
+                case_bytes('parsing', 'adapters-adapter_import_supplements_keep_original_evidence_and_line-kotlin', 'sample.kt'),
                 [("import demo.Helper", 2)],
             ),
-            ("rust", b"mod helper;\nmod inline { fn run() {} }", [("mod helper;", 1)]),
+            ("rust", case_bytes('parsing', 'adapters-adapter_import_supplements_keep_original_evidence_and_line-rust', 'sample.rs'), [("mod helper;", 1)]),
         ]:
             with self.subTest(language=language):
                 file = SourceFile("sample", Path("sample"), language, sample)
@@ -110,7 +106,7 @@ class Service {
                 self.assertEqual(adapter.imports(ParsedSyntax(file), imports), imports)
 
     def test_shared_import_merging_defers_inline_module_policy_to_adapter(self):
-        sample = b"mod external;\nmod inline { fn run() {} }"
+        sample = case_bytes('parsing', 'adapters-shared_import_merging_defers_inline_module_policy_to_adapter-rust', 'sample.rs')
         file = SourceFile("sample.rs", Path("sample.rs"), "rust", sample)
         self.assertEqual(
             supplement_imports(ParsedSyntax(file), [], ImportPolicy("mod_item")),
@@ -128,7 +124,7 @@ class LanguageSupportTest(unittest.TestCase):
     def test_discovery_propagates_language_detection_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "main.py").write_text("pass\n")
+            (root / "main.py").write_text(case_text('parsing', 'adapters-native_processing_failure_propagates-python', 'main.py'))
             with (
                 patch("atlas.parsing.discovery.detect_language_from_path", side_effect=RuntimeError("detection failed")),
                 self.assertRaisesRegex(RuntimeError, "detection failed"),
@@ -146,7 +142,7 @@ class LanguageSupportTest(unittest.TestCase):
                 "main.cc",
                 "main.cxx",
             ]:
-                (root / name).write_text("void run() {}")
+                (root / name).write_bytes(case_bytes('parsing', 'adapters-discovery-language-boundary', name))
                 self.assertIsNone(detect_language(root / name), name)
             for name in [
                 "main.py",
@@ -161,20 +157,20 @@ class LanguageSupportTest(unittest.TestCase):
                 "main.agda",
                 "data.json",
             ]:
-                (root / name).write_text("")
+                (root / name).write_bytes(case_bytes('parsing', 'adapters-discovery-language-boundary', name))
                 self.assertIsNotNone(detect_language(root / name), name)
             files = discover_files(root)
             self.assertEqual(len(files), 11)
             self.assertFalse({"c", "cpp"} & {file.language for file in files})
 
     def test_call_parser_failure_propagates(self):
-        source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
+        source = SourceFile("main.py", Path("main.py"), "python", case_bytes('parsing', 'adapters-native_processing_failure_propagates-python', 'main.py'))
         with patch("atlas.parsing.parser.get_parser", side_effect=RuntimeError("unavailable")):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
 
     def test_native_processing_failure_propagates(self):
-        source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
+        source = SourceFile("main.py", Path("main.py"), "python", case_bytes('parsing', 'adapters-native_processing_failure_propagates-python', 'main.py'))
         with patch("atlas.parsing.parser.process", side_effect=RuntimeError("unavailable")):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
@@ -182,22 +178,23 @@ class LanguageSupportTest(unittest.TestCase):
     def test_direct_extraction_rejects_c_cpp_before_parsing_or_queries(self):
         for language in ["c", "cpp"]:
             with self.subTest(language=language):
-                file = SourceFile("main", Path("main"), language, b"void run() {}")
-                with patch("atlas.parsing.parser.process") as process:
-                    with patch("atlas.parsing.parser.get_parser") as parser:
-                        with self.assertRaisesRegex(
-                            ValueError, "Unsupported Python importer"
-                        ):
-                            parse_file(file)
-                        process.assert_not_called()
-                        parser.assert_not_called()
-                _declaration_query.cache_clear()
-                with patch("atlas.parsing.structure.get_tags_query") as query:
-                    with self.assertRaisesRegex(
-                        ValueError, "Unsupported Python importer"
-                    ):
-                        extract_structure(ParsedSyntax(file))
-                    query.assert_not_called()
+                file = SourceFile("main", Path("main"), language, case_bytes('parsing', 'adapters-c-cpp-rejection', 'main'))
+                self.assert_unsupported_extraction(file)
+
+    def assert_unsupported_extraction(self, file):
+        with (
+            patch("atlas.parsing.parser.process") as process,
+            patch("atlas.parsing.parser.get_parser") as parser,
+            self.assertRaisesRegex(ValueError, "Unsupported Python importer"),
+        ):
+            parse_file(file)
+        process.assert_not_called()
+        parser.assert_not_called()
+        _declaration_query.cache_clear()
+        with patch("atlas.parsing.structure.get_tags_query") as query:
+            with self.assertRaisesRegex(ValueError, "Unsupported Python importer"):
+                extract_structure(ParsedSyntax(file))
+            query.assert_not_called()
 
 
 if __name__ == "__main__":

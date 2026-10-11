@@ -1,0 +1,4 @@
+[
+  "migration cannot query or mutate domain data: s.query",
+  "migration cannot query or mutate domain data: sqlalchemy.orm.Session"
+]

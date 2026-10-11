@@ -1,0 +1,1 @@
+package drinks; class R {public static int portions(int n){return n;}}

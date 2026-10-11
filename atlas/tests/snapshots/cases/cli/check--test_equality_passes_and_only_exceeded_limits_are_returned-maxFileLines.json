@@ -1,0 +1,31 @@
+[
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": []
+    }
+  },
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": [
+        {
+          "actual": 601,
+          "details": [
+            "Lines is 601 (maximum: 600)."
+          ],
+          "files": [
+            {
+              "line": 10,
+              "path": "app.py"
+            }
+          ],
+          "limit": 600,
+          "metric": "lineCount",
+          "rule": "maxFileLines",
+          "subject": "file"
+        }
+      ]
+    }
+  }
+]

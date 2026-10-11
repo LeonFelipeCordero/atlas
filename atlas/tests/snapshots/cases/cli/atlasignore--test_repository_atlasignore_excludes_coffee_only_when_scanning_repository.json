@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "discovered_paths",
+    "value": [
+      "src/coffee/brewing/brewer.py",
+      "src/coffee/brewing/recipe.py",
+      "src/coffee/reporting/report.py"
+    ]
+  }
+]

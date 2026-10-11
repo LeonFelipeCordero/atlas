@@ -1,0 +1,14 @@
+{
+"files": [
+{"calls": [{"bare_target": true, "end_byte": 68, "evidence": "Service()", "file_path": "App.kt", "line": 2, "name": "Service", "qualifier": null, "relationship": "CALLS", "start_byte": 59}, {"bare_target": false, "end_byte": 85, "evidence": "local.persist()", "file_path": "App.kt", "line": 2, "name": "persist", "qualifier": "local", "relationship": "CALLS", "start_byte": 70}], "content_hash": "630947a56043c744e5b4ddc11ac11dd4a6f2dc4e285b4d75a0ca285c71e5195b", "imports": [], "inheritances": [], "language": "kotlin", "parse_error": null, "path": "App.kt", "symbols": [{"complexity": null, "decorators": [], "end_byte": 34, "end_column": 35, "end_line": 1, "file_path": "App.kt", "key": "symbol:App.kt::Service:0", "kind": "class", "language": "kotlin", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:App.kt", "qualified_name": "App.kt::Service", "signature": "class Service { fun persist() {} }", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 32, "end_column": 33, "end_line": 1, "file_path": "App.kt", "key": "symbol:App.kt::Service.persist:16", "kind": "function", "language": "kotlin", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:App.kt::Service:0", "qualified_name": "App.kt::Service.persist", "signature": "fun persist() {}", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 87, "end_column": 53, "end_line": 2, "file_path": "App.kt", "key": "symbol:App.kt::run:35", "kind": "function", "language": "kotlin", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:App.kt", "qualified_name": "App.kt::run", "signature": "fun run() { val local = Service(); local.persist() }", "start_byte": 35, "start_column": 1, "start_line": 2, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "Service()", "line": 2, "path": "App.kt", "source_key": "symbol:App.kt::run:35", "target_key": "symbol:App.kt::Service:0", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "local.persist()", "line": 2, "path": "App.kt", "source_key": "symbol:App.kt::run:35", "target_key": "symbol:App.kt::Service.persist:16", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

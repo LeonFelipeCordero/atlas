@@ -1,0 +1,7 @@
+{
+"file_record": {"kind": "file", "language": "typescript", "level": "file", "name": "sample.ts", "parentStableKey": "module:.", "path": "sample.ts", "properties": {"bytes": 20, "lineCount": 1, "sha256": "8ab7d57cd26f399ccd53349fff0fed311c0be8586f60ea53196cc20d337c2c41"}, "qualifiedName": "sample.ts", "stableKey": "file:sample.ts", "type": "file"},
+"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.ts"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.ts"}}}, "default_limits": [], "disabled": []},
+"parse_error": null,
+"records": [],
+"thresholds": []
+}

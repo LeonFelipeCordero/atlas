@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66756e63206628297b666f72207b666f72207b69662074727565207b69662074727565207b7d7d7d7d7d"}, "language": "go", "path": "sample.go"},
+"content_hash": "0e9ac37a63575874a2ee58c9c2c37329eb5813c7ea827ee0e38d89220b4b7913",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 42, "end_column": 43, "end_line": 1, "file_path": "sample.go", "key": "symbol:sample.go::f:0", "kind": "function", "language": "go", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.go", "qualified_name": "sample.go::f", "signature": "func f()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

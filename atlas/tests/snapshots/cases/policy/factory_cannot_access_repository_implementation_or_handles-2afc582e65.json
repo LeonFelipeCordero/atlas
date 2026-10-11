@@ -1,0 +1,4 @@
+[
+  "atlas.persistence",
+  "factory imports must name only repository contexts or migration operation"
+]

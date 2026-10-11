@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "696e746572666163652053657276696365"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "9f8ee8448b3ab80ea4f5de28c902d1718a4ea6c9d1e3832307e68f8256afe6bd",
+"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
+"declarations": [],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "696d706f72742064656d6f2e536572766963650a"}, "language": "kotlin", "path": "sample.kt"},
+"content_hash": "34bb1eababd9a16aa3071378dc8c67bb348bd7783a9ccf89b9fb7b9f8452a2de",
+"parse_error": null,
+"declarations": [],
+"calls": [],
+"imports": [{"file_path": "sample.kt", "line": 1, "source": "import demo.Service"}],
+"inheritances": []
+}

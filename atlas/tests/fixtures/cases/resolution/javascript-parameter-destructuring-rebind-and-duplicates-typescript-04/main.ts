@@ -1,0 +1,1 @@
+import {Recipe as R} from './recipe'; R.portions = other; R.portions(1);

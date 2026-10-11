@@ -1,0 +1,1 @@
+function Run(x: boolean) { return x ? <div /> : <span />; }

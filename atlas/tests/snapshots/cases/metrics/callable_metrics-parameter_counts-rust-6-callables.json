@@ -1,0 +1,7 @@
+{
+"file_record": {"kind": "file", "language": "rust", "level": "file", "name": "sample.rs", "parentStableKey": "module:.", "path": "sample.rs", "properties": {"bytes": 7, "lineCount": 1, "sha256": "1e805fa0f54993ca665877eb3f200411ead8006c66220c27a90e67758e761e76"}, "qualifiedName": "sample.rs", "stableKey": "file:sample.rs", "type": "file"},
+"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.rs"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.rs"}}}, "default_limits": [], "disabled": []},
+"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
+"records": [],
+"thresholds": []
+}

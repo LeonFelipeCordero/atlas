@@ -1,0 +1,1 @@
+export class Recipe { static portions(x) { return x; } }

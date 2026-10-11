@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "6465662063686f6f736528783d3120696620726561647920656c73652030293a0a20696620783a2061636365707428290a"}, "language": "python", "path": "sample.py"},
+"content_hash": "82665060d00fc31a12df62e5ea47e8c0844a41f244ca42c44de9cd48c1ad8ce6",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 48, "end_column": 16, "end_line": 2, "file_path": "sample.py", "key": "symbol:sample.py::choose:0", "kind": "function", "language": "python", "line_count": null, "name": "choose", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::choose", "signature": "def choose(x=1 if ready else 0):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 48, "evidence": "accept()", "file_path": "sample.py", "line": 2, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 40}],
+"imports": [],
+"inheritances": []
+}

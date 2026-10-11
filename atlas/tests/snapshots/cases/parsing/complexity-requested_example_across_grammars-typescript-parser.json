@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "7b20666f72286c65742061206f662078297b666f72286c65742062206f662078297b69662861297b69662862297b7d7d7d7d207d"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "9d8b839c96285c81280b8dea25990814e2b18fcf0f799df9f572f71839e7aae9",
+"parse_error": null,
+"declarations": [],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

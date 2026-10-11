@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [], "content_hash": "565d5498045181012f43716a1e340fead89ca32e896cf38e3c347d5fcfd14254", "imports": [], "inheritances": [], "language": "typescript", "parse_error": null, "path": "r.ts", "symbols": [{"complexity": null, "decorators": [], "end_byte": 20, "end_column": 21, "end_line": 1, "file_path": "r.ts", "key": "symbol:r.ts::hidden:0", "kind": "function", "language": "typescript", "line_count": null, "name": "hidden", "parameter_count": null, "parent_key": "file:r.ts", "qualified_name": "r.ts::hidden", "signature": "function hidden()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 38, "end_column": 39, "end_line": 1, "file_path": "r.ts", "key": "symbol:r.ts::api:21", "kind": "function", "language": "typescript", "line_count": null, "name": "api", "parameter_count": null, "parent_key": "file:r.ts", "qualified_name": "r.ts::api", "signature": "function api()", "start_byte": 21, "start_column": 22, "start_line": 1, "visibility": null}]},
+{"calls": [{"bare_target": false, "end_byte": 36, "evidence": "r.hidden()", "file_path": "main.ts", "line": 1, "name": "hidden", "qualifier": "r", "relationship": "CALLS", "start_byte": 26}, {"bare_target": false, "end_byte": 45, "evidence": "r.api()", "file_path": "main.ts", "line": 1, "name": "api", "qualifier": "r", "relationship": "CALLS", "start_byte": 38}], "content_hash": "6ec873a88851e73f58c60bb81a218efaa34b590b2475bfc3e5d7c9a0c79bfbba", "imports": [{"file_path": "main.ts", "line": 1, "source": "import * as r from './r';"}], "inheritances": [], "language": "typescript", "parse_error": null, "path": "main.ts", "symbols": []}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "import * as r from './r';", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "file:r.ts", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "r.hidden()", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "external:typescript:callable:hidden", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "r.api()", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "symbol:r.ts::hidden:0", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:typescript:callable:hidden", "kind": "callable", "language": "typescript", "name": "hidden"}
+]
+}
+}

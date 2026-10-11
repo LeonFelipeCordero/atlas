@@ -1,7 +1,7 @@
 """Resolution policies dispatch by language, not shared resolver conditionals."""
 
+from tests.resolution_snapshot_support import fixture_sources
 import unittest
-
 from atlas.metrics.adapters import get_resolution_adapter
 from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import repository
@@ -39,13 +39,9 @@ class ResolutionAdapterDispatchTest(unittest.TestCase):
     def test_tsx_namespace_reference_uses_qualified_import_and_shadowing(self):
         repo = repository(
             "tsx",
-            {
-                "Card.tsx": "export function Card() { return <div />; }",
-                "App.tsx": """import * as Cards from './Card';
-export function App() { return <Cards.Card />; }
-export function Shadow(Cards: unknown) { return <Cards.Card />; }
-""",
-            },
+            fixture_sources(
+                "resolution_adapter_dispatch:test_tsx_namespace_reference_uses_qualified_import_and_shadowing:40-15"
+            ),
         )
         references = [
             edge
@@ -54,10 +50,10 @@ export function Shadow(Cards: unknown) { return <Cards.Card />; }
         ]
         self.assertEqual(len(references), 2)
         self.assertEqual(
-            sum(edge.target_key.startswith("symbol:") for edge in references), 1
+            sum((edge.target_key.startswith("symbol:") for edge in references)), 1
         )
         self.assertEqual(
-            sum(edge.target_key.startswith("external:") for edge in references), 1
+            sum((edge.target_key.startswith("external:") for edge in references)), 1
         )
 
 

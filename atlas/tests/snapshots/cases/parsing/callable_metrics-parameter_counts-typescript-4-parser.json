@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "696e746572666163652043207b7d"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "02863a737aee8d0fc1910875dd21b55694dfd922605fa82a9e231ea1b1016075",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 14, "end_column": 15, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::C:0", "kind": "interface", "language": "typescript", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::C", "signature": "interface C", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

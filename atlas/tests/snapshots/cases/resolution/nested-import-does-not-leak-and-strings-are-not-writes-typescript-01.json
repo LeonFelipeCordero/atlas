@@ -1,0 +1,15 @@
+{
+"files": [
+{"calls": [], "content_hash": "73673e4c6a1dae5eeba1105e536031c22b098c779b3af06ede63f56fa28327d1", "imports": [], "inheritances": [], "language": "typescript", "parse_error": null, "path": "recipe.ts", "symbols": [{"complexity": null, "decorators": [], "end_byte": 56, "end_column": 57, "end_line": 1, "file_path": "recipe.ts", "key": "symbol:recipe.ts::Recipe:7", "kind": "class", "language": "typescript", "line_count": null, "name": "Recipe", "parameter_count": null, "parent_key": "file:recipe.ts", "qualified_name": "recipe.ts::Recipe", "signature": "class Recipe", "start_byte": 7, "start_column": 8, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 54, "end_column": 55, "end_line": 1, "file_path": "recipe.ts", "key": "symbol:recipe.ts::Recipe.portions:22", "kind": "method", "language": "typescript", "line_count": null, "name": "portions", "parameter_count": null, "parent_key": "symbol:recipe.ts::Recipe:7", "qualified_name": "recipe.ts::Recipe.portions", "signature": "static portions(x)", "start_byte": 22, "start_column": 23, "start_line": 1, "visibility": null}]},
+{"calls": [{"bare_target": false, "end_byte": 90, "evidence": "R.portions(1)", "file_path": "main.ts", "line": 1, "name": "portions", "qualifier": "R", "relationship": "CALLS", "start_byte": 77}], "content_hash": "af7128d0f14e1ae62649067ad38de15f7c17f488cea8539fe49b4c99becb4b62", "imports": [{"file_path": "main.ts", "line": 1, "source": "import {Recipe as R} from './recipe';"}], "inheritances": [], "language": "typescript", "parse_error": null, "path": "main.ts", "symbols": []}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "import {Recipe as R} from './recipe';", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "file:recipe.ts", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.portions(1)", "line": 1, "path": "main.ts", "source_key": "file:main.ts", "target_key": "symbol:recipe.ts::Recipe.portions:22", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

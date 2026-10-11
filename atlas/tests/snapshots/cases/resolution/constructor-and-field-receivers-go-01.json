@@ -1,0 +1,13 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 140, "evidence": "a.service.persist()", "file_path": "app.go", "line": 5, "name": "persist", "qualifier": "a.service", "relationship": "CALLS", "start_byte": 121}], "content_hash": "28d9c18135c117e6d579cf1c4247d454edd5f06d66ac8077784bd9b8937d5186", "imports": [], "inheritances": [], "language": "go", "parse_error": null, "path": "app.go", "symbols": [{"complexity": null, "decorators": [], "end_byte": 34, "end_column": 22, "end_line": 2, "file_path": "app.go", "key": "symbol:app.go::Service:18", "kind": "type", "language": "go", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::Service", "signature": "Service struct{}", "start_byte": 18, "start_column": 6, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 64, "end_column": 30, "end_line": 3, "file_path": "app.go", "key": "symbol:app.go::persist:35", "kind": "method", "language": "go", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::persist", "signature": "func(s *Service) persist()", "start_byte": 35, "start_column": 1, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 100, "end_column": 36, "end_line": 4, "file_path": "app.go", "key": "symbol:app.go::App:70", "kind": "type", "language": "go", "line_count": null, "name": "App", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::App", "signature": "App struct{ service *Service }", "start_byte": 70, "start_column": 6, "start_line": 4, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 142, "end_column": 42, "end_line": 5, "file_path": "app.go", "key": "symbol:app.go::run:101", "kind": "method", "language": "go", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::run", "signature": "func(a *App) run()", "start_byte": 101, "start_column": 1, "start_line": 5, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "a.service.persist()", "line": 5, "path": "app.go", "source_key": "symbol:app.go::run:101", "target_key": "symbol:app.go::persist:35", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

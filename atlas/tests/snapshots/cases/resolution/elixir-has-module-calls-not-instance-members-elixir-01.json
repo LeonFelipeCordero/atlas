@@ -1,0 +1,14 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 106, "evidence": "Service.persist()", "file_path": "app.ex", "line": 6, "name": "persist", "qualifier": "Service", "relationship": "CALLS", "start_byte": 89}, {"bare_target": false, "end_byte": 126, "evidence": "service.persist()", "file_path": "app.ex", "line": 7, "name": "persist", "qualifier": "service", "relationship": "CALLS", "start_byte": 109}], "content_hash": "5747c1b9458772e6261e1b3adc49bfc9ba56843b4a0f686ace8f0bb3dfe17715", "imports": [], "inheritances": [], "language": "elixir", "parse_error": null, "path": "app.ex", "symbols": [{"complexity": null, "decorators": [], "end_byte": 48, "end_column": 4, "end_line": 3, "file_path": "app.ex", "key": "symbol:app.ex::Service:0", "kind": "module", "language": "elixir", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.ex", "qualified_name": "app.ex::Service", "signature": "defmodule Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 44, "end_column": 24, "end_line": 2, "file_path": "app.ex", "key": "symbol:app.ex::Service.persist:22", "kind": "function", "language": "elixir", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:app.ex::Service:0", "qualified_name": "app.ex::Service.persist", "signature": "def persist(), do:", "start_byte": 22, "start_column": 2, "start_line": 2, "visibility": "public"}, {"complexity": null, "decorators": [], "end_byte": 135, "end_column": 4, "end_line": 9, "file_path": "app.ex", "key": "symbol:app.ex::App:49", "kind": "module", "language": "elixir", "line_count": null, "name": "App", "parameter_count": null, "parent_key": "file:app.ex", "qualified_name": "app.ex::App", "signature": "defmodule App", "start_byte": 49, "start_column": 1, "start_line": 4, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 131, "end_column": 5, "end_line": 8, "file_path": "app.ex", "key": "symbol:app.ex::App.run:67", "kind": "function", "language": "elixir", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:app.ex::App:49", "qualified_name": "app.ex::App.run", "signature": "def run(service)", "start_byte": 67, "start_column": 2, "start_line": 5, "visibility": "public"}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "Service.persist()", "line": 6, "path": "app.ex", "source_key": "symbol:app.ex::App.run:67", "target_key": "symbol:app.ex::Service.persist:22", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "service.persist()", "line": 7, "path": "app.ex", "source_key": "symbol:app.ex::App.run:67", "target_key": "external:elixir:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:elixir:callable:persist", "kind": "callable", "language": "elixir", "name": "persist"}
+]
+}
+}

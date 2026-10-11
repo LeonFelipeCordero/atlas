@@ -1,0 +1,31 @@
+[
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": []
+    }
+  },
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": [
+        {
+          "actual": 1,
+          "details": [
+            "Nested loops is 1 (maximum: 0)."
+          ],
+          "files": [
+            {
+              "line": 10,
+              "path": "app.py"
+            }
+          ],
+          "limit": 0,
+          "metric": "nestedLoops",
+          "rule": "maxNestedLoops",
+          "subject": "function"
+        }
+      ]
+    }
+  }
+]

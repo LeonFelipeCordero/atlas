@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "64656620662878293b20783b20656e640a"}, "language": "ruby", "path": "sample.rb"},
+"content_hash": "9f2a16094cf2039d562d26eeeabdb7f33d502b00b3b5706221f68f490a638169",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 16, "end_column": 17, "end_line": 1, "file_path": "sample.rb", "key": "symbol:sample.rb::f:0", "kind": "method", "language": "ruby", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.rb", "qualified_name": "sample.rb::f", "signature": "def f(x);", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

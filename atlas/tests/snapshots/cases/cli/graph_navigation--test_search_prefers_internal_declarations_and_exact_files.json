@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"query\": \"run\", \"limit\": 1}, \"nodes\": [{\"stableKey\": \"run\", \"parentStableKey\": \"file\", \"type\": \"function\", \"kind\": \"function\", \"level\": \"callable\", \"name\": \"run\", \"language\": \"python\", \"qualifiedName\": \"run\", \"path\": \"src/app.py\", \"startLine\": 1, \"startColumn\": 1, \"endLine\": 3, \"endColumn\": 2, \"signature\": \"def run():\", \"visibility\": null}], \"truncated\": true, \"diagnostics\": [{\"severity\": \"warning\", \"path\": \"src/app.py\", \"language\": \"python\", \"message\": \"local warning\"}], \"diagnosticsTruncated\": false}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"query\": \"run\", \"limit\": 1}, \"nodes\": [{\"stableKey\": \"run\", \"parentStableKey\": \"file\", \"type\": \"function\", \"kind\": \"function\", \"level\": \"callable\", \"name\": \"run\", \"language\": \"python\", \"qualifiedName\": \"run\", \"path\": \"src/app.py\", \"startLine\": 1, \"startColumn\": 1, \"endLine\": 3, \"endColumn\": 2, \"signature\": \"def run():\", \"visibility\": null}], \"truncated\": true, \"diagnostics\": [{\"severity\": \"warning\", \"path\": \"src/app.py\", \"language\": \"python\", \"message\": \"local warning\"}], \"diagnosticsTruncated\": false}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"query\": \"src/app.py\", \"limit\": 1}, \"nodes\": [{\"stableKey\": \"file\", \"parentStableKey\": \"repository\", \"type\": \"file\", \"kind\": \"file\", \"level\": \"file\", \"name\": \"file\", \"language\": \"python\", \"qualifiedName\": \"file\", \"path\": \"src/app.py\", \"startLine\": null, \"startColumn\": null, \"endLine\": null, \"endColumn\": null, \"signature\": null, \"visibility\": null}], \"truncated\": true, \"diagnostics\": [{\"severity\": \"warning\", \"path\": \"src/app.py\", \"language\": \"python\", \"message\": \"local warning\"}], \"diagnosticsTruncated\": false}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"query\": \"src/app.py\", \"limit\": 1}, \"nodes\": [{\"stableKey\": \"file\", \"parentStableKey\": \"repository\", \"type\": \"file\", \"kind\": \"file\", \"level\": \"file\", \"name\": \"file\", \"language\": \"python\", \"qualifiedName\": \"file\", \"path\": \"src/app.py\", \"startLine\": null, \"startColumn\": null, \"endLine\": null, \"endColumn\": null, \"signature\": null, \"visibility\": null}], \"truncated\": true, \"diagnostics\": [{\"severity\": \"warning\", \"path\": \"src/app.py\", \"language\": \"python\", \"message\": \"local warning\"}], \"diagnosticsTruncated\": false}\n",
+    "stderr": ""
+  }
+]

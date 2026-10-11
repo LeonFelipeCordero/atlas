@@ -1,0 +1,4 @@
+[
+  "sqlalchemy.orm",
+  "sqlalchemy.orm.Session"
+]

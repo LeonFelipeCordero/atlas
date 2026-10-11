@@ -1,0 +1,9 @@
+[
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-364975aa5d", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"},
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-235503c985", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"},
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-23a7d48c73", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"},
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-50400af2f3", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"},
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-2cc64b9b7c", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"},
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-7050bfc085", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"},
+  {"allowed": false, "id": "bootstrap_cannot_compose_or_gain_other_behavior-90ed836fe1", "module": "atlas.bootstrap", "old_test": "test_database_boundaries.py::test_bootstrap_cannot_compose_or_gain_other_behavior", "operation": "boundary", "package": "atlas"}
+]

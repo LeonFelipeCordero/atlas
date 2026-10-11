@@ -1,0 +1,1 @@
+val f = { (a,b): X, c: Int -> c }; val g = { -> 0 }

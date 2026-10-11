@@ -1,0 +1,1 @@
+fn work(){} mod outer {pub fn work(){} mod nested {pub fn work(){}}}

@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [], "content_hash": "a707ec30765fec254c2d46918b9e3886d46e6e8e3901e593989c3096478e38e3", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "tools.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 55, "end_column": 32, "end_line": 3, "file_path": "tools.py", "key": "symbol:tools.py::R:0", "kind": "class", "language": "python", "line_count": null, "name": "R", "parameter_count": null, "parent_key": "file:tools.py", "qualified_name": "tools.py::R", "signature": "class R:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": ["@staticmethod"], "end_byte": 55, "end_column": 32, "end_line": 3, "file_path": "tools.py", "key": "symbol:tools.py::R.work:25", "kind": "function", "language": "python", "line_count": null, "name": "work", "parameter_count": null, "parent_key": "symbol:tools.py::R:0", "qualified_name": "tools.py::R.work", "signature": "def work(tag=None):", "start_byte": 25, "start_column": 2, "start_line": 3, "visibility": null}]},
+{"calls": [{"bare_target": false, "end_byte": 87, "evidence": "R.work()", "file_path": "main.py", "line": 5, "name": "work", "qualifier": "R", "relationship": "CALLS", "start_byte": 79}, {"bare_target": false, "end_byte": 97, "evidence": "R.work(2)", "file_path": "main.py", "line": 6, "name": "work", "qualifier": "R", "relationship": "CALLS", "start_byte": 88}], "content_hash": "2bf2c0e575bc8af93d75828151a5b5d6a3ad794c49e05c14d43f6fbc760e2955", "imports": [{"file_path": "main.py", "line": 1, "source": "from tools import R"}], "inheritances": [], "language": "python", "parse_error": null, "path": "main.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 87, "end_column": 17, "end_line": 5, "file_path": "main.py", "key": "symbol:main.py::run:20", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:main.py", "qualified_name": "main.py::run", "signature": "def run():", "start_byte": 20, "start_column": 1, "start_line": 2, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "from tools import R", "line": 1, "path": "main.py", "source_key": "file:main.py", "target_key": "file:tools.py", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.work()", "line": 5, "path": "main.py", "source_key": "symbol:main.py::run:20", "target_key": "external:python:callable:work", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.work(2)", "line": 6, "path": "main.py", "source_key": "file:main.py", "target_key": "symbol:tools.py::R.work:25", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:python:callable:work", "kind": "callable", "language": "python", "name": "work"}
+]
+}
+}

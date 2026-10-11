@@ -1,0 +1,1 @@
+package app; import tools.R; class App {void run(){{ Thing R = other; R.work(); } R.work(2);}}

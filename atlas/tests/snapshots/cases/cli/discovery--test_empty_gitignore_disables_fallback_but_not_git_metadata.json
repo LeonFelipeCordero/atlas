@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "discovered_paths",
+    "value": [
+      ".gitignore",
+      "dist/file.ts"
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636f6e73742066203d20287b612c627d3a2050726f707329203d3e203c6469763e7b617d3c2f6469763e3b"}, "language": "tsx", "path": "sample"},
+"content_hash": "7b1af983223c870222a5afbac2d1ab204f2c6ba2eb4b7f04dd5901cf1acf4742",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 42, "end_column": 43, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:10", "kind": "function", "language": "tsx", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "({a,b}: Props) =>", "start_byte": 10, "start_column": 11, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "subprocess",
+    "value": {
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "{\"repositoryId\": \"<uuid>\", \"graphRevision\": \"<revision>\", \"indexedAt\": \"<timestamp>\", \"filters\": {\"key\": \"run\", \"maxLines\": 80, \"startLine\": null}, \"source\": {\"status\": \"unreadable\", \"path\": \"src/app.py\"}, \"diagnostics\": [{\"severity\": \"warning\", \"path\": \"src/app.py\", \"language\": \"python\", \"message\": \"local warning\"}], \"diagnosticsTruncated\": false}\n"
+    }
+  }
+]

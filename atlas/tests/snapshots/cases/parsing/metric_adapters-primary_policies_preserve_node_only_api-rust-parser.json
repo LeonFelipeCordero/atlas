@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "666e2072756e28783a2069333229207b206d617463682078207b2031203d3e2072756e2830292c205f203d3e202829207d207d"}, "language": "rust", "path": "sample.rs"},
+"content_hash": "6fb307895f61fda650eb3f72252412bb86026c51beb7cbbd49a150bdea476873",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 51, "end_column": 52, "end_line": 1, "file_path": "sample.rs", "key": "symbol:sample.rs::run:0", "kind": "function", "language": "rust", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::run", "signature": "fn run(x: i32)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 38, "evidence": "run(0)", "file_path": "sample.rs", "line": 1, "name": "run", "qualifier": null, "relationship": "CALLS", "start_byte": 32}],
+"imports": [],
+"inheritances": []
+}

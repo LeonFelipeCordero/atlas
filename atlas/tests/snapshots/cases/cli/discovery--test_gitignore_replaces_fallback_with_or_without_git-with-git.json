@@ -1,0 +1,11 @@
+[
+  {
+    "kind": "discovered_paths",
+    "value": [
+      ".gitignore",
+      "generated-code/source.ts",
+      "keep.tmp",
+      "node_modules/source.ts"
+    ]
+  }
+]

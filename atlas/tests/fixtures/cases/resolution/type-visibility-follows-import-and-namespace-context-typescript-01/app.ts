@@ -1,0 +1,1 @@
+import * as tools from './tools'; function run(local: tools.Service){ local.persist(); }

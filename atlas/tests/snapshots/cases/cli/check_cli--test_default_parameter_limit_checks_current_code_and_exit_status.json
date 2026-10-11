@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 1,
+    "output": "{\n  \"findings\": [\n    {\n      \"rule\": \"maxParameters\",\n      \"metric\": \"parameterCount\",\n      \"subject\": \"app.py::wide\",\n      \"files\": [\n        {\n          \"path\": \"app.py\",\n          \"line\": 1\n        }\n      ],\n      \"actual\": 4,\n      \"limit\": 3,\n      \"details\": [\n        \"Parameters is 4 (maximum: 3).\"\n      ]\n    }\n  ]\n}\n",
+    "stdout": "{\n  \"findings\": [\n    {\n      \"rule\": \"maxParameters\",\n      \"metric\": \"parameterCount\",\n      \"subject\": \"app.py::wide\",\n      \"files\": [\n        {\n          \"path\": \"app.py\",\n          \"line\": 1\n        }\n      ],\n      \"actual\": 4,\n      \"limit\": 3,\n      \"details\": [\n        \"Parameters is 4 (maximum: 3).\"\n      ]\n    }\n  ]\n}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\n  \"findings\": []\n}\n",
+    "stdout": "{\n  \"findings\": []\n}\n",
+    "stderr": ""
+  }
+]

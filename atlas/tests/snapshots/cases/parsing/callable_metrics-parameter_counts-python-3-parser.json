@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c61737320433a0a202020206465662066282a617267733a20696e742c20613d312c623d322c633d332c643d342c653d352c663d362c673d37293a20706173730a202020206465662067282a2a6b77617267733a20696e74293a2070617373"}, "language": "python", "path": "sample"},
+"content_hash": "f59fedcc94eaa402b4ae8e94802986ab55d7f3a40e84ae8ede3c9dac3949382c",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 96, "end_column": 31, "end_line": 3, "file_path": "sample", "key": "symbol:sample::C:0", "kind": "class", "language": "python", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::C", "signature": "class C:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 65, "end_column": 57, "end_line": 2, "file_path": "sample", "key": "symbol:sample::C.f:13", "kind": "function", "language": "python", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "symbol:sample::C:0", "qualified_name": "sample::C.f", "signature": "def f(*args: int, a=1,b=2,c=3,d=4,e=5,f=6,g=7):", "start_byte": 13, "start_column": 5, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 96, "end_column": 31, "end_line": 3, "file_path": "sample", "key": "symbol:sample::C.g:70", "kind": "function", "language": "python", "line_count": null, "name": "g", "parameter_count": null, "parent_key": "symbol:sample::C:0", "qualified_name": "sample::C.g", "signature": "def g(**kwargs: int):", "start_byte": 70, "start_column": 5, "start_line": 3, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,17 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 66, "evidence": "vec![{let brew=||2;brew()}]", "file_path": "main.rs", "line": 1, "name": "vec!", "qualifier": null, "relationship": "CALLS", "start_byte": 39}, {"bare_target": false, "end_byte": 64, "evidence": "brew()", "file_path": "main.rs", "line": 1, "name": "brew", "qualifier": null, "relationship": "CALLS", "start_byte": 58}, {"bare_target": false, "end_byte": 95, "evidence": "stringify!(brew())", "file_path": "main.rs", "line": 1, "name": "stringify!", "qualifier": null, "relationship": "CALLS", "start_byte": 77}], "content_hash": "db3e0c2f3fd364f77e489825db87df9ad2d6a590e88e4f4c253e3ecaaaf1a885", "imports": [], "inheritances": [], "language": "rust", "parse_error": null, "path": "main.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 17, "end_column": 18, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::brew:0", "kind": "function", "language": "rust", "line_count": null, "name": "brew", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::brew", "signature": "fn brew()->i32", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 97, "end_column": 98, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::main:18", "kind": "function", "language": "rust", "line_count": null, "name": "main", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::main", "signature": "fn main()", "start_byte": 18, "start_column": 19, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "vec![{let brew=||2;brew()}]", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:18", "target_key": "external:rust:callable:vec!", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "brew()", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:18", "target_key": "external:rust:callable:brew", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "stringify!(brew())", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:18", "target_key": "external:rust:callable:stringify!", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:rust:callable:vec!", "kind": "callable", "language": "rust", "name": "vec!"},
+{"key": "external:rust:callable:brew", "kind": "callable", "language": "rust", "name": "brew"},
+{"key": "external:rust:callable:stringify!", "kind": "callable", "language": "rust", "name": "stringify!"}
+]
+}
+}

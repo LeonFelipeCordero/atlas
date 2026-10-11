@@ -1,0 +1,18 @@
+{
+"files": [
+{"calls": [], "content_hash": "47befaeb90e8d54ae41f41077b14799f81f7381a9407f976b64ae7eb86eba90f", "imports": [], "inheritances": [], "language": "javascript", "parse_error": null, "path": "tools.js", "symbols": [{"complexity": null, "decorators": [], "end_byte": 38, "end_column": 39, "end_line": 1, "file_path": "tools.js", "key": "symbol:tools.js::R:7", "kind": "class", "language": "javascript", "line_count": null, "name": "R", "parameter_count": null, "parent_key": "file:tools.js", "qualified_name": "tools.js::R", "signature": "class R", "start_byte": 7, "start_column": 8, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 36, "end_column": 37, "end_line": 1, "file_path": "tools.js", "key": "symbol:tools.js::R.work:17", "kind": "method", "language": "javascript", "line_count": null, "name": "work", "parameter_count": null, "parent_key": "symbol:tools.js::R:7", "qualified_name": "tools.js::R.work", "signature": "static work(tag)", "start_byte": 17, "start_column": 18, "start_line": 1, "visibility": null}]},
+{"calls": [{"bare_target": true, "end_byte": 47, "evidence": "use(([R])=>R.work())", "file_path": "main.js", "line": 1, "name": "use", "qualifier": null, "relationship": "CALLS", "start_byte": 27}, {"bare_target": false, "end_byte": 46, "evidence": "R.work()", "file_path": "main.js", "line": 1, "name": "work", "qualifier": "R", "relationship": "CALLS", "start_byte": 38}, {"bare_target": false, "end_byte": 58, "evidence": "R.work(2)", "file_path": "main.js", "line": 1, "name": "work", "qualifier": "R", "relationship": "CALLS", "start_byte": 49}], "content_hash": "c2bc7ebce67ad8afe1eb7e3db0590b0df2050a3210f31890a4824c8914bf8a7d", "imports": [{"file_path": "main.js", "line": 1, "source": "import {R} from './tools';"}], "inheritances": [], "language": "javascript", "parse_error": null, "path": "main.js", "symbols": [{"complexity": null, "decorators": [], "end_byte": 46, "end_column": 47, "end_line": 1, "file_path": "main.js", "key": "symbol:main.js::<anonymous>:31", "kind": "function", "language": "javascript", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:main.js", "qualified_name": "main.js::<anonymous>", "signature": "([R])=>", "start_byte": 31, "start_column": 32, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "import {R} from './tools';", "line": 1, "path": "main.js", "source_key": "file:main.js", "target_key": "file:tools.js", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "use(([R])=>R.work())", "line": 1, "path": "main.js", "source_key": "file:main.js", "target_key": "external:javascript:callable:use", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.work()", "line": 1, "path": "main.js", "source_key": "symbol:main.js::<anonymous>:31", "target_key": "external:javascript:callable:work", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "R.work(2)", "line": 1, "path": "main.js", "source_key": "file:main.js", "target_key": "symbol:tools.js::R.work:17", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:javascript:callable:use", "kind": "callable", "language": "javascript", "name": "use"},
+{"key": "external:javascript:callable:work", "kind": "callable", "language": "javascript", "name": "work"}
+]
+}
+}

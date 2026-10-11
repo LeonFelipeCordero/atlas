@@ -1,0 +1,14 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 136, "evidence": "parameter.persist()", "file_path": "app.go", "line": 4, "name": "persist", "qualifier": "parameter", "relationship": "CALLS", "start_byte": 117}, {"bare_target": false, "end_byte": 155, "evidence": "unknown.persist()", "file_path": "app.go", "line": 4, "name": "persist", "qualifier": "unknown", "relationship": "CALLS", "start_byte": 138}], "content_hash": "45052af84a48d1d4baee29cd421a9d4f4dcbbf1ac206797ab63718ddb98f548e", "imports": [], "inheritances": [], "language": "go", "parse_error": null, "path": "app.go", "symbols": [{"complexity": null, "decorators": [], "end_byte": 34, "end_column": 22, "end_line": 2, "file_path": "app.go", "key": "symbol:app.go::Service:18", "kind": "type", "language": "go", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::Service", "signature": "Service struct{}", "start_byte": 18, "start_column": 6, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 65, "end_column": 31, "end_line": 3, "file_path": "app.go", "key": "symbol:app.go::persist:35", "kind": "method", "language": "go", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::persist", "signature": "func (s *Service) persist()", "start_byte": 35, "start_column": 1, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 157, "end_column": 92, "end_line": 4, "file_path": "app.go", "key": "symbol:app.go::run:66", "kind": "function", "language": "go", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:app.go", "qualified_name": "app.go::run", "signature": "func run(parameter *Service)", "start_byte": 66, "start_column": 1, "start_line": 4, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "parameter.persist()", "line": 4, "path": "app.go", "source_key": "symbol:app.go::run:66", "target_key": "symbol:app.go::persist:35", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "unknown.persist()", "line": 4, "path": "app.go", "source_key": "symbol:app.go::run:66", "target_key": "external:go:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:go:callable:persist", "kind": "callable", "language": "go", "name": "persist"}
+]
+}
+}

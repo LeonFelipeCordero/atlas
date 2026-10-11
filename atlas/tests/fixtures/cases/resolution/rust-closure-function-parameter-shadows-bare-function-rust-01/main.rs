@@ -1,0 +1,1 @@
+fn brew(){} fn main(){let callback=|brew:fn()|brew(); brew();}

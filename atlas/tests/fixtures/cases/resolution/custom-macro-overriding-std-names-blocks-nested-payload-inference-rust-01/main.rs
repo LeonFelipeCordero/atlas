@@ -1,0 +1,1 @@
+macro_rules! println {($x:expr)=>{stringify!($x)}} fn brew()->i32{1} fn main(){format!("{}", println!(brew()));}

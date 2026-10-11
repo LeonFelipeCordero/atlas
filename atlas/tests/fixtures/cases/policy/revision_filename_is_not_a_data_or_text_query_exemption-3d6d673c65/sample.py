@@ -1,0 +1,1 @@
+connection.exec_driver_sql('PRAGMA query_only=ON')

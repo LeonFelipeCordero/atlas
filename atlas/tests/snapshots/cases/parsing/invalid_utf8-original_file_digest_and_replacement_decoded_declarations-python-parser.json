@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "2320efbfbdefbfbdefbfbdefbfbd0a64656620776f726b28293a0a2072657475726e2022efbfbd220a776f726b28290a"}, "language": "python", "path": "sample.py"},
+"content_hash": "d6a661a8097fb59dcb8480565174bb692b377faf85d9faf1882ff978357e7ab8",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 40, "end_column": 14, "end_line": 3, "file_path": "sample.py", "key": "symbol:sample.py::work:15", "kind": "function", "language": "python", "line_count": null, "name": "work", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::work", "signature": "def work():", "start_byte": 15, "start_column": 1, "start_line": 2, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 47, "evidence": "work()", "file_path": "sample.py", "line": 4, "name": "work", "qualifier": null, "relationship": "CALLS", "start_byte": 41}],
+"imports": [],
+"inheritances": []
+}

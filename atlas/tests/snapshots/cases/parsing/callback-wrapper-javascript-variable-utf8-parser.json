@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "2f2a20636166c3a920f09f9880202a2f0a636f6e73742066203d2028282866756e6374696f6e20696e7465726e616c2829207b2066756e6374696f6e206c6f63616c2829207b7d2072657475726e206c6f63616c28293b207d2929293b"}, "language": "javascript", "path": "sample.js"},
+"content_hash": "02a1d2fd14c62315515f385693d1882c815a0bfd9f09b7f2d5dfe56d4a926be1",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 89, "end_column": 73, "end_line": 2, "file_path": "sample.js", "key": "symbol:sample.js::f:30", "kind": "function", "language": "javascript", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::f", "signature": "function internal() { function local() {} return local(); }", "start_byte": 30, "start_column": 14, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 71, "end_column": 55, "end_line": 2, "file_path": "sample.js", "key": "symbol:sample.js::f.local:52", "kind": "function", "language": "javascript", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:sample.js::f:30", "qualified_name": "sample.js::f.local", "signature": "function local()", "start_byte": 52, "start_column": 36, "start_line": 2, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 86, "evidence": "local()", "file_path": "sample.js", "line": 2, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 79}],
+"imports": [],
+"inheritances": []
+}

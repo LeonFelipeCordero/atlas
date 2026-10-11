@@ -1,0 +1,3 @@
+[
+  {"allowed": true, "id": "public_domain_introspection_is_not_private_handle_extraction-1293e18410", "module": "atlas.metrics.introspection", "old_test": "test_database_boundary_regressions.py::test_public_domain_introspection_is_not_private_handle_extraction", "operation": "boundary", "package": "atlas.metrics"}
+]

@@ -1,0 +1,5 @@
+[
+  {"allowed": true, "id": "setup_sql_is_confined_to_exact_connection_infrastructure-f11324eacd", "module": "atlas.persistence.database", "old_test": "test_database_boundaries.py::test_setup_sql_is_confined_to_exact_connection_infrastructure", "operation": "boundary", "package": "atlas.persistence"},
+  {"allowed": true, "id": "setup_sql_is_confined_to_exact_connection_infrastructure-acc91a2190", "module": "atlas.persistence.migrations.env", "old_test": "test_database_boundaries.py::test_setup_sql_is_confined_to_exact_connection_infrastructure", "operation": "boundary", "package": "atlas.persistence.migrations"},
+  {"allowed": true, "id": "setup_sql_is_confined_to_exact_connection_infrastructure-b24f54e1a8", "module": "atlas.persistence.navigation_database", "old_test": "test_database_boundaries.py::test_setup_sql_is_confined_to_exact_connection_infrastructure", "operation": "boundary", "package": "atlas.persistence"}
+]

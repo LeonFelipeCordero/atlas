@@ -1,0 +1,1 @@
+val f = fun(a: Int, b: Int): Int { return a }

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "696e746572666163652043207b206d3c543e28746869733a20432c20783a2054293a20766f69643b2063623a2028613a20582c20623a205929203d3e205a3b207d"}, "language": "typescript", "path": "sample"},
+"content_hash": "02965b51de3d0714eb8c4d4d47049ea1ad9cf58d25c233353b11810e4d50fa59",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 65, "end_column": 66, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C:0", "kind": "interface", "language": "typescript", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::C", "signature": "interface C", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 39, "end_column": 40, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C.m:14", "kind": "method", "language": "typescript", "line_count": null, "name": "m", "parameter_count": null, "parent_key": "symbol:sample::C:0", "qualified_name": "sample::C.m", "signature": "m<T>(this: C, x: T): void", "start_byte": 14, "start_column": 15, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 62, "end_column": 63, "end_line": 1, "file_path": "sample", "key": "symbol:sample::C.cb:41", "kind": "method", "language": "typescript", "line_count": null, "name": "cb", "parameter_count": null, "parent_key": "symbol:sample::C:0", "qualified_name": "sample::C.cb", "signature": "cb: (a: X, b: Y) => Z", "start_byte": 41, "start_column": 42, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

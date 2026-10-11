@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "4044657072656361746564207075626c696320636c6173732053657276696365207b7d"}, "language": "java", "path": "sample.java"},
+"content_hash": "73e9dd047086e742272691114b3f9bc6d8b681dc08b2e002659340f05f6e8354",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": ["@Deprecated"], "end_byte": 35, "end_column": 36, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Service:0", "kind": "class", "language": "java", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::Service", "signature": "@Deprecated public class Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

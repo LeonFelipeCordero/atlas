@@ -1,5 +1,8 @@
 """Selective imports must not be mistaken for namespace bindings."""
 
+from tests.import_snapshot_support import import_case_sources as case_sources
+from tests.source_snapshot_fixture import case_text
+
 import unittest
 
 from atlas.metrics.adapters.resolution import _namespace_binding
@@ -9,27 +12,14 @@ from tests.test_semantic_resolution import repository
 
 class ImportBindingGuardTest(unittest.TestCase):
     def test_selective_and_from_imports_never_bind_module_namespace(self) -> None:
-        for source in ("import {work} from './tools'", "from tools import work"):
+        for case_id, path in (("namespace-binding-guard-typescript", "sample.ts"), ("namespace-binding-guard-python", "sample.py")):
+            source = case_text("imports", case_id, path)
             with self.subTest(source=source):
                 self.assertIsNone(_namespace_binding(source, "tools"))
 
     def test_selective_import_resolves_export_but_not_unbound_module(self) -> None:
-        for language, sources in (
-            (
-                "python",
-                {
-                    "tools.py": "def work(): pass",
-                    "main.py": "from tools import work\ntools.work()\nwork()",
-                },
-            ),
-            (
-                "typescript",
-                {
-                    "tools.ts": "export function work() {}",
-                    "main.ts": "import {work} from './tools'; tools.work(); work();",
-                },
-            ),
-        ):
+        for language in ("python", "typescript"):
+            sources = case_sources("imports", "selective-import-" + language)
             with self.subTest(language=language):
                 self.check_selective_import(language, sources)
 

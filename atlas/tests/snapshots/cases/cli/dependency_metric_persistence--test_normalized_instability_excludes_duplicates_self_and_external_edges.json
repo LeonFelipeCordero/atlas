@@ -1,0 +1,482 @@
+[
+  {
+    "kind": "get_report_facts",
+    "value": {
+      "diagnostics": [],
+      "edges": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "a.py",
+          "sourceStableKey": "file:a.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "b.py",
+          "sourceStableKey": "file:b.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "c.py",
+          "sourceStableKey": "file:c.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "d.py",
+          "sourceStableKey": "file:d.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import unstable",
+          "line": 1,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "file:unstable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import unstable",
+          "line": 2,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "file:unstable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 3,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "EXTRACTED",
+          "evidence": "import missing",
+          "line": 4,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "external:python:module:missing",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import a",
+          "line": 1,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:a.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import b",
+          "line": 2,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:b.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import c",
+          "line": 3,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:c.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import d",
+          "line": 4,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:d.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        }
+      ],
+      "graphRevision": "<revision>",
+      "imports": [
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "a.py",
+          "sourceStableKey": "file:a.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "b.py",
+          "sourceStableKey": "file:b.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "c.py",
+          "sourceStableKey": "file:c.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 1,
+          "path": "d.py",
+          "sourceStableKey": "file:d.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import unstable",
+          "line": 1,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "file:unstable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import unstable",
+          "line": 2,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "file:unstable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import stable",
+          "line": 3,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "file:stable.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "EXTRACTED",
+          "evidence": "import missing",
+          "line": 4,
+          "path": "stable.py",
+          "sourceStableKey": "file:stable.py",
+          "targetStableKey": "external:python:module:missing",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import a",
+          "line": 1,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:a.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import b",
+          "line": 2,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:b.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import c",
+          "line": 3,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:c.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        },
+        {
+          "confidence": "INFERRED",
+          "evidence": "import d",
+          "line": 4,
+          "path": "unstable.py",
+          "sourceStableKey": "file:unstable.py",
+          "targetStableKey": "file:d.py",
+          "type": "IMPORTS",
+          "typeOnly": false
+        }
+      ],
+      "nodes": [
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "repository",
+          "level": "repository",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "source",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": null,
+          "path": ".",
+          "qualifiedName": "source",
+          "stableKey": "repository",
+          "startLine": null,
+          "type": "repository"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "directory",
+          "level": "module",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "source",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": ".",
+          "qualifiedName": "source",
+          "stableKey": "module:.",
+          "startLine": null,
+          "type": "module"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 1,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "a.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "a.py",
+          "qualifiedName": "a.py",
+          "stableKey": "file:a.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 1,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "b.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "b.py",
+          "qualifiedName": "b.py",
+          "stableKey": "file:b.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 1,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "c.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "c.py",
+          "qualifiedName": "c.py",
+          "stableKey": "file:c.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 1,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "d.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "d.py",
+          "qualifiedName": "d.py",
+          "stableKey": "file:d.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 1,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "isolated.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "isolated.py",
+          "qualifiedName": "isolated.py",
+          "stableKey": "file:isolated.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 4,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "stable.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "stable.py",
+          "qualifiedName": "stable.py",
+          "stableKey": "file:stable.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 4,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "unstable.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "unstable.py",
+          "qualifiedName": "unstable.py",
+          "stableKey": "file:unstable.py",
+          "startLine": null,
+          "type": "file"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "module",
+          "level": "external",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "missing",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": null,
+          "qualifiedName": "external:python:missing",
+          "stableKey": "external:python:module:missing",
+          "startLine": null,
+          "type": "external"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "dependency_metrics",
+    "value": {
+      "file:a.py": {
+        "fanIn": 1,
+        "fanOut": 1,
+        "instability": 0.5,
+        "transitiveChangeImpact": 5
+      },
+      "file:b.py": {
+        "fanIn": 1,
+        "fanOut": 1,
+        "instability": 0.5,
+        "transitiveChangeImpact": 5
+      },
+      "file:c.py": {
+        "fanIn": 1,
+        "fanOut": 1,
+        "instability": 0.5,
+        "transitiveChangeImpact": 5
+      },
+      "file:d.py": {
+        "fanIn": 1,
+        "fanOut": 1,
+        "instability": 0.5,
+        "transitiveChangeImpact": 5
+      },
+      "file:isolated.py": {
+        "fanIn": 0,
+        "fanOut": 0,
+        "instability": null,
+        "transitiveChangeImpact": 0
+      },
+      "file:stable.py": {
+        "fanIn": 4,
+        "fanOut": 1,
+        "instability": 0.2,
+        "transitiveChangeImpact": 5
+      },
+      "file:unstable.py": {
+        "fanIn": 1,
+        "fanOut": 4,
+        "instability": 0.8,
+        "transitiveChangeImpact": 5
+      }
+    }
+  }
+]

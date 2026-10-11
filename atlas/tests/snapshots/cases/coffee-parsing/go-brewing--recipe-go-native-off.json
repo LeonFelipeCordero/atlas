@@ -1,0 +1,38 @@
+[
+  {
+    "kind": "function",
+    "name": "portions",
+    "visibility": null,
+    "span": {
+      "start_byte": 168,
+      "end_byte": 297,
+      "start_line": 4,
+      "start_column": 0,
+      "end_line": 13,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func portions(name string) int {\n\tswitch name {\n\tcase \"espresso\":\n\t\treturn 2\n\tcase \"filter\":\n\t\treturn 3\n\tdefault:\n\t\treturn 0\n\t}\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "preview",
+    "visibility": null,
+    "span": {
+      "start_byte": 299,
+      "end_byte": 366,
+      "start_line": 15,
+      "start_column": 0,
+      "end_line": 17,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func preview(name string) string {\n\treturn render([]string{name})\n}",
+    "body_span": null
+  }
+]

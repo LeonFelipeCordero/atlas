@@ -1,5 +1,6 @@
 """Counterexamples found by independent review; never bless unsafe targets."""
 
+from tests.resolution_snapshot_support import fixture_sources
 from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import ResolutionAssertions, call_edges, repository
 
@@ -8,14 +9,16 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_java_base_is_looked_up_outside_the_derived_class_body(self):
         repo = repository(
             "java",
-            {
-                "main.java": "class Base {} class Derived extends Base {static class Base {}}"
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_java_base_is_looked_up_outside_the_derived_class_body:9-15"
+            ),
         )
         edge = next(
-            edge
-            for edge in resolve_connections(repo).connections
-            if edge.type == "INHERITS"
+            (
+                edge
+                for edge in resolve_connections(repo).connections
+                if edge.type == "INHERITS"
+            )
         )
         self.assertIn("main.java::Base:", edge.target_key)
         self.assertNotIn("Derived.Base", edge.target_key)
@@ -23,15 +26,16 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_python_imported_base_is_not_shadowed_by_future_class_body(self):
         repo = repository(
             "python",
-            {
-                "base.py": "class Base: pass",
-                "main.py": "from base import Base\nclass Derived(Base):\n class Base: pass",
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_python_imported_base_is_not_shadowed_by_future_class_body:24-15"
+            ),
         )
         edge = next(
-            edge
-            for edge in resolve_connections(repo).connections
-            if edge.type == "INHERITS"
+            (
+                edge
+                for edge in resolve_connections(repo).connections
+                if edge.type == "INHERITS"
+            )
         )
         self.assertIn("base.py::Base:", edge.target_key)
 
@@ -40,12 +44,10 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
             with self.subTest(language=language):
                 repo = repository(
                     language,
-                    {
-                        "r."
-                        + extension: "function hidden() {} function api() {} export {hidden as api};",
-                        "main."
-                        + extension: "import * as r from './r'; r.hidden(); r.api();",
-                    },
+                    fixture_sources(
+                        "resolution_review_regressions:test_js_namespace_export_aliases_do_not_expose_private_names:41-23",
+                        language=language,
+                    ),
                 )
                 self.external(repo, "r.hidden()")
                 self.internal(repo, "r.api()", "r." + extension + "::hidden:")
@@ -53,10 +55,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_js_default_namespace_and_named_export_aliases_keep_real_keys(self):
         repo = repository(
             "typescript",
-            {
-                "r.ts": "function hidden(){} export {hidden as api, hidden as default};",
-                "main.ts": "import * as r from './r'; import {api as run} from './r'; r.default(); run(); r.hidden();",
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_js_default_namespace_and_named_export_aliases_keep_real_keys:54-15"
+            ),
         )
         self.internal(repo, "r.default()", "r.ts::hidden:")
         self.internal(repo, "run()", "r.ts::hidden:")
@@ -65,9 +66,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_macro_stringification_and_unknown_payloads_are_not_runtime_calls(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "fn brew()->i32{1} fn main(){stringify!(brew()); custom!(brew());}"
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_macro_stringification_and_unknown_payloads_are_not_runtime_calls:66-15"
+            ),
         )
         self.assertNotIn("brew", {call.name for call in repo.calls})
         self.assertEqual({call.name for call in repo.calls}, {"stringify!", "custom!"})
@@ -75,22 +76,22 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_macro_local_bindings_are_not_repository_functions(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "fn brew()->i32{1} fn main(){let values=vec![{let brew=||2;brew()}]; let text=stringify!(brew());}"
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_macro_local_bindings_are_not_repository_functions:76-15"
+            ),
         )
         self.external(repo, "brew()")
         self.assertEqual(len(call_edges(repo, "brew()")), 1)
         self.assertFalse(
-            any("main.rs::brew:" in edge.target_key for edge in call_edges(repo))
+            any(("main.rs::brew:" in edge.target_key for edge in call_edges(repo)))
         )
 
     def test_rust_closure_function_parameter_shadows_bare_function(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "fn brew(){} fn main(){let callback=|brew:fn()|brew(); brew();}"
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_rust_closure_function_parameter_shadows_bare_function:89-15"
+            ),
         )
         edges = call_edges(repo, "brew()")
         self.assertEqual(len(edges), 2)
@@ -100,39 +101,37 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_macro_method_receivers_do_not_become_module_namespaces(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": 'mod recipe; fn main(){println!("{}", recipe.portions());}',
-                "recipe.rs": "pub fn portions()->i32{1}",
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_macro_method_receivers_do_not_become_module_namespaces:101-15"
+            ),
         )
         self.external(repo, "recipe.portions()")
 
     def test_custom_macro_overriding_std_names_blocks_nested_payload_inference(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": 'macro_rules! println {($x:expr)=>{stringify!($x)}} fn brew()->i32{1} fn main(){format!("{}", println!(brew()));}'
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_custom_macro_overriding_std_names_blocks_nested_payload_inference:111-15"
+            ),
         )
         self.assertNotIn("brew", {call.name for call in repo.calls})
         self.assertIn("println!", {call.name for call in repo.calls})
 
     def test_nested_macro_payloads_keep_enclosing_local_bindings(self):
         declarations = [
-            "let brew=||2;",
-            "const brew:fn()->i32=||2;",
-            "static brew:fn()->i32=||2;",
-            "use other::other as brew;",
+            "nested-macro-payloads-keep-enclosing-local-bindings-rust-01",
+            "nested-macro-payloads-keep-enclosing-local-bindings-rust-02",
+            "nested-macro-payloads-keep-enclosing-local-bindings-rust-03",
+            "nested-macro-payloads-keep-enclosing-local-bindings-rust-04",
         ]
         for declaration in declarations:
             with self.subTest(declaration=declaration):
                 repo = repository(
                     "rust",
-                    {
-                        "main.rs": "mod other{pub fn other()->i32{2}} fn brew()->i32{1} fn main(){let _=vec![{"
-                        + declaration
-                        + "dbg!(brew())}];}"
-                    },
+                    fixture_sources(
+                        "resolution_review_regressions:test_nested_macro_payloads_keep_enclosing_local_bindings:129-23",
+                        declaration=declaration,
+                    ),
                 )
                 self.external(repo, "brew()")
                 self.assertEqual(len(call_edges(repo, "brew()")), 1)
@@ -140,9 +139,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_nested_custom_macro_definitions_remain_in_context(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": 'fn brew()->i32{1} fn main(){let _=vec![{macro_rules! dbg{($e:expr)=>{stringify!($e)}} format!("{}",dbg!(brew()))}];}'
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_nested_custom_macro_definitions_remain_in_context:141-15"
+            ),
         )
         self.assertNotIn("brew", {call.name for call in repo.calls})
         self.assertIn("dbg!", {call.name for call in repo.calls})
@@ -150,9 +149,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_aliased_standard_macro_namespace_is_not_assumed_standard(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "mod custom{pub use std::stringify as dbg;} use custom as std; fn brew()->i32{1} fn main(){std::dbg!(brew());}"
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_aliased_standard_macro_namespace_is_not_assumed_standard:151-15"
+            ),
         )
         self.assertNotIn("brew", {call.name for call in repo.calls})
         self.assertIn("std::dbg!", {call.name for call in repo.calls})
@@ -160,11 +159,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_future_class_body_import_does_not_shadow_base_header(self):
         repo = repository(
             "python",
-            {
-                "tools.py": "class Base: pass",
-                "other.py": "class Base: pass",
-                "main.py": "from tools import Base\nclass Derived(Base):\n from other import Base",
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_future_class_body_import_does_not_shadow_base_header:161-15"
+            ),
         )
         inherited = [
             edge
@@ -177,11 +174,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_rust_child_module_is_not_a_false_crate_root(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "mod outer; fn main(){crate::inner::work(); crate::outer::inner::work();}",
-                "outer.rs": "pub mod inner;",
-                "outer/inner.rs": "pub fn work(){}",
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_rust_child_module_is_not_a_false_crate_root:178-15"
+            ),
         )
         self.external(repo, "crate::inner::work()")
         self.internal(repo, "crate::outer::inner::work()", "outer/inner.rs::work")
@@ -189,11 +184,9 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
     def test_inline_rust_module_members_import_scopes_and_aliases(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "mod tools{pub fn work(){}} mod outer {use super::tools as t; pub mod inner; pub fn run(){t::work(); inner::work();}} fn main(){crate::outer::run(); t::work();}",
-                "outer/inner.rs": "pub fn work(){}",
-                "inner.rs": "pub fn work(){}",
-            },
+            fixture_sources(
+                "resolution_review_regressions:test_inline_rust_module_members_import_scopes_and_aliases:190-15"
+            ),
         )
         self.internal(repo, "crate::outer::run()", "main.rs::outer.run")
         self.internal(repo, "inner::work()", "outer/inner.rs::work")
@@ -208,5 +201,5 @@ class ResolutionReviewRegressionTest(ResolutionAssertions):
         ]
         self.assertTrue(imports)
         self.assertTrue(
-            all(edge.target_key.startswith(("symbol:", "file:")) for edge in imports)
+            all((edge.target_key.startswith(("symbol:", "file:")) for edge in imports))
         )

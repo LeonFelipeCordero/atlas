@@ -1,0 +1,31 @@
+[
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": []
+    }
+  },
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": [
+        {
+          "actual": 101,
+          "details": [
+            "Lines is 101 (maximum: 100)."
+          ],
+          "files": [
+            {
+              "line": 10,
+              "path": "app.py"
+            }
+          ],
+          "limit": 100,
+          "metric": "lineCount",
+          "rule": "maxFunctionLines",
+          "subject": "function"
+        }
+      ]
+    }
+  }
+]

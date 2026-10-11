@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [], "content_hash": "932e2166867cb223714c4e961e7368b9a737f5932781c14769ef7fc2f55c9b0b", "imports": [], "inheritances": [], "language": "javascript", "parse_error": null, "path": "service.js", "symbols": [{"complexity": null, "decorators": [], "end_byte": 34, "end_column": 35, "end_line": 1, "file_path": "service.js", "key": "symbol:service.js::Service:7", "kind": "class", "language": "javascript", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:service.js", "qualified_name": "service.js::Service", "signature": "class Service", "start_byte": 7, "start_column": 8, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 33, "end_column": 34, "end_line": 1, "file_path": "service.js", "key": "symbol:service.js::Service.persist:22", "kind": "method", "language": "javascript", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:service.js::Service:7", "qualified_name": "service.js::Service.persist", "signature": "persist()", "start_byte": 22, "start_column": 23, "start_line": 1, "visibility": null}]},
+{"calls": [{"bare_target": true, "end_byte": 93, "evidence": "new Service()", "file_path": "app.js", "line": 1, "name": "Service", "qualifier": null, "relationship": "CALLS", "start_byte": 80}, {"bare_target": false, "end_byte": 147, "evidence": "local.persist()", "file_path": "app.js", "line": 1, "name": "persist", "qualifier": "local", "relationship": "CALLS", "start_byte": 132}], "content_hash": "ef2b09e74330e84024720365c9ce7ecce662ffeed985f1477735a2c63f254df9", "imports": [{"file_path": "app.js", "line": 1, "source": "import {Service as Alias, Service} from './service';"}], "inheritances": [], "language": "javascript", "parse_error": null, "path": "app.js", "symbols": [{"complexity": null, "decorators": [], "end_byte": 149, "end_column": 150, "end_line": 1, "file_path": "app.js", "key": "symbol:app.js::run:53", "kind": "function", "language": "javascript", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:app.js", "qualified_name": "app.js::run", "signature": "function run()", "start_byte": 53, "start_column": 54, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "import {Service as Alias, Service} from './service';", "line": 1, "path": "app.js", "source_key": "file:app.js", "target_key": "file:service.js", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "new Service()", "line": 1, "path": "app.js", "source_key": "symbol:app.js::run:53", "target_key": "symbol:service.js::Service:7", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "local.persist()", "line": 1, "path": "app.js", "source_key": "symbol:app.js::run:53", "target_key": "external:javascript:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:javascript:callable:persist", "kind": "callable", "language": "javascript", "name": "persist"}
+]
+}
+}

@@ -1,0 +1,1 @@
+session = service._session

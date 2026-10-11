@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566206f757465722861293a0a0a2020202064656620696e6e65722862293a0a202020202020202072657475726e20620a2020202072657475726e20696e6e65722861290a"}, "language": "python", "path": "sample"},
+"content_hash": "370d7b5fe24b084ebd5bd5de997428734db9e46145055a413afad18ab33d0757",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 69, "end_column": 20, "end_line": 5, "file_path": "sample", "key": "symbol:sample::outer:0", "kind": "function", "language": "python", "line_count": null, "name": "outer", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::outer", "signature": "def outer(a):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 49, "end_column": 17, "end_line": 4, "file_path": "sample", "key": "symbol:sample::outer.inner:19", "kind": "function", "language": "python", "line_count": null, "name": "inner", "parameter_count": null, "parent_key": "symbol:sample::outer:0", "qualified_name": "sample::outer.inner", "signature": "def inner(b):", "start_byte": 19, "start_column": 5, "start_line": 3, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 69, "evidence": "inner(a)", "file_path": "sample", "line": 5, "name": "inner", "qualifier": null, "relationship": "CALLS", "start_byte": 61}],
+"imports": [],
+"inheritances": []
+}

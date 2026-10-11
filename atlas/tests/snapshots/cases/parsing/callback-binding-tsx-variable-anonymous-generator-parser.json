@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636f6e73742066203d2028282866756e6374696f6e2a202829207b2066756e6374696f6e206c6f63616c2829207b7d207969656c64206c6f63616c28293b207d2929293b"}, "language": "tsx", "path": "main.js"},
+"content_hash": "befffa1147b17a10042b4149720e808ec5d1e7b2529410459884dfeaefead220",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 64, "end_column": 65, "end_line": 1, "file_path": "main.js", "key": "symbol:main.js::f:13", "kind": "function", "language": "tsx", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:main.js", "qualified_name": "main.js::f", "signature": "function* () { function local() {} yield local(); }", "start_byte": 13, "start_column": 14, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 47, "end_column": 48, "end_line": 1, "file_path": "main.js", "key": "symbol:main.js::f.local:28", "kind": "function", "language": "tsx", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:main.js::f:13", "qualified_name": "main.js::f.local", "signature": "function local()", "start_byte": 28, "start_column": 29, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 61, "evidence": "local()", "file_path": "main.js", "line": 1, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 54}],
+"imports": [],
+"inheritances": []
+}

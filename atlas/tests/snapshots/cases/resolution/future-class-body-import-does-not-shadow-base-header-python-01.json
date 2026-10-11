@@ -1,0 +1,17 @@
+{
+"files": [
+{"calls": [], "content_hash": "acc9fc0de04cff2bf3cf5b8d7a4e54f2e187df90a243a93d4562a67af671cd6c", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "tools.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 16, "end_column": 17, "end_line": 1, "file_path": "tools.py", "key": "symbol:tools.py::Base:0", "kind": "class", "language": "python", "line_count": null, "name": "Base", "parameter_count": null, "parent_key": "file:tools.py", "qualified_name": "tools.py::Base", "signature": "class Base:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}]},
+{"calls": [], "content_hash": "acc9fc0de04cff2bf3cf5b8d7a4e54f2e187df90a243a93d4562a67af671cd6c", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "other.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 16, "end_column": 17, "end_line": 1, "file_path": "other.py", "key": "symbol:other.py::Base:0", "kind": "class", "language": "python", "line_count": null, "name": "Base", "parameter_count": null, "parent_key": "file:other.py", "qualified_name": "other.py::Base", "signature": "class Base:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}]},
+{"calls": [], "content_hash": "4a17b336c2d7365c3631558bfae1dc4d4ae3a0b2a79bbb6dddb3136796061ec7", "imports": [{"file_path": "main.py", "line": 1, "source": "from tools import Base"}, {"file_path": "main.py", "line": 3, "source": "from other import Base"}], "inheritances": [{"evidence": "class Derived(Base):", "file_path": "main.py", "language": "python", "line": 2, "source_key": "symbol:main.py::Derived:23", "target_name": "Base"}], "language": "python", "parse_error": null, "path": "main.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 67, "end_column": 24, "end_line": 3, "file_path": "main.py", "key": "symbol:main.py::Derived:23", "kind": "class", "language": "python", "line_count": null, "name": "Derived", "parameter_count": null, "parent_key": "file:main.py", "qualified_name": "main.py::Derived", "signature": "class Derived(Base):", "start_byte": 23, "start_column": 1, "start_line": 2, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "from tools import Base", "line": 1, "path": "main.py", "source_key": "file:main.py", "target_key": "file:tools.py", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "from other import Base", "line": 3, "path": "main.py", "source_key": "file:main.py", "target_key": "file:other.py", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "class Derived(Base):", "line": 2, "path": "main.py", "source_key": "symbol:main.py::Derived:23", "target_key": "symbol:tools.py::Base:0", "type": "INHERITS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

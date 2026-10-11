@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "6465662063686f6f7365287829207768656e2078203e203020616e642072656164792c20646f3a20756e6c6573732878203e2031302c20646f3a20616363657074282929"}, "language": "elixir", "path": "sample.ex"},
+"content_hash": "e0939041927a00d4c067414cf15d77b93e09acea949d8380cbf23e773dc2b01c",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 68, "end_column": 69, "end_line": 1, "file_path": "sample.ex", "key": "symbol:sample.ex::choose:0", "kind": "function", "language": "elixir", "line_count": null, "name": "choose", "parameter_count": null, "parent_key": "file:sample.ex", "qualified_name": "sample.ex::choose", "signature": "def choose(x) when x > 0 and ready, do:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": "public"}],
+"calls": [{"bare_target": true, "end_byte": 67, "evidence": "accept()", "file_path": "sample.ex", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 59}],
+"imports": [],
+"inheritances": []
+}

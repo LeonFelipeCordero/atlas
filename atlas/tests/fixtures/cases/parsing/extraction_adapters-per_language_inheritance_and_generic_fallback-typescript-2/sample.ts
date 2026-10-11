@@ -1,0 +1,1 @@
+interface Child extends pkg.Base, Service {}

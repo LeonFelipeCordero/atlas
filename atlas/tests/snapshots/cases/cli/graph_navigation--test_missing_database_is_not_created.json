@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 1,
+    "output": "{\"error\": \"Cannot read graph database <tmp>/absent/database.sqlite: (sqlite3.OperationalError) unable to open database file\\n(Background on this error at: https://sqlalche.me/e/21/e3q8). Index the project after explicitly migrating the database.\"}\n",
+    "stdout": "",
+    "stderr": "{\"error\": \"Cannot read graph database <tmp>/absent/database.sqlite: (sqlite3.OperationalError) unable to open database file\\n(Background on this error at: https://sqlalche.me/e/21/e3q8). Index the project after explicitly migrating the database.\"}\n"
+  }
+]

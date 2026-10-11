@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "78203d206c616d62646120612c20623d63616c6c28312c2032292c202a617267733a2061"}, "language": "python", "path": "sample"},
+"content_hash": "836c2bf1b6caecd04aef4455eda0ec30c066428fb41df360fc61e588e6841fd1",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 36, "end_column": 37, "end_line": 1, "file_path": "sample", "key": "symbol:sample::<anonymous>:4", "kind": "function", "language": "python", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::<anonymous>", "signature": "lambda a, b=call(1, 2), *args: a", "start_byte": 4, "start_column": 5, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 26, "evidence": "call(1, 2)", "file_path": "sample", "line": 1, "name": "call", "qualifier": null, "relationship": "CALLS", "start_byte": 16}],
+"imports": [],
+"inheritances": []
+}

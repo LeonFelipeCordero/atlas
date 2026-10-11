@@ -1,0 +1,1 @@
+object.action = (((function* () { function local() {} yield local(); })));

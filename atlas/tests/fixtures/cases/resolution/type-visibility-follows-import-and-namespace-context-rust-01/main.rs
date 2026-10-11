@@ -1,0 +1,1 @@
+mod tools; fn run(local: &tools::Service){ local.persist(); }

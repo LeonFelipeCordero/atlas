@@ -1,0 +1,13 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 123, "evidence": "this.service.persist()", "file_path": "app.ts", "line": 1, "name": "persist", "qualifier": "this.service", "relationship": "CALLS", "start_byte": 101}], "content_hash": "09623c9047cf84629825f8bfec565148616508093e06742105029bbd5a1f5013", "imports": [], "inheritances": [], "language": "typescript", "parse_error": null, "path": "app.ts", "symbols": [{"complexity": null, "decorators": [], "end_byte": 27, "end_column": 28, "end_line": 1, "file_path": "app.ts", "key": "symbol:app.ts::Service:0", "kind": "class", "language": "typescript", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.ts", "qualified_name": "app.ts::Service", "signature": "class Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 26, "end_column": 27, "end_line": 1, "file_path": "app.ts", "key": "symbol:app.ts::Service.persist:15", "kind": "method", "language": "typescript", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:app.ts::Service:0", "qualified_name": "app.ts::Service.persist", "signature": "persist()", "start_byte": 15, "start_column": 16, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 126, "end_column": 127, "end_line": 1, "file_path": "app.ts", "key": "symbol:app.ts::Holder:28", "kind": "class", "language": "typescript", "line_count": null, "name": "Holder", "parameter_count": null, "parent_key": "file:app.ts", "qualified_name": "app.ts::Holder", "signature": "class Holder", "start_byte": 28, "start_column": 29, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 125, "end_column": 126, "end_line": 1, "file_path": "app.ts", "key": "symbol:app.ts::Holder.run:58", "kind": "method", "language": "typescript", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:app.ts::Holder:28", "qualified_name": "app.ts::Holder.run", "signature": "run()", "start_byte": 58, "start_column": 59, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "this.service.persist()", "line": 1, "path": "app.ts", "source_key": "symbol:app.ts::Holder.run:58", "target_key": "external:typescript:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:typescript:callable:persist", "kind": "callable", "language": "typescript", "name": "persist"}
+]
+}
+}

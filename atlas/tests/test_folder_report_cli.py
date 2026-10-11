@@ -1,5 +1,7 @@
 """Folder reports analyze once, upsert centrally, or bypass storage entirely."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_bytes, case_text
 import json
 import sqlite3
 from pathlib import Path
@@ -15,8 +17,8 @@ from atlas.cli import main
 def source(tmp_path: Path) -> Path:
     root = tmp_path / "example"
     root.mkdir()
-    (root / "a.py").write_text("import b\n")
-    (root / "b.py").write_text("import a\n")
+    (root / "a.py").write_text(case_text('cli', 'folder-report-cli-source', 'a.py'))
+    (root / "b.py").write_text(case_text('cli', 'folder-report-cli-source', 'b.py'))
     return root
 
 
@@ -39,14 +41,14 @@ def test_folder_report_creates_and_updates_saved_project(
         assert project.name == "example"
         assert project.location == str(source.resolve())
         assert project.importedAt is not None
-        original = service.get_architecture(project.id)
-    (source / "b.py").write_text("value = 1\n")
+        original = snapshot_result(service.get_architecture(project.id), 'get_architecture')
+    (source / "b.py").write_text(case_text('cli', 'folder-report-cli-folder-report-creates-and-updates-saved-project', 'b.py'))
     updated = runner.invoke(main, args)
     assert updated.exit_code == 0, updated.output
     assert json.loads(updated.output)["summary"]["circularImportGroups"] == 0
     with repository_service(database) as service:
         assert [saved.id for saved in service.list()] == [project.id]
-        assert service.get_architecture(project.id) != original
+        assert snapshot_result(service.get_architecture(project.id), 'get_architecture') != original
 def test_folder_names_are_trimmed_for_registration(tmp_path: Path) -> None:
     source = tmp_path / " source "
     source.mkdir()
@@ -88,8 +90,8 @@ def test_folder_updates_registered_location_not_same_name(
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         assert len(service.list()) == 2
-        assert service.get_architecture(registered.id) is not None
-        assert service.get_architecture(other.id) is None
+        assert snapshot_result(service.get_architecture(registered.id), 'get_architecture') is not None
+        assert snapshot_result(service.get_architecture(other.id), 'get_architecture') is None
 
 
 def test_same_basename_folders_get_distinct_projects(source: Path, tmp_path: Path) -> None:
@@ -139,8 +141,8 @@ def test_default_preserves_existing_graph(source: Path, tmp_path: Path, command:
     assert saved.exit_code == 0, saved.output
     with repository_service(database) as service:
         project = service.list()[0]
-        original = service.get_architecture(project.id)
-    (source / "b.py").write_text("value = 1\n")
+        original = snapshot_result(service.get_architecture(project.id), 'get_architecture')
+    (source / "b.py").write_text(case_text('cli', 'folder-report-cli-default-preserves-existing-graph', 'b.py'))
     fresh = runner.invoke(main, [command, "-f", str(source)])
     assert fresh.exit_code == 0, fresh.output
     if command == "report":
@@ -149,7 +151,7 @@ def test_default_preserves_existing_graph(source: Path, tmp_path: Path, command:
     else:
         assert fresh.output == "All checks passed.\n"
     with repository_service(database) as service:
-        assert service.get_architecture(project.id) == original
+        assert snapshot_result(service.get_architecture(project.id), 'get_architecture') == original
 
 
 @pytest.mark.parametrize("command", ["report", "check"])
@@ -171,10 +173,10 @@ def test_save_analyzes_once_and_keeps_output(
 
     monkeypatch.setattr(repositories, "analyze_folder", analyze)
     original = None
-    for code in ("import a\n", "value = 1\n"):
-        (source / "b.py").write_text(code)
+    for case_id in ("folder-save-cycle", "folder-save-acyclic"):
+        (source / "b.py").write_bytes(case_bytes("cli", case_id, "b.py"))
         expected = runner.invoke(main, args)
-        assert expected.exit_code == (1 if command == "check" and code == "import a\n" else 0), expected.output
+        assert expected.exit_code == (1 if command == "check" and case_id == "folder-save-cycle" else 0), expected.output
         calls.clear()
         saved = runner.invoke(main, [*args, "--save"])
         assert saved.exit_code == expected.exit_code, saved.output
@@ -183,7 +185,7 @@ def test_save_analyzes_once_and_keeps_output(
         with repository_service(database) as service:
             projects = service.list()
             assert len(projects) == 1
-            graph = service.get_architecture(projects[0].id)
+            graph = snapshot_result(service.get_architecture(projects[0].id), 'get_architecture')
             assert graph is not None and graph != original
             assert graph.stats.files == 2
             original = graph
@@ -193,8 +195,9 @@ def test_save_analyzes_once_and_keeps_output(
     (["-f", "missing"], "Repository does not exist"),
 ])
 def test_invalid_report_arguments_do_not_create_database(
-    tmp_path: Path, args: list[str], message: str,
+    tmp_path: Path, args: list[str], message: str, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.chdir(tmp_path)
     database = tmp_path / "missing/db.sqlite"
     result = CliRunner(env={"DATABASE_PATH": str(database)}).invoke(main, ["report", *args])
     assert result.exit_code != 0
@@ -232,17 +235,17 @@ def test_failed_update_preserves_saved_graph(source: Path, tmp_path: Path) -> No
     assert result.exit_code == 0, result.output
     with repository_service(database) as service:
         project = service.list()[0]
-        original = service.get_architecture(project.id)
+        original = snapshot_result(service.get_architecture(project.id), 'get_architecture')
     with sqlite3.connect(database) as db:
         db.execute("""CREATE TRIGGER reject_update BEFORE UPDATE ON repository_graphs
             BEGIN SELECT RAISE(ABORT, 'forced update failure'); END""")
-    (source / "b.py").write_text("value = 1\n")
+    (source / "b.py").write_text(case_text('cli', 'folder-report-cli-failed-update-preserves-saved-graph', 'b.py'))
     failed = runner.invoke(main, args)
     assert failed.exit_code == 1
     assert "forced update failure" in failed.output
     with repository_service(database) as service:
         assert len(service.list()) == 1
-        assert service.get_architecture(project.id) == original
+        assert snapshot_result(service.get_architecture(project.id), 'get_architecture') == original
 
 
 def test_failed_save_rolls_back_registration(source: Path, tmp_path: Path) -> None:

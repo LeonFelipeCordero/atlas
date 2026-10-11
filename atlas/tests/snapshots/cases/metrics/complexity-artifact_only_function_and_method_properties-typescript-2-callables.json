@@ -1,0 +1,7 @@
+{
+"file_record": {"kind": "file", "language": "typescript", "level": "file", "name": "sample.ts", "parentStableKey": "module:.", "path": "sample.ts", "properties": {"bytes": 7, "lineCount": 1, "sha256": "da4d9520d81ec6210f6fb604b3732c09a1ec5f00f089a41e974fe09af10caccb"}, "qualifiedName": "sample.ts", "stableKey": "file:sample.ts", "type": "file"},
+"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.ts"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.ts"}}}, "default_limits": [], "disabled": []},
+"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
+"records": [{"complexity": null, "decorators": [], "end_byte": 5, "end_column": 6, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::<anonymous>:0", "kind": "class", "language": "typescript", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::<anonymous>", "signature": "class", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"thresholds": []
+}

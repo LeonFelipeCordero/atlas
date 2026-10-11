@@ -1,5 +1,7 @@
 """Independent projection, reachability, compatibility and indexing checks."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 from dataclasses import asdict
 from pathlib import Path
 from random import Random
@@ -160,7 +162,7 @@ def projected_artifact(root: Path) -> GraphArtifact:
     files = []
     for name in "abcdz":
         path = f"{name}/{name}.py"
-        source = SourceFile(path, root / path, "python", b"")
+        source = SourceFile(path, root / path, "python", case_bytes("imports", "dependency-metrics-projected-artifact-1", path))
         type_symbol = declaration(f"type:{name}", "class", source)
         files.append(
             ParsedFile(
@@ -234,13 +236,13 @@ def test_indexer_populates_metrics_and_excludes_unresolved_targets(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "a.py").write_text(
-        "from b import middle\nimport missing\ndef entry():\n    return middle()\n"
+        case_text("imports", "dependency-metrics-indexer-populates-metrics-and-excludes-unresolved-targets", 'a.py')
     )
     (tmp_path / "b.py").write_text(
-        "from c import leaf\ndef middle():\n    return leaf()\n"
+        case_text("imports", "dependency-metrics-indexer-populates-metrics-and-excludes-unresolved-targets", 'b.py')
     )
-    (tmp_path / "c.py").write_text("def leaf():\n    return 1\n")
-    (tmp_path / "z.py").write_text("def isolated():\n    return 0\n")
+    (tmp_path / "c.py").write_text(case_text("imports", "dependency-metrics-indexer-populates-metrics-and-excludes-unresolved-targets", 'c.py'))
+    (tmp_path / "z.py").write_text(case_text("imports", "dependency-metrics-indexer-populates-metrics-and-excludes-unresolved-targets", 'z.py'))
     artifact = analyze_repository(tmp_path)
     nodes = {node["name"]: node for node in artifact.nodes}
     for name, values in {
@@ -260,10 +262,10 @@ def test_indexer_populates_metrics_and_excludes_unresolved_targets(
 
 def test_type_only_imports_contribute_compile_time_impact(tmp_path: Path) -> None:
     (tmp_path / "a.ts").write_text(
-        'import type { B } from "./b";\nexport interface A { other: B; }\n'
+        case_text("imports", "dependency-metrics-type-only-imports-contribute-compile-time-impact", 'a.ts')
     )
     (tmp_path / "b.ts").write_text(
-        'import type { A } from "./a";\nexport interface B { other: A; }\n'
+        case_text("imports", "dependency-metrics-type-only-imports-contribute-compile-time-impact", 'b.ts')
     )
     artifact = analyze_repository(tmp_path)
     files = [node for node in artifact.nodes if node["level"] == "file"]

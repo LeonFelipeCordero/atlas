@@ -1,0 +1,2 @@
+class Service { fun persist() {} }
+class App(private val orderService: Service) { fun run(parameter: Service) { val local: Service = Service(); orderService.persist(); this.orderService.persist(); parameter.persist(); local.persist() } }

@@ -1,0 +1,5 @@
+[
+  {"allowed": false, "id": "factory_context_cannot_expose_ports-e8ea8817bb", "module": "atlas.services.factories", "old_test": "test_database_boundaries.py::test_factory_context_cannot_expose_ports", "operation": "boundary", "package": "atlas.services"},
+  {"allowed": false, "id": "factory_context_cannot_expose_ports-8aba3b5a31", "module": "atlas.services.factories", "old_test": "test_database_boundaries.py::test_factory_context_cannot_expose_ports", "operation": "boundary", "package": "atlas.services"},
+  {"allowed": false, "id": "factory_context_cannot_expose_ports-98f621738a", "module": "atlas.services.factories", "old_test": "test_database_boundaries.py::test_factory_context_cannot_expose_ports", "operation": "boundary", "package": "atlas.services"}
+]

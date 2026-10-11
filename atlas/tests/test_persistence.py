@@ -1,5 +1,7 @@
 """Current SQLite schema and repository service regression tests."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 import sqlite3
 from pathlib import Path
 
@@ -74,10 +76,10 @@ def test_service_requires_explicit_migration(tmp_path: Path) -> None:
 def test_service_reindex_resolves_name_and_rolls_back_failed_write(database: Path, tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
-    (root / "app.py").write_text("def run():\n    return 1\n")
+    (root / "app.py").write_text(case_text('cli', 'persistence-service-reindex-resolves-name-and-rolls-back-failed-write', 'app.py'))
     with repository_service(database) as service:
         first = service.register({"name": "  First ", "location": "source"})
-        assert service.get_architecture(first.id) is None
+        assert snapshot_result(service.get_architecture(first.id), 'get_architecture') is None
         graph = service.index(first.name, root)
         assert graph.repositoryId == first.id
         assert graph.schemaVersion == 2
@@ -86,19 +88,19 @@ def test_service_reindex_resolves_name_and_rolls_back_failed_write(database: Pat
         assert duplicate.value.status == 409
         replacement = service.index("fIrSt", root)
         assert replacement.repositoryId == first.id
-        assert service.get_architecture(first.id) == replacement
+        assert snapshot_result(service.get_architecture(first.id), 'get_architecture') == replacement
         assert service.list()[0].importedAt == replacement.importedAt
     with sqlite3.connect(database) as db:
         db.execute("""CREATE TRIGGER reject_graph BEFORE UPDATE ON repository_graphs
             BEGIN SELECT RAISE(ABORT, 'forced write failure'); END""")
     with repository_service(database) as service:
-        original = service.get_architecture(first.id)
+        original = snapshot_result(service.get_architecture(first.id), 'get_architecture')
         with pytest.raises(Exception, match="forced write failure"):
             service.index("FIRST", root)
-        assert service.get_architecture(first.id) == original
+        assert snapshot_result(service.get_architecture(first.id), 'get_architecture') == original
         with pytest.raises(ValueError):
             service.index(first.name, root / "missing")
-        assert service.get_architecture(first.id) == original
+        assert snapshot_result(service.get_architecture(first.id), 'get_architecture') == original
         with pytest.raises(RepositoryError) as missing:
             service.index("absent", root)
         assert missing.value.status == 404
@@ -123,17 +125,17 @@ def test_service_validation_and_shared_graph(database: Path, tmp_path: Path) -> 
         repository = service.register({"name": "App", "location": "local"})
         assert repository.importedAt is None
         assert service.list() == [repository]
-        assert service.get_architecture(repository.id) is None
+        assert snapshot_result(service.get_architecture(repository.id), 'get_architecture') is None
         with pytest.raises(RepositoryError) as duplicate:
             service.register({"name": "aPP", "location": "x"})
         assert duplicate.value.status == 409
         for identifier, status in (("", 400), ("unknown", 404)):
             with pytest.raises(RepositoryError) as error:
-                service.get_architecture(identifier)
+                snapshot_result(service.get_architecture(identifier), 'get_architecture')
             assert error.value.status == status
         graph = service.index(repository.name, tmp_path)
     with repository_service(database) as service:
-        assert service.get_architecture(repository.id) == graph
+        assert snapshot_result(service.get_architecture(repository.id), 'get_architecture') == graph
 
 
 def test_default_path_is_independent_of_working_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

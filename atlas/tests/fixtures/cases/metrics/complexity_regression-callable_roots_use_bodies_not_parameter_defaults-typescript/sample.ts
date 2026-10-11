@@ -1,0 +1,1 @@
+function choose(x = ready ? 1 : 0){if(x) accept()}

@@ -1,0 +1,1 @@
+package drinks.recipe; class App {int run(){return Recipe.portions(1);}}

@@ -1,9 +1,11 @@
 """Parenthesized callback bindings have one carrier in parsing and resolution."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 import unittest
 from dataclasses import dataclass, replace
 from pathlib import Path
-from itertools import product
+from tests.parsing_snapshot_support import assert_parser_snapshot, source_variants
 
 from tree_sitter import Node
 from tree_sitter_language_pack import (
@@ -26,17 +28,11 @@ from tests.parsing_fixture import parsing_syntax
 
 LANGUAGES = ("javascript", "typescript", "tsx")
 CALLBACKS = (
-    "() => { function local() {} return local(); }",
-    "function internal() { function local() {} return local(); }",
-    "function* internal() { function local() {} yield local(); }",
-    "function* () { function local() {} yield local(); }",
+    case_text('parsing', 'callback-fragment-arrow', 'sample.js'),
+    case_text('parsing', 'callback-fragment-named-function', 'sample.js'),
+    case_text('parsing', 'callback-fragment-named-generator', 'sample.js'),
+    case_text('parsing', 'callback-fragment-anonymous-generator', 'sample.js'),
 )
-CONTEXTS = (
-    ("const f = (((%s)));", "f"),
-    ("object.action = (((%s)));", "action"),
-    ("const holder = { apply: (((%s))) };", "apply"),
-)
-
 
 def walk(root: Node) -> list[Node]:
     nodes = []
@@ -87,7 +83,7 @@ class WrapperContext:
 
 class CallbackCarrierRegressionTests(unittest.TestCase):
     def test_exact_parser_and_resolved_graph_for_reported_arrow(self) -> None:
-        source = b"const f = (() => { function local() {} return local(); });"
+        source = case_bytes('parsing', 'callback_carrier_regression-exact_parser_and_resolved_graph_for_reported_arrow-javascript', 'main.js')
         for language in LANGUAGES:
             with self.subTest(language=language):
                 self.assert_reported_arrow(source, language)
@@ -97,70 +93,11 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         self.assertIsNone(parsed.parse_error)
         self.assertEqual(len(parsed.symbols), 2)
         callback, local = parsed.symbols
-        self.assertEqual(
-            [
-                (
-                    s.key,
-                    s.name,
-                    s.qualified_name,
-                    s.kind,
-                    s.parent_key,
-                    s.start_byte,
-                    s.end_byte,
-                    s.start_line,
-                    s.start_column,
-                    s.end_line,
-                    s.end_column,
-                )
-                for s in parsed.symbols
-            ],
-            [
-                (
-                    "symbol:main.js::f:11",
-                    "f",
-                    "main.js::f",
-                    "function",
-                    "file:main.js",
-                    11,
-                    56,
-                    1,
-                    12,
-                    1,
-                    57,
-                ),
-                (
-                    "symbol:main.js::f.local:19",
-                    "local",
-                    "main.js::f.local",
-                    "function",
-                    callback.key,
-                    19,
-                    38,
-                    1,
-                    20,
-                    1,
-                    39,
-                ),
-            ],
-        )
+        assert_parser_snapshot(parsed, 'test_callback_carrier_regression',
+                               'test_exact_parser_and_resolved_graph_for_reported_arrow')
         self.assert_reported_calls_and_graph(parsed, callback, local)
 
     def assert_reported_calls_and_graph(self, parsed, callback, local) -> None:
-        self.assertEqual(
-            [
-                (
-                    c.name,
-                    c.start_byte,
-                    c.end_byte,
-                    c.line,
-                    c.evidence,
-                    c.bare_target,
-                    c.qualifier,
-                )
-                for c in parsed.calls
-            ],
-            [("local", 46, 53, 1, "local()", True, None)],
-        )
         graph = resolve_connections(ParsedRepository([parsed]))
         self.assertEqual(
             [
@@ -189,13 +126,11 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         )
         self.assertEqual(graph.external_nodes, [])
 
-    def assert_binding_context(self, language: str, template: str, name: str) -> None:
-        for callback_text in CALLBACKS:
-            source = template % callback_text
-            native = process(source, ProcessConfig(language=language)).structure
-            case = BindingCase(ParsedSyntax(SourceFile("main.js", Path("main.js"), language, source.encode())), name, callback_text)
-            self.assert_binding_structure(case, native)
-            self.assert_binding_graph(source, language, name)
+    def assert_binding_context(self, language, source, name, callback_text) -> None:
+        native = process(source, ProcessConfig(language=language)).structure
+        case = BindingCase(ParsedSyntax(SourceFile("main.js", Path("main.js"), language, source.encode())), name, callback_text)
+        self.assert_binding_structure(case, native)
+        self.assert_binding_graph(source, language, name)
 
     def assert_binding_structure(self, case: BindingCase, native):
         for existing in ([], native):
@@ -232,12 +167,15 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
     def test_parenthesized_arrow_named_expression_and_generators_in_bindings(
         self,
     ) -> None:
-        for language, (template, name) in product(LANGUAGES, CONTEXTS):
-            with self.subTest(language=language, context=template):
-                self.assert_binding_context(language, template, name)
+        for language in LANGUAGES:
+            cases = source_variants('test_callback_carrier_regression', 'test_parenthesized_arrow_named_expression_and_generators_in_bindings', language)
+            for index, case in enumerate(cases):
+                with self.subTest(case=case['case_id']):
+                    source = case_text(case['family'], case['case_id'], case['path'])
+                    self.assert_binding_context(language, source, ('f', 'action', 'apply')[index // 4], CALLBACKS[index % 4])
 
     def test_generator_ancestor_keeps_callback_and_local_call_owner(self) -> None:
-        source = "function* outer() { const f = ((function* internal() { function local() {} yield local(); })); yield f(); }"
+        source = case_text('parsing', 'callback_carrier_regression-generator_ancestor_keeps_callback_and_local_call_owner-javascript', 'main.js')
         for language in LANGUAGES:
             with self.subTest(language=language):
                 self.assert_generator_ancestor(source, language)
@@ -333,14 +271,15 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
         self.assertEqual(repr(native), original)
 
     def test_native_binding_and_parenthesis_spans_correct_both_endpoints(self) -> None:
-        contexts = (*CONTEXTS, ("consume(((%s)));", "internal"))
-        for language, (template, name) in product(LANGUAGES, contexts):
-            with self.subTest(language=language, context=template):
-                source = "/* café 😀 */\n" + template % CALLBACKS[1]
-                self.assert_native_wrappers(source, language, name)
+        for language in LANGUAGES:
+            cases = source_variants('test_callback_carrier_regression', 'test_native_binding_and_parenthesis_spans_correct_both_endpoints', language)
+            for name, case in zip(('f', 'action', 'apply', 'internal'), cases, strict=True):
+                with self.subTest(case=case['case_id']):
+                    source = case_text(case['family'], case['case_id'], case['path'])
+                    self.assert_native_wrappers(source, language, name)
 
     def test_unresolved_binding_preserves_native_name_and_metadata_once(self) -> None:
-        source = "consume((() => { function local() {} return local(); }));"
+        source = case_text('parsing', 'callback_carrier_regression-unresolved_binding_preserves_native_name_and_metadata_once-javascript', 'sample.js')
         for language in LANGUAGES:
             with self.subTest(language=language):
                 self.assert_unresolved_binding(source, language)
@@ -368,12 +307,7 @@ class CallbackCarrierRegressionTests(unittest.TestCase):
     def test_only_parentheses_are_transparent_and_inline_names_stay_explicit(
         self,
     ) -> None:
-        source = """const f = (/* comment */ (() => 0));
-const sequence = (0, (() => 0));
-const invoked = ((() => 0))();
-const choice = (ready ? (() => 0) : (() => 1));
-consume(((function explicit() {})), ((function* generator() {})), (() => 0));
-"""
+        source = case_text('parsing', 'callback_carrier_regression-only_parentheses_are_transparent_and_inline_names_stay_explicit-javascript', 'sample.js')
         for language in LANGUAGES:
             with self.subTest(language=language):
                 self.assert_transparent_parentheses(source, language)

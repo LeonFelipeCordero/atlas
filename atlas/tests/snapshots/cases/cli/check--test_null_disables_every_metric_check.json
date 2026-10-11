@@ -1,0 +1,18 @@
+[
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": []
+    }
+  },
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": []
+    }
+  },
+  {
+    "kind": "render_check",
+    "value": "All checks passed."
+  }
+]

@@ -1,0 +1,1 @@
+pub struct Service{} impl Service {pub fn persist(&self){}}

@@ -1,0 +1,1 @@
+import tools.R; class App {void f(){R.work();}}

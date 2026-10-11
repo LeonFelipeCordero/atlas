@@ -1,5 +1,7 @@
 """Cold-process self-analysis budget and deterministic unnecessary-work guards."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 import json
 import subprocess
 import sys
@@ -24,16 +26,7 @@ def test_analyzes_this_repository_within_fast_cold_process_budget():
     # Include discovery, native parsing, resolution, validation and interpreter
     # startup. A subprocess timeout actually stops runaway work; no warm caches,
     # selected-file sampling, mocked parser, or opt-in benchmark marker.
-    script = """
-import json
-import sys
-from pathlib import Path
-from atlas.indexer import analyze_repository
-artifact = analyze_repository(Path(sys.argv[1]))
-print(json.dumps({"stats": artifact.stats,
-                  "files": [n["path"] for n in artifact.nodes if n["kind"] == "file"],
-                  "relationships": sorted({e["type"] for e in artifact.edges})}))
-"""
+    script = case_text("imports", "cold-analysis-script", "runner.py")
     result = subprocess.run(
         [sys.executable, "-c", script, str(ROOT)],
         cwd=ROOT / "atlas",
@@ -55,30 +48,21 @@ print(json.dumps({"stats": artifact.stats,
 
 
 def test_data_grammars_do_not_parse_or_walk_for_impossible_calls():
-    source = SourceFile("data.json", ROOT / "data.json", "json", b'{"call": "run()"}')
+    source = SourceFile("data.json", ROOT / "data.json", "json", case_bytes("imports", "data-impossible-calls", 'data.json'))
     with patch("atlas.parsing.parser.get_parser") as parser:
         assert _extract_calls(source) == []
     parser.assert_not_called()
 
 
 def test_default_adapter_still_extracts_calls_when_grammar_supports_them():
-    source = SourceFile("main.rb", ROOT / "main.rb", "ruby", b"helper()\n")
+    source = SourceFile("main.rb", ROOT / "main.rb", "ruby", case_bytes("imports", "import-performance-default-adapter-still-extracts-calls-when-grammar-supports-them-1", 'main.rb'))
     calls = _extract_calls(source)
     assert [call.name for call in calls] == ["helper"]
 
 
-@pytest.mark.parametrize(
-    ("language", "code"),
-    [
-        ("python", "def run(value):\n    if value:\n        return helper(value)\n"),
-        ("javascript", "function run(value) { if (value) { helper(value); } }"),
-        ("typescript", "function run(value: number) { if (value) { helper(value); } }"),
-        ("kotlin", "import demo.helper\nfun run(value: Int) { if (value > 0) { helper(value) } }"),
-        ("rust", "mod tools;\nfn run(value: bool) { if value { helper(value); } }"),
-    ],
-)
-def test_file_extraction_reuses_one_syntax_tree(language, code):
-    source = SourceFile("sample", ROOT / "sample", language, code.encode())
+@pytest.mark.parametrize(("language", "case_id"), [('python', 'syntax-reuse-python'), ('javascript', 'syntax-reuse-javascript'), ('typescript', 'syntax-reuse-typescript'), ('kotlin', 'syntax-reuse-kotlin'), ('rust', 'syntax-reuse-rust')])
+def test_file_extraction_reuses_one_syntax_tree(language, case_id):
+    source = SourceFile("sample", ROOT / "sample", language, case_bytes("imports", case_id, "sample"))
     parser = Mock(wraps=get_parser(language))
     with (
         patch("atlas.parsing.parser.get_parser", return_value=parser) as factory,
@@ -111,7 +95,7 @@ def _assert_callable_metric_pass(repository, source, callables):
 
 
 def test_data_files_do_not_create_an_extra_syntax_tree():
-    source = SourceFile("data.json", ROOT / "data.json", "json", b'{"call": "run()"}')
+    source = SourceFile("data.json", ROOT / "data.json", "json", case_bytes("imports", "data-impossible-calls", 'data.json'))
     with (
         patch("atlas.parsing.parser.get_parser") as parser,
         patch("atlas.parsing.syntax.get_parser") as import_parser,
@@ -128,7 +112,7 @@ def test_data_files_do_not_create_an_extra_syntax_tree():
 
 def test_syntax_tree_reuse_is_local_to_each_file():
     sources = [
-        SourceFile(f"{name}.py", ROOT / f"{name}.py", "python", f"def {name}(): helper()".encode())
+        SourceFile(f"{name}.py", ROOT / f"{name}.py", "python", case_bytes("imports", "syntax-reuse-two-files", f"{name}.py"))
         for name in ["first", "second"]
     ]
     parser = Mock(wraps=get_parser("python"))
@@ -143,7 +127,7 @@ def test_syntax_tree_reuse_is_local_to_each_file():
 
 
 def test_syntax_tree_and_binding_scan_are_lazy_and_cached():
-    source = SourceFile("main.py", ROOT / "main.py", "python", b"x = 1\nx()\n")
+    source = SourceFile("main.py", ROOT / "main.py", "python", case_bytes("imports", "import-performance-syntax-tree-and-binding-scan-are-lazy-and-cached-1", 'main.py'))
     parsed = parse_files([source]).files[0]
     with patch(
         "atlas.metrics.resolution_syntax.get_parser", wraps=get_parser
@@ -161,7 +145,7 @@ def test_syntax_tree_and_binding_scan_are_lazy_and_cached():
 
 
 def test_path_resolution_is_cached_only_within_one_repository():
-    source = SourceFile("main.py", ROOT / "main.py", "python", b"pass\n")
+    source = SourceFile("main.py", ROOT / "main.py", "python", case_bytes("imports", "import-performance-path-resolution-is-cached-only-within-one-repository-1", 'main.py'))
     repository = parse_files([source])
     file = repository.files[0]
     adapter = get_resolution_adapter("python")

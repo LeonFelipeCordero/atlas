@@ -1,0 +1,1 @@
+import type { getRouter } from './router.tsx';

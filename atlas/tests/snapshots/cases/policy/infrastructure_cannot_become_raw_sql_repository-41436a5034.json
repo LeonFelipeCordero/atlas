@@ -1,0 +1,3 @@
+[
+  "infrastructure SQL must be literal setup only: connection.execute"
+]

@@ -1,0 +1,4 @@
+[
+  "atlas.persistence.navigation.GraphReader",
+  "factory imports must name only repository contexts or migration operation"
+]
