@@ -1,0 +1,9 @@
+# Analysis exclusions
+
+/fixtures/
+/root.py
+*.skip.py
+scratch/**/bad?.py
+!keep.skip.py
+\#literal.py
+\!literal.py

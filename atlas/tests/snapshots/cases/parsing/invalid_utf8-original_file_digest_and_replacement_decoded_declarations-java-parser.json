@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "2f2fefbfbd20746578740a636c6173732041207b20766f6964206628297b6728293b7d207d0a"}, "language": "java", "path": "sample.java"},
+"content_hash": "877d63b7f1bc7472370827f0db685c3259e7cbec6b9850fd9a03450f46014bca",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 37, "end_column": 27, "end_line": 2, "file_path": "sample.java", "key": "symbol:sample.java::A:11", "kind": "class", "language": "java", "line_count": null, "name": "A", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::A", "signature": "class A", "start_byte": 11, "start_column": 1, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 35, "end_column": 25, "end_line": 2, "file_path": "sample.java", "key": "symbol:sample.java::A.f:21", "kind": "method", "language": "java", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "symbol:sample.java::A:11", "qualified_name": "sample.java::A.f", "signature": "void f()", "start_byte": 21, "start_column": 11, "start_line": 2, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 33, "evidence": "g()", "file_path": "sample.java", "line": 2, "name": "g", "qualifier": null, "relationship": "CALLS", "start_byte": 30}],
+"imports": [],
+"inheritances": []
+}

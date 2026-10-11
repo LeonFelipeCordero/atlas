@@ -1,0 +1,13 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 89, "evidence": "local.persist()", "file_path": "App.kt", "line": 1, "name": "persist", "qualifier": "local", "relationship": "CALLS", "start_byte": 74}], "content_hash": "1eb94f07cd403d1b59fd05cce6fb8f1489c74f61acfa8992760e7be96f12d672", "imports": [], "inheritances": [], "language": "kotlin", "parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.", "path": "App.kt", "symbols": [{"complexity": null, "decorators": [], "end_byte": 5, "end_column": 6, "end_line": 1, "file_path": "App.kt", "key": "symbol:App.kt::<anonymous>:0", "kind": "class", "language": "kotlin", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:App.kt", "qualified_name": "App.kt::<anonymous>", "signature": "class", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 32, "end_column": 33, "end_line": 1, "file_path": "App.kt", "key": "symbol:App.kt::persist:16", "kind": "function", "language": "kotlin", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "file:App.kt", "qualified_name": "App.kt::persist", "signature": "fun persist() {}", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 40, "end_column": 41, "end_line": 1, "file_path": "App.kt", "key": "symbol:App.kt::<anonymous>:35", "kind": "class", "language": "kotlin", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:App.kt", "qualified_name": "App.kt::<anonymous>", "signature": "class", "start_byte": 35, "start_column": 36, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 91, "end_column": 92, "end_line": 1, "file_path": "App.kt", "key": "symbol:App.kt::run:63", "kind": "function", "language": "kotlin", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:App.kt", "qualified_name": "App.kt::run", "signature": "fun run(){ local.persist() }", "start_byte": 63, "start_column": 64, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "local.persist()", "line": 1, "path": "App.kt", "source_key": "symbol:App.kt::run:63", "target_key": "external:kotlin:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:kotlin:callable:persist", "kind": "callable", "language": "kotlin", "name": "persist"}
+]
+}
+}

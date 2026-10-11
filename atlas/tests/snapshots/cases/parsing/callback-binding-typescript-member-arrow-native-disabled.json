@@ -1,0 +1,4 @@
+{
+"native_input": [],
+"declarations": [{"body_span": null, "children": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "local", "signature": "function local() {}", "span": {"end_byte": 46, "end_column": 46, "end_line": 0, "start_byte": 27, "start_column": 27, "start_line": 0}, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": "action", "signature": "() => { function local() {} return local(); }", "span": {"end_byte": 64, "end_column": 64, "end_line": 0, "start_byte": 19, "start_column": 19, "start_line": 0}, "visibility": null}]
+}

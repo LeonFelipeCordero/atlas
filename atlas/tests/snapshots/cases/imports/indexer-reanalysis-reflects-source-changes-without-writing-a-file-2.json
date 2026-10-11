@@ -1,0 +1,19 @@
+{
+  "circularDependencies": {"groups": [], "version": 1},
+  "diagnostics": [],
+  "edges": [
+    {"confidence": "EXTRACTED", "evidence": null, "line": 1, "path": ".", "sourceKind": "repository", "sourceLevel": "repository", "sourceStableKey": "repository", "sourceType": "repository", "targetKind": "directory", "targetLevel": "module", "targetStableKey": "module:.", "targetType": "module", "type": "CONTAINS"},
+    {"confidence": "EXTRACTED", "evidence": null, "line": 1, "path": "main.ts", "sourceKind": "directory", "sourceLevel": "module", "sourceStableKey": "module:.", "sourceType": "module", "targetKind": "file", "targetLevel": "file", "targetStableKey": "file:main.ts", "targetType": "file", "type": "CONTAINS"},
+    {"confidence": "EXTRACTED", "evidence": "file:main.ts contains second", "line": 1, "path": "main.ts", "sourceKind": "file", "sourceLevel": "file", "sourceStableKey": "file:main.ts", "sourceType": "file", "targetKind": "function", "targetLevel": "callable", "targetStableKey": "symbol:main.ts::second:7", "targetType": "function", "type": "CONTAINS"}
+  ],
+  "nodes": [
+    {"ancestorStableKeys": [], "depth": 0, "kind": "repository", "language": null, "level": "repository", "name": "<case-root>", "parentStableKey": null, "path": ".", "properties": {"absolutePath": "<case-root>"}, "qualifiedName": "<case-root>", "stableKey": "repository", "type": "repository"},
+    {"ancestorStableKeys": ["repository"], "depth": 1, "kind": "directory", "language": null, "level": "module", "name": "<case-root>", "parentStableKey": "repository", "path": ".", "properties": {"fanIn": 0, "fanOut": 0, "instability": null, "transitiveChangeImpact": 0}, "qualifiedName": "<case-root>", "stableKey": "module:.", "type": "module"},
+    {"ancestorStableKeys": ["repository", "module:."], "depth": 2, "kind": "file", "language": "typescript", "level": "file", "name": "main.ts", "parentStableKey": "module:.", "path": "main.ts", "properties": {"bytes": 28, "fanIn": 0, "fanOut": 0, "instability": null, "lineCount": 1, "sha256": "f91b873854f0ff0b330aca65ff1efef2367a4f4f4165cd79bb4c1bdf993aa27f", "transitiveChangeImpact": 0}, "qualifiedName": "main.ts", "stableKey": "file:main.ts", "type": "file"},
+    {"ancestorStableKeys": ["repository", "module:.", "file:main.ts"], "depth": 3, "endColumn": 28, "endLine": 1, "kind": "function", "language": "typescript", "level": "callable", "name": "second", "parentStableKey": "file:main.ts", "path": "main.ts", "properties": {"baseCyclomaticComplexity": 1, "cyclomaticComplexity": 1, "decorators": [], "fanIn": 0, "fanOut": 0, "instability": null, "lineCount": 1, "loopNestedComplexity": 0, "maxDecisionDepth": 0, "nestedCyclomaticComplexity": 0, "parameterCount": 0, "transitiveChangeImpact": 0, "visibility": null}, "qualifiedName": "main.ts::second", "signature": "function second()", "stableKey": "symbol:main.ts::second:7", "startColumn": 8, "startLine": 1, "type": "function"}
+  ],
+  "repository": {"languages": ["typescript"], "name": "<case-root>", "path": "<case-root>"},
+  "schemaVersion": 2,
+  "stats": {"callables": 1, "edges": 3, "externalNodes": 0, "files": 1, "modules": 1, "nodes": 4, "parseErrors": 0, "symbols": 1, "types": 0},
+  "views": {"callable": {"edges": [], "nodes": ["symbol:main.ts::second:7"]}, "file": {"edges": [], "nodes": ["file:main.ts"]}, "module": {"edges": [], "nodes": ["module:."]}, "type": {"edges": [], "nodes": []}}
+}

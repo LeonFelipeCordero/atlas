@@ -1,0 +1,1 @@
+package drinks.recipe; public class Recipe { public static int portions(int n){return n;} }

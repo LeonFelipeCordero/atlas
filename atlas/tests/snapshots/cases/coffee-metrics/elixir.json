@@ -1,0 +1,548 @@
+{
+  "exit_code": 0,
+  "output": {
+    "summary": {
+      "files": 3,
+      "modules": 6,
+      "types": 0,
+      "callables": 18,
+      "circularImportGroups": 1,
+      "parseErrors": 0
+    },
+    "nodes": [
+      {
+        "stableKey": "module:.",
+        "subject": "elixir",
+        "kind": "directory",
+        "level": "module",
+        "path": ".",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "module:brewing",
+        "subject": "brewing",
+        "kind": "directory",
+        "level": "module",
+        "path": "brewing",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "file:brewing/brewer.ex",
+        "subject": "brewing/brewer.ex",
+        "kind": "file",
+        "level": "file",
+        "path": "brewing/brewer.ex",
+        "line": null,
+        "metrics": {
+          "lineCount": 601,
+          "functionCount": 12,
+          "measuredFunctionCount": 12,
+          "weightedComplexitySum": 29,
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer:0",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer",
+        "kind": "module",
+        "level": "module",
+        "path": "brewing/brewer.ex",
+        "line": 1,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.brew:100",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.brew",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 5,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.brew:139",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.brew",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 7,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.brew.<anonymous>:183",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.brew.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 8,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.retry:253",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.retry",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 11,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 1,
+          "fanOut": 0,
+          "transitiveChangeImpact": 1,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.retry:301",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.retry",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 12,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.score:353",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.score",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 14,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.score.<anonymous>:403",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.score.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 15,
+        "metrics": {
+          "lineCount": 10,
+          "parameterCount": 2,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.score.<anonymous>.<anonymous>:450",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.score.<anonymous>.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 16,
+        "metrics": {
+          "lineCount": 8,
+          "parameterCount": 2,
+          "cyclomaticComplexity": 3,
+          "weightedComplexity": 3,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.classify:726",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.classify",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 28,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 9,
+          "weightedComplexity": 9,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.ready:1359",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.ready",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 42,
+        "metrics": {
+          "lineCount": 19,
+          "parameterCount": 4,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 2,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 4,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.calibrate:1769",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.calibrate",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 63,
+        "metrics": {
+          "lineCount": 104,
+          "parameterCount": 8,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.ex::Coffee.Brewing.Brewer.main:4365",
+        "subject": "brewing/brewer.ex::Coffee.Brewing.Brewer.main",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.ex",
+        "line": 168,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 0,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "file:brewing/recipe.ex",
+        "subject": "brewing/recipe.ex",
+        "kind": "file",
+        "level": "file",
+        "path": "brewing/recipe.ex",
+        "line": null,
+        "metrics": {
+          "lineCount": 13,
+          "functionCount": 2,
+          "measuredFunctionCount": 2,
+          "weightedComplexitySum": 4,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/recipe.ex::Coffee.Brewing.Recipe:0",
+        "subject": "brewing/recipe.ex::Coffee.Brewing.Recipe",
+        "kind": "module",
+        "level": "module",
+        "path": "brewing/recipe.ex",
+        "line": 1,
+        "metrics": {
+          "fanIn": 4,
+          "fanOut": 1,
+          "transitiveChangeImpact": 4,
+          "instability": 0.2
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/recipe.ex::Coffee.Brewing.Recipe.portions:70",
+        "subject": "brewing/recipe.ex::Coffee.Brewing.Recipe.portions",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/recipe.ex",
+        "line": 4,
+        "metrics": {
+          "lineCount": 7,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 3,
+          "weightedComplexity": 3,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 4,
+          "fanOut": 0,
+          "transitiveChangeImpact": 4,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/recipe.ex::Coffee.Brewing.Recipe.preview:181",
+        "subject": "brewing/recipe.ex::Coffee.Brewing.Recipe.preview",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/recipe.ex",
+        "line": 12,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "module:reporting",
+        "subject": "reporting",
+        "kind": "directory",
+        "level": "module",
+        "path": "reporting",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "file:reporting/report.ex",
+        "subject": "reporting/report.ex",
+        "kind": "file",
+        "level": "file",
+        "path": "reporting/report.ex",
+        "line": null,
+        "metrics": {
+          "lineCount": 10,
+          "functionCount": 4,
+          "measuredFunctionCount": 4,
+          "weightedComplexitySum": 4,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.ex::Coffee.Reporting.Report:0",
+        "subject": "reporting/report.ex::Coffee.Reporting.Report",
+        "kind": "module",
+        "level": "module",
+        "path": "reporting/report.ex",
+        "line": 1,
+        "metrics": {
+          "fanIn": 3,
+          "fanOut": 1,
+          "transitiveChangeImpact": 4,
+          "instability": 0.25
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.ex::Coffee.Reporting.Report.total.<anonymous>:114",
+        "subject": "reporting/report.ex::Coffee.Reporting.Report.total.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.ex",
+        "line": 4,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 2,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.ex::Coffee.Reporting.Report.total:70",
+        "subject": "reporting/report.ex::Coffee.Reporting.Report.total",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.ex",
+        "line": 4,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 0,
+          "transitiveChangeImpact": 5,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.ex::Coffee.Reporting.Report.render:166",
+        "subject": "reporting/report.ex::Coffee.Reporting.Report.render",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.ex",
+        "line": 6,
+        "metrics": {
+          "lineCount": 4,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 3,
+          "fanOut": 1,
+          "transitiveChangeImpact": 4,
+          "instability": 0.25
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.ex::Coffee.Reporting.Report.render.<anonymous>:227",
+        "subject": "reporting/report.ex::Coffee.Reporting.Report.render.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.ex",
+        "line": 7,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      }
+    ],
+    "circularImports": [
+      {
+        "id": "import-cycle:190d2b13b43e893e083e9327159af183c74631aa01ff536735a73f819fa6213d",
+        "groupSize": 2,
+        "internalDependencyCount": 2,
+        "files": [
+          "brewing/recipe.ex",
+          "reporting/report.ex"
+        ],
+        "exampleCycle": [
+          "brewing/recipe.ex",
+          "reporting/report.ex",
+          "brewing/recipe.ex"
+        ]
+      }
+    ],
+    "diagnostics": []
+  }
+}

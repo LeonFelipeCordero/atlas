@@ -1,0 +1,196 @@
+[
+  {
+    "kind": "Function",
+    "name": "brew",
+    "visibility": null,
+    "span": {
+      "start_byte": 30,
+      "end_byte": 326,
+      "start_line": 4,
+      "start_column": 0,
+      "end_line": 16,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": "accept",
+        "visibility": null,
+        "span": {
+          "start_byte": 162,
+          "end_byte": 214,
+          "start_line": 9,
+          "start_column": 11,
+          "end_line": 9,
+          "end_column": 63
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "func(name string) bool { return portions(name) > 0 }",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func brew(names []string) string",
+    "body_span": {
+      "start_byte": 63,
+      "end_byte": 326,
+      "start_line": 4,
+      "start_column": 33,
+      "end_line": 16,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "retry",
+    "visibility": null,
+    "span": {
+      "start_byte": 328,
+      "end_byte": 424,
+      "start_line": 18,
+      "start_column": 0,
+      "end_line": 23,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func retry(attempts int) int",
+    "body_span": {
+      "start_byte": 357,
+      "end_byte": 424,
+      "start_line": 18,
+      "start_column": 29,
+      "end_line": 23,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "score",
+    "visibility": null,
+    "span": {
+      "start_byte": 426,
+      "end_byte": 647,
+      "start_line": 25,
+      "start_column": 0,
+      "end_line": 36,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func score(batches [][]string) int",
+    "body_span": {
+      "start_byte": 461,
+      "end_byte": 647,
+      "start_line": 25,
+      "start_column": 35,
+      "end_line": 36,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "classify",
+    "visibility": null,
+    "span": {
+      "start_byte": 726,
+      "end_byte": 1031,
+      "start_line": 39,
+      "start_column": 0,
+      "end_line": 50,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func classify(amount int) int",
+    "body_span": {
+      "start_byte": 756,
+      "end_byte": 1031,
+      "start_line": 39,
+      "start_column": 30,
+      "end_line": 50,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "ready",
+    "visibility": null,
+    "span": {
+      "start_byte": 1098,
+      "end_byte": 1278,
+      "start_line": 53,
+      "start_column": 0,
+      "end_line": 64,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func ready(water, beans, cups, temperature int) bool",
+    "body_span": {
+      "start_byte": 1151,
+      "end_byte": 1278,
+      "start_line": 53,
+      "start_column": 53,
+      "end_line": 64,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "calibrate",
+    "visibility": null,
+    "span": {
+      "start_byte": 1368,
+      "end_byte": 2894,
+      "start_line": 67,
+      "start_column": 0,
+      "end_line": 170,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func calibrate(a int, b int, c int, d int, e int, f int, g int, h int) int",
+    "body_span": {
+      "start_byte": 1443,
+      "end_byte": 2894,
+      "start_line": 67,
+      "start_column": 75,
+      "end_line": 170,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "Main",
+    "visibility": null,
+    "span": {
+      "start_byte": 2973,
+      "end_byte": 3050,
+      "start_line": 173,
+      "start_column": 0,
+      "end_line": 175,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "func Main()",
+    "body_span": {
+      "start_byte": 2985,
+      "end_byte": 3050,
+      "start_line": 173,
+      "start_column": 12,
+      "end_line": 175,
+      "end_column": 1
+    }
+  }
+]

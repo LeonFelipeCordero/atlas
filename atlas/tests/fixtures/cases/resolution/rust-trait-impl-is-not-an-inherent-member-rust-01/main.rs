@@ -1,0 +1,1 @@
+mod service; use service::Service; trait Saving {fn persist(&self);} impl Saving for Service {fn persist(&self){}} fn run(local:&Service){local.persist();}

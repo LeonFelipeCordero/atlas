@@ -1,0 +1,1 @@
+session.execute('SELECT id FROM repositories')

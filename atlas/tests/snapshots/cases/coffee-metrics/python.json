@@ -1,0 +1,527 @@
+{
+  "exit_code": 0,
+  "output": {
+    "summary": {
+      "files": 3,
+      "modules": 5,
+      "types": 4,
+      "callables": 15,
+      "circularImportGroups": 1,
+      "parseErrors": 0
+    },
+    "nodes": [
+      {
+        "stableKey": "module:.",
+        "subject": "python",
+        "kind": "directory",
+        "level": "module",
+        "path": ".",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "module:src",
+        "subject": "src",
+        "kind": "directory",
+        "level": "module",
+        "path": "src",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "module:src/coffee",
+        "subject": "src.coffee",
+        "kind": "directory",
+        "level": "module",
+        "path": "src/coffee",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "module:src/coffee/brewing",
+        "subject": "src.coffee.brewing",
+        "kind": "directory",
+        "level": "module",
+        "path": "src/coffee/brewing",
+        "line": null,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "file:src/coffee/brewing/brewer.py",
+        "subject": "src/coffee/brewing/brewer.py",
+        "kind": "file",
+        "level": "file",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": null,
+        "metrics": {
+          "lineCount": 601,
+          "functionCount": 9,
+          "measuredFunctionCount": 9,
+          "weightedComplexitySum": 33,
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewing:691",
+        "subject": "src/coffee/brewing/brewer.py::Brewing",
+        "kind": "class",
+        "level": "type",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 21,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 0,
+          "transitiveChangeImpact": 1,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewing.brew:735",
+        "subject": "src/coffee/brewing/brewer.py::Brewing.brew",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 23,
+        "metrics": {
+          "lineCount": 2,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer:812",
+        "subject": "src/coffee/brewing/brewer.py::Brewer",
+        "kind": "class",
+        "level": "type",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 27,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 3,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer.brew:839",
+        "subject": "src/coffee/brewing/brewer.py::Brewer.brew",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 28,
+        "metrics": {
+          "lineCount": 5,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 4,
+          "weightedComplexity": 4,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 1,
+          "fanOut": 2,
+          "transitiveChangeImpact": 1,
+          "instability": 0.6666666666666666
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer.retry:1050",
+        "subject": "src/coffee/brewing/brewer.py::Brewer.retry",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 34,
+        "metrics": {
+          "lineCount": 4,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer.score:1185",
+        "subject": "src/coffee/brewing/brewer.py::Brewer.score",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 39,
+        "metrics": {
+          "lineCount": 8,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 1,
+          "nestedLoops": 1,
+          "maxDecisionDepth": 3,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer.classify:1549",
+        "subject": "src/coffee/brewing/brewer.py::Brewer.classify",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 49,
+        "metrics": {
+          "lineCount": 19,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 9,
+          "weightedComplexity": 9,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer.ready:2099",
+        "subject": "src/coffee/brewing/brewer.py::Brewer.ready",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 70,
+        "metrics": {
+          "lineCount": 7,
+          "parameterCount": 4,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 2,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 4,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::Brewer.calibrate:2447",
+        "subject": "src/coffee/brewing/brewer.py::Brewer.calibrate",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 79,
+        "metrics": {
+          "lineCount": 105,
+          "parameterCount": 8,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::import_styles:4716",
+        "subject": "src/coffee/brewing/brewer.py::import_styles",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 186,
+        "metrics": {
+          "lineCount": 11,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 2,
+          "transitiveChangeImpact": 1,
+          "instability": 0.6666666666666666
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/brewer.py::main:5051",
+        "subject": "src/coffee/brewing/brewer.py::main",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/brewer.py",
+        "line": 199,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 0,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "file:src/coffee/brewing/recipe.py",
+        "subject": "src/coffee/brewing/recipe.py",
+        "kind": "file",
+        "level": "file",
+        "path": "src/coffee/brewing/recipe.py",
+        "line": null,
+        "metrics": {
+          "lineCount": 21,
+          "functionCount": 3,
+          "measuredFunctionCount": 3,
+          "weightedComplexitySum": 5,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/recipe.py::Recipe:0",
+        "subject": "src/coffee/brewing/recipe.py::Recipe",
+        "kind": "class",
+        "level": "type",
+        "path": "src/coffee/brewing/recipe.py",
+        "line": 1,
+        "metrics": {
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/recipe.py::Recipe.portions:36",
+        "subject": "src/coffee/brewing/recipe.py::Recipe.portions",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/recipe.py",
+        "line": 3,
+        "metrics": {
+          "lineCount": 8,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 3,
+          "weightedComplexity": 3,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 5,
+          "fanOut": 0,
+          "transitiveChangeImpact": 9,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/recipe.py::Recipe.preview:262",
+        "subject": "src/coffee/brewing/recipe.py::Recipe.preview",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/recipe.py",
+        "line": 13,
+        "metrics": {
+          "lineCount": 5,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/brewing/recipe.py::portions:455",
+        "subject": "src/coffee/brewing/recipe.py::portions",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/brewing/recipe.py",
+        "line": 20,
+        "metrics": {
+          "lineCount": 2,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "module:src/coffee/reporting",
+        "subject": "src.coffee.reporting",
+        "kind": "directory",
+        "level": "module",
+        "path": "src/coffee/reporting",
+        "line": null,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "file:src/coffee/reporting/report.py",
+        "subject": "src/coffee/reporting/report.py",
+        "kind": "file",
+        "level": "file",
+        "path": "src/coffee/reporting/report.py",
+        "line": null,
+        "metrics": {
+          "lineCount": 16,
+          "functionCount": 3,
+          "measuredFunctionCount": 3,
+          "weightedComplexitySum": 5,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/reporting/report.py::Report:38",
+        "subject": "src/coffee/reporting/report.py::Report",
+        "kind": "class",
+        "level": "type",
+        "path": "src/coffee/reporting/report.py",
+        "line": 4,
+        "metrics": {
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/reporting/report.py::Report.total:74",
+        "subject": "src/coffee/reporting/report.py::Report.total",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/reporting/report.py",
+        "line": 6,
+        "metrics": {
+          "lineCount": 2,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 6,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/reporting/report.py::Report.render:193",
+        "subject": "src/coffee/reporting/report.py::Report.render",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/reporting/report.py",
+        "line": 10,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 3,
+          "fanOut": 2,
+          "transitiveChangeImpact": 5,
+          "instability": 0.4
+        }
+      },
+      {
+        "stableKey": "symbol:src/coffee/reporting/report.py::render:375",
+        "subject": "src/coffee/reporting/report.py::render",
+        "kind": "function",
+        "level": "callable",
+        "path": "src/coffee/reporting/report.py",
+        "line": 15,
+        "metrics": {
+          "lineCount": 2,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.5
+        }
+      }
+    ],
+    "circularImports": [
+      {
+        "id": "import-cycle:f5010a874e84470a88c1a08c83eb0d9bc065517cc017499d330da47f1b17aabf",
+        "groupSize": 2,
+        "internalDependencyCount": 2,
+        "files": [
+          "src/coffee/brewing/recipe.py",
+          "src/coffee/reporting/report.py"
+        ],
+        "exampleCycle": [
+          "src/coffee/brewing/recipe.py",
+          "src/coffee/reporting/report.py",
+          "src/coffee/brewing/recipe.py"
+        ]
+      }
+    ],
+    "diagnostics": []
+  }
+}

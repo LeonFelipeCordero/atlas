@@ -1,5 +1,7 @@
 """Primary import syntax belongs to language policies; legacy fallbacks stay stable."""
 
+from tests.source_snapshot_fixture import case_text
+
 from unittest.mock import Mock, patch
 
 import pytest
@@ -16,24 +18,24 @@ from atlas.metrics.resolution_contract import ImportRequest
 @pytest.mark.parametrize(
     ("language", "source", "expected"),
     [
-        ("python", "import pkg.tools as tools", "pkg.tools"),
-        ("python", "from ..pkg.tools import run as execute", "..pkg.tools"),
-        ("java", "import static pkg.Tools.run;", "pkg.Tools.run"),
-        ("java", "import pkg.tools.*;", "pkg.tools."),
-        ("kotlin", "import pkg.Tools as Helpers", "pkg.Tools"),
-        ("go", 'tools "example.org/pkg/tools"', "example.org/pkg/tools"),
-        ("go", '_ "example.org/pkg/tools"', "example.org/pkg/tools"),
-        ("go", '. "example.org/pkg/tools"', "example.org/pkg/tools"),
-        ("rust", "pub use crate::tools::run as execute;", "crate::tools::run"),
-        ("rust", "use crate::tools::{run, stop};", "crate::tools::"),
-        ("rust", "mod tools;", "tools"),
-        ("elixir", "alias Project.Tools, as: Helpers", "Project.Tools"),
-        ("elixir", "require Project.Tools", "Project.Tools"),
-        ("elixir", "import Project.Tools", "Project.Tools"),
-        ("javascript", "import {run as execute} from './tools';", "./tools"),
-        ("jsx", "import * as Tools from './tools';", "./tools"),
-        ("typescript", "import type {Tools} from './tools';", "./tools"),
-        ("tsx", "import type * as Tools from './tools';", "./tools"),
+        ("python", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-python', 'sample.py'), "pkg.tools"),
+        ("python", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-python-2', 'sample.py'), "..pkg.tools"),
+        ("java", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-java', 'sample.java'), "pkg.Tools.run"),
+        ("java", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-java-2', 'sample.java'), "pkg.tools."),
+        ("kotlin", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-kotlin', 'sample.kt'), "pkg.Tools"),
+        ("go", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go', 'sample.go'), "example.org/pkg/tools"),
+        ("go", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-2', 'sample.go'), "example.org/pkg/tools"),
+        ("go", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-3', 'sample.go'), "example.org/pkg/tools"),
+        ("rust", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-rust', 'sample.rs'), "crate::tools::run"),
+        ("rust", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-rust-2', 'sample.rs'), "crate::tools::"),
+        ("rust", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-rust-3', 'sample.rs'), "tools"),
+        ("elixir", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-elixir', 'sample.ex'), "Project.Tools"),
+        ("elixir", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-elixir-2', 'sample.ex'), "Project.Tools"),
+        ("elixir", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-elixir-3', 'sample.ex'), "Project.Tools"),
+        ("javascript", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-javascript', 'sample.js'), "./tools"),
+        ("jsx", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-jsx', 'sample.jsx'), "./tools"),
+        ("typescript", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-typescript', 'sample.ts'), "./tools"),
+        ("tsx", case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-tsx', 'sample.tsx'), "./tools"),
     ],
 )
 def test_primary_import_paths_do_not_use_polyglot_fallback(language, source, expected):
@@ -45,12 +47,12 @@ def test_primary_import_paths_do_not_use_polyglot_fallback(language, source, exp
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('"example.org/pkg/tools"', "tools"),
-        ('import "example.org/pkg/tools"', "tools"),
-        ('helpers "example.org/pkg/tools"', "helpers"),
-        ('require "example.org/pkg/tools"', "tools"),
-        ('_ "example.org/pkg/tools"', "_"),
-        ('. "example.org/pkg/tools"', None),
+        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python', 'sample.py'), "tools"),
+        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python-2', 'sample.py'), "tools"),
+        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python-3', 'sample.py'), "helpers"),
+        (case_text('parsing', 'primary_import_parsing-go_namespace_rules_do_not_use_polyglot_fallback-python-4', 'sample.py'), "tools"),
+        (case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-2', 'sample.go'), "_"),
+        (case_text('parsing', 'primary_import_parsing-primary_import_paths_do_not_use_polyglot_fallback-go-3', 'sample.go'), None),
     ],
 )
 def test_go_namespace_rules_do_not_use_polyglot_fallback(source, expected):
@@ -66,12 +68,12 @@ def test_go_namespace_rules_do_not_use_polyglot_fallback(source, expected):
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ('#include <tools/header.h>', "tools/header.h"),
-        ('require "tools"', "tools"),
-        ("use Tools::run;", "Tools::run"),
-        ("alias Tools.Run", "Tools.Run"),
-        ("from tools import run", "tools"),
-        ("  unknown syntax  ", "unknown syntax"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python', 'sample.py'), "tools/header.h"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-2', 'sample.py'), "tools"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-3', 'sample.py'), "Tools::run"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-4', 'sample.py'), "Tools.Run"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-5', 'sample.py'), "tools"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-6', 'sample.py'), "unknown syntax"),
     ],
 )
 def test_legacy_import_path_fallback_and_reexport(source, expected):
@@ -82,11 +84,11 @@ def test_legacy_import_path_fallback_and_reexport(source, expected):
 @pytest.mark.parametrize(
     ("source", "path", "expected"),
     [
-        ("from tools import run", "tools", None),
-        ("import {run} from 'tools'", "tools", None),
-        ("import tools from 'pkg'", "pkg", None),
-        ("use tools as Helpers", "tools", "Helpers"),
-        ("require 'pkg/tools'", "pkg/tools", "tools"),
+        (case_text('parsing', 'primary_import_parsing-legacy_import_path_fallback_and_reexport-python-5', 'sample.py'), "tools", None),
+        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python', 'sample.py'), "tools", None),
+        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python-2', 'sample.py'), "pkg", None),
+        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python-3', 'sample.py'), "tools", "Helpers"),
+        (case_text('parsing', 'primary_import_parsing-legacy_namespace_fallback_and_reexport-python-4', 'sample.py'), "pkg/tools", "tools"),
     ],
 )
 def test_legacy_namespace_fallback_and_reexport(source, path, expected):
@@ -94,17 +96,19 @@ def test_legacy_namespace_fallback_and_reexport(source, path, expected):
 
 
 def test_default_import_methods_dispatch_to_adapter_path_hook():
+    source = case_text('parsing', 'primary-import-hook-directive', 'directive.txt')
     adapter = ResolutionAdapter()
     adapter.import_path = Mock(return_value="owned/path")
     ctx = Mock()
     ctx.path_files.return_value = []
-    request = ImportRequest(Mock(), adapter.import_path("directive"), source="directive")
+    request = ImportRequest(Mock(), adapter.import_path(source), source=source)
     assert adapter.import_targets(ctx, request) == [("owned/path", None)]
-    adapter.import_path.assert_called_once_with("directive")
+    adapter.import_path.assert_called_once_with(source)
     assert ctx.path_files.call_args.args[1] == "owned/path"
 
 
 def test_directive_bindings_dispatch_to_adapter_path_hook():
+    source = case_text('parsing', 'primary-import-hook-directive', 'directive.txt')
     adapter = Mock(require_import_node=False)
     adapter.import_path.return_value = "owned/path"
     adapter.import_item.return_value = []
@@ -114,13 +118,14 @@ def test_directive_bindings_dispatch_to_adapter_path_hook():
     ctx = Mock(syntax={"source": syntax})
     file = Mock()
     file.source.path = "source"
-    item = Import("source", "directive", 1)
+    item = Import("source", source, 1)
     assert ImportBindings._directive_bindings(ctx, file, item, 20) == []
-    adapter.import_path.assert_called_once_with("directive")
-    adapter.import_item.assert_called_once_with(ctx, ImportRequest(file, "owned/path", source="directive"))
+    adapter.import_path.assert_called_once_with(source)
+    adapter.import_item.assert_called_once_with(ctx, ImportRequest(file, "owned/path", source=source))
 
 
 def test_missing_required_import_node_dispatches_to_adapter_path_hook():
+    source = case_text('parsing', 'primary-import-hook-directive', 'directive.txt')
     adapter = Mock(require_import_node=True)
     adapter.import_path.return_value = "owned/path"
     adapter.import_targets.return_value = [("ignored", "ignored")]
@@ -132,6 +137,6 @@ def test_missing_required_import_node_dispatches_to_adapter_path_hook():
     resolver = Mock(files={"source": file}, syntax={"source": syntax})
     external = Mock(return_value="external:owned/path")
     with patch("atlas.metrics.resolver.get_resolution_adapter", return_value=adapter):
-        connections = _import_connections(Import("source", "directive", 1), resolver, external)
+        connections = _import_connections(Import("source", source, 1), resolver, external)
     external.assert_called_once_with("rust", "module", "owned/path")
     assert connections[0].target_key == "external:owned/path"

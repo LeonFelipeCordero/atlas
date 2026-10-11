@@ -1,0 +1,13 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 109, "evidence": "self.service.persist()", "file_path": "app.py", "line": 6, "name": "persist", "qualifier": "self.service", "relationship": "CALLS", "start_byte": 87}], "content_hash": "6d23dd6a70e90690e87c1a0414b909c6334da4ad43185a1efb376c919e4901f7", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "app.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 39, "end_column": 25, "end_line": 2, "file_path": "app.py", "key": "symbol:app.py::Service:0", "kind": "class", "language": "python", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:app.py", "qualified_name": "app.py::Service", "signature": "class Service:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 39, "end_column": 25, "end_line": 2, "file_path": "app.py", "key": "symbol:app.py::Service.persist:16", "kind": "function", "language": "python", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:app.py::Service:0", "qualified_name": "app.py::Service.persist", "signature": "def persist(self):", "start_byte": 16, "start_column": 2, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 109, "end_column": 25, "end_line": 6, "file_path": "app.py", "key": "symbol:app.py::App:40", "kind": "class", "language": "python", "line_count": null, "name": "App", "parameter_count": null, "parent_key": "file:app.py", "qualified_name": "app.py::App", "signature": "class App:", "start_byte": 40, "start_column": 1, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 109, "end_column": 25, "end_line": 6, "file_path": "app.py", "key": "symbol:app.py::App.run:70", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:app.py::App:40", "qualified_name": "app.py::App.run", "signature": "def run(self):", "start_byte": 70, "start_column": 2, "start_line": 5, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "self.service.persist()", "line": 6, "path": "app.py", "source_key": "symbol:app.py::App.run:70", "target_key": "symbol:app.py::Service.persist:16", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

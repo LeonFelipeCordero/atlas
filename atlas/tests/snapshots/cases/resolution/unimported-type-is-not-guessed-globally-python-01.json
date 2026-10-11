@@ -1,0 +1,14 @@
+{
+"files": [
+{"calls": [], "content_hash": "c5266d4ad9428305dcb4da64f3681d2efb10d0c0764f2071eb02993dbf39ebde", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "tools.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 39, "end_column": 25, "end_line": 2, "file_path": "tools.py", "key": "symbol:tools.py::Service:0", "kind": "class", "language": "python", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:tools.py", "qualified_name": "tools.py::Service", "signature": "class Service:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 39, "end_column": 25, "end_line": 2, "file_path": "tools.py", "key": "symbol:tools.py::Service.persist:16", "kind": "function", "language": "python", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:tools.py::Service:0", "qualified_name": "tools.py::Service.persist", "signature": "def persist(self):", "start_byte": 16, "start_column": 2, "start_line": 2, "visibility": null}]},
+{"calls": [{"bare_target": false, "end_byte": 41, "evidence": "local.persist()", "file_path": "app.py", "line": 2, "name": "persist", "qualifier": "local", "relationship": "CALLS", "start_byte": 26}], "content_hash": "3d9a6945e8847a18f9a40dd14f740b460dd56a99fd536e4f31bb1d8b0d4a5fa6", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "app.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 41, "end_column": 17, "end_line": 2, "file_path": "app.py", "key": "symbol:app.py::run:0", "kind": "function", "language": "python", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:app.py", "qualified_name": "app.py::run", "signature": "def run(local: Service):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "local.persist()", "line": 2, "path": "app.py", "source_key": "symbol:app.py::run:0", "target_key": "external:python:callable:persist", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:python:callable:persist", "kind": "callable", "language": "python", "name": "persist"}
+]
+}
+}

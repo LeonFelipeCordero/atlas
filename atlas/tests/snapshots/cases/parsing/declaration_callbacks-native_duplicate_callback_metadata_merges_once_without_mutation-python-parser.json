@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66726f6d20747970696e6720696d706f72742043616c6c61626c650a746f70203d206c616d62646120783a20780a646566206f757465722863623a2043616c6c61626c655b5b696e745d2c20696e745d293a0a2072657475726e206c616d62646120783a20780a"}, "language": "python", "path": "sample.py"},
+"content_hash": "8f085c68f375c416e26b511c11371e4e46933cb65bdc928c19984c3f1359ac4d",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 45, "end_column": 18, "end_line": 2, "file_path": "sample.py", "key": "symbol:sample.py::<anonymous>:34", "kind": "function", "language": "python", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::<anonymous>", "signature": "lambda x: x", "start_byte": 34, "start_column": 7, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 102, "end_column": 20, "end_line": 4, "file_path": "sample.py", "key": "symbol:sample.py::outer:46", "kind": "function", "language": "python", "line_count": null, "name": "outer", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::outer", "signature": "def outer(cb: Callable[[int], int]):", "start_byte": 46, "start_column": 1, "start_line": 3, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 102, "end_column": 20, "end_line": 4, "file_path": "sample.py", "key": "symbol:sample.py::outer.<anonymous>:91", "kind": "function", "language": "python", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "symbol:sample.py::outer:46", "qualified_name": "sample.py::outer.<anonymous>", "signature": "lambda x: x", "start_byte": 91, "start_column": 9, "start_line": 4, "visibility": null}],
+"calls": [],
+"imports": [{"file_path": "sample.py", "line": 1, "source": "from typing import Callable"}],
+"inheritances": []
+}

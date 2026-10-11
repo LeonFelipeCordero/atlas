@@ -1,0 +1,17 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 113, "evidence": "vec![{const brew:fn()->i32=||2;dbg!(brew())}]", "file_path": "main.rs", "line": 1, "name": "vec!", "qualifier": null, "relationship": "CALLS", "start_byte": 68}, {"bare_target": false, "end_byte": 111, "evidence": "dbg!(brew())", "file_path": "main.rs", "line": 1, "name": "dbg!", "qualifier": null, "relationship": "CALLS", "start_byte": 99}, {"bare_target": false, "end_byte": 110, "evidence": "brew()", "file_path": "main.rs", "line": 1, "name": "brew", "qualifier": null, "relationship": "CALLS", "start_byte": 104}], "content_hash": "0decab45334dd6f4f975f8951f59b05816cd2072b259ae424f08c7386eeb3143", "imports": [], "inheritances": [], "language": "rust", "parse_error": null, "path": "main.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 33, "end_column": 34, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::other:0", "kind": "module", "language": "rust", "line_count": null, "name": "other", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::other", "signature": "mod other", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 32, "end_column": 33, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::other.other:10", "kind": "function", "language": "rust", "line_count": null, "name": "other", "parameter_count": null, "parent_key": "symbol:main.rs::other:0", "qualified_name": "main.rs::other.other", "signature": "pub fn other()->i32", "start_byte": 10, "start_column": 11, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 51, "end_column": 52, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::brew:34", "kind": "function", "language": "rust", "line_count": null, "name": "brew", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::brew", "signature": "fn brew()->i32", "start_byte": 34, "start_column": 35, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 115, "end_column": 116, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::main:52", "kind": "function", "language": "rust", "line_count": null, "name": "main", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::main", "signature": "fn main()", "start_byte": 52, "start_column": 53, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "vec![{const brew:fn()->i32=||2;dbg!(brew())}]", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:52", "target_key": "external:rust:callable:vec!", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "dbg!(brew())", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:52", "target_key": "external:rust:callable:dbg!", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "brew()", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:52", "target_key": "external:rust:callable:brew", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:rust:callable:vec!", "kind": "callable", "language": "rust", "name": "vec!"},
+{"key": "external:rust:callable:dbg!", "kind": "callable", "language": "rust", "name": "dbg!"},
+{"key": "external:rust:callable:brew", "kind": "callable", "language": "rust", "name": "brew"}
+]
+}
+}

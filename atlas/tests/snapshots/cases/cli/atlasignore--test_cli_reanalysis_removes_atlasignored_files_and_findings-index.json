@@ -1,0 +1,320 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"schemaVersion\": 2, \"stats\": {\"files\": 3, \"symbols\": 0, \"modules\": 2, \"types\": 0, \"callables\": 0, \"nodes\": 6, \"edges\": 7, \"externalNodes\": 0, \"parseErrors\": 0}}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"schemaVersion\": 2, \"stats\": {\"files\": 3, \"symbols\": 0, \"modules\": 2, \"types\": 0, \"callables\": 0, \"nodes\": 6, \"edges\": 7, \"externalNodes\": 0, \"parseErrors\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 0,
+        "edges": 7,
+        "externalNodes": 0,
+        "files": 3,
+        "modules": 2,
+        "nodes": 6,
+        "parseErrors": 0,
+        "symbols": 0,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "report",
+    "value": {
+      "circularImports": [
+        {
+          "exampleCycle": [
+            "fixtures/a.py",
+            "fixtures/b.py",
+            "fixtures/a.py"
+          ],
+          "files": [
+            "fixtures/a.py",
+            "fixtures/b.py"
+          ],
+          "groupSize": 2,
+          "id": "import-cycle:c96fad9b1115acf075c41d5f5b744d57e340761b23b0451413455f0255c9f71a",
+          "internalDependencyCount": 2
+        }
+      ],
+      "diagnostics": [],
+      "nodes": [
+        {
+          "kind": "directory",
+          "level": "module",
+          "line": null,
+          "metrics": {
+            "fanIn": 0,
+            "fanOut": 0,
+            "instability": null,
+            "transitiveChangeImpact": 0
+          },
+          "path": ".",
+          "stableKey": "module:.",
+          "subject": "source"
+        },
+        {
+          "kind": "directory",
+          "level": "module",
+          "line": null,
+          "metrics": {
+            "fanIn": 0,
+            "fanOut": 0,
+            "instability": null,
+            "transitiveChangeImpact": 0
+          },
+          "path": "fixtures",
+          "stableKey": "module:fixtures",
+          "subject": "fixtures"
+        },
+        {
+          "kind": "file",
+          "level": "file",
+          "line": null,
+          "metrics": {
+            "fanIn": 1,
+            "fanOut": 1,
+            "functionCount": 0,
+            "instability": 0.5,
+            "lineCount": 1,
+            "measuredFunctionCount": 0,
+            "transitiveChangeImpact": 1,
+            "weightedComplexitySum": 0
+          },
+          "path": "fixtures/a.py",
+          "stableKey": "file:fixtures/a.py",
+          "subject": "fixtures/a.py"
+        },
+        {
+          "kind": "file",
+          "level": "file",
+          "line": null,
+          "metrics": {
+            "fanIn": 1,
+            "fanOut": 1,
+            "functionCount": 0,
+            "instability": 0.5,
+            "lineCount": 1,
+            "measuredFunctionCount": 0,
+            "transitiveChangeImpact": 1,
+            "weightedComplexitySum": 0
+          },
+          "path": "fixtures/b.py",
+          "stableKey": "file:fixtures/b.py",
+          "subject": "fixtures/b.py"
+        },
+        {
+          "kind": "file",
+          "level": "file",
+          "line": null,
+          "metrics": {
+            "fanIn": 0,
+            "fanOut": 0,
+            "functionCount": 0,
+            "instability": null,
+            "lineCount": 1,
+            "measuredFunctionCount": 0,
+            "transitiveChangeImpact": 0,
+            "weightedComplexitySum": 0
+          },
+          "path": "main.py",
+          "stableKey": "file:main.py",
+          "subject": "main.py"
+        }
+      ],
+      "summary": {
+        "callables": 0,
+        "circularImportGroups": 1,
+        "files": 3,
+        "modules": 2,
+        "parseErrors": 0,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"schemaVersion\": 2, \"stats\": {\"files\": 1, \"symbols\": 0, \"modules\": 1, \"types\": 0, \"callables\": 0, \"nodes\": 3, \"edges\": 2, \"externalNodes\": 0, \"parseErrors\": 0}}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"schemaVersion\": 2, \"stats\": {\"files\": 1, \"symbols\": 0, \"modules\": 1, \"types\": 0, \"callables\": 0, \"nodes\": 3, \"edges\": 2, \"externalNodes\": 0, \"parseErrors\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 0,
+        "edges": 2,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 1,
+        "nodes": 3,
+        "parseErrors": 0,
+        "symbols": 0,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "report",
+    "value": {
+      "circularImports": [],
+      "diagnostics": [],
+      "nodes": [
+        {
+          "kind": "directory",
+          "level": "module",
+          "line": null,
+          "metrics": {
+            "fanIn": 0,
+            "fanOut": 0,
+            "instability": null,
+            "transitiveChangeImpact": 0
+          },
+          "path": ".",
+          "stableKey": "module:.",
+          "subject": "source"
+        },
+        {
+          "kind": "file",
+          "level": "file",
+          "line": null,
+          "metrics": {
+            "fanIn": 0,
+            "fanOut": 0,
+            "functionCount": 0,
+            "instability": null,
+            "lineCount": 1,
+            "measuredFunctionCount": 0,
+            "transitiveChangeImpact": 0,
+            "weightedComplexitySum": 0
+          },
+          "path": "main.py",
+          "stableKey": "file:main.py",
+          "subject": "main.py"
+        }
+      ],
+      "summary": {
+        "callables": 0,
+        "circularImportGroups": 0,
+        "files": 1,
+        "modules": 1,
+        "parseErrors": 0,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "get_report_facts",
+    "value": {
+      "diagnostics": [],
+      "edges": [],
+      "graphRevision": "<revision>",
+      "imports": [],
+      "nodes": [
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "repository",
+          "level": "repository",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "source",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": null,
+          "path": ".",
+          "qualifiedName": "source",
+          "stableKey": "repository",
+          "startLine": null,
+          "type": "repository"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "directory",
+          "level": "module",
+          "lineCount": null,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "source",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "repository",
+          "path": ".",
+          "qualifiedName": "source",
+          "stableKey": "module:.",
+          "startLine": null,
+          "type": "module"
+        },
+        {
+          "baseCyclomaticComplexity": null,
+          "cyclomaticComplexity": null,
+          "kind": "file",
+          "level": "file",
+          "lineCount": 1,
+          "loopNestedComplexity": null,
+          "maxDecisionDepth": null,
+          "name": "main.py",
+          "nestedCyclomaticComplexity": null,
+          "parameterCount": null,
+          "parentStableKey": "module:.",
+          "path": "main.py",
+          "qualifiedName": "main.py",
+          "stableKey": "file:main.py",
+          "startLine": null,
+          "type": "file"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\"repositoryId\": \"<uuid>\", \"schemaVersion\": 2, \"stats\": {\"files\": 3, \"symbols\": 0, \"modules\": 2, \"types\": 0, \"callables\": 0, \"nodes\": 6, \"edges\": 7, \"externalNodes\": 0, \"parseErrors\": 0}}\n",
+    "stdout": "{\"repositoryId\": \"<uuid>\", \"schemaVersion\": 2, \"stats\": {\"files\": 3, \"symbols\": 0, \"modules\": 2, \"types\": 0, \"callables\": 0, \"nodes\": 6, \"edges\": 7, \"externalNodes\": 0, \"parseErrors\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 0,
+        "edges": 7,
+        "externalNodes": 0,
+        "files": 3,
+        "modules": 2,
+        "nodes": 6,
+        "parseErrors": 0,
+        "symbols": 0,
+        "types": 0
+      }
+    }
+  }
+]

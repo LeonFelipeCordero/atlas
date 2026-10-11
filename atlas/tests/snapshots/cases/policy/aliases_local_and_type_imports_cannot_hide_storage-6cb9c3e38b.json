@@ -1,0 +1,5 @@
+[
+  "atlas.persistence",
+  "atlas.persistence.repositories",
+  "atlas.persistence.repositories.RepositoryStore"
+]

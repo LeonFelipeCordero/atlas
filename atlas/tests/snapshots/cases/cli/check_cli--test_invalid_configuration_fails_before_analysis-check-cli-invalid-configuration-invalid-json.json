@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 1,
+    "output": "Error: Invalid <tmp>/atlas.json: 1 validation error for CheckConfig\n  Invalid JSON: EOF while parsing an object at line 1 column 1 [type=json_invalid, input_value='{', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid\n",
+    "stdout": "",
+    "stderr": "Error: Invalid <tmp>/atlas.json: 1 validation error for CheckConfig\n  Invalid JSON: EOF while parsing an object at line 1 column 1 [type=json_invalid, input_value='{', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.14/v/json_invalid\n"
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "kind": "get_architecture",
+    "value": null
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 1,
+        "edges": 3,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 1,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 1,
+        "edges": 3,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 1,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 1,
+        "edges": 3,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 1,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "source",
+      "rootPath": "<tmp>/source",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 1,
+        "edges": 3,
+        "externalNodes": 0,
+        "files": 1,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 1,
+        "types": 0
+      }
+    }
+  }
+]

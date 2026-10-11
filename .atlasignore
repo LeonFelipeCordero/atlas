@@ -1,2 +1,4 @@
-# Intentional complexity and import-cycle examples used by deterministic tests.
+# Intentional source examples and derived snapshots used by deterministic tests.
 /atlas/tests/fixtures/coffee/
+/atlas/tests/fixtures/cases/
+/atlas/tests/snapshots/cases/

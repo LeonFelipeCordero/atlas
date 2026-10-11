@@ -1,5 +1,7 @@
 """The metric accumulator consumes adapter policy, never language switches."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 import unittest
 from dataclasses import replace
 
@@ -14,15 +16,15 @@ from atlas.metrics.complexity import calculate_complexity
 class MetricAdapterTest(unittest.TestCase):
     def test_primary_policies_preserve_node_only_api(self):
         samples = {
-            "python": "def run(x):\n match x:\n  case 1: return True\n  case _: return False\n",
-            "kotlin": "fun run(x: Int) { if (x > 0) run(x-1) else if(x < 0) run(x+1) }",
-            "rust": "fn run(x: i32) { match x { 1 => run(0), _ => () } }",
-            "elixir": "defmodule Coffee do\n def run(x) when x > 0 do\n  cond do\n   x > 1 -> 2\n   true -> 1\n  end\n end\nend",
-            "java": "class Coffee { void run() { for(;;) { if(ready) break; } } }",
-            "go": "package coffee\nfunc run() { for { if ready { break } } }",
-            "javascript": "function run(x) { return x && x.ready ? 1 : 0; }",
-            "typescript": "function run(x: boolean) { return x ? 1 : 0; }",
-            "tsx": "function Run(x: boolean) { return x ? <div /> : <span />; }",
+            "python": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-python', 'sample.py'),
+            "kotlin": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-kotlin', 'sample.kt'),
+            "rust": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-rust', 'sample.rs'),
+            "elixir": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-elixir', 'sample.ex'),
+            "java": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-java', 'sample.java'),
+            "go": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-go', 'sample.go'),
+            "javascript": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-javascript', 'sample.js'),
+            "typescript": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-typescript', 'sample.ts'),
+            "tsx": case_text('metrics', 'metric_adapters-primary_policies_preserve_node_only_api-tsx', 'sample.tsx'),
         }
         for language, source in samples.items():
             with self.subTest(language=language):
@@ -43,7 +45,7 @@ class MetricAdapterTest(unittest.TestCase):
             stack.extend(node.named_children)
 
     def test_policy_controls_decisions_without_changing_traversal(self):
-        root = get_parser("python").parse(b"if ready: pass\n").root_node
+        root = get_parser("python").parse(case_bytes('metrics', 'metric_adapters-policy_controls_decisions_without_changing_traversal-python', 'sample.py')).root_node
         policy = replace(COMMON_METRICS, decisions=frozenset())
         self.assertEqual(calculate_complexity(root, policy), Complexity(1, 0, 0, 1, 0))
         self.assertEqual(calculate_complexity(root), Complexity(2, 0, 0, 2, 1))

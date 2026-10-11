@@ -1,0 +1,1 @@
+service.__dict__['_reader']

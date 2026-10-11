@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c6173732053657276696365207b20536572766963652829207b7d20766f69642072756e2829207b2068656c70657228293b207d207d"}, "language": "java", "path": "sample"},
+"content_hash": "814de99ee5d82a3d7314ef14ac5faa63d209abc8c24a98e1c6b155d2f0562c85",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 55, "end_column": 56, "end_line": 1, "file_path": "sample", "key": "symbol:sample::Service:0", "kind": "class", "language": "java", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::Service", "signature": "class Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 28, "end_column": 29, "end_line": 1, "file_path": "sample", "key": "symbol:sample::Service.Service:16", "kind": "constructor", "language": "java", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "symbol:sample::Service:0", "qualified_name": "sample::Service.Service", "signature": "Service() {}", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 53, "end_column": 54, "end_line": 1, "file_path": "sample", "key": "symbol:sample::Service.run:29", "kind": "method", "language": "java", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample::Service:0", "qualified_name": "sample::Service.run", "signature": "void run()", "start_byte": 29, "start_column": 30, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 50, "evidence": "helper()", "file_path": "sample", "line": 1, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 42}],
+"imports": [],
+"inheritances": []
+}

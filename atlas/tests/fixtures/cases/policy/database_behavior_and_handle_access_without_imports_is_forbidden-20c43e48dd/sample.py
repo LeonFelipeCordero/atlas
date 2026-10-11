@@ -1,0 +1,1 @@
+session.add_all(rows)

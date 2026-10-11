@@ -1,0 +1,15 @@
+{
+"files": [
+{"calls": [], "content_hash": "bf2a290decdab57d38a1cec07dcf36fd54dd4292ea466e7b377d83f5c45444ee", "imports": [], "inheritances": [], "language": "javascript", "parse_error": null, "path": "sample.js", "symbols": []}
+],
+"resolved": {
+"connections": [
+
+],
+"external_nodes": [
+
+]
+},
+"syntax": {"children": [{"children": [{"children": [{"children": [], "end_byte": 1, "end_point": [0, 1], "error": false, "missing": false, "named": false, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "28"}, "type": "("}, {"children": [], "end_byte": 14, "end_point": [0, 14], "error": false, "missing": false, "named": true, "start_byte": 1, "start_point": [0, 1], "text": {"hex": "2f2a20636f6d6d656e74202a2f"}, "type": "comment"}, {"children": [], "end_byte": 19, "end_point": [0, 19], "error": false, "missing": false, "named": true, "start_byte": 15, "start_point": [0, 15], "text": {"hex": "776f726b"}, "type": "identifier"}, {"children": [], "end_byte": 20, "end_point": [0, 20], "error": false, "missing": false, "named": false, "start_byte": 19, "start_point": [0, 19], "text": {"hex": "29"}, "type": ")"}], "end_byte": 20, "end_point": [0, 20], "error": false, "missing": false, "named": true, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "282f2a20636f6d6d656e74202a2f20776f726b29"}, "type": "parenthesized_expression"}], "end_byte": 20, "end_point": [0, 20], "error": false, "missing": false, "named": true, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "282f2a20636f6d6d656e74202a2f20776f726b29"}, "type": "expression_statement"}], "end_byte": 20, "end_point": [0, 20], "error": false, "missing": false, "named": true, "start_byte": 0, "start_point": [0, 0], "text": {"hex": "282f2a20636f6d6d656e74202a2f20776f726b29"}, "type": "program"},
+"adapter": {"unparenthesized_type": "identifier"}
+}

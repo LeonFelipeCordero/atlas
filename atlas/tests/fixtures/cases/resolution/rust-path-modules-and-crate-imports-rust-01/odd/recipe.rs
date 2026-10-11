@@ -1,0 +1,1 @@
+use crate::report; pub fn portions(x:i32)->i32{x} pub fn preview(){report::render();}

@@ -1,0 +1,1 @@
+fn outer() { consume(|| { fn local() {} local(); }); }

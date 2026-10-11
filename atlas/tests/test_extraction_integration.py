@@ -1,5 +1,7 @@
 """Grammar facts must reach resolution intact; unsafe syntax stays external."""
 
+from tests.import_snapshot_support import import_case_sources as case_sources
+
 from atlas.metrics.resolver import resolve_connections
 from tests.test_semantic_resolution import ResolutionAssertions, call_edges, repository
 
@@ -8,24 +10,7 @@ class ExtractionIntegrationTest(ResolutionAssertions):
     def test_elixir_heads_controls_nested_arguments_and_pipelines(self):
         repo = repository(
             "elixir",
-            {
-                "main.ex": """defmodule Maker do
- def brew([]), do: "empty"
- def brew(names), do: names
- def retry(n) when n <= 0, do: 0
- def retry(n), do: retry(n-1)
- def main do
-  IO.puts(brew([]))
-  [] |> brew |> IO.puts()
-  if true, do: brew([1])
-  case 1 do
-   1 -> brew([2])
-   _ -> "none"
-  end
- end
-end
-"""
-            },
+            case_sources("imports", "extraction-integration-elixir-heads-controls-nested-arguments-and-pipelines"),
         )
         calls = repo.files[0].calls
         self.assertEqual(
@@ -43,15 +28,7 @@ end
     def test_rust_macro_nested_arguments_offsets_and_invalid_dsl(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": """// café: multibyte offsets are byte based
-fn brew()->i32{1}
-fn main(){
- println!("{}", format!("{}", brew()));
- custom! { key => missing() }
-}
-"""
-            },
+            case_sources("imports", "extraction-integration-rust-macro-nested-arguments-offsets-and-invalid-dsl"),
         )
         file = repo.files[0]
         inner = next(call for call in file.calls if call.name == "brew")
@@ -74,11 +51,7 @@ fn main(){
     def test_rust_relative_module_paths_keep_their_declared_identity(self):
         repo = repository(
             "rust",
-            {
-                "main.rs": "mod recipe; fn main(){crate::recipe::preview();}",
-                "recipe.rs": "mod report; pub fn preview(){self::report::render();}",
-                "recipe/report.rs": "pub fn render(){}",
-            },
+            case_sources("imports", "extraction-integration-rust-relative-module-paths-keep-their-declared-identity"),
         )
         self.internal(repo, "crate::recipe::preview()", "recipe.rs::preview")
         self.internal(repo, "self::report::render()", "report.rs::render")
@@ -93,10 +66,7 @@ fn main(){
     def test_inheritance_headers_and_import_aliases_are_precise(self):
         repo = repository(
             "python",
-            {
-                "base.py": "class Base: pass",
-                "main.py": "from base import Base as Parent\nclass Maker(Parent):\n def run(self):\n  value = 'class Fake extends Other'\n  return value",
-            },
+            case_sources("imports", "extraction-integration-inheritance-headers-and-import-aliases-are-precise"),
         )
         inherited = [
             edge
@@ -107,10 +77,7 @@ fn main(){
         self.assertIn("base.py::Base:", inherited[0].target_key)
         repo = repository(
             "java",
-            {
-                "base.java": "package real; class Base {}",
-                "main.java": "package app; import wrong.Base; class Maker extends Base {}",
-            },
+            case_sources("imports", "extraction-integration-inheritance-headers-and-import-aliases-are-precise-java"),
         )
         inherited = [
             edge
@@ -123,9 +90,7 @@ fn main(){
     def test_multiple_and_generic_bases_exclude_type_and_constructor_arguments(self):
         repo = repository(
             "python",
-            {
-                "main.py": "class One: pass\nclass Two: pass\nclass Maker(One, Two, metaclass=Meta): pass"
-            },
+            case_sources("imports", "extraction-integration-multiple-and-generic-bases-exclude-type-and-constructor-arguments"),
         )
         self.assertEqual(
             [item.target_name for item in repo.inheritances], ["One", "Two"]

@@ -1,0 +1,1 @@
+class Coffee { void run() { for(;;) { if(ready) break; } } }

@@ -1,0 +1,3 @@
+def zero, do: 0
+x = fn a,b when a > 0 -> a end
+y = fn -> 0 end

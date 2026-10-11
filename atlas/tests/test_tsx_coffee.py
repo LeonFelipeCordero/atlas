@@ -1,5 +1,7 @@
 """JSX usages are references, not immediate calls or intrinsic HTML dependencies."""
 
+from tests.import_snapshot_support import import_case_sources as case_sources
+
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -60,14 +62,7 @@ class TsxCoffeeTest(unittest.TestCase):
     def test_lowercase_namespaces_and_nonletter_component_names(self):
         repo = repository(
             "tsx",
-            {
-                "Card.tsx": "export function Card() { return <div />; }",
-                "App.tsx": """import * as cards from './Card';
-import {Card as $Card} from './Card';
-import {Card as _Card} from './Card';
-export function App() { return <><cards.Card /><$Card /><_Card /></>; }
-""",
-            },
+            case_sources("imports", "tsx-coffee-lowercase-namespaces-and-nonletter-component-names"),
         )
         references = [
             edge
@@ -85,16 +80,7 @@ export function App() { return <><cards.Card /><$Card /><_Card /></>; }
     def test_jsx_intrinsics_fragments_closing_tags_and_shadowing(self):
         for language, extension in [("javascript", "jsx"), ("tsx", "tsx")]:
             with self.subTest(language=language):
-                repo = repository(
-                    language,
-                    {
-                        f"Card.{extension}": "export function Card() { return <div />; }",
-                        f"App.{extension}": """import {Card} from './Card';
-export function App() { return <><Card></Card><div /><custom-card /><svg:path /></>; }
-export function Shadow(Card) { return <Card />; }
-""",
-                    },
-                )
+                repo = repository(language, case_sources("imports", "jsx-intrinsics-" + extension))
                 assert_intrinsics_and_shadowing(self, repo)
 
 

@@ -1,0 +1,4 @@
+{
+"native_input": null,
+"declarations": [{"body_span": null, "children": [{"body_span": null, "children": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "local", "signature": "fun local() = 1", "span": {"end_byte": 35, "end_column": 35, "end_line": 0, "start_byte": 20, "start_column": 20, "start_line": 0}, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": null, "signature": "{ fun local() = 1; local() }", "span": {"end_byte": 46, "end_column": 46, "end_line": 0, "start_byte": 18, "start_column": 18, "start_line": 0}, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": "outer", "signature": "fun outer() { use { fun local() = 1; local() } }", "span": {"end_byte": 48, "end_column": 48, "end_line": 0, "start_byte": 0, "start_column": 0, "start_line": 0}, "visibility": null}]
+}

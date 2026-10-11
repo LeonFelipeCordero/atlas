@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66756e6374696f6e2063686f6f73652878203d207265616479203f2031203a2030297b69662878292061636365707428297d"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "6352b1dfd4f82a220d72577aefeb789fbd2dacb9e952d3a6e8e58a3a69d08005",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 50, "end_column": 51, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::choose:0", "kind": "function", "language": "typescript", "line_count": null, "name": "choose", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::choose", "signature": "function choose(x = ready ? 1 : 0)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 49, "evidence": "accept()", "file_path": "sample.ts", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 41}],
+"imports": [],
+"inheritances": []
+}

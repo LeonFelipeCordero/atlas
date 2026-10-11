@@ -1,0 +1,1 @@
+import {Service as Alias, Service} from './service'; function run(){const local=new Service();Alias.prototype.persist+=replacement;local.persist();}

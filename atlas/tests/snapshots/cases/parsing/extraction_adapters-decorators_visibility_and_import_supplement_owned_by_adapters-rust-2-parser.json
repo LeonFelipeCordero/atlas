@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "6d6f642065787465726e616c3b0a6d6f6420696e6c696e65207b7d"}, "language": "rust", "path": "sample.rs"},
+"content_hash": "6c7d45e3198f9e36fff2dba080d0d62530776a3886de23aea873f809a4689044",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 13, "end_column": 14, "end_line": 1, "file_path": "sample.rs", "key": "symbol:sample.rs::external:0", "kind": "module", "language": "rust", "line_count": null, "name": "external", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::external", "signature": "mod external;", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 27, "end_column": 14, "end_line": 2, "file_path": "sample.rs", "key": "symbol:sample.rs::inline:14", "kind": "module", "language": "rust", "line_count": null, "name": "inline", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::inline", "signature": "mod inline", "start_byte": 14, "start_column": 1, "start_line": 2, "visibility": null}],
+"calls": [],
+"imports": [{"file_path": "sample.rs", "line": 1, "source": "mod external;"}],
+"inheritances": []
+}

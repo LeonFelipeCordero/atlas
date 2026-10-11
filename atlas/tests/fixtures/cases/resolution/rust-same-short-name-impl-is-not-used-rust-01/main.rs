@@ -1,0 +1,1 @@
+mod service; mod other; use service::Service; fn run(local:&Service){local.persist();}

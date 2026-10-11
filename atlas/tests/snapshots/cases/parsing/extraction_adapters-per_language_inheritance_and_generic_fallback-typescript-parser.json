@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c617373204368696c6420657874656e6473204261736520696d706c656d656e74732053657276696365207b7d"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "08f4b8ebba79fdd51fa4da95e3908a345afa3ab0788ddaea4a08b542cd985f3c",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 46, "end_column": 47, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::Child:0", "kind": "class", "language": "typescript", "line_count": null, "name": "Child", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::Child", "signature": "class Child extends Base implements Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": [{"evidence": "class Child extends Base implements Service", "file_path": "sample.ts", "language": "typescript", "line": 1, "source_key": "symbol:sample.ts::Child:0", "target_name": "Base"}, {"evidence": "class Child extends Base implements Service", "file_path": "sample.ts", "language": "typescript", "line": 1, "source_key": "symbol:sample.ts::Child:0", "target_name": "Service"}]
+}

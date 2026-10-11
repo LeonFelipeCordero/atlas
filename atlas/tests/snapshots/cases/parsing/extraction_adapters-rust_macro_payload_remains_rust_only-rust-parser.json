@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "666e2072756e2829207b207072696e746c6e2128227b7d222c2068656c7065722829293b207d"}, "language": "rust", "path": "sample.rs"},
+"content_hash": "ac82641af7ad3125f5e1ed3828eea183296dc1465b8b88d01cec9c1f1c92dd82",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 38, "end_column": 39, "end_line": 1, "file_path": "sample.rs", "key": "symbol:sample.rs::run:0", "kind": "function", "language": "rust", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::run", "signature": "fn run()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": false, "end_byte": 35, "evidence": "println!(\"{}\", helper())", "file_path": "sample.rs", "line": 1, "name": "println!", "qualifier": null, "relationship": "CALLS", "start_byte": 11}, {"bare_target": true, "end_byte": 34, "evidence": "helper()", "file_path": "sample.rs", "line": 1, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 26}],
+"imports": [],
+"inheritances": []
+}

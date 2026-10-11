@@ -1,0 +1,1 @@
+class BulkOperationResponse { companion object { fun from(result: BulkOperationResult) = BulkOperationResponse() } }

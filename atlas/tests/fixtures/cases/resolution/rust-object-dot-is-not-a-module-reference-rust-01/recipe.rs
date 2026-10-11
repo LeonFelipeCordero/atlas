@@ -1,0 +1,1 @@
+pub fn portions(x:i32)->i32{x}

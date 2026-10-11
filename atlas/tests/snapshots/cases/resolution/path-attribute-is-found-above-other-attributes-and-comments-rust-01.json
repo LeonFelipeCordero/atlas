@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 105, "evidence": "worker::work()", "file_path": "src/main.rs", "line": 4, "name": "work", "qualifier": "worker", "relationship": "CALLS", "start_byte": 91}], "content_hash": "96aa7ee410b3334e4afe846556bb05dc90b69d2c366a83c372656b27f9ef9b22", "imports": [{"file_path": "src/main.rs", "line": 4, "source": "mod worker;"}], "inheritances": [], "language": "rust", "parse_error": null, "path": "src/main.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 80, "end_column": 12, "end_line": 4, "file_path": "src/main.rs", "key": "symbol:src/main.rs::worker:69", "kind": "module", "language": "rust", "line_count": null, "name": "worker", "parameter_count": null, "parent_key": "file:src/main.rs", "qualified_name": "src/main.rs::worker", "signature": "mod worker;", "start_byte": 69, "start_column": 1, "start_line": 4, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 107, "end_column": 39, "end_line": 4, "file_path": "src/main.rs", "key": "symbol:src/main.rs::main:81", "kind": "function", "language": "rust", "line_count": null, "name": "main", "parameter_count": null, "parent_key": "file:src/main.rs", "qualified_name": "src/main.rs::main", "signature": "fn main()", "start_byte": 81, "start_column": 13, "start_line": 4, "visibility": null}]},
+{"calls": [], "content_hash": "f1ac7d9cf62721778c669a3ed74eb8f6cc82aa5758b502751010d074f631cc54", "imports": [], "inheritances": [], "language": "rust", "parse_error": null, "path": "odd/worker.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 15, "end_column": 16, "end_line": 1, "file_path": "odd/worker.rs", "key": "symbol:odd/worker.rs::work:0", "kind": "function", "language": "rust", "line_count": null, "name": "work", "parameter_count": null, "parent_key": "file:odd/worker.rs", "qualified_name": "odd/worker.rs::work", "signature": "pub fn work()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}]},
+{"calls": [], "content_hash": "f1ac7d9cf62721778c669a3ed74eb8f6cc82aa5758b502751010d074f631cc54", "imports": [], "inheritances": [], "language": "rust", "parse_error": null, "path": "src/worker.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 15, "end_column": 16, "end_line": 1, "file_path": "src/worker.rs", "key": "symbol:src/worker.rs::work:0", "kind": "function", "language": "rust", "line_count": null, "name": "work", "parameter_count": null, "parent_key": "file:src/worker.rs", "qualified_name": "src/worker.rs::work", "signature": "pub fn work()", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "mod worker;", "line": 4, "path": "src/main.rs", "source_key": "file:src/main.rs", "target_key": "file:odd/worker.rs", "type": "IMPORTS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "worker::work()", "line": 4, "path": "src/main.rs", "source_key": "symbol:src/main.rs::main:81", "target_key": "symbol:odd/worker.rs::work:0", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

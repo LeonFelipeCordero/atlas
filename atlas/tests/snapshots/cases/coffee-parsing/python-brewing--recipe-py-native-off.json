@@ -1,0 +1,79 @@
+[
+  {
+    "kind": "class",
+    "name": "Recipe",
+    "visibility": null,
+    "span": {
+      "start_byte": 0,
+      "end_byte": 452,
+      "start_line": 0,
+      "start_column": 0,
+      "end_line": 16,
+      "end_column": 36
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": "portions",
+        "visibility": null,
+        "span": {
+          "start_byte": 36,
+          "end_byte": 238,
+          "start_line": 2,
+          "start_column": 4,
+          "end_line": 9,
+          "end_column": 24
+        },
+        "children": [],
+        "decorators": [
+          "@staticmethod"
+        ],
+        "doc_comment": null,
+        "signature": "def portions(name: str) -> int:\n        match name:\n            case \"espresso\":\n                return 2\n            case \"filter\":\n                return 3\n            case _:\n                return 0",
+        "body_span": null
+      },
+      {
+        "kind": "function",
+        "name": "preview",
+        "visibility": null,
+        "span": {
+          "start_byte": 262,
+          "end_byte": 452,
+          "start_line": 12,
+          "start_column": 4,
+          "end_line": 16,
+          "end_column": 36
+        },
+        "children": [],
+        "decorators": [
+          "@staticmethod"
+        ],
+        "doc_comment": null,
+        "signature": "def preview(name: str) -> str:\n        # Delay the reporting import to keep the source cycle runtime-safe.\n        from ..reporting.report import Report\n\n        return Report.render([name])",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Recipe:\n    @staticmethod\n    def portions(name: str) -> int:\n        match name:\n            case \"espresso\":\n                return 2\n            case \"filter\":\n                return 3\n            case _:\n                return 0\n\n    @staticmethod\n    def preview(name: str) -> str:\n        # Delay the reporting import to keep the source cycle runtime-safe.\n        from ..reporting.report import Report\n\n        return Report.render([name])",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "portions",
+    "visibility": null,
+    "span": {
+      "start_byte": 455,
+      "end_byte": 519,
+      "start_line": 19,
+      "start_column": 0,
+      "end_line": 20,
+      "end_column": 32
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "def portions(name: str) -> int:\n    return Recipe.portions(name)",
+    "body_span": null
+  }
+]

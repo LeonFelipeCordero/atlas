@@ -1,0 +1,1 @@
+#[path = "alternate"] mod outer {mod inner;} fn run(){crate::outer::inner::work();}

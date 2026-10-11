@@ -1,0 +1,1 @@
+fn x when x > 0 -> if x and ready, do: accept(); _ -> unless stopped, do: reject() end

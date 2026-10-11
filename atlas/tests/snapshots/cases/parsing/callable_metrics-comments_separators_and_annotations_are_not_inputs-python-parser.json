@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566206628612c202320636f6d6d612c20636f6d6d656e740a202a2c20623a207475706c655b696e742c20696e745d203d2028312c322929202d3e207475706c655b696e742c696e745d3a2070617373"}, "language": "python", "path": "sample"},
+"content_hash": "42f81daff4b5e18311523e4ea7d9b960997c7988bb0948ea218e56578b62f62e",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 81, "end_column": 56, "end_line": 2, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "python", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "def f(a, # comma, comment\n *, b: tuple[int, int] = (1,2)) -> tuple[int,int]:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

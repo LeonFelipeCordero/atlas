@@ -1,0 +1,1 @@
+cursor.executemany(sql, values)

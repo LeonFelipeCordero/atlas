@@ -1,0 +1,1 @@
+class Service {persist(){}} class Other {persist(){}} function run(local:Service){local=new Other();local.persist();}

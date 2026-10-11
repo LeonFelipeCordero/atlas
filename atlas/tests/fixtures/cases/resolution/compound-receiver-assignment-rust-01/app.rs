@@ -1,0 +1,1 @@
+struct Service{} impl Service{fn persist(&self){}} fn run(local:Service){local+=other;local.persist();}

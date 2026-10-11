@@ -1,0 +1,4 @@
+[
+  "builtins.__import__",
+  "getattr"
+]

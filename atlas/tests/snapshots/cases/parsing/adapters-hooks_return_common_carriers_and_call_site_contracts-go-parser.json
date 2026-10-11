@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "7061636b6167652064656d6f0a66756e632072756e2829207b2066203a3d2066756e632829207b2068656c7065722829207d3b20662829207d"}, "language": "go", "path": "sample"},
+"content_hash": "979b2516400f6c2eb9fb7972c6e50335b7f851b78653c5d838b936ba77385cef",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 57, "end_column": 45, "end_line": 2, "file_path": "sample", "key": "symbol:sample::run:13", "kind": "function", "language": "go", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::run", "signature": "func run()", "start_byte": 13, "start_column": 1, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 50, "end_column": 38, "end_line": 2, "file_path": "sample", "key": "symbol:sample::run.f:31", "kind": "function", "language": "go", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "symbol:sample::run:13", "qualified_name": "sample::run.f", "signature": "func() { helper() }", "start_byte": 31, "start_column": 19, "start_line": 2, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 48, "evidence": "helper()", "file_path": "sample", "line": 2, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 40}, {"bare_target": true, "end_byte": 55, "evidence": "f()", "file_path": "sample", "line": 2, "name": "f", "qualifier": null, "relationship": "CALLS", "start_byte": 52}],
+"imports": [],
+"inheritances": []
+}

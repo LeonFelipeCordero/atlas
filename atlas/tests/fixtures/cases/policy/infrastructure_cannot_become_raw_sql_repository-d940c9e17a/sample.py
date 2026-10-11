@@ -1,0 +1,1 @@
+connection.execute('INSERT INTO repositories VALUES (1)')

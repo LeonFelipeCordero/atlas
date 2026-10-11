@@ -1,5 +1,7 @@
 """Focused graph CLI, traversal, isolation, snapshot and source safety checks."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_bytes, case_text
 import hashlib
 import json
 import os
@@ -30,7 +32,7 @@ def graph(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, str, s
     migrate_database(path)
     source = tmp_path / "src/app.py"
     source.parent.mkdir()
-    source.write_text("def run():\n    worker()\n    return 1\n\ndef worker():\n    pass\n")
+    source.write_text(case_text('operational', 'graph-navigation-graph', 'src/app.py'))
     artifact = graph_artifact()
     artifact["nodes"][2]["properties"]["sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
     artifact["edges"].append({**artifact["edges"][0], "sourceStableKey": "worker", "targetStableKey": "run"})
@@ -103,7 +105,7 @@ def test_directions_cycles_and_evidence(graph, direction) -> None:
         assert payload["edges"][0]["sourceStableKey"] == "worker"
 
 
-@pytest.mark.parametrize("cutoff", [("--depth", "0", "depth"), ("--max-nodes", "1", "maxNodes"), ("--max-edges", "1", "maxEdges")])
+@pytest.mark.parametrize("cutoff", [("--depth", "0", "depth"), ("--max-nodes", "1", "maxNodes"), ("--max-edges", "1", "maxEdges")], ids=lambda cutoff: cutoff[2])
 def test_context_cutoffs(graph, cutoff) -> None:
     option, value, reason = cutoff
     payload = command("context", "run", option, value)
@@ -247,14 +249,19 @@ def test_missing_schema_and_index(tmp_path: Path, graph) -> None:
             pass
 
 
-@pytest.mark.parametrize("separator", ["\u2028", "\u0085", "\f"])
-@pytest.mark.parametrize("newline", ["\n", "\r\n"])
-def test_source_spans_use_parser_lf_coordinates(graph, separator, newline) -> None:
+@pytest.mark.parametrize("case_id", [
+    "graph-source-spans-lf-line-separator", "graph-source-spans-lf-next-line",
+    "graph-source-spans-lf-form-feed", "graph-source-spans-crlf-line-separator",
+    "graph-source-spans-crlf-next-line", "graph-source-spans-crlf-form-feed",
+])
+def test_source_spans_use_parser_lf_coordinates(graph, case_id) -> None:
     from atlas.services.repositories import analyze_folder
 
     root = graph[0].parent
-    lines = [f'label = "first{separator}second"', "def run():", "    return 42"]
-    (root / "src/app.py").write_bytes((newline.join(lines) + newline).encode("utf-8"))
+    contents = case_bytes("operational", case_id, "src/app.py")
+    lines = contents.decode("utf-8").split("\n")[:-1]
+    lines = [line.removesuffix("\r") for line in lines]
+    (root / "src/app.py").write_bytes(contents)
     with repository_session(graph[0]) as session:
         RepositoryStore(session).save(graph[1], analyze_folder(root))
     key = command("find", "run")["nodes"][0]["stableKey"]
@@ -274,7 +281,7 @@ def test_source_verified_paged_changed_missing(graph) -> None:
     assert page["lines"] == ["    worker()", "    return 1"]
     assert command("source", "worker")["source"]["status"] == "span_unavailable"
     source = graph[0].parent / "src/app.py"
-    source.write_text("changed\n")
+    source.write_text(case_text('operational', 'graph-navigation-source-verified-paged-changed-missing', 'app.py'))
     changed = command("source", "run")["source"]
     assert changed["status"] == "changed" and "lines" not in changed
     source.unlink()
@@ -284,7 +291,7 @@ def test_source_verified_paged_changed_missing(graph) -> None:
 @pytest.mark.parametrize("unsafe", ["../outside.py", "/outside.py", "src/escape.py"])
 def test_source_unsafe_paths_and_symlink(graph, tmp_path: Path, unsafe: str) -> None:
     outside = tmp_path.parent / f"{tmp_path.name}-outside.py"
-    outside.write_text("secret\n")
+    outside.write_text(case_text('operational', 'graph-navigation-source-unsafe-paths-and-symlink', 'outside.py'))
     (tmp_path / "src/escape.py").symlink_to(outside)
     with sqlite3.connect(graph[0]) as connection:
         connection.execute("UPDATE graph_nodes SET path=? WHERE repository_id=? AND node_key IN ('run','file')", (unsafe, graph[1]))
@@ -297,6 +304,7 @@ def test_source_fifo_never_blocks(graph) -> None:
     source.unlink()
     os.mkfifo(source)
     result = subprocess.run([sys.executable, "-m", "atlas", "graph", "--project", "Local", "source", "run"], capture_output=True, text=True, timeout=5)
+    snapshot_result({"stdout": result.stdout, "stderr": result.stderr, "exit_code": result.returncode}, "subprocess")
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["source"]["status"] == "unreadable"
 
@@ -320,7 +328,7 @@ def test_source_file_size_is_bounded(graph) -> None:
 
 def test_source_long_line_output_is_bounded(graph) -> None:
     source = graph[0].parent / "src/app.py"
-    source.write_text("x" * 2_000_000)
+    source.write_text(case_text('operational', 'graph-navigation-source-long-line-output-is-bounded', 'app.py'))
     with sqlite3.connect(graph[0]) as connection:
         connection.execute("UPDATE graph_files SET sha256=? WHERE repository_id=?", (hashlib.sha256(source.read_bytes()).hexdigest(), graph[1]))
     payload = command("source", "run", "--max-lines", "1")["source"]

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "707562207374727563742053657276696365207b7d"}, "language": "rust", "path": "sample.rs"},
+"content_hash": "767c2331f428afa857a8bbcbb55f12ed71dab20e5877e511b9b2170d4484af8f",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 21, "end_column": 22, "end_line": 1, "file_path": "sample.rs", "key": "symbol:sample.rs::Service:0", "kind": "struct", "language": "rust", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.rs", "qualified_name": "sample.rs::Service", "signature": "pub struct Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

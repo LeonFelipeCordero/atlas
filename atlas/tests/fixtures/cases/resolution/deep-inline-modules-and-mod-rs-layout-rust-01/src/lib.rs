@@ -1,0 +1,1 @@
+pub mod outer {pub mod middle {pub mod inner;}} fn run(){crate::outer::middle::inner::work();}

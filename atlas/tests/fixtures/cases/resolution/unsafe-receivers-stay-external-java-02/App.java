@@ -1,0 +1,1 @@
+class Service { void persist() {} void persist(int x) {} } class App { void run(Service local){ local.persist(); } }

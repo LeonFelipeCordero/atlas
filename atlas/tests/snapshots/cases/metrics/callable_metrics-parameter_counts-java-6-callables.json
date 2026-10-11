@@ -1,0 +1,7 @@
+{
+"file_record": {"kind": "file", "language": "java", "level": "file", "name": "sample.java", "parentStableKey": "module:.", "path": "sample.java", "properties": {"bytes": 10, "lineCount": 1, "sha256": "a4127100c72e204a2e27f5a8d29310899744c2e16642591e4656add6b9fac96a"}, "qualifiedName": "sample.java", "stableKey": "file:sample.java", "type": "file"},
+"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.java"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.java"}}}, "default_limits": [], "disabled": []},
+"parse_error": null,
+"records": [{"complexity": null, "decorators": [], "end_byte": 10, "end_column": 11, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::C:0", "kind": "class", "language": "java", "line_count": null, "name": "C", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::C", "signature": "class C", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"thresholds": []
+}

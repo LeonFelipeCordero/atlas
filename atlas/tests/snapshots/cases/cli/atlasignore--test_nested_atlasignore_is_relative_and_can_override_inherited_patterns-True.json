@@ -1,0 +1,11 @@
+[
+  {
+    "kind": "discovered_paths",
+    "value": [
+      "main.py",
+      "other/local.py",
+      "src/deep/local.py",
+      "src/keep.skip.py"
+    ]
+  }
+]

@@ -1,5 +1,7 @@
 """Malformed source bytes retain original file identity but share decoded AST offsets."""
 
+from tests.source_snapshot_fixture import case_bytes
+
 import hashlib
 import unittest
 from pathlib import Path
@@ -11,10 +13,10 @@ from atlas.parsing.parser import parse_files
 class InvalidUtf8Test(unittest.TestCase):
     def test_original_file_digest_and_replacement_decoded_declarations(self) -> None:
         sources = {
-            "app.ts": b'// \xff\xfe\xf0\x28\x8c\x28\nexport function value() { return "\xff" }\nvalue()\n',
-            "worker.py": b'# \x80\xed\xa0\x80\ndef work():\n return "\xff"\nwork()\n',
-            "worker.go": b"//\xff text\npackage main\nfunc f(){g()}\n",
-            "Worker.java": b"//\xff text\nclass A { void f(){g();} }\n",
+            "app.ts": case_bytes('parsing', 'invalid_utf8-original_file_digest_and_replacement_decoded_declarations-python-2', 'app.ts'),
+            "worker.py": case_bytes('parsing', 'invalid_utf8-original_file_digest_and_replacement_decoded_declarations-python-3', 'worker.py'),
+            "worker.go": case_bytes('parsing', 'invalid_utf8-original_file_digest_and_replacement_decoded_declarations-python-4', 'worker.go'),
+            "Worker.java": case_bytes('parsing', 'invalid_utf8-original_file_digest_and_replacement_decoded_declarations-python-5', 'Worker.java'),
         }
         languages = {
             "ts": "typescript",

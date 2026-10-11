@@ -1,3 +1,5 @@
+
+from tests.source_snapshot_fixture import case_text
 import subprocess
 import tempfile
 import unittest
@@ -13,21 +15,21 @@ class IndexerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "project"
             root.mkdir()
-            (root / "helper.ts").write_text("export function helper() { return 1 }\n")
+            (root / "helper.ts").write_text(case_text("imports", "indexer-indexes-polyglot-symbols-and-connections", 'helper.ts'))
             (root / "service.ts").write_text(
-                "import { helper } from './helper'\nexport class Service { run() { return helper() } }\n"
+                case_text("imports", "indexer-indexes-polyglot-symbols-and-connections", 'service.ts')
             )
             (root / "main.go").write_text(
-                'package main\nimport "fmt"\nfunc main() { fmt.Println("hello") }\n'
+                case_text("imports", "indexer-indexes-polyglot-symbols-and-connections", 'main.go')
             )
             (root / "App.java").write_text(
-                "class App extends Base { void run() { helper(); } }\n"
+                case_text("imports", "indexer-indexes-polyglot-symbols-and-connections", 'App.java')
             )
             (root / "App.kt").write_text(
-                "class Clock : Base() { fun now() = Instant.now() }\n"
+                case_text("imports", "indexer-indexes-polyglot-symbols-and-connections", 'App.kt')
             )
             (root / "app.ex").write_text(
-                "defmodule Demo do\n  def run(), do: Other.call()\nend\n"
+                case_text("imports", "indexer-indexes-polyglot-symbols-and-connections", 'app.ex')
             )
             artifact = analyze_repository(root)
             saved = asdict(artifact)
@@ -79,10 +81,10 @@ class IndexerTest(unittest.TestCase):
             (root / "api").mkdir(parents=True)
             (root / "core").mkdir()
             (root / "core" / "helper.ts").write_text(
-                "export class Helper { work() { return 1 } }\n"
+                case_text("imports", "indexer-builds-module-file-type-and-callable-views", 'core/helper.ts')
             )
             (root / "api" / "service.ts").write_text(
-                "import { Helper } from '../core/helper'\nexport class Service { run() { return work() } }\n"
+                case_text("imports", "indexer-builds-module-file-type-and-callable-views", 'api/service.ts')
             )
 
             artifact = analyze_repository(root)
@@ -110,28 +112,7 @@ class IndexerTest(unittest.TestCase):
     def test_kotlin_class_methods_and_nested_declarations(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "Service.kt").write_text("""package demo
-interface Runner {
-    fun run(): Int
-}
-class Service : Runner {
-    override fun run(): Int {
-        return helper()
-    }
-    fun run(value: Int): Int = value
-    companion object {
-        fun create(): Service = Service()
-    }
-    class Nested {
-        fun work(): Int = helper()
-    }
-}
-object Singleton {
-    fun work(): Int = helper()
-}
-fun helper(): Int = 1
-fun String.extension(): Int = helper()
-""")
+            (root / "Service.kt").write_text(case_text("imports", "indexer-kotlin-class-methods-and-nested-declarations-1", 'Service.kt'))
             artifact = analyze_repository(root)
             nodes = {
                 node["qualifiedName"]: node
@@ -181,15 +162,7 @@ fun String.extension(): Int = helper()
     def test_java_tags_add_constructors_without_losing_imports(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "Service.java").write_text("""package demo;
-import demo.Other;
-class Service {
-    public Service() {}
-    void run() {}
-    void run(int value) {}
-    class Nested { public Nested() {} }
-}
-""")
+            (root / "Service.java").write_text(case_text("imports", "indexer-java-tags-add-constructors-without-losing-imports-1", 'Service.java'))
             artifact = analyze_repository(root)
             symbols = [node for node in artifact.nodes if "qualifiedName" in node]
             names = [node["qualifiedName"] for node in symbols]
@@ -205,9 +178,9 @@ class Service {
             root = Path(directory) / "project"
             root.mkdir()
             source = root / "main.ts"
-            source.write_text("export function first() {}\n")
+            source.write_text(case_text("imports", "indexer-reanalysis-reflects-source-changes-without-writing-a-file-1", 'main.ts'))
             first = analyze_repository(root)
-            source.write_text("export function second() {}\n")
+            source.write_text(case_text("imports", "indexer-reanalysis-reflects-source-changes-without-writing-a-file-2", 'main.ts'))
             second = analyze_repository(root)
             self.assertIn("first", {node["name"] for node in first.nodes})
             names = {node["name"] for node in second.nodes}
@@ -222,10 +195,10 @@ class Service {
         ):
             root = Path(directory)
             subprocess.run(["git", "init", "-q", str(root)], check=True)
-            (root / "café.ts").write_text("export const value = 1\n")
-            (root / "a\nfile.ts").write_text("export const value = 2\n")
+            (root / "café.ts").write_text(case_text("imports", "indexer-discovers-git-files-with-special-characters-1", 'café.ts'))
+            (root / "a\nfile.ts").write_text(case_text("imports", "indexer-discovers-git-files-with-special-characters-2", 'a\nfile.ts'))
             external = Path(outside) / "private.ts"
-            external.write_text("export const secret = 3\n")
+            external.write_text(case_text("imports", "indexer-discovers-git-files-with-special-characters-3", 'private.ts'))
             (root / "linked.ts").symlink_to(external)
 
             self.assertEqual(
@@ -236,11 +209,11 @@ class Service {
     def test_discovers_large_and_non_programming_language_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "payload.json").write_text('{"value":"' + "x" * 1_100_000 + '"}')
-            (root / "notes.md").write_text("# Notes\n")
+            (root / "payload.json").write_text(case_text("imports", "indexer-discovers-large-and-non-programming-language-files", 'payload.json'))
+            (root / "notes.md").write_text(case_text("imports", "indexer-discovers-large-and-non-programming-language-files", 'notes.md'))
             dependencies = root / "node_modules"
             dependencies.mkdir()
-            (dependencies / "ignored.ts").write_text("export const ignored = true\n")
+            (dependencies / "ignored.ts").write_text(case_text("imports", "indexer-discovers-large-and-non-programming-language-files", 'node_modules/ignored.ts'))
 
             files = discover_files(root)
 

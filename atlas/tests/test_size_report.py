@@ -1,5 +1,7 @@
 """Size measurements stay quantitative; only configured checks impose limits."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -27,14 +29,14 @@ def node(name: str, kind: str = "function", **properties):
 
 
 def test_size_limits_are_strict_and_kind_specific() -> None:
-    report = build_artifact_report({"nodes": [
+    report = snapshot_result(build_artifact_report({"nodes": [
         node("boundary", lineCount=100, parameterCount=3),
         node("both", lineCount=101, parameterCount=4),
         node("file_boundary", "file", lineCount=600, parameterCount=99),
         node("long_file", "file", lineCount=601),
         node("type", "class", lineCount=601, parameterCount=4),
-    ]})
-    findings = build_check(report, size_config())["findings"]
+    ]}), 'build_artifact_report')
+    findings = snapshot_result(build_check(report, size_config()), 'build_check')["findings"]
     assert [(finding["subject"], finding["rule"]) for finding in findings] == [
         ("both", "maxFunctionLines"), ("both", "maxParameters"), ("long_file", "maxFileLines"),
     ]
@@ -43,17 +45,11 @@ def test_size_limits_are_strict_and_kind_specific() -> None:
 
 def test_receivers_decorator_comments_and_attributes_at_parameter_threshold(tmp_path: Path) -> None:
     (tmp_path / "app.py").write_text(
-        "class C:\n"
-        "    def f(me,a,b,c): pass\n"
-        "    @classmethod\n"
-        "    def c(klass,a,b,c): pass\n"
-        "    @staticmethod # explanation\n"
-        "    def s(self,a,b,c): pass\n"
-        "    def v(*args: int, a=1,b=2,c=3): pass\n"
+        case_text('cli', 'size-report-receivers-decorator-comments-and-attributes-at-parameter-threshold', 'app.py')
     )
-    (tmp_path / "app.rs").write_text("fn f(#[allow(unused_variables)] a:i32,b:i32,c:i32) {}\n")
-    report = build_artifact_report(asdict(analyze_repository(tmp_path)))
-    findings = build_check(report, size_config())["findings"]
+    (tmp_path / "app.rs").write_text(case_text('cli', 'size-report-receivers-decorator-comments-and-attributes-at-parameter-threshold', 'app.rs'))
+    report = snapshot_result(build_artifact_report(asdict(analyze_repository(tmp_path))), 'build_artifact_report')
+    findings = snapshot_result(build_check(report, size_config()), 'build_check')["findings"]
     assert [finding["subject"] for finding in findings] == ["app.py::C.s", "app.py::C.v"]
     assert all(finding["actual"] == 4 and finding["limit"] == 3 for finding in findings)
 
@@ -62,7 +58,7 @@ def test_cli_fresh_and_saved_measurements_match_without_sources(tmp_path: Path) 
     root = tmp_path / "source"
     root.mkdir()
     source = root / "app.py"
-    source.write_text("def wide(a, b, c, d):\n" + "    pass\n" * 100 + "\n" * 500)
+    source.write_text(case_text('cli', 'size-report-cli-fresh-and-saved-measurements-match-without-sources', 'app.py'))
     database = tmp_path / "atlas.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
@@ -73,9 +69,9 @@ def test_cli_fresh_and_saved_measurements_match_without_sources(tmp_path: Path) 
     assert measurements["app.py"]["lineCount"] == 601
     assert measurements["app.py::wide"]["lineCount"] == 101
     assert measurements["app.py::wide"]["parameterCount"] == 4
-    assert {finding["rule"] for finding in build_check(report, size_config())["findings"]} == {
+    assert {finding["rule"] for finding in snapshot_result(build_check(report, size_config()), 'build_check')["findings"]} == {
         "maxFileLines", "maxFunctionLines", "maxParameters",
     }
     source.unlink()
     with repository_service(database) as service:
-        assert service.report("source") == report
+        assert snapshot_result(service.report("source"), 'report') == report

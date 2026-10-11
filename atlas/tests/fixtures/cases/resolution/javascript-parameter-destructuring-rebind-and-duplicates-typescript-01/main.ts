@@ -1,0 +1,1 @@
+import {Recipe as R} from './recipe'; function run(R) {R.portions(1);}

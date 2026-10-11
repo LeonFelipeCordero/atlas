@@ -1,0 +1,13 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 104, "evidence": "local.persist()", "file_path": "App.java", "line": 1, "name": "persist", "qualifier": "local", "relationship": "CALLS", "start_byte": 89}], "content_hash": "f606a33a3fd2b678db1edb92a00bf194db1a4a5b39f19bdda7702e87ab6036c1", "imports": [], "inheritances": [], "language": "java", "parse_error": null, "path": "App.java", "symbols": [{"complexity": null, "decorators": [], "end_byte": 35, "end_column": 36, "end_line": 1, "file_path": "App.java", "key": "symbol:App.java::Service:0", "kind": "class", "language": "java", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:App.java", "qualified_name": "App.java::Service", "signature": "class Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 33, "end_column": 34, "end_line": 1, "file_path": "App.java", "key": "symbol:App.java::Service.persist:16", "kind": "method", "language": "java", "line_count": null, "name": "persist", "parameter_count": null, "parent_key": "symbol:App.java::Service:0", "qualified_name": "App.java::Service.persist", "signature": "void persist()", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 109, "end_column": 110, "end_line": 1, "file_path": "App.java", "key": "symbol:App.java::App:36", "kind": "class", "language": "java", "line_count": null, "name": "App", "parameter_count": null, "parent_key": "file:App.java", "qualified_name": "App.java::App", "signature": "class App", "start_byte": 36, "start_column": 37, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 107, "end_column": 108, "end_line": 1, "file_path": "App.java", "key": "symbol:App.java::App.run:70", "kind": "method", "language": "java", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:App.java::App:36", "qualified_name": "App.java::App.run", "signature": "static void run()", "start_byte": 70, "start_column": 71, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "local.persist()", "line": 1, "path": "App.java", "source_key": "symbol:App.java::App.run:70", "target_key": "symbol:App.java::Service.persist:16", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+
+]
+}
+}

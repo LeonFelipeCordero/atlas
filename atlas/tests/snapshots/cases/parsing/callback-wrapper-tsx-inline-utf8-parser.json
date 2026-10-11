@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "2f2a20636166c3a920f09f9880202a2f0a636f6e73756d6528282866756e6374696f6e20696e7465726e616c2829207b2066756e6374696f6e206c6f63616c2829207b7d2072657475726e206c6f63616c28293b207d2929293b"}, "language": "tsx", "path": "sample.tsx"},
+"content_hash": "7f3986e8b32dc71fa178b3c39fa2d6d02acfffdee0433a9e756d3167fe9f70fc",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 86, "end_column": 70, "end_line": 2, "file_path": "sample.tsx", "key": "symbol:sample.tsx::internal:27", "kind": "function", "language": "tsx", "line_count": null, "name": "internal", "parameter_count": null, "parent_key": "file:sample.tsx", "qualified_name": "sample.tsx::internal", "signature": "function internal() { function local() {} return local(); }", "start_byte": 27, "start_column": 11, "start_line": 2, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 68, "end_column": 52, "end_line": 2, "file_path": "sample.tsx", "key": "symbol:sample.tsx::internal.local:49", "kind": "function", "language": "tsx", "line_count": null, "name": "local", "parameter_count": null, "parent_key": "symbol:sample.tsx::internal:27", "qualified_name": "sample.tsx::internal.local", "signature": "function local()", "start_byte": 49, "start_column": 33, "start_line": 2, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 89, "evidence": "consume(((function internal() { function local() {} return local(); })))", "file_path": "sample.tsx", "line": 2, "name": "consume", "qualifier": null, "relationship": "CALLS", "start_byte": 17}, {"bare_target": true, "end_byte": 83, "evidence": "local()", "file_path": "sample.tsx", "line": 2, "name": "local", "qualifier": null, "relationship": "CALLS", "start_byte": 76}],
+"imports": [],
+"inheritances": []
+}

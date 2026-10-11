@@ -1,0 +1,1 @@
+struct Service {} impl Service { fn persist(&self) {} } struct App { service: Service } impl App { fn run(&self) { self.service.persist(); } }

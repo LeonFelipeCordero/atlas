@@ -1,0 +1,1 @@
+#[path = "cycle.rs"] mod outer; fn run(){crate::inner::work();}

@@ -1,5 +1,7 @@
 """Index and report use the current directory unless a folder is supplied."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 import json
 from dataclasses import dataclass
 from itertools import product
@@ -19,7 +21,7 @@ class FolderCase:
 
 
 @pytest.mark.parametrize("case", [
-    FolderCase(command, flag)
+    pytest.param(FolderCase(command, flag), id=f"{command}-{flag or 'cwd'}")
     for command, flag in product(("index", "report"), (None, "-f", "--f", "--folder"))
 ])
 def test_folder_default_and_aliases(
@@ -28,8 +30,8 @@ def test_folder_default_and_aliases(
     command, flag = case.command, case.flag
     source = tmp_path / "source"
     source.mkdir()
-    (source / "a.py").write_text("import b\n")
-    (source / "b.py").write_text("import a\n")
+    (source / "a.py").write_text(case_text('cli', 'folder-cli-folder-default-and-aliases', 'a.py'))
+    (source / "b.py").write_text(case_text('cli', 'folder-cli-folder-default-and-aliases', 'b.py'))
     cwd = source if flag is None else tmp_path / "unrelated"
     cwd.mkdir(exist_ok=True)
     monkeypatch.chdir(cwd)
@@ -50,7 +52,7 @@ def test_folder_default_and_aliases(
         project = projects[0]
         assert project.name == "source"
         assert project.location == str(source.resolve())
-        saved = service.get_architecture(project.id)
+        saved = snapshot_result(service.get_architecture(project.id), 'get_architecture')
         assert saved is not None
         assert saved.stats.files == 2
         if command == "index":
@@ -63,8 +65,8 @@ def test_folder_default_and_aliases(
 
 def test_report_default_cwd_without_saving(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "a.py").write_text("import b\n")
-    (tmp_path / "b.py").write_text("import a\n")
+    (tmp_path / "a.py").write_text(case_text('cli', 'folder-cli-report-default-cwd-without-saving', 'a.py'))
+    (tmp_path / "b.py").write_text(case_text('cli', 'folder-cli-report-default-cwd-without-saving', 'b.py'))
     database = tmp_path / "missing/db.sqlite"
     monkeypatch.setenv("DATABASE_PATH", str(database))
     result = CliRunner().invoke(main, ["report", "--format", "json"])

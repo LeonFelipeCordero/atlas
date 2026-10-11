@@ -1,0 +1,1 @@
+vars(service)['_repository']

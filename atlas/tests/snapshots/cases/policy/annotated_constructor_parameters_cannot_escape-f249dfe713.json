@@ -1,0 +1,3 @@
+[
+  "service leaks private dependency self._repository"
+]

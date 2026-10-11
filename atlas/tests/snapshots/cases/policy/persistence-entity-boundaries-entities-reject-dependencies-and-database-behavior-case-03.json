@@ -1,0 +1,4 @@
+[
+  "atlas.domain.repositories",
+  "atlas.domain.repositories.RepositoryPort"
+]

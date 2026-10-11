@@ -1,0 +1,1 @@
+import * as tools from './tools'; tools.factory().work()

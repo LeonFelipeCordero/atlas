@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66756e632066287820696e74297b7377697463682078207b6361736520313a2061636365707428293b2064656661756c743a2072656a65637428297d7d"}, "language": "go", "path": "sample.go"},
+"content_hash": "6eb398e6fdf37238871a46a51215fb19ceb5e7cd33748f34acb1499ae14aaaa9",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 61, "end_column": 62, "end_line": 1, "file_path": "sample.go", "key": "symbol:sample.go::f:0", "kind": "function", "language": "go", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.go", "qualified_name": "sample.go::f", "signature": "func f(x int)", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 40, "evidence": "accept()", "file_path": "sample.go", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 32}, {"bare_target": true, "end_byte": 59, "evidence": "reject()", "file_path": "sample.go", "line": 1, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 51}],
+"imports": [],
+"inheritances": []
+}

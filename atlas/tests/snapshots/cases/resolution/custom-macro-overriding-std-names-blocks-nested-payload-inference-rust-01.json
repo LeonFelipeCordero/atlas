@@ -1,0 +1,15 @@
+{
+"files": [
+{"calls": [{"bare_target": false, "end_byte": 110, "evidence": "format!(\"{}\", println!(brew()))", "file_path": "main.rs", "line": 1, "name": "format!", "qualifier": null, "relationship": "CALLS", "start_byte": 79}, {"bare_target": false, "end_byte": 109, "evidence": "println!(brew())", "file_path": "main.rs", "line": 1, "name": "println!", "qualifier": null, "relationship": "CALLS", "start_byte": 93}], "content_hash": "6c786c2f33c99062790044da21a5299083e361a7ada3e1e2b823fc3459d99864", "imports": [], "inheritances": [], "language": "rust", "parse_error": null, "path": "main.rs", "symbols": [{"complexity": null, "decorators": [], "end_byte": 68, "end_column": 69, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::brew:51", "kind": "function", "language": "rust", "line_count": null, "name": "brew", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::brew", "signature": "fn brew()->i32", "start_byte": 51, "start_column": 52, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 112, "end_column": 113, "end_line": 1, "file_path": "main.rs", "key": "symbol:main.rs::main:69", "kind": "function", "language": "rust", "line_count": null, "name": "main", "parameter_count": null, "parent_key": "file:main.rs", "qualified_name": "main.rs::main", "signature": "fn main()", "start_byte": 69, "start_column": 70, "start_line": 1, "visibility": null}]}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "format!(\"{}\", println!(brew()))", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:69", "target_key": "external:rust:callable:format!", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "println!(brew())", "line": 1, "path": "main.rs", "source_key": "symbol:main.rs::main:69", "target_key": "external:rust:callable:println!", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:rust:callable:format!", "kind": "callable", "language": "rust", "name": "format!"},
+{"key": "external:rust:callable:println!", "kind": "callable", "language": "rust", "name": "println!"}
+]
+}
+}

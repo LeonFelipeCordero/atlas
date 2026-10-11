@@ -1,0 +1,76 @@
+[
+  {
+    "kind": "function",
+    "name": "total",
+    "visibility": null,
+    "span": {
+      "start_byte": 20,
+      "end_byte": 117,
+      "start_line": 2,
+      "start_column": 0,
+      "end_line": 4,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": null,
+        "visibility": null,
+        "span": {
+          "start_byte": 79,
+          "end_byte": 108,
+          "start_line": 3,
+          "start_column": 21,
+          "end_line": 3,
+          "end_column": 50
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "|name| recipe::portions(name)",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn total(names: &[&str]) -> i32 {\n    names.iter().map(|name| recipe::portions(name)).sum()\n}",
+    "body_span": null
+  },
+  {
+    "kind": "function",
+    "name": "render",
+    "visibility": null,
+    "span": {
+      "start_byte": 119,
+      "end_byte": 361,
+      "start_line": 6,
+      "start_column": 0,
+      "end_line": 11,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "function",
+        "name": null,
+        "visibility": null,
+        "span": {
+          "start_byte": 218,
+          "end_byte": 271,
+          "start_line": 8,
+          "start_column": 13,
+          "end_line": 8,
+          "end_column": 66
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "|name| format!(\"{}={}\", name, recipe::portions(name))",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "pub fn render(names: &[&str]) -> String {\n    let entries: Vec<String> = names.iter()\n        .map(|name| format!(\"{}={}\", name, recipe::portions(name)))\n        .collect();\n    format!(\"coffee:{};total={}\", entries.join(\",\"), total(names))\n}",
+    "body_span": null
+  }
+]

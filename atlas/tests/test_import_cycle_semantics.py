@@ -1,5 +1,7 @@
 """Runtime cycle semantics without deleting useful static import relationships."""
 
+from tests.import_snapshot_support import import_case_sources as case_sources
+
 from dataclasses import asdict
 from pathlib import Path
 
@@ -18,30 +20,11 @@ def analyze_files(root: Path, files: dict[str, str]) -> GraphArtifact:
     return analyze_repository(root)
 
 
-@pytest.mark.parametrize(
-    "statement, runtime",
-    [
-        ("import type { getRouter } from './router.tsx';", False),
-        ("import type Router from './router.tsx';", False),
-        ("import type * as Router from './router.tsx';", False),
-        ("import { type Router } from './router.tsx';", False),
-        ("import { /* note */ type Router, type Options } from './router.tsx';", False),
-        ("import { type Router, getRouter } from './router.tsx';", True),
-        ("import Router, { type Options } from './router.tsx';", True),
-        ("import { type as Router } from './router.tsx';", True),
-        ("import { getRouter } from './router.tsx';", True),
-        ("import './router.tsx';", True),
-        ("import {} from './router.tsx';", True),
-    ],
-)
-def test_typescript_back_references(tmp_path: Path, statement: str, runtime: bool):
+@pytest.mark.parametrize('case_id,runtime', [('import-cycle-semantics-typescript-back-references-1', False), ('import-cycle-semantics-typescript-back-references-2', False), ('import-cycle-semantics-typescript-back-references-3', False), ('import-cycle-semantics-typescript-back-references-4', False), ('import-cycle-semantics-typescript-back-references-5', False), ('import-cycle-semantics-typescript-back-references-6', True), ('import-cycle-semantics-typescript-back-references-7', True), ('import-cycle-semantics-typescript-back-references-8', True), ('import-cycle-semantics-typescript-back-references-9', True), ('import-cycle-semantics-typescript-back-references-10', True), ('import-cycle-semantics-typescript-back-references-11', True)])
+def test_typescript_back_references(tmp_path, case_id, runtime):
     artifact = analyze_files(
         tmp_path,
-        {
-            "routeTree.gen.ts": statement,
-            "router.tsx": "import { routeTree } from './routeTree.gen';\n"
-            "export function getRouter() {}\nexport type Router = {};\n",
-        },
+        case_sources("imports", case_id),
     )
     imports = [edge for edge in artifact.edges if edge["type"] == "IMPORTS"]
     back_reference = next(
@@ -65,13 +48,7 @@ def test_typescript_back_references(tmp_path: Path, statement: str, runtime: boo
 def test_python_package_child_imports(tmp_path: Path):
     artifact = analyze_files(
         tmp_path,
-        {
-            "pkg/__init__.py": "from . import (\n    elixir, go\n)\n"
-            "from . import javascript as script\n",
-            "pkg/elixir.py": "",
-            "pkg/go/__init__.py": "",
-            "pkg/javascript.py": "",
-        },
+        case_sources("imports", "import-cycle-semantics-python-package-child-imports"),
     )
     imports = [edge for edge in artifact.edges if edge["type"] == "IMPORTS"]
     assert {edge["targetStableKey"] for edge in imports} == {
@@ -86,9 +63,9 @@ def test_python_package_child_imports(tmp_path: Path):
     assert artifact.circularDependencies == {"version": 1, "groups": []}
 
 
-@pytest.mark.parametrize("statement", ["import pkg", "from . import __init__"])
-def test_python_actual_self_imports(tmp_path: Path, statement: str):
-    artifact = analyze_files(tmp_path, {"pkg/__init__.py": statement})
+@pytest.mark.parametrize(('case_id',), [('import-cycle-semantics-python-actual-self-imports-1',), ('import-cycle-semantics-python-actual-self-imports-2',)])
+def test_python_actual_self_imports(tmp_path, case_id):
+    artifact = analyze_files(tmp_path, case_sources("imports", case_id))
     assert artifact.circularDependencies is not None
     assert artifact.circularDependencies["groups"][0]["nodeStableKeys"] == [
         "file:pkg/__init__.py"
@@ -98,7 +75,7 @@ def test_python_actual_self_imports(tmp_path: Path, statement: str):
 def test_python_runtime_child_cycle(tmp_path: Path):
     artifact = analyze_files(
         tmp_path,
-        {"pkg/__init__.py": "from . import child", "pkg/child.py": "import pkg"},
+        case_sources("imports", "import-cycle-semantics-python-runtime-child-cycle"),
     )
     assert artifact.circularDependencies is not None
     assert artifact.circularDependencies["groups"][0]["nodeStableKeys"] == [
@@ -108,7 +85,7 @@ def test_python_runtime_child_cycle(tmp_path: Path):
 
 
 def test_python_unresolved_child_stays_external(tmp_path: Path):
-    artifact = analyze_files(tmp_path, {"pkg/__init__.py": "from . import missing"})
+    artifact = analyze_files(tmp_path, case_sources("imports", "import-cycle-semantics-python-unresolved-child-stays-external"))
     edge = next(edge for edge in artifact.edges if edge["type"] == "IMPORTS")
     assert edge["targetStableKey"] == "external:python:module:.missing"
     assert edge["confidence"] == "EXTRACTED"
@@ -117,7 +94,7 @@ def test_python_unresolved_child_stays_external(tmp_path: Path):
 def test_python_package_attribute_does_not_become_self_import(tmp_path: Path):
     artifact = analyze_files(
         tmp_path,
-        {"pkg/__init__.py": "def work(): pass\nfrom . import work"},
+        case_sources("imports", "import-cycle-semantics-python-package-attribute-does-not-become-self-import"),
     )
     edge = next(edge for edge in artifact.edges if edge["type"] == "IMPORTS")
     assert edge["targetStableKey"].startswith("symbol:pkg/__init__.py::work")
@@ -125,7 +102,7 @@ def test_python_package_attribute_does_not_become_self_import(tmp_path: Path):
 
 
 def test_type_only_external_import_remains_visible(tmp_path: Path):
-    artifact = analyze_files(tmp_path, {"a.ts": "import type { T } from 'missing';"})
+    artifact = analyze_files(tmp_path, case_sources("imports", "import-cycle-semantics-type-only-external-import-remains-visible"))
     edge = next(edge for edge in artifact.edges if edge["type"] == "IMPORTS")
     assert edge["targetStableKey"] == "external:typescript:module:missing"
     assert edge.get("typeOnly") is True

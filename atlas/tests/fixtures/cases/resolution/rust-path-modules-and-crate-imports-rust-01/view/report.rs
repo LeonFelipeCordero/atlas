@@ -1,0 +1,1 @@
+use crate::recipe; pub fn render(){crate::recipe::portions(2);}

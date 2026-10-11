@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "76616c2066203d207b2028612c62293a20582c20633a20496e74202d3e2063207d3b2076616c2067203d207b202d3e2030207d"}, "language": "kotlin", "path": "sample"},
+"content_hash": "3fc859147c269f2064d55f93dc07b3450a6d3727337824c56b186321a76bd3e9",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 33, "end_column": 34, "end_line": 1, "file_path": "sample", "key": "symbol:sample::<anonymous>:8", "kind": "function", "language": "kotlin", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::<anonymous>", "signature": "{ (a,b): X, c: Int -> c }", "start_byte": 8, "start_column": 9, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 51, "end_column": 52, "end_line": 1, "file_path": "sample", "key": "symbol:sample::<anonymous>:43", "kind": "function", "language": "kotlin", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::<anonymous>", "signature": "{ -> 0 }", "start_byte": 43, "start_column": 44, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

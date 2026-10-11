@@ -1,5 +1,7 @@
 """Report CLI analyzes folders freshly, saving only when requested."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 import json
 import sqlite3
 from pathlib import Path
@@ -23,23 +25,10 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
-    (root / "a.py").write_text("import b\n")
-    (root / "b.py").write_text("import a\n")
+    (root / "a.py").write_text(case_text('cli', 'report-cli-index-then-report-analyzes-fresh-folder', 'a.py'))
+    (root / "b.py").write_text(case_text('cli', 'report-cli-index-then-report-analyzes-fresh-folder', 'b.py'))
     (root / "app.py").write_text(
-        "def high(value):\n"
-        + "    if value: pass\n" * 8
-        + "\ndef nested(items):\n"
-        "    for item in items:\n"
-        "        for child in item:\n"
-        "            print(child)\n"
-        "\ndef deep(value):\n"
-        "    if value:\n"
-        "        if value:\n"
-        "            if value:\n"
-        "                if value:\n"
-        "                    return value\n"
-        "\ndef simple():\n"
-        "    return 1\n"
+        case_text('cli', 'report-cli-index-then-report-analyzes-fresh-folder', 'app.py')
     )
     with repository_service(database) as service:
         registered = service.register({"name": "Example", "location": str(root)})
@@ -48,7 +37,7 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     indexed = runner.invoke(main, ["index", "-f", str(root)])
     assert indexed.exit_code == 0, indexed.output
     with repository_service(database) as service:
-        original = service.get_architecture(registered.id)
+        original = snapshot_result(service.get_architecture(registered.id), 'get_architecture')
     result = runner.invoke(main, ["report", "-f", str(root)])
     assert result.exit_code == 0, result.output
     assert "## Callables" in result.output
@@ -77,14 +66,14 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     assert fresh.exit_code == 0, fresh.output
     assert "files: 0" in fresh.output and "circularImportGroups: 0" in fresh.output
     with repository_service(database) as service:
-        assert service.get_architecture(registered.id) == original
-        assert service.get_architecture(other.id) is None
+        assert snapshot_result(service.get_architecture(registered.id), 'get_architecture') == original
+        assert snapshot_result(service.get_architecture(other.id), 'get_architecture') is None
 
 
 def test_service_report_requires_project_name(database: Path) -> None:
     with repository_service(database) as service:
         with pytest.raises(RepositoryError, match="project name is required"):
-            service.report(" ")
+            snapshot_result(service.report(" "), 'report')
 
 
 def test_report_empty_measurements_formats(database: Path, tmp_path: Path) -> None:

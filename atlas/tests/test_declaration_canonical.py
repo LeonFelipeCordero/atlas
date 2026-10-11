@@ -1,5 +1,7 @@
 """Declaration identity regressions independent of the coffee snapshots."""
 
+from tests.source_snapshot_fixture import case_bytes, case_text
+
 import unittest
 from dataclasses import replace
 from unittest.mock import patch
@@ -23,7 +25,7 @@ def names(items: list[StructureItem]) -> list[str | None]:
 
 class CanonicalDeclarationTests(unittest.TestCase):
     def test_kotlin_unnamed_native_overloads_preserve_metadata_and_utf8(self) -> None:
-        source = '/* café 😀 */ @Deprecated("old")\nfun élève(value: Int): Int { fun helper() = value; return helper() }\nfun élève(value: String) = value.length\nclass Owner { fun élève() = 0 }'
+        source = case_text('parsing', 'declaration_canonical-kotlin_unnamed_native_overloads_preserve_metadata_and_utf8-kotlin', 'sample.kt')
         native = process(source, ProcessConfig(language="kotlin")).structure
         native[0] = replace(
             native[0], doc_comment="native docs", decorators=["native annotation"]
@@ -46,18 +48,7 @@ class CanonicalDeclarationTests(unittest.TestCase):
         self.assertNotEqual(items[0].span, items[1].span)
 
     def test_ts_interface_callable_properties_not_types_or_fields(self) -> None:
-        source = """interface Transformer {
-  transform: <T>(input: T) => T;
-  optional?: ((((value: string) => number)));
-  "quoted": () => void;
-  [Symbol.iterator]: () => Iterator<string>;
-  transform(value: string): string;
-  transform(value: number): number;
-  count: number;
-  nested: { callback: () => void };
-  factory: new () => Transformer;
-}
-"""
+        source = case_text('parsing', 'declaration_canonical-ts_interface_callable_properties_not_types_or_fields-typescript', 'sample.ts')
         for language in ("typescript", "tsx"):
             with self.subTest(language=language):
                 self.assert_interface_properties(source, language)
@@ -92,13 +83,13 @@ class CanonicalDeclarationTests(unittest.TestCase):
             )
 
     def test_java_constructor_kind_and_python_decorator_metadata(self) -> None:
-        items = merged("class Owner { private Owner() {} void run() {} }", "java")
+        items = merged(case_text('parsing', 'declaration_canonical-java_constructor_kind_and_python_decorator_metadata-java', 'sample.java'), "java")
         self.assertEqual(
             [str(item.kind).lower() for item in items[0].children],
             ["constructor", "method"],
         )
         self.assertEqual(items[0].children[0].visibility, "private")
-        source = "@register('café')\nclass Owner:\n @staticmethod\n @annotate(level=1)\n def run():\n  def inner(): pass\n"
+        source = case_text('parsing', 'declaration_canonical-java_constructor_kind_and_python_decorator_metadata-python', 'sample.py')
         for items in (
             merged(source, "python"),
             extract_structure(parsing_syntax(source, "python")),
@@ -110,7 +101,7 @@ class CanonicalDeclarationTests(unittest.TestCase):
             self.assertFalse(run.children[0].decorators)
 
     def test_python_native_decorated_wrapper_canonicalizes_to_definition(self) -> None:
-        source = "@register\nclass Owner:\n @staticmethod\n def run(): pass\n"
+        source = case_text('parsing', 'declaration_canonical-python_native_decorated_wrapper_canonicalizes_to_definition-python', 'sample.py')
         native = process(source, ProcessConfig(language="python")).structure[0]
         assert native.span is not None
         wrapper = replace(
@@ -132,11 +123,11 @@ class CanonicalDeclarationTests(unittest.TestCase):
             with patch(
                 "atlas.parsing.structure.get_tags_query", return_value=None
             ):
-                self.assertIs(extract_structure(parsing_syntax(b"", "csharp"), native), native)
-                self.assertEqual(extract_structure(parsing_syntax(b"", "csharp")), [])
+                self.assertIs(extract_structure(parsing_syntax(case_bytes('parsing', 'declaration_canonical-missing_tags_and_unrelated_native_languages-csharp', 'sample.cs'), "csharp"), native), native)
+                self.assertEqual(extract_structure(parsing_syntax(case_bytes('parsing', 'declaration_canonical-missing_tags_and_unrelated_native_languages-csharp', 'sample.cs'), "csharp")), [])
         finally:
             _declaration_query.cache_clear()
-        items = merged("module Demo\n class Owner\n  def run\n  end\n end\nend", "ruby")
+        items = merged(case_text('parsing', 'declaration_canonical-missing_tags_and_unrelated_native_languages-ruby', 'sample.rb'), "ruby")
         self.assertEqual(names(items), ["Demo"])
         self.assertEqual(names(items[0].children), ["Owner"])
         self.assertEqual(names(items[0].children[0].children), ["run"])

@@ -1,0 +1,1 @@
+x = lambda a, b=call(1, 2), *args: a

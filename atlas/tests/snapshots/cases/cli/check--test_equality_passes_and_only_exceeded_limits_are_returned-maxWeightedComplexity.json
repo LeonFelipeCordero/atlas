@@ -1,0 +1,31 @@
+[
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": []
+    }
+  },
+  {
+    "kind": "build_check",
+    "value": {
+      "findings": [
+        {
+          "actual": 9,
+          "details": [
+            "Weighted complexity is 9 (maximum: 8)."
+          ],
+          "files": [
+            {
+              "line": 10,
+              "path": "app.py"
+            }
+          ],
+          "limit": 8,
+          "metric": "weightedComplexity",
+          "rule": "maxWeightedComplexity",
+          "subject": "function"
+        }
+      ]
+    }
+  }
+]

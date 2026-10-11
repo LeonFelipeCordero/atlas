@@ -1,0 +1,3 @@
+[
+  "migration cannot query or mutate domain data: session.bulk_insert_mappings"
+]

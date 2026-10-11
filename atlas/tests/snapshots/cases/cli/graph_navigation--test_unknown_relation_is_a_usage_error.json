@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 2,
+    "output": "Usage: main graph context [OPTIONS] KEY\nTry 'main graph context --help' for help.\n\nError: Invalid value for '--relations': Choose comma-separated relations from CONTAINS, CALLS, REFERENCES, IMPORTS, INHERITS\n",
+    "stdout": "",
+    "stderr": "Usage: main graph context [OPTIONS] KEY\nTry 'main graph context --help' for help.\n\nError: Invalid value for '--relations': Choose comma-separated relations from CONTAINS, CALLS, REFERENCES, IMPORTS, INHERITS\n"
+  }
+]

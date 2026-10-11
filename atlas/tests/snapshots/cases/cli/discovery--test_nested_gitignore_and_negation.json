@@ -1,0 +1,11 @@
+[
+  {
+    "kind": "discovered_paths",
+    "value": [
+      ".gitignore",
+      "src/.gitignore",
+      "src/keep.ts",
+      "src/only-root.txt"
+    ]
+  }
+]

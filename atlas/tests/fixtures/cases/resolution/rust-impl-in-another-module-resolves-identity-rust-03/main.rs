@@ -1,0 +1,1 @@
+mod service; mod implementation {use crate::service::Service; impl Service {pub fn persist(&self){}}} fn run(local:&service::Service){local.persist();}

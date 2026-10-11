@@ -1,0 +1,2 @@
+/* café 😀 */
+const holder = { apply: (((function internal() { function local() {} return local(); }))) };

@@ -1,0 +1,1 @@
+package tools; public class R {public static void work(Object... tags) {}}

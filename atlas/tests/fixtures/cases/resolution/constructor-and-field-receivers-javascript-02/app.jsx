@@ -1,0 +1,1 @@
+class Service { persist() {} } class App { service = new Service(); run() { this.service.persist(); } }

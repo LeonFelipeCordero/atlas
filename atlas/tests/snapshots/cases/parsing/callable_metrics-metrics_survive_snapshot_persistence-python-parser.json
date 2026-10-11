@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566206628612c20623d30293a0a2020202072657475726e20610a0a646566207a65726f28293a20706173730a"}, "language": "python", "path": "sample.py"},
+"content_hash": "906d4c72f19daa957d9bef99ef2a5632ef3d964eee5a1b024d928db9672669aa",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 27, "end_column": 13, "end_line": 2, "file_path": "sample.py", "key": "symbol:sample.py::f:0", "kind": "function", "language": "python", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::f", "signature": "def f(a, b=0):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 45, "end_column": 17, "end_line": 4, "file_path": "sample.py", "key": "symbol:sample.py::zero:29", "kind": "function", "language": "python", "line_count": null, "name": "zero", "parameter_count": null, "parent_key": "file:sample.py", "qualified_name": "sample.py::zero", "signature": "def zero():", "start_byte": 29, "start_column": 1, "start_line": 4, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

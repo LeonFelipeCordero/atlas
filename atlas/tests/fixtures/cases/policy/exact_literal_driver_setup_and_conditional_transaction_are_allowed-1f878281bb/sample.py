@@ -1,0 +1,1 @@
+connection.exec_driver_sql('BEGIN IMMEDIATE' if migrating else 'BEGIN')

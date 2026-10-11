@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "696620613a20706173730a656c696620623a20706173730a656c696620633a20706173730a656c73653a20706173730a"}, "language": "python", "path": "sample.py"},
+"content_hash": "8f82e730e35aeace4791b5512076d98ba071eb68862edaf43f73eeba3e547ccb",
+"parse_error": null,
+"declarations": [],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

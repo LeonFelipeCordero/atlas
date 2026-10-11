@@ -1,0 +1,1 @@
+mod outer {pub mod inner;} fn main(){crate::outer::inner::work(); crate::inner::work();}

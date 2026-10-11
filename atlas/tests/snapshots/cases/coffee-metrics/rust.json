@@ -1,0 +1,450 @@
+{
+  "exit_code": 0,
+  "output": {
+    "summary": {
+      "files": 3,
+      "modules": 5,
+      "types": 0,
+      "callables": 14,
+      "circularImportGroups": 1,
+      "parseErrors": 0
+    },
+    "nodes": [
+      {
+        "stableKey": "module:.",
+        "subject": "rust",
+        "kind": "directory",
+        "level": "module",
+        "path": ".",
+        "line": null,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "module:brewing",
+        "subject": "brewing",
+        "kind": "directory",
+        "level": "module",
+        "path": "brewing",
+        "line": null,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "file:brewing/brewer.rs",
+        "subject": "brewing/brewer.rs",
+        "kind": "file",
+        "level": "file",
+        "path": "brewing/brewer.rs",
+        "line": null,
+        "metrics": {
+          "lineCount": 601,
+          "functionCount": 8,
+          "measuredFunctionCount": 8,
+          "weightedComplexitySum": 30,
+          "fanIn": 0,
+          "fanOut": 2,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::recipe:22",
+        "subject": "brewing/brewer.rs::recipe",
+        "kind": "module",
+        "level": "module",
+        "path": "brewing/brewer.rs",
+        "line": 2,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::report:69",
+        "subject": "brewing/brewer.rs::report",
+        "kind": "module",
+        "level": "module",
+        "path": "brewing/brewer.rs",
+        "line": 4,
+        "metrics": {
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::brew:82",
+        "subject": "brewing/brewer.rs::brew",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 6,
+        "metrics": {
+          "lineCount": 8,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::brew.<anonymous>:255",
+        "subject": "brewing/brewer.rs::brew.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 11,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::retry:331",
+        "subject": "brewing/brewer.rs::retry",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 15,
+        "metrics": {
+          "lineCount": 6,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 2,
+          "weightedComplexity": 2,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::score:446",
+        "subject": "brewing/brewer.rs::score",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 22,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 1,
+          "nestedLoops": 1,
+          "maxDecisionDepth": 3,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::classify:813",
+        "subject": "brewing/brewer.rs::classify",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 36,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 9,
+          "weightedComplexity": 9,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::ready:1254",
+        "subject": "brewing/brewer.rs::ready",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 50,
+        "metrics": {
+          "lineCount": 12,
+          "parameterCount": 4,
+          "cyclomaticComplexity": 5,
+          "weightedComplexity": 7,
+          "nestedDecisionPenalty": 2,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 4,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::calibrate:1617",
+        "subject": "brewing/brewer.rs::calibrate",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 64,
+        "metrics": {
+          "lineCount": 104,
+          "parameterCount": 8,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 0,
+          "transitiveChangeImpact": 0,
+          "instability": null
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/brewer.rs::main:3565",
+        "subject": "brewing/brewer.rs::main",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/brewer.rs",
+        "line": 169,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 0,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "file:brewing/recipe.rs",
+        "subject": "brewing/recipe.rs",
+        "kind": "file",
+        "level": "file",
+        "path": "brewing/recipe.rs",
+        "line": null,
+        "metrics": {
+          "lineCount": 13,
+          "functionCount": 2,
+          "measuredFunctionCount": 2,
+          "weightedComplexitySum": 4,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/recipe.rs::portions:20",
+        "subject": "brewing/recipe.rs::portions",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/recipe.rs",
+        "line": 3,
+        "metrics": {
+          "lineCount": 7,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 3,
+          "weightedComplexity": 3,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 1,
+          "fanIn": 4,
+          "fanOut": 0,
+          "transitiveChangeImpact": 4,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:brewing/recipe.rs::preview:147",
+        "subject": "brewing/recipe.rs::preview",
+        "kind": "function",
+        "level": "callable",
+        "path": "brewing/recipe.rs",
+        "line": 11,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "module:reporting",
+        "subject": "reporting",
+        "kind": "directory",
+        "level": "module",
+        "path": "reporting",
+        "line": null,
+        "metrics": {
+          "fanIn": 1,
+          "fanOut": 1,
+          "transitiveChangeImpact": 1,
+          "instability": 0.5
+        }
+      },
+      {
+        "stableKey": "file:reporting/report.rs",
+        "subject": "reporting/report.rs",
+        "kind": "file",
+        "level": "file",
+        "path": "reporting/report.rs",
+        "line": null,
+        "metrics": {
+          "lineCount": 12,
+          "functionCount": 4,
+          "measuredFunctionCount": 4,
+          "weightedComplexitySum": 4,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 2,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.rs::total:20",
+        "subject": "reporting/report.rs::total",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.rs",
+        "line": 3,
+        "metrics": {
+          "lineCount": 3,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 1,
+          "fanOut": 0,
+          "transitiveChangeImpact": 4,
+          "instability": 0.0
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.rs::total.<anonymous>:79",
+        "subject": "reporting/report.rs::total.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.rs",
+        "line": 4,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.rs::render:119",
+        "subject": "reporting/report.rs::render",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.rs",
+        "line": 7,
+        "metrics": {
+          "lineCount": 6,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 2,
+          "fanOut": 1,
+          "transitiveChangeImpact": 3,
+          "instability": 0.3333333333333333
+        }
+      },
+      {
+        "stableKey": "symbol:reporting/report.rs::render.<anonymous>:218",
+        "subject": "reporting/report.rs::render.<anonymous>",
+        "kind": "function",
+        "level": "callable",
+        "path": "reporting/report.rs",
+        "line": 9,
+        "metrics": {
+          "lineCount": 1,
+          "parameterCount": 1,
+          "cyclomaticComplexity": 1,
+          "weightedComplexity": 1,
+          "nestedDecisionPenalty": 0,
+          "nestedLoops": 0,
+          "maxDecisionDepth": 0,
+          "fanIn": 0,
+          "fanOut": 1,
+          "transitiveChangeImpact": 0,
+          "instability": 1.0
+        }
+      }
+    ],
+    "circularImports": [
+      {
+        "id": "import-cycle:8bca9a75699c5e919b8d028ddb69561f72cb1e059c0ab571ef6f6b4e994392a7",
+        "groupSize": 2,
+        "internalDependencyCount": 2,
+        "files": [
+          "brewing/recipe.rs",
+          "reporting/report.rs"
+        ],
+        "exampleCycle": [
+          "brewing/recipe.rs",
+          "reporting/report.rs",
+          "brewing/recipe.rs"
+        ]
+      }
+    ],
+    "diagnostics": []
+  }
+}

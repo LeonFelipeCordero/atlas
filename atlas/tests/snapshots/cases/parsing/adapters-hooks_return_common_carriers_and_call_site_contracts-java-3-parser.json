@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c6173732053657276696365207b7d"}, "language": "java", "path": "sample.java"},
+"content_hash": "2a184fe16363f0f38c36ad2a25c81858ac06b5185f410281f96213672029e68d",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 16, "end_column": 17, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Service:0", "kind": "class", "language": "java", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::Service", "signature": "class Service", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

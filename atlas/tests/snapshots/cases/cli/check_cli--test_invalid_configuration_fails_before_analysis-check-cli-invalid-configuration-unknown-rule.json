@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 1,
+    "output": "Error: Invalid <tmp>/atlas.json: 1 validation error for CheckConfig\nmaxFanOut\n  Extra inputs are not permitted [type=extra_forbidden, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.14/v/extra_forbidden\n",
+    "stdout": "",
+    "stderr": "Error: Invalid <tmp>/atlas.json: 1 validation error for CheckConfig\nmaxFanOut\n  Extra inputs are not permitted [type=extra_forbidden, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.14/v/extra_forbidden\n"
+  }
+]

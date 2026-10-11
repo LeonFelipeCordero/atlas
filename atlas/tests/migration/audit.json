@@ -1,0 +1,32 @@
+[
+  {
+    "old_test": "test_models.py::test_invalid_artifact_fields_are_rejected",
+    "case_id": "model-artifact",
+    "fixture": "fixtures/cases/operational/model-artifact/example.py",
+    "snapshot": null,
+    "retained": "Strict graph constructor validation; source only supplies a valid artifact.",
+    "correction": "Notion static map omitted the source-bearing ModelsTest.artifact helper."
+  },
+  {
+    "old_test": "test_models.py::test_reference_validation_runs_at_construction",
+    "case_id": "model-artifact",
+    "fixture": "fixtures/cases/operational/model-artifact/example.py",
+    "snapshot": null,
+    "retained": "Duplicate and dangling-reference rejection; source only supplies a valid artifact.",
+    "correction": "Additional helper-provided setup source found in final census."
+  },
+  {
+    "old_test": "test_models.py::test_mutation_is_revalidated_in_memory",
+    "case_id": "model-artifact",
+    "fixture": "fixtures/cases/operational/model-artifact/example.py",
+    "snapshot": null,
+    "retained": "Assignment followed by independent in-memory graph revalidation.",
+    "correction": "Additional helper-provided setup source found in final census."
+  },
+  {
+    "support": "database_boundary_syntax.py::CHECK_LIMIT_LOOKUP",
+    "fixture": "fixtures/cases/policy/check-limit-lookup-template/sample.py",
+    "snapshot": "Covered by the expanded exact-public-config and private-handle policy cases.",
+    "retained": "The policy's exact AST template is loaded from the central source corpus, not duplicated in the policy helper."
+  }
+]

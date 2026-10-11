@@ -1,0 +1,1 @@
+mod custom{pub use std::stringify as dbg;} use custom as std; fn brew()->i32{1} fn main(){std::dbg!(brew());}

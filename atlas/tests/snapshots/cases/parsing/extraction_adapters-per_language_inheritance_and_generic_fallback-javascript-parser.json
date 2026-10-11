@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c617373204368696c6420657874656e64732042617365207b7d"}, "language": "javascript", "path": "sample.js"},
+"content_hash": "dd1ee56ba6d5b583f7f2ae02a4c14b0213fd28c89b793c363006d57bf3857a96",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 27, "end_column": 28, "end_line": 1, "file_path": "sample.js", "key": "symbol:sample.js::Child:0", "kind": "class", "language": "javascript", "line_count": null, "name": "Child", "parameter_count": null, "parent_key": "file:sample.js", "qualified_name": "sample.js::Child", "signature": "class Child extends Base", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": [{"evidence": "class Child extends Base", "file_path": "sample.js", "language": "javascript", "line": 1, "source_key": "symbol:sample.js::Child:0", "target_name": "Base"}]
+}

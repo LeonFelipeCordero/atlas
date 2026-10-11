@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c617373204f776e6572207b2070726976617465204f776e65722829207b7d20766f69642072756e2829207b7d207d"}, "language": "java", "path": "sample.java"},
+"content_hash": "1fec4b5b4b8536c7d35b7f87f99c85e9db4fe6c08366c68e3c142af97d83df06",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 48, "end_column": 49, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Owner:0", "kind": "class", "language": "java", "line_count": null, "name": "Owner", "parameter_count": null, "parent_key": "file:sample.java", "qualified_name": "sample.java::Owner", "signature": "class Owner", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 32, "end_column": 33, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Owner.Owner:14", "kind": "constructor", "language": "java", "line_count": null, "name": "Owner", "parameter_count": null, "parent_key": "symbol:sample.java::Owner:0", "qualified_name": "sample.java::Owner.Owner", "signature": "private Owner() {}", "start_byte": 14, "start_column": 15, "start_line": 1, "visibility": "private"}, {"complexity": null, "decorators": [], "end_byte": 46, "end_column": 47, "end_line": 1, "file_path": "sample.java", "key": "symbol:sample.java::Owner.run:33", "kind": "method", "language": "java", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.java::Owner:0", "qualified_name": "sample.java::Owner.run", "signature": "void run()", "start_byte": 33, "start_column": 34, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

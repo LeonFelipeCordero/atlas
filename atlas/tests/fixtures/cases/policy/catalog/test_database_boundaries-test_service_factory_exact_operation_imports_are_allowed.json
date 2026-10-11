@@ -1,0 +1,5 @@
+[
+  {"allowed": true, "id": "service_factory_exact_operation_imports_are_allowed-94d2ef2791", "module": "atlas.services.factories", "old_test": "test_database_boundaries.py::test_service_factory_exact_operation_imports_are_allowed", "operation": "boundary", "package": "atlas.services"},
+  {"allowed": true, "id": "service_factory_exact_operation_imports_are_allowed-df37b033d9", "module": "atlas.services.factories", "old_test": "test_database_boundaries.py::test_service_factory_exact_operation_imports_are_allowed", "operation": "boundary", "package": "atlas.services"},
+  {"allowed": true, "id": "service_factory_exact_operation_imports_are_allowed-a711de1472", "module": "atlas.services.factories", "old_test": "test_database_boundaries.py::test_service_factory_exact_operation_imports_are_allowed", "operation": "boundary", "package": "atlas.services"}
+]

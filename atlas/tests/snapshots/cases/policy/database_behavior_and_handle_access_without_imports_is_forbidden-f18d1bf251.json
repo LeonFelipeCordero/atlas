@@ -1,0 +1,6 @@
+[
+  "database handle/operation cursor.executemany",
+  "database operation cursor.executemany",
+  "raw SQL/driver access cursor",
+  "raw SQL/driver access cursor.executemany"
+]

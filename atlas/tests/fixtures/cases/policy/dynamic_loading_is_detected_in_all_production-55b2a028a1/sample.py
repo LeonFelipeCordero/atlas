@@ -1,0 +1,1 @@
+delattr(service, computed_name)

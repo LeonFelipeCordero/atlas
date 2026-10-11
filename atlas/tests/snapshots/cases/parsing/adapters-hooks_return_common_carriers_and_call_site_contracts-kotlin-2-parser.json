@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c6173732053657276696365207b2066756e2072756e2829203d2068656c7065722829207d207b7d"}, "language": "kotlin", "path": "sample.kt"},
+"content_hash": "224c85a8653a26556e091fc040b279f8e5b0c34594db0b1dcf520df06394ec89",
+"parse_error": "Syntax error at line 1, column 15; analysis may be incomplete.",
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 41, "end_column": 42, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::Service:0", "kind": "class", "language": "kotlin", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::Service", "signature": "class Service { fun run() = helper() } {}", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 36, "end_column": 37, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::Service.run:16", "kind": "function", "language": "kotlin", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.kt::Service:0", "qualified_name": "sample.kt::Service.run", "signature": "fun run() = helper()", "start_byte": 16, "start_column": 17, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 36, "evidence": "helper()", "file_path": "sample.kt", "line": 1, "name": "helper", "qualifier": null, "relationship": "CALLS", "start_byte": 28}],
+"imports": [],
+"inheritances": []
+}

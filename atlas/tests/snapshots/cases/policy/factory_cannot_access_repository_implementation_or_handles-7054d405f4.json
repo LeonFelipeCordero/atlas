@@ -1,0 +1,4 @@
+[
+  "atlas.persistence.repositories.RepositoryStore",
+  "factory imports must name only repository contexts or migration operation"
+]

@@ -1,0 +1,273 @@
+[
+  {
+    "kind": "interface",
+    "name": "Brewing",
+    "visibility": null,
+    "span": {
+      "start_byte": 127,
+      "end_byte": 190,
+      "start_line": 4,
+      "start_column": 0,
+      "end_line": 6,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "method",
+        "name": "brew",
+        "visibility": null,
+        "span": {
+          "start_byte": 149,
+          "end_byte": 187,
+          "start_line": 5,
+          "start_column": 2,
+          "end_line": 5,
+          "end_column": 40
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "brew: (names: Array<string>) => string",
+        "body_span": null
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "interface Brewing",
+    "body_span": {
+      "start_byte": 145,
+      "end_byte": 190,
+      "start_line": 4,
+      "start_column": 18,
+      "end_line": 6,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Class",
+    "name": "Brewer",
+    "visibility": null,
+    "span": {
+      "start_byte": 199,
+      "end_byte": 3637,
+      "start_line": 8,
+      "start_column": 7,
+      "end_line": 164,
+      "end_column": 1
+    },
+    "children": [
+      {
+        "kind": "Method",
+        "name": "brew",
+        "visibility": null,
+        "span": {
+          "start_byte": 235,
+          "end_byte": 404,
+          "start_line": 9,
+          "start_column": 2,
+          "end_line": 12,
+          "end_column": 3
+        },
+        "children": [
+          {
+            "kind": "function",
+            "name": null,
+            "visibility": null,
+            "span": {
+              "start_byte": 364,
+              "end_byte": 397,
+              "start_line": 11,
+              "start_column": 38,
+              "end_line": 11,
+              "end_column": 71
+            },
+            "children": [],
+            "decorators": [],
+            "doc_comment": null,
+            "signature": "name =>",
+            "body_span": {
+              "start_byte": 372,
+              "end_byte": 397,
+              "start_line": 11,
+              "start_column": 46,
+              "end_line": 11,
+              "end_column": 71
+            }
+          }
+        ],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "brew(names: Array<string>): string",
+        "body_span": {
+          "start_byte": 270,
+          "end_byte": 404,
+          "start_line": 9,
+          "start_column": 37,
+          "end_line": 12,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "retry",
+        "visibility": null,
+        "span": {
+          "start_byte": 408,
+          "end_byte": 519,
+          "start_line": 14,
+          "start_column": 2,
+          "end_line": 17,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "retry(attempts: number): number",
+        "body_span": {
+          "start_byte": 440,
+          "end_byte": 519,
+          "start_line": 14,
+          "start_column": 34,
+          "end_line": 17,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "score",
+        "visibility": null,
+        "span": {
+          "start_byte": 523,
+          "end_byte": 816,
+          "start_line": 19,
+          "start_column": 2,
+          "end_line": 30,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "score(batches: Array<Array<string>>): number",
+        "body_span": {
+          "start_byte": 568,
+          "end_byte": 816,
+          "start_line": 19,
+          "start_column": 47,
+          "end_line": 30,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "classify",
+        "visibility": null,
+        "span": {
+          "start_byte": 899,
+          "end_byte": 1236,
+          "start_line": 33,
+          "start_column": 2,
+          "end_line": 44,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "classify(amount: number): number",
+        "body_span": {
+          "start_byte": 932,
+          "end_byte": 1236,
+          "start_line": 33,
+          "start_column": 35,
+          "end_line": 44,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "ready",
+        "visibility": null,
+        "span": {
+          "start_byte": 1307,
+          "end_byte": 1572,
+          "start_line": 47,
+          "start_column": 2,
+          "end_line": 58,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "ready(water: number, beans: number, cups: number, temperature: number): boolean",
+        "body_span": {
+          "start_byte": 1387,
+          "end_byte": 1572,
+          "start_line": 47,
+          "start_column": 82,
+          "end_line": 58,
+          "end_column": 3
+        }
+      },
+      {
+        "kind": "Method",
+        "name": "calibrate",
+        "visibility": null,
+        "span": {
+          "start_byte": 1665,
+          "end_byte": 3635,
+          "start_line": 60,
+          "start_column": 2,
+          "end_line": 163,
+          "end_column": 3
+        },
+        "children": [],
+        "decorators": [],
+        "doc_comment": null,
+        "signature": "calibrate(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number): number",
+        "body_span": {
+          "start_byte": 1771,
+          "end_byte": 3635,
+          "start_line": 60,
+          "start_column": 108,
+          "end_line": 163,
+          "end_column": 3
+        }
+      }
+    ],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "class Brewer implements Brewing",
+    "body_span": {
+      "start_byte": 231,
+      "end_byte": 3637,
+      "start_line": 8,
+      "start_column": 39,
+      "end_line": 164,
+      "end_column": 1
+    }
+  },
+  {
+    "kind": "Function",
+    "name": "main",
+    "visibility": null,
+    "span": {
+      "start_byte": 3646,
+      "end_byte": 3748,
+      "start_line": 166,
+      "start_column": 7,
+      "end_line": 168,
+      "end_column": 1
+    },
+    "children": [],
+    "decorators": [],
+    "doc_comment": null,
+    "signature": "function main(): void",
+    "body_span": {
+      "start_byte": 3668,
+      "end_byte": 3748,
+      "start_line": 166,
+      "start_column": 29,
+      "end_line": 168,
+      "end_column": 1
+    }
+  }
+]

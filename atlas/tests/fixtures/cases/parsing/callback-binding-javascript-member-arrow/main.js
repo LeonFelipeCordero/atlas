@@ -1,0 +1,1 @@
+object.action = (((() => { function local() {} return local(); })));

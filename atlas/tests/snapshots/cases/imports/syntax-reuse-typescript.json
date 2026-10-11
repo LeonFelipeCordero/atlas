@@ -1,0 +1,7 @@
+{
+  "files": [
+    {"calls": [{"file_path": "sample", "name": "helper", "start_byte": 43, "end_byte": 56, "line": 1, "evidence": "helper(value)", "bare_target": true, "qualifier": null, "relationship": "CALLS"}], "imports": [], "parse_error": null, "path": "sample", "symbols": [{"key": "symbol:sample::run:0", "file_path": "sample", "language": "typescript", "name": "run", "qualified_name": "sample::run", "kind": "function", "parent_key": "file:sample", "start_byte": 0, "end_byte": 61, "start_line": 1, "start_column": 1, "end_line": 1, "end_column": 62, "signature": "function run(value: number)", "visibility": null, "decorators": [], "complexity": {"baseCyclomaticComplexity": 2, "nestedCyclomaticComplexity": 0, "loopNestedComplexity": 0, "cyclomaticComplexity": 2, "maxDecisionDepth": 1}, "line_count": 1, "parameter_count": 1}]}
+  ],
+  "graph": {"connections": [{"source_key": "symbol:sample::run:0", "target_key": "external:typescript:callable:helper", "type": "CALLS", "confidence": "INFERRED", "path": "sample", "line": 1, "evidence": "helper(value)", "type_only": false}], "external_nodes": [{"key": "external:typescript:callable:helper", "language": "typescript", "kind": "callable", "name": "helper"}]},
+  "inheritances": []
+}

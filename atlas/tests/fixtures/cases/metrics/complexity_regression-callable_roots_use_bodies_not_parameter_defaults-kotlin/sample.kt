@@ -1,0 +1,1 @@
+fun choose(x: Int = if(ready) 1 else 0){if(x > 0) accept()}

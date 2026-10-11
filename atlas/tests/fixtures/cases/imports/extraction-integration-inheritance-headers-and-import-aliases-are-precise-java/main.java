@@ -1,0 +1,1 @@
+package app; import wrong.Base; class Maker extends Base {}

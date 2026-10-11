@@ -1,0 +1,2 @@
+package demo
+func run() { f := func() { helper() }; f() }

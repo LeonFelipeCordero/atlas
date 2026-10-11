@@ -1,0 +1,1 @@
+fn brew()->i32{1} fn main(){let _=vec![{macro_rules! dbg{($e:expr)=>{stringify!($e)}} format!("{}",dbg!(brew()))}];}

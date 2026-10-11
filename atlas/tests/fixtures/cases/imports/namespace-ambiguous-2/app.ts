@@ -1,0 +1,1 @@
+import * as tools from './a'; import * as tools from './b';tools.work()

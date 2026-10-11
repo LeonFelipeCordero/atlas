@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66756e6374696f6e20663c543e28746869733a20432c207b612c627d3a20582c20633f3a20542c202e2e2e617267733a20545b5d293a20766f69643b"}, "language": "typescript", "path": "sample"},
+"content_hash": "7e857b8a449df81ee45892d66f7e3c75f2a931b2c3313805879bb71c125ddc31",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 60, "end_column": 61, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "typescript", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "function f<T>(this: C, {a,b}: X, c?: T, ...args: T[]): void;", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

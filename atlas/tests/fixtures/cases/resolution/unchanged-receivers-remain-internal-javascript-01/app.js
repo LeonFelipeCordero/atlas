@@ -1,0 +1,1 @@
+class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); holder.service.persist();}

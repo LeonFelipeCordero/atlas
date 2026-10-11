@@ -1,3 +1,5 @@
+from tests.source_snapshot_fixture import case_text
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,20 +18,20 @@ class ComplexityTests(unittest.TestCase):
         )
 
     def test_entry_and_sequential_decisions(self) -> None:
-        self.assertEqual(self.measure("{}"), Complexity(1, 0, 0, 1, 0))
+        self.assertEqual(self.measure(case_text('metrics', 'complexity-entry_and_sequential_decisions-typescript', 'sample.ts')), Complexity(1, 0, 0, 1, 0))
         self.assertEqual(
-            self.measure("{ if(a){} if(b){} if(c){} }"), Complexity(4, 0, 0, 4, 1)
+            self.measure(case_text('metrics', 'complexity-entry_and_sequential_decisions-typescript-2', 'sample.ts')), Complexity(4, 0, 0, 4, 1)
         )
 
     def test_requested_example_across_grammars(self) -> None:
         samples = {
-            "typescript": "{ for(let a of x){for(let b of x){if(a){if(b){}}}} }",
-            "javascript": "{ for(let a of x){for(let b of x){if(a){if(b){}}}} }",
-            "python": "for a in x:\n for b in x:\n  if a:\n   if b: pass\n",
-            "java": "{ for(int a=0;a<2;a++){while(true){if(a>0){if(a>1){}}}} }",
-            "kotlin": "fun f() { for(a in x){for(b in x){if(a){if(b){}}}} }",
-            "go": "func f(){for {for {if true {if true {}}}}}",
-            "rust": "fn f(){for a in x {for b in x {if a {if b {}}}}}",
+            "typescript": case_text('metrics', 'complexity-requested_example_across_grammars-typescript', 'sample.ts'),
+            "javascript": case_text('metrics', 'complexity-requested_example_across_grammars-typescript', 'sample.ts'),
+            "python": case_text('metrics', 'complexity-requested_example_across_grammars-python', 'sample.py'),
+            "java": case_text('metrics', 'complexity-requested_example_across_grammars-java', 'sample.java'),
+            "kotlin": case_text('metrics', 'complexity-requested_example_across_grammars-kotlin', 'sample.kt'),
+            "go": case_text('metrics', 'complexity-requested_example_across_grammars-go', 'sample.go'),
+            "rust": case_text('metrics', 'complexity-requested_example_across_grammars-rust', 'sample.rs'),
         }
         for language, source in samples.items():
             with self.subTest(language=language):
@@ -38,9 +40,10 @@ class ComplexityTests(unittest.TestCase):
                 )
 
     def test_depths_three_and_five(self) -> None:
-        for depth in (3, 5):
+        for depth, case_id in ((3, 'complexity-depth-3-typescript'),
+                               (5, 'complexity-depth-5-typescript')):
             with self.subTest(depth=depth):
-                source = "{" + "if(a){" * depth + "}" * depth + "}"
+                source = case_text('metrics', case_id, 'sample.ts')
                 self.assertEqual(
                     self.measure(source),
                     Complexity(depth + 1, depth - 2, 0, 2 * depth - 1, depth),
@@ -48,49 +51,44 @@ class ComplexityTests(unittest.TestCase):
 
     def test_penalty_per_deep_decision_not_only_maximum(self) -> None:
         self.assertEqual(
-            self.measure("{if(a){if(b){if(c){} if(d){}}}}"), Complexity(5, 2, 0, 7, 3)
+            self.measure(case_text('metrics', 'complexity-penalty_per_deep_decision_not_only_maximum-typescript', 'sample.ts')), Complexity(5, 2, 0, 7, 3)
         )
 
     def test_loop_ancestor_need_not_be_immediate_parent(self) -> None:
         self.assertEqual(
-            self.measure("{for(;;){if(a){while(b){for(;;){}}}}}"),
+            self.measure(case_text('metrics', 'complexity-loop_ancestor_need_not_be_immediate_parent-typescript', 'sample.ts')),
             Complexity(5, 2, 2, 9, 4),
         )
         self.assertEqual(
-            self.measure("{for(;;){} while(a){} }"), Complexity(3, 0, 0, 3, 1)
+            self.measure(case_text('metrics', 'complexity-loop_ancestor_need_not_be_immediate_parent-typescript-2', 'sample.ts')), Complexity(3, 0, 0, 3, 1)
         )
 
     def test_boolean_ternary_and_catch(self) -> None:
         self.assertEqual(
-            self.measure("{if(a && b || c){} }"), Complexity(4, 0, 0, 4, 1)
+            self.measure(case_text('metrics', 'complexity-boolean_ternary_and_catch-typescript', 'sample.ts')), Complexity(4, 0, 0, 4, 1)
         )
         self.assertEqual(
-            self.measure("{const x = a ? b : c; try {} catch(e) {} }"),
+            self.measure(case_text('metrics', 'complexity-boolean_ternary_and_catch-typescript-2', 'sample.ts')),
             Complexity(3, 0, 0, 3, 1),
         )
 
     def test_else_if_is_not_nesting(self) -> None:
         self.assertEqual(
-            self.measure("{if(a){}else if(b){}else if(c){}else if(d){} }"),
+            self.measure(case_text('metrics', 'complexity-else_if_is_not_nesting-typescript', 'sample.ts')),
             Complexity(5, 0, 0, 5, 1),
         )
-        source = "if a: pass\nelif b: pass\nelif c: pass\nelse: pass\n"
+        source = case_text('metrics', 'complexity-else_if_is_not_nesting-python', 'sample.py')
         self.assertEqual(self.measure(source, "python"), Complexity(4, 0, 0, 4, 1))
 
     def test_nested_scopes_are_not_counted(self) -> None:
-        source = "{ if(a) { function inner(){for(;;){for(;;){if(b){}}}} const f = () => {while(a){if(b){}}}; class A {run(){if(a){}}} } }"
+        source = case_text('metrics', 'complexity-nested_scopes_are_not_counted-typescript', 'sample.ts')
         self.assertEqual(self.measure(source), Complexity(2, 0, 0, 2, 1))
 
     def test_python_method_and_inner_function_are_independent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "example.py").write_text(
-                "class A:\n"
-                " def run(self, default=1 if flag else 0):\n"
-                "  for a in x:\n"
-                "   def inner():\n"
-                "    for b in x:\n"
-                "     if b: pass\n"
+                case_text('metrics', 'complexity-python_method_and_inner_function_are_independent-python', 'example.py')
             )
             artifact = analyze_repository(root)
             by_name = {node["name"]: node for node in artifact.nodes}
@@ -102,19 +100,7 @@ class ComplexityTests(unittest.TestCase):
     def test_artifact_only_function_and_method_properties(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "example.ts").write_text("""
-for(;;) { if(globalFlag) {} }
-class A {
-    run() { for(;;){for(;;){if(a){if(b){}}}} }
-}
-function outer() {
-    if(a) {
-        function inner() { for(;;){while(b){if(c){}}} }
-        const anonymous = () => { while(a){if(b){}} };
-    }
-}
-function empty() {}
-""")
+            (root / "example.ts").write_text(case_text('metrics', 'complexity-artifact_only_function_and_method_properties-typescript', 'example.ts'))
             nodes = analyze_repository(root).nodes
             by_name = {
                 node["name"]: node

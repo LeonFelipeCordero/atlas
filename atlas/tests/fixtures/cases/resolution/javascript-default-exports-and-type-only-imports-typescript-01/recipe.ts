@@ -1,0 +1,1 @@
+class Actual { static portions(x) {return x;} } export default Actual;

@@ -1,3 +1,5 @@
+from tests.source_snapshot_fixture import case_bytes
+
 import unittest
 from dataclasses import replace
 from unittest.mock import patch
@@ -16,19 +18,7 @@ class StructureTagsTest(unittest.TestCase):
         _declaration_query.cache_clear()
 
     def test_uses_bundled_tags_with_graph_metadata_and_nesting(self) -> None:
-        source = b"""package demo
-class Service {
-    @Deprecated("old")
-    private fun run(): Int {
-        fun helper(): Int = 1
-        val value = helper()
-        return value
-    }
-    companion object Factory {
-        fun create(): Service = Service()
-    }
-}
-"""
+        source = case_bytes('parsing', 'structure-uses_bundled_tags_with_graph_metadata_and_nesting-kotlin', 'sample.kt')
         with patch(
             "atlas.parsing.structure.get_tags_query", wraps=get_tags_query
         ) as tags:
@@ -56,12 +46,7 @@ class Service {
         self,
     ) -> None:
         structure = extract_structure(parsing_syntax(
-            b"""class Service {
-    companion object {
-        fun create(): Service = Service()
-    }
-}
-""",
+            case_bytes('parsing', 'structure-unnamed_companion_is_a_container_without_duplicate_declarations-kotlin', 'sample.kt'),
             "kotlin",
         ))
         self.assertEqual(len(structure), 1)
@@ -71,16 +56,7 @@ class Service {
         )
 
     def test_java_methods_constructors_overloads_and_nested_types(self) -> None:
-        source = b"""package demo;
-import demo.Other;
-interface Runner { void run(); }
-class Service implements Runner {
-    public Service() {}
-    @Deprecated private void run() {}
-    void run(int value) {}
-    class Nested { public Nested() {} void work() {} }
-}
-"""
+        source = case_bytes('parsing', 'structure-java_methods_constructors_overloads_and_nested_types-java', 'sample.java')
         native = process(source.decode(), ProcessConfig(language="java")).structure
         structure = extract_structure(parsing_syntax(source, "java"), native)
         self.assertEqual(
@@ -105,9 +81,9 @@ class Service implements Runner {
         self,
     ) -> None:
         sources = {
-            "python": b"class Service:\n    @staticmethod\n    def run():\n        def helper():\n            pass\n",
-            "ruby": b"module Demo\n  class Service\n    def run\n    end\n  end\nend\n",
-            "typescript": b"export class Service { run() {} }\nexport function helper() {}\n",
+            "python": case_bytes('parsing', 'structure-other_languages_use_the_same_nesting_and_keep_native_metadata-python', 'sample.py'),
+            "ruby": case_bytes('parsing', 'structure-other_languages_use_the_same_nesting_and_keep_native_metadata-ruby', 'sample.rb'),
+            "typescript": case_bytes('parsing', 'structure-other_languages_use_the_same_nesting_and_keep_native_metadata-typescript', 'sample.ts'),
         }
         for language, source in sources.items():
             with self.subTest(language=language):
@@ -141,7 +117,7 @@ class Service implements Runner {
         )
 
     def test_missing_bundled_tags_preserves_native_extraction(self) -> None:
-        source = b"class Service { public void Run() {} }"
+        source = case_bytes('parsing', 'structure-missing_bundled_tags_preserves_native_extraction-csharp', 'sample.cs')
         native = process(source.decode(), ProcessConfig(language="csharp")).structure
         with patch("atlas.parsing.structure.get_tags_query", return_value=None):
             self.assertIs(extract_structure(parsing_syntax(source, "csharp"), native), native)

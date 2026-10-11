@@ -1,0 +1,76 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 1,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    }\n  ],\n  \"circularImports\": [\n    {\n      \"id\": \"import-cycle:6d9f51ca28a2cd2079ebaf72644fd21930ad9e392c2744f32298963829deb4a2\",\n      \"groupSize\": 2,\n      \"internalDependencyCount\": 2,\n      \"files\": [\n        \"a.py\",\n        \"b.py\"\n      ],\n      \"exampleCycle\": [\n        \"a.py\",\n        \"b.py\",\n        \"a.py\"\n      ]\n    }\n  ],\n  \"diagnostics\": []\n}\n",
+    "stdout": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 1,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    }\n  ],\n  \"circularImports\": [\n    {\n      \"id\": \"import-cycle:6d9f51ca28a2cd2079ebaf72644fd21930ad9e392c2744f32298963829deb4a2\",\n      \"groupSize\": 2,\n      \"internalDependencyCount\": 2,\n      \"files\": [\n        \"a.py\",\n        \"b.py\"\n      ],\n      \"exampleCycle\": [\n        \"a.py\",\n        \"b.py\",\n        \"a.py\"\n      ]\n    }\n  ],\n  \"diagnostics\": []\n}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 1,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    }\n  ],\n  \"circularImports\": [\n    {\n      \"id\": \"import-cycle:6d9f51ca28a2cd2079ebaf72644fd21930ad9e392c2744f32298963829deb4a2\",\n      \"groupSize\": 2,\n      \"internalDependencyCount\": 2,\n      \"files\": [\n        \"a.py\",\n        \"b.py\"\n      ],\n      \"exampleCycle\": [\n        \"a.py\",\n        \"b.py\",\n        \"a.py\"\n      ]\n    }\n  ],\n  \"diagnostics\": []\n}\n",
+    "stdout": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 1,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.5\n      }\n    }\n  ],\n  \"circularImports\": [\n    {\n      \"id\": \"import-cycle:6d9f51ca28a2cd2079ebaf72644fd21930ad9e392c2744f32298963829deb4a2\",\n      \"groupSize\": 2,\n      \"internalDependencyCount\": 2,\n      \"files\": [\n        \"a.py\",\n        \"b.py\"\n      ],\n      \"exampleCycle\": [\n        \"a.py\",\n        \"b.py\",\n        \"a.py\"\n      ]\n    }\n  ],\n  \"diagnostics\": []\n}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "example",
+      "rootPath": "<tmp>/example",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 0,
+        "edges": 5,
+        "externalNodes": 0,
+        "files": 2,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 0,
+        "types": 0
+      }
+    }
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 0,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 0,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": 1.0\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.0\n      }\n    }\n  ],\n  \"circularImports\": [],\n  \"diagnostics\": []\n}\n",
+    "stdout": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 0,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 0,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": 1.0\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.0\n      }\n    }\n  ],\n  \"circularImports\": [],\n  \"diagnostics\": []\n}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 0,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 0,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": 1.0\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.0\n      }\n    }\n  ],\n  \"circularImports\": [],\n  \"diagnostics\": []\n}\n",
+    "stdout": "{\n  \"summary\": {\n    \"files\": 2,\n    \"modules\": 1,\n    \"types\": 0,\n    \"callables\": 0,\n    \"circularImportGroups\": 0,\n    \"parseErrors\": 0\n  },\n  \"nodes\": [\n    {\n      \"stableKey\": \"module:.\",\n      \"subject\": \"example\",\n      \"kind\": \"directory\",\n      \"level\": \"module\",\n      \"path\": \".\",\n      \"line\": null,\n      \"metrics\": {\n        \"fanIn\": 0,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": null\n      }\n    },\n    {\n      \"stableKey\": \"file:a.py\",\n      \"subject\": \"a.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"a.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 0,\n        \"fanOut\": 1,\n        \"transitiveChangeImpact\": 0,\n        \"instability\": 1.0\n      }\n    },\n    {\n      \"stableKey\": \"file:b.py\",\n      \"subject\": \"b.py\",\n      \"kind\": \"file\",\n      \"level\": \"file\",\n      \"path\": \"b.py\",\n      \"line\": null,\n      \"metrics\": {\n        \"lineCount\": 1,\n        \"functionCount\": 0,\n        \"measuredFunctionCount\": 0,\n        \"weightedComplexitySum\": 0,\n        \"fanIn\": 1,\n        \"fanOut\": 0,\n        \"transitiveChangeImpact\": 1,\n        \"instability\": 0.0\n      }\n    }\n  ],\n  \"circularImports\": [],\n  \"diagnostics\": []\n}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "get_architecture",
+    "value": {
+      "graphRevision": "<revision>",
+      "importedAt": "<epoch-ms>",
+      "indexedAt": "<timestamp>",
+      "repositoryId": "<uuid>",
+      "rootName": "example",
+      "rootPath": "<tmp>/example",
+      "schemaVersion": 2,
+      "stats": {
+        "callables": 0,
+        "edges": 4,
+        "externalNodes": 0,
+        "files": 2,
+        "modules": 1,
+        "nodes": 4,
+        "parseErrors": 0,
+        "symbols": 0,
+        "types": 0
+      }
+    }
+  }
+]

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "66756e2063686f6f736528783a20496e74203d20696628726561647929203120656c73652030297b69662878203e2030292061636365707428297d"}, "language": "kotlin", "path": "sample.kt"},
+"content_hash": "627a34560953592bb60e37f764ff9f366376aba5a139f4b3535d3c130d3c1827",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 59, "end_column": 60, "end_line": 1, "file_path": "sample.kt", "key": "symbol:sample.kt::choose:0", "kind": "function", "language": "kotlin", "line_count": null, "name": "choose", "parameter_count": null, "parent_key": "file:sample.kt", "qualified_name": "sample.kt::choose", "signature": "fun choose(x: Int = if(ready) 1 else 0){if(x > 0) accept()}", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 58, "evidence": "accept()", "file_path": "sample.kt", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 50}],
+"imports": [],
+"inheritances": []
+}

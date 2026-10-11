@@ -1,0 +1,4 @@
+{
+"native_input": null,
+"declarations": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": "top", "signature": "x => x", "span": {"end_byte": 67, "end_column": 67, "end_line": 0, "start_byte": 61, "start_column": 61, "start_line": 0}, "visibility": null}, {"body_span": null, "children": [{"body_span": null, "children": [], "decorators": [], "doc_comment": null, "kind": "function", "name": null, "signature": "(x: number) => x", "span": {"end_byte": 120, "end_column": 120, "end_line": 0, "start_byte": 104, "start_column": 104, "start_line": 0}, "visibility": null}], "decorators": [], "doc_comment": null, "kind": "function", "name": "outer", "signature": "function outer(cb: Callback) { use((x: number) => x); }", "span": {"end_byte": 124, "end_column": 124, "end_line": 0, "start_byte": 69, "start_column": 69, "start_line": 0}, "visibility": null}]
+}

@@ -1,5 +1,7 @@
 """Dependency metrics derive from complete persisted normalized report facts."""
 
+from tests.cli_snapshot_support import case_snapshots as case_snapshots, snapshot_result
+from tests.source_snapshot_fixture import case_text
 from pathlib import Path
 from typing import Any, cast
 
@@ -26,20 +28,20 @@ def fact_views(facts: ReportFactsDTO) -> dict[str, dict[str, Any]]:
 def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
-    (root / "a.py").write_text("import b\n")
-    (root / "b.py").write_text("import a\n")
-    (root / "c.py").write_text("import a\n")
-    (root / "isolated.py").write_text("# no dependencies\n")
+    (root / "a.py").write_text(case_text('cli', 'dependency-metric-persistence-dependency-metrics-from-normalized-facts', 'a.py'))
+    (root / "b.py").write_text(case_text('cli', 'dependency-metric-persistence-dependency-metrics-from-normalized-facts', 'b.py'))
+    (root / "c.py").write_text(case_text('cli', 'dependency-metric-persistence-dependency-metrics-from-normalized-facts', 'c.py'))
+    (root / "isolated.py").write_text(case_text('cli', 'dependency-metric-persistence-dependency-metrics-from-normalized-facts', 'isolated.py'))
     path = tmp_path / "database.sqlite"
     migrate_database(path)
     with repository_service(path) as service:
         repository = service.register({"name": "Metrics", "location": str(root)})
         graph = service.index(repository.name, root)
     with repository_service(path) as service:
-        assert service.get_architecture(repository.id) == graph
-        facts = service.get_report_facts(repository.id)
+        assert snapshot_result(service.get_architecture(repository.id), 'get_architecture') == graph
+        facts = snapshot_result(service.get_report_facts(repository.id), 'get_report_facts')
         assert facts is not None
-    metrics = dependency_metrics(cast(GraphView, fact_views(facts)["file"]))
+    metrics = snapshot_result(dependency_metrics(cast(GraphView, fact_views(facts)["file"])), 'dependency_metrics')
     assert metrics["file:a.py"] == {
         "fanIn": 2, "fanOut": 1, "transitiveChangeImpact": 2, "instability": 1 / 3,
     }
@@ -53,19 +55,19 @@ def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
 def test_normalized_instability_excludes_duplicates_self_and_external_edges(tmp_path: Path) -> None:
     root = tmp_path / "source"
     root.mkdir()
-    (root / "stable.py").write_text("import unstable\nimport unstable\nimport stable\nimport missing\n")
-    (root / "unstable.py").write_text("import a\nimport b\nimport c\nimport d\n")
+    (root / "stable.py").write_text(case_text('cli', 'dependency-metric-persistence-normalized-instability-excludes-duplicates-self-and-external-edges', 'stable.py'))
+    (root / "unstable.py").write_text(case_text('cli', 'dependency-metric-persistence-normalized-instability-excludes-duplicates-self-and-external-edges', 'unstable.py'))
     for peer in "abcd":
-        (root / f"{peer}.py").write_text("import stable\n")
-    (root / "isolated.py").write_text("# no dependencies\n")
+        (root / f"{peer}.py").write_text(case_text('cli', 'dependency-metric-persistence-normalized-instability-excludes-duplicates-self-and-external-edges', f"{peer}.py"))
+    (root / "isolated.py").write_text(case_text('cli', 'dependency-metric-persistence-normalized-instability-excludes-duplicates-self-and-external-edges', 'isolated.py'))
     path = tmp_path / "database.sqlite"
     migrate_database(path)
     with repository_service(path) as service:
         repository = service.register({"name": "Instability", "location": str(root)})
         service.index(repository.name, root)
-        facts = service.get_report_facts(repository.id)
+        facts = snapshot_result(service.get_report_facts(repository.id), 'get_report_facts')
         assert facts is not None
-    metrics = dependency_metrics(cast(GraphView, fact_views(facts)["file"]))
+    metrics = snapshot_result(dependency_metrics(cast(GraphView, fact_views(facts)["file"])), 'dependency_metrics')
     assert metrics["file:stable.py"] == {
         "fanIn": 4, "fanOut": 1, "transitiveChangeImpact": 5, "instability": 0.2,
     }
@@ -99,7 +101,7 @@ def test_normalized_facts_keep_all_dependency_occurrences_and_legacy_complexitie
     with repository_session(path) as session:
         store = RepositoryStore(session)
         saved = store.save_new("Metrics", ".", artifact)
-        facts = store.report_facts(saved.repositoryId)
+        facts = snapshot_result(store.report_facts(saved.repositoryId), 'report_facts')
         assert facts is not None
         assert facts.graphRevision == saved.graphRevision
     run, worker = facts.nodes[:2]
@@ -115,7 +117,7 @@ def test_normalized_facts_keep_all_dependency_occurrences_and_legacy_complexitie
     assert facts.imports == [edge for edge in facts.edges if edge.type == "IMPORTS"]
     assert [edge.type for edge in facts.edges] == ["CALLS", "CALLS", "IMPORTS", "REFERENCES", "INHERITS"]
     assert facts.diagnostics == artifact["diagnostics"]
-    metrics = dependency_metrics(cast(GraphView, fact_views(facts)["callable"]))
+    metrics = snapshot_result(dependency_metrics(cast(GraphView, fact_views(facts)["callable"])), 'dependency_metrics')
     assert metrics["run"] == {
         "fanIn": 0, "fanOut": 1, "transitiveChangeImpact": 0, "instability": 1.0,
     }
@@ -153,14 +155,14 @@ def test_enriched_facts_share_a_revision_and_are_repository_scoped(tmp_path: Pat
     try:
         with Session(reader_engine) as session:
             store = RepositoryStore(session)
-            facts = store.report_facts(saved.repositoryId)
+            facts = snapshot_result(store.report_facts(saved.repositoryId), 'report_facts')
             assert changed and facts is not None
             assert facts.graphRevision == saved.graphRevision
             assert facts.nodes[0].baseCyclomaticComplexity == 3
             assert len(facts.edges) == 5
             assert len(facts.imports) == 1
             assert facts.diagnostics == original["diagnostics"]
-            latest = store.report_facts(saved.repositoryId)
+            latest = snapshot_result(store.report_facts(saved.repositoryId), 'report_facts')
             assert latest is not None and latest.graphRevision != saved.graphRevision
             assert latest.edges == latest.imports == latest.diagnostics == []
     finally:

@@ -1,0 +1,1 @@
+function from(x) { return x }

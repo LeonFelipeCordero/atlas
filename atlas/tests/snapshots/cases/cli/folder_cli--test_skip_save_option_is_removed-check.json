@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "cli",
+    "exit_code": 0,
+    "output": "Usage: main check [OPTIONS]\n\n  Check current sources against atlas.json in the analyzed folder, without\n  saving by default. Missing keys inherit defaults: maxFileLines=600,\n  maxFunctionLines=100, maxParameters=3, maxWeightedComplexity=8,\n  maxDecisionDepth=3, maxNestedLoops=0, maxCircularImportGroups=0.\n  maxChangeImpact and maxInstability are disabled by default and apply to\n  files/modules. Null disables a check. Equality passes; violations exit 1.\n\nOptions:\n  -f, --f, --folder PATH    Folder to analyze and check  [default: .]\n  --save                    Save the analyzed graph in SQLite\n  --format [markdown|json]  [default: markdown]\n  --help                    Show this message and exit.\n",
+    "stdout": "Usage: main check [OPTIONS]\n\n  Check current sources against atlas.json in the analyzed folder, without\n  saving by default. Missing keys inherit defaults: maxFileLines=600,\n  maxFunctionLines=100, maxParameters=3, maxWeightedComplexity=8,\n  maxDecisionDepth=3, maxNestedLoops=0, maxCircularImportGroups=0.\n  maxChangeImpact and maxInstability are disabled by default and apply to\n  files/modules. Null disables a check. Equality passes; violations exit 1.\n\nOptions:\n  -f, --f, --folder PATH    Folder to analyze and check  [default: .]\n  --save                    Save the analyzed graph in SQLite\n  --format [markdown|json]  [default: markdown]\n  --help                    Show this message and exit.\n",
+    "stderr": ""
+  },
+  {
+    "kind": "cli",
+    "exit_code": 2,
+    "output": "Usage: main check [OPTIONS]\nTry 'main check --help' for help.\n\nError: No such option '--skip-save'. Did you mean '--save'?\n",
+    "stdout": "",
+    "stderr": "Usage: main check [OPTIONS]\nTry 'main check --help' for help.\n\nError: No such option '--skip-save'. Did you mean '--save'?\n"
+  }
+]

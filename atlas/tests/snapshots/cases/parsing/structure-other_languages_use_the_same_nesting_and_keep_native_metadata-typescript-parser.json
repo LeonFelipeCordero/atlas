@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "6578706f727420636c6173732053657276696365207b2072756e2829207b7d207d0a6578706f72742066756e6374696f6e2068656c7065722829207b7d0a"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "18067769e0d847ba4a35ddef2b7a256f22d9f1f8b14ecee01790b4ec650534ea",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 33, "end_column": 34, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::Service:7", "kind": "class", "language": "typescript", "line_count": null, "name": "Service", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::Service", "signature": "class Service", "start_byte": 7, "start_column": 8, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 31, "end_column": 32, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::Service.run:23", "kind": "method", "language": "typescript", "line_count": null, "name": "run", "parameter_count": null, "parent_key": "symbol:sample.ts::Service:7", "qualified_name": "sample.ts::Service.run", "signature": "run()", "start_byte": 23, "start_column": 24, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 61, "end_column": 28, "end_line": 2, "file_path": "sample.ts", "key": "symbol:sample.ts::helper:41", "kind": "function", "language": "typescript", "line_count": null, "name": "helper", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::helper", "signature": "function helper()", "start_byte": 41, "start_column": 8, "start_line": 2, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

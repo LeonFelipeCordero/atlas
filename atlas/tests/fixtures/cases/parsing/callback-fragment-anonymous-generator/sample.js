@@ -1,0 +1,1 @@
+function* () { function local() {} yield local(); }

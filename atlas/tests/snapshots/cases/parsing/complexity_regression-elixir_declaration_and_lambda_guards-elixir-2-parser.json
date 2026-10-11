@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "666e2078207768656e2078203e2030202d3e206966207820616e642072656164792c20646f3a2061636365707428293b205f202d3e20756e6c6573732073746f707065642c20646f3a2072656a656374282920656e64"}, "language": "elixir", "path": "sample.ex"},
+"content_hash": "f9901a4fc4f1b2dd4cc80612234b4df41dbd0e98a159bc6bdefee14b81ec9754",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 86, "end_column": 87, "end_line": 1, "file_path": "sample.ex", "key": "symbol:sample.ex::<anonymous>:0", "kind": "function", "language": "elixir", "line_count": null, "name": "<anonymous>", "parameter_count": null, "parent_key": "file:sample.ex", "qualified_name": "sample.ex::<anonymous>", "signature": "fn x when x > 0 -> if x and ready, do: accept(); _ -> unless stopped, do: reject() end", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 47, "evidence": "accept()", "file_path": "sample.ex", "line": 1, "name": "accept", "qualifier": null, "relationship": "CALLS", "start_byte": 39}, {"bare_target": true, "end_byte": 82, "evidence": "reject()", "file_path": "sample.ex", "line": 1, "name": "reject", "qualifier": null, "relationship": "CALLS", "start_byte": 74}],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "646566206628613d63616c6c28312c2032292c202f2c202a617267732c20623d302c202a2a6b7761726773293a2070617373"}, "language": "python", "path": "sample"},
+"content_hash": "1e4ab5153bf7da06fa62d315c69969147cb30a0b643b04f68cdb265082980128",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 50, "end_column": 51, "end_line": 1, "file_path": "sample", "key": "symbol:sample::f:0", "kind": "function", "language": "python", "line_count": null, "name": "f", "parameter_count": null, "parent_key": "file:sample", "qualified_name": "sample::f", "signature": "def f(a=call(1, 2), /, *args, b=0, **kwargs):", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [{"bare_target": true, "end_byte": 18, "evidence": "call(1, 2)", "file_path": "sample", "line": 1, "name": "call", "qualifier": null, "relationship": "CALLS", "start_byte": 8}],
+"imports": [],
+"inheritances": []
+}

@@ -1,0 +1,1 @@
+{"adapter_path": "./tools", "import_path": "./tools", "namespace": null, "source": "import {run as execute} from './tools';"}

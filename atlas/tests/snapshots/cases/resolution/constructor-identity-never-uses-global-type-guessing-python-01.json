@@ -1,0 +1,16 @@
+{
+"files": [
+{"calls": [], "content_hash": "30250d4b51b9194c80e03b2fb002b5b9c6753123fb01842e52466354d2698c82", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "maker.py", "symbols": [{"complexity": null, "decorators": [], "end_byte": 38, "end_column": 26, "end_line": 2, "file_path": "maker.py", "key": "symbol:maker.py::Maker:0", "kind": "class", "language": "python", "line_count": null, "name": "Maker", "parameter_count": null, "parent_key": "file:maker.py", "qualified_name": "maker.py::Maker", "signature": "class Maker:", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}, {"complexity": null, "decorators": [], "end_byte": 38, "end_column": 26, "end_line": 2, "file_path": "maker.py", "key": "symbol:maker.py::Maker.brew:14", "kind": "function", "language": "python", "line_count": null, "name": "brew", "parameter_count": null, "parent_key": "symbol:maker.py::Maker:0", "qualified_name": "maker.py::Maker.brew", "signature": "def brew(self):", "start_byte": 14, "start_column": 2, "start_line": 2, "visibility": null}]},
+{"calls": [{"bare_target": false, "end_byte": 14, "evidence": "Maker().brew()", "file_path": "main.py", "line": 1, "name": "brew", "qualifier": null, "relationship": "CALLS", "start_byte": 0}, {"bare_target": true, "end_byte": 7, "evidence": "Maker()", "file_path": "main.py", "line": 1, "name": "Maker", "qualifier": null, "relationship": "CALLS", "start_byte": 0}], "content_hash": "bea8fe1c0cab1dab92a86064041362e7224f41307f87b668251d5531041854ab", "imports": [], "inheritances": [], "language": "python", "parse_error": null, "path": "main.py", "symbols": []}
+],
+"resolved": {
+"connections": [
+{"confidence": "INFERRED", "evidence": "Maker().brew()", "line": 1, "path": "main.py", "source_key": "file:main.py", "target_key": "external:python:callable:brew", "type": "CALLS", "type_only": false},
+{"confidence": "INFERRED", "evidence": "Maker()", "line": 1, "path": "main.py", "source_key": "file:main.py", "target_key": "external:python:callable:Maker", "type": "CALLS", "type_only": false}
+],
+"external_nodes": [
+{"key": "external:python:callable:brew", "kind": "callable", "language": "python", "name": "brew"},
+{"key": "external:python:callable:Maker", "kind": "callable", "language": "python", "name": "Maker"}
+]
+}
+}

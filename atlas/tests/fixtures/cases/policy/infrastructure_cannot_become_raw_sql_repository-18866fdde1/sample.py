@@ -1,0 +1,1 @@
+connection.execute('DELETE FROM repositories')

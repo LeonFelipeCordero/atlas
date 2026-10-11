@@ -1,0 +1,1 @@
+object.__getattribute__(service, '_repository')

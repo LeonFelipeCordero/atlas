@@ -1,0 +1,9 @@
+{
+"source": {"bytes": {"hex": "636c6173732041207b7d"}, "language": "typescript", "path": "sample.ts"},
+"content_hash": "107310d1668e0941284e7595573d77788d10959a91d6eb1a53c03b4faba0bc97",
+"parse_error": null,
+"declarations": [{"complexity": null, "decorators": [], "end_byte": 10, "end_column": 11, "end_line": 1, "file_path": "sample.ts", "key": "symbol:sample.ts::A:0", "kind": "class", "language": "typescript", "line_count": null, "name": "A", "parameter_count": null, "parent_key": "file:sample.ts", "qualified_name": "sample.ts::A", "signature": "class A", "start_byte": 0, "start_column": 1, "start_line": 1, "visibility": null}],
+"calls": [],
+"imports": [],
+"inheritances": []
+}

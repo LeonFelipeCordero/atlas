@@ -1,5 +1,7 @@
 """Fallback Rust roots must merge reference sets without retaining every traversal."""
 
+from tests.import_snapshot_support import import_case_sources as case_sources
+
 import weakref
 
 from atlas.metrics.adapters import get_resolution_adapter
@@ -9,11 +11,7 @@ from tests.test_semantic_resolution import repository
 
 
 def test_fallback_root_references_are_merged_incrementally(monkeypatch):
-    repo = repository("rust", {
-        "root.rs": "mod child;",
-        "child.rs": "mod leaf;",
-        "child/leaf.rs": "pub fn leaf() {}",
-    })
+    repo = repository("rust", case_sources("imports", "rust-root-streaming-fallback-root-references-are-merged-incrementally"))
     syntax = {
         file.source.path: Syntax(file, get_resolution_adapter("rust"))
         for file in repo.files

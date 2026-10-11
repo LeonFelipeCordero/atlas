@@ -1,0 +1,7 @@
+{
+"file_record": {"kind": "file", "language": "java", "level": "file", "name": "sample.java", "parentStableKey": "module:.", "path": "sample.java", "properties": {"bytes": 11, "lineCount": 1, "sha256": "d811c11783ec28ead060092b99807c70464e106639b739734c168c11ba505532"}, "qualifiedName": "sample.java", "stableKey": "file:sample.java", "type": "file"},
+"file_thresholds": {"boundaries": {"lineCount": {"at_limit": null, "below_limit": {"actual": 1, "details": ["Lines is 1 (maximum: 0)."], "files": [{"line": 1, "path": "sample.java"}], "limit": 0, "metric": "lineCount", "rule": "maxFileLines", "subject": "sample.java"}}}, "default_limits": [], "disabled": []},
+"parse_error": "Syntax error at line 1, column 1; analysis may be incomplete.",
+"records": [],
+"thresholds": []
+}

@@ -1,11 +1,10 @@
 """Budget and semantic regressions for resolution-policy helper extraction."""
 
+from tests.resolution_snapshot_support import fixture_bytes, fixture_sources
 import ast
 from pathlib import Path
-
 import pytest
 from tree_sitter_language_pack import get_parser
-
 from atlas.metrics.adapters import get_resolution_adapter
 from atlas.metrics.adapters.javascript import export_bindings
 from atlas.parsing.adapters.javascript import unparenthesized
@@ -13,11 +12,7 @@ from atlas.metrics.adapters.resolution import ResolutionAdapter
 from atlas.metrics.adapters.resolution_policy import ResolutionAdapter as Policy
 from atlas.metrics.complexity import calculate_complexity
 from atlas.metrics.resolution_contract import SCOPES
-from atlas.metrics.resolution_syntax import (
-    SCOPES as SYNTAX_SCOPES,
-    Syntax,
-    names,
-)
+from atlas.metrics.resolution_syntax import SCOPES as SYNTAX_SCOPES, Syntax, names
 from atlas.syntax import walk
 from tests.test_architecture import module_dependencies, module_name
 from tests.test_semantic_resolution import repository
@@ -90,23 +85,16 @@ def _assert_no_syntax_dependency(relative):
         node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
     }
     assert not any(
-        module and module.endswith("resolution_syntax") for module in imports
+        (module and module.endswith("resolution_syntax") for module in imports)
     )
 
 
 def test_js_export_deduplication_preserves_alias_keys_and_order():
     repo = repository(
         "typescript",
-        {
-            "api.ts": """
-function hidden() {}
-export {hidden as api};
-export {hidden as api, hidden as default};
-export {type hidden as TypeOnly};
-export type {hidden as OtherType};
-export {hidden as remote} from './elsewhere';
-"""
-        },
+        fixture_sources(
+            "resolution_complexity_cleanup:test_js_export_deduplication_preserves_alias_keys_and_order:98-11"
+        ),
     )
     file = repo.files[0]
     exports = export_bindings(file, Syntax(file, get_resolution_adapter("typescript")))
@@ -116,21 +104,33 @@ export {hidden as remote} from './elsewhere';
 
 
 @pytest.mark.parametrize(
-    "expression,expected",
+    "wrapper_case,expected",
     [
-        ("(((work)))", "identifier"),
-        ("(work, other)", "sequence_expression"),
-        ("(/* comment */ work)", "identifier"),
+        ("nested-single", "identifier"),
+        ("sequence", "sequence_expression"),
+        ("commented-single", "identifier"),
     ],
 )
-def test_parentheses_only_unwrap_single_expressions(expression, expected):
-    root = get_parser("javascript").parse(expression.encode()).root_node
+def test_parentheses_only_unwrap_single_expressions(wrapper_case, expected):
+    root = (
+        get_parser("javascript")
+        .parse(
+            fixture_bytes(
+                "resolution_complexity_cleanup:test_parentheses_only_unwrap_single_expressions:127-11",
+                wrapper_case=wrapper_case,
+            )
+        )
+        .root_node
+    )
     assert unparenthesized(root.named_children[0].named_children[0]).type == expected
 
 
 def test_import_directives_on_one_line_keep_exact_source_selection():
     repo = repository(
-        "typescript", {"main.ts": "import {a} from './a'; import {b} from './b';"}
+        "typescript",
+        fixture_sources(
+            "resolution_complexity_cleanup:test_import_directives_on_one_line_keep_exact_source_selection:132-11"
+        ),
     )
     syntax = Syntax(repo.files[0], get_resolution_adapter("typescript"))
     assert syntax.import_node(1) is None
@@ -141,14 +141,22 @@ def test_import_directives_on_one_line_keep_exact_source_selection():
 def test_recursive_binding_names_still_ignore_types_and_member_targets():
     root = (
         get_parser("typescript")
-        .parse(b"const {key: renamed, other} = source;")
+        .parse(
+            fixture_bytes(
+                "resolution_complexity_cleanup:test_recursive_binding_names_still_ignore_types_and_member_targets:143-8"
+            )
+        )
         .root_node
     )
-    pattern = next(node for node in walk(root) if node.type == "object_pattern")
+    pattern = next((node for node in walk(root) if node.type == "object_pattern"))
     assert names(pattern) == {"renamed", "other"}
     member = (
         get_parser("typescript")
-        .parse(b"source.member;")
+        .parse(
+            fixture_bytes(
+                "resolution_complexity_cleanup:test_recursive_binding_names_still_ignore_types_and_member_targets:150-8"
+            )
+        )
         .root_node.named_children[0]
         .named_children[0]
     )
