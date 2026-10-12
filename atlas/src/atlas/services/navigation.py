@@ -61,6 +61,12 @@ class NavigationService:
                    "maxNodes": options.max_nodes, "maxEdges": options.max_edges}
         return self.response({**walk.output(), **route(walk, options.key, request.target)}, filters, list(walk.nodes.values()))
 
+    def sources(self, keys: list[str], max_lines: int, start_line: int | None) -> Record:
+        nodes = [self._reader.node(key) for key in keys]
+        options = SourceOptions(max_lines, start_line)
+        excerpts = [{"stableKey": node["stableKey"], **source_excerpt(self._reader, node, options)} for node in nodes]
+        return self.response({"sources": excerpts}, {"keys": keys, "maxLines": max_lines, "startLine": start_line}, nodes)
+
     def source(self, key: str, max_lines: int, start_line: int | None) -> Record:
         node = self._reader.node(key)
         payload = source_excerpt(self._reader, node, SourceOptions(max_lines, start_line))

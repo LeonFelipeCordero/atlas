@@ -7,6 +7,7 @@ import click
 
 from atlas.bootstrap import navigation_service
 from atlas.cli.graph_output import graph_output
+from atlas.cli.graph_source_output import source_text
 from atlas.domain.models import Relationship
 from atlas.domain.navigation import NavigationError, PathRequest, Record, TraversalRequest
 
@@ -26,19 +27,20 @@ class GraphError(click.ClickException):
         click.echo(json.dumps({"error": self.message}), file=file, err=True)
 
 
-def emit(ctx: click.Context, command: str, **options: Any) -> None:
+def emit(ctx: click.Context, command: str, output_format: str = "json", **options: Any) -> None:
     project, revision = ctx.obj
     try:
         with navigation_service(project, revision) as service:
             commands: dict[str, Callable[..., Record]] = {
                 "overview": service.overview, "find": service.find, "show": service.show,
                 "children": service.children, "context": service.context,
-                "source": service.source, "path": service.path,
+                "source": service.source, "sources": service.sources, "path": service.path,
             }
             payload = commands[command](**command_options(command, options))
     except (NavigationError, OSError, ValueError) as error:
         raise GraphError(str(error)) from error
-    click.echo(json.dumps(graph_output(payload), ensure_ascii=False))
+    payload = graph_output(payload)
+    click.echo(source_text(payload) if output_format == "text" else json.dumps(payload, ensure_ascii=False))
 
 
 def command_options(command: str, options: Record) -> Record:
@@ -104,13 +106,17 @@ def context(ctx: click.Context, **options: Any) -> None:
     emit(ctx, "context", **options)
 
 
-@graph.command("source")
-@click.argument("key")
+@graph.command("source", help="Fetch verified excerpts for one or more keys; limits apply per excerpt.")
+@click.argument("keys", nargs=-1, required=True)
 @click.option("--max-lines", default=80, show_default=True, type=click.IntRange(1, 500))
-@click.option("--start-line", type=click.IntRange(1), help="Absolute 1-based line; clamped to the symbol start.")
+@click.option("--start-line", type=click.IntRange(1), help="Absolute 1-based line; clamped to each symbol start.")
+@click.option("--format", "output_format", type=click.Choice(["json", "text"]), default="json", show_default=True)
 @click.pass_context
-def source(ctx: click.Context, **options: Any) -> None:
-    emit(ctx, "source", **options)
+def source(ctx: click.Context, keys: tuple[str, ...], **options: Any) -> None:
+    if len(keys) == 1:
+        emit(ctx, "source", key=keys[0], **options)
+    else:
+        emit(ctx, "sources", keys=list(keys), **options)
 
 
 @graph.command("path")
