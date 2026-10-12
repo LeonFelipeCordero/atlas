@@ -1,3 +1,11 @@
+# Python CLI testing strategy
+
+Use code-sample snapshot tests as the primary coverage for indexing, `check`, `report`, and graph navigation. Expand the shared sample projects in `atlas/tests/fixtures/coffee/` and their snapshots in `atlas/tests/snapshots/` to exercise as much of this logic as possible through the production pipeline, rather than adding isolated unit tests or inline code snippets.
+
+For features and regressions in these areas, extend the relevant samples and snapshot assertions. Review snapshot changes against the intended behavior; do not regenerate baselines just to make a failing test pass. Existing coverage includes `test_coffee.py`, `test_coffee_pipeline.py`, and the `test_coffee_*_snapshots.py` suites.
+
+Logic outside indexing, `check`, `report`, and graph navigation must have unit tests. Do not require separate unit tests for logic covered by the code-sample snapshots in those four areas.
+
 # Checks
 
 Run these commands from the repository root.
