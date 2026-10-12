@@ -82,6 +82,7 @@ class CallableIdentity:
     def __init__(self, repository: ParsedRepository, syntax: dict[str, Syntax]):
         self.syntax = syntax
         self.clauses = {}
+        self.overload_indexes = {}
         adapters = {
             file.source.language: syntax[file.source.path].adapter
             for file in repository.files
