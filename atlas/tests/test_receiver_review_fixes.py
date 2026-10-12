@@ -1,103 +1,108 @@
-"""Receiver review regressions: mutation safety and inherent impl identity."""
+"""Order workflow regressions: writes, aliases and inherent method identity."""
 
 import pytest
 
-from tests.test_receiver_safety import assert_target
-from tests.test_semantic_resolution import call_edges, repository
+from tests.test_receiver_safety import (
+    GO_LEDGER,
+    JAVA_INTAKE,
+    KOTLIN_INTAKE,
+    PY_INTAKE,
+    PY_LEDGER,
+    RUST_INTAKE,
+    assert_lifetime_call,
+)
 
 
-@pytest.mark.parametrize("language,path,source", [
-    ("typescript", "app.ts", "class Service {persist(){}} class Other {persist(){}} function run(local:Service){local=new Other();local.persist();}"),
-    ("tsx", "app.tsx", "class Service {persist(){}} class Other {persist(){}} function run(local:Service){local=new Other();local.persist();}"),
-    ("java", "App.java", "class Service {void persist(){}} class Other extends Service {void persist(){}} class App {void run(Service local){local=new Other();local.persist();}}"),
-    ("kotlin", "App.kt", "open class Service {open fun persist(){}} class Other: Service() {override fun persist(){}} fun run(local:Service){local=Other();local.persist()}"),
+@pytest.mark.parametrize("language,path,owner", [
+    ("java", JAVA_INTAKE, "ReservationIntake.redirect"),
+    ("kotlin", KOTLIN_INTAKE, "redirect"),
+    ("typescript", "reservations/Intake.ts", "redirectDeclared"),
+    ("tsx", "reservations/Intake.tsx", "redirectDeclared"),
 ])
-def test_reassigned_declared_receiver_is_not_trusted(language, path, source):
-    assert_target(language, {path: source}, ("local.persist()", False))
+def test_reassigned_declared_receiver_is_not_trusted(language, path, owner):
+    evidence = "local.commit(order)" if language == "java" else "ledger.commit(order)"
+    assert_lifetime_call(language, (path, owner, evidence))
+
+
+@pytest.mark.parametrize("owner,evidence", [
+    ("replace_field", "station.ledger.commit(order)"),
+    ("replace_alias", "station.ledger.commit(order)"),
+    ("replace_chain", "station.ledger.commit(order)"),
+    ("write_original", "alias.ledger.commit(order)"),
+    ("install_adapter", "station.ledger.commit(order)"),
+])
+def test_python_caller_field_writes_invalidate_receiver(owner, evidence):
+    assert_lifetime_call("python", (PY_INTAKE, owner, evidence))
+
+
+@pytest.mark.parametrize("language,ext", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")])
+@pytest.mark.parametrize("owner", ["replaceField", "replaceAlias"])
+def test_script_caller_field_writes_invalidate_receiver(language, ext, owner):
+    assert_lifetime_call(language, (f"reservations/Intake.{ext}", owner, "station.ledger.commit(order)"))
+
+
+@pytest.mark.parametrize("owner", ["migrate_vendor", "migrate_dotted"])
+def test_python_member_mutation_follows_imported_class_identity(owner):
+    assert_lifetime_call("python", ("src/coffee/orders/vendor_intake.py", owner, "ledger.commit(order)"))
+
+
+@pytest.mark.parametrize("language,ext", [("typescript", "ts"), ("tsx", "tsx")])
+def test_script_member_mutation_follows_imported_class_identity(language, ext):
+    assert_lifetime_call(language, (f"reservations/Intake.{ext}", "migrateVendor", "ledger.commit(order)"))
 
 
 @pytest.mark.parametrize("case", [
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n holder.service=other\n holder.service.persist()", "holder.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n alias=holder\n alias.service=other\n holder.service.persist()", "holder.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n alias=holder\n second=alias\n second.service=other\n holder.service.persist()", "holder.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n alias:Holder=holder\n holder.service=other\n alias.service.persist()", "alias.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef run(holder:Holder):\n alias=holder.service\n alias.persist=other\n holder.service.persist()", "holder.service.persist()"),
-    ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); holder.service=other; holder.service.persist();}", "holder.service.persist()"),
-    ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); const alias=holder; alias.service=other; holder.service.persist();}", "holder.service.persist()"),
-])
-def test_caller_field_writes_invalidate_receiver(case):
-    language, path, source, evidence = case
-    assert_target(language, {path: source}, (evidence, False))
-
-
-@pytest.mark.parametrize("language,sources", [
-    ("python", {"tools.py": "class Service:\n def persist(self):pass", "app.py": "from tools import Service as Alias, Service\nAlias.persist=other\ndef run(local:Service):\n local.persist()"}),
-    ("typescript", {"tools.ts": "export class Service {persist(){}}", "app.ts": "import {Service as Alias, Service} from './tools'; Alias.prototype.persist=other; function run(local:Service){local.persist();}"}),
-    ("tsx", {"tools.tsx": "export class Service {persist(){}}", "app.tsx": "import {Service as Alias, Service} from './tools'; Alias.prototype.persist=other; function run(local:Service){local.persist();}"}),
-    ("python", {"tools.py": "class Service:\n def persist(self):pass", "app.py": "import tools\nfrom tools import Service\ntools.Service.persist=other\ndef run(local:Service):\n local.persist()"}),
-])
-def test_member_mutation_follows_imported_class_identity(language, sources):
-    assert_target(language, sources, ("local.persist()", False))
-
-
-@pytest.mark.parametrize("case", [
-    ("typescript", "app.ts", "class Service {persist(){}} function run(local:Service){local.persist();}", "local.persist()"),
-    ("tsx", "app.tsx", "class Service {persist(){}} function run(local:Service){local.persist();}", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self):pass\nclass Holder:\n service:Service\ndef unrelated(holder):\n holder.service=other\ndef run(holder:Holder):\n holder.service.persist()", "holder.service.persist()"),
-    ("javascript", "app.js", "class Service {persist(){}} class Holder {service=new Service()} function run(){const holder=new Holder(); holder.service.persist();}", "holder.service.persist()"),
+    ("python", PY_INTAKE, "fulfill_unchanged", "station.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+    ("javascript", "reservations/Intake.js", "fulfillUnchanged", "station.ledger.commit(order)", ("reservations/Ledger.js", "ReservationLedger.commit")),
+    *[(language, f"reservations/Intake.{ext}", "fulfillDeclared", "ledger.commit(order)", (f"reservations/Ledger.{ext}", "ReservationLedger.commit"))
+      for language, ext in (("typescript", "ts"), ("tsx", "tsx"))],
 ])
 def test_unchanged_receivers_remain_internal(case):
-    language, path, source, evidence = case
-    assert_target(language, {path: source}, (evidence, True))
+    language, path, owner, evidence, target = case
+    assert_lifetime_call(language, (path, owner, evidence), target)
 
 
-@pytest.mark.parametrize("implementation", [
-    "use service::Service; impl Service {fn persist(&self){}}",
-    "impl service::Service {fn persist(&self){}}",
-    "mod implementation {use crate::service::Service; impl Service {pub fn persist(&self){}}}",
+@pytest.mark.parametrize("owner,target_path,target", [
+    ("receive_qualified", RUST_INTAKE, "ReservationLedger.commit"),
+    ("deliver", "reservation_intake/delivery.rs", "<anonymous>.commit"),
+    ("archive", RUST_INTAKE, "archive_writer.ArchiveLedger.commit"),
 ])
-def test_rust_impl_in_another_module_resolves_identity(implementation):
-    sources = {"service.rs": "pub struct Service{}", "main.rs":
-               "mod service; " + implementation + " fn run(local:&service::Service){local.persist();}"}
-    assert_target("rust", sources, ("local.persist()", True))
+def test_rust_impl_in_another_module_resolves_identity(owner, target_path, target):
+    assert_lifetime_call("rust", (RUST_INTAKE, owner, "ledger.commit(order)"), (target_path, target))
 
 
-def test_rust_same_short_name_impl_is_not_used():
-    sources = {
-        "service.rs": "pub struct Service{}",
-        "other.rs": "pub struct Service{} impl Service {pub fn persist(&self){}}",
-        "main.rs": "mod service; mod other; use service::Service; fn run(local:&Service){local.persist();}",
-    }
-    assert_target("rust", sources, ("local.persist()", False))
-
-
-def test_rust_duplicate_impl_members_are_ambiguous():
-    sources = {
-        "service.rs": "pub struct Service{} impl Service {pub fn persist(&self){}}",
-        "main.rs": "mod service; use service::Service; impl Service {fn persist(&self){}} fn run(local:&Service){local.persist();}",
-    }
-    assert_target("rust", sources, ("local.persist()", False))
-
-
-def test_rust_trait_impl_is_not_an_inherent_member():
-    sources = {
-        "service.rs": "pub struct Service{}",
-        "main.rs": "mod service; use service::Service; trait Saving {fn persist(&self);} impl Saving for Service {fn persist(&self){}} fn run(local:&Service){local.persist();}",
-    }
-    assert_target("rust", sources, ("local.persist()", False))
+@pytest.mark.parametrize("owner", ["read_archived", "audit", "reconcile"])
+def test_rust_unrelated_duplicate_and_trait_impl_members_stay_external(owner):
+    assert_lifetime_call("rust", (RUST_INTAKE, owner, "ledger.commit(order)"))
 
 
 def test_java_constructor_subtype_field_write_is_not_trusted():
-    source = "class Service {void persist(){}} class Other extends Service {void persist(){}} class App {Service local; App(){this.local=new Other();} void run(){local.persist();}}"
-    assert_target("java", {"App.java": source}, ("local.persist()", False))
+    assert_lifetime_call("java", (JAVA_INTAKE, "DeliveryStation.fulfill", "ledger.commit(order)"))
 
 
 def test_rust_impl_target_is_the_actual_method():
-    sources = {"service.rs": "pub struct Service{}", "main.rs":
-               "mod service;use service::Service;impl Service{fn persist(&self){}} fn run(local:&Service){local.persist();}"}
-    repo = repository("rust", sources)
-    edges = call_edges(repo, "local.persist()")
-    targets = {symbol.key: symbol for symbol in repo.symbols}
-    assert len(edges) == 1
-    target = targets[edges[0].target_key]
-    assert (target.file_path, target.name) == ("main.rs", "persist")
+    assert_lifetime_call("rust", (RUST_INTAKE, "receive_qualified", "ledger.commit(order)"),
+                         (RUST_INTAKE, "ReservationLedger.commit"))
+
+
+@pytest.mark.parametrize("case", [
+    ("python", PY_INTAKE, "visit_batch", "visit_batch.visit", "station.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+    ("javascript", "reservations/Intake.js", "visitBatch", "visitBatch.visit", "station.commit(order)", ("reservations/Ledger.js", "ReservationLedger.commit")),
+    ("typescript", "reservations/Intake.ts", "visitBatch", "visitBatch.visit", "station.commit(order)", ("reservations/Ledger.ts", "ReservationLedger.commit")),
+    ("tsx", "reservations/Intake.tsx", "visitBatch", "visitBatch.visit", "station.commit(order)", ("reservations/Ledger.tsx", "ReservationLedger.commit")),
+    ("go", GO_LEDGER, "VisitBatch", "VisitBatch.visit", "ledger.Commit(order)", (GO_LEDGER, "Commit")),
+    ("kotlin", KOTLIN_INTAKE, "visitBatch", "visitBatch.<anonymous>", "ledger.commit(order)", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+    ("java", JAVA_INTAKE, "ReservationIntake.visit", "ReservationIntake.visit.<anonymous>", "local.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+    ("java", JAVA_INTAKE, "ReservationIntake.visitInferred", "ReservationIntake.visitInferred.<anonymous>", "local.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+])
+def test_callback_bindings_do_not_inherit_or_poison_outer_receiver(case):
+    language, path, outer, callback, evidence, target = case
+    assert_lifetime_call(language, (path, callback, evidence))
+    assert_lifetime_call(language, (path, outer, evidence), target)
+
+
+@pytest.mark.parametrize("owner", ["ReservationIntake.visitTyped", "ReservationIntake.visitFinal"])
+def test_typed_java_callback_receiver_has_its_own_identity(owner):
+    target = ("reservations/ReservationLedger.java", "ReservationLedger.commit")
+    for scope in (owner, f"{owner}.<anonymous>"):
+        assert_lifetime_call("java", (JAVA_INTAKE, scope, "local.commit(order)"), target)

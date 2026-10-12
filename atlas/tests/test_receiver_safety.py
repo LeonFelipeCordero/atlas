@@ -1,111 +1,125 @@
-"""Negative receiver inference and existing identity-safety contracts."""
+"""Whole coffee projects: receiver identity, visibility and unsafe lifetimes."""
 
 import pytest
 
-from tests.test_semantic_resolution import repository, call_edges
+from tests.import_project_support import project_sources
+from tests.test_semantic_resolution import assert_coffee_call, call_edges, repository
 
 
 def assert_target(language, sources, expected):
     evidence, internal = expected
     edges = call_edges(repository(language, sources), evidence)
     assert edges, evidence
-    assert all(e.target_key.startswith("symbol:" if internal else "external:") for e in edges), edges
+    assert all(
+        (e.target_key.startswith("symbol:" if internal else "external:") for e in edges)
+    ), edges
 
 
-@pytest.mark.parametrize("case", [
-    ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n def __init__(self, injected: Service):\n  self.service = injected\n def run(self):\n  self.service.persist()", "self.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n def __init__(self):\n  self.service = Service()\n def run(self):\n  self.service.persist()", "self.service.persist()"),
-    ("javascript", "app.js", "class Service { persist() {} } class App { constructor() { this.service = new Service(); } run() { this.service.persist(); } }", "this.service.persist()"),
-    ("javascript", "app.jsx", "class Service { persist() {} } class App { service = new Service(); run() { this.service.persist(); } }", "this.service.persist()"),
-    ("java", "App.java", "class Service { void persist() {} } class App { void run() { var local = new Service(); local.persist(); } }", "local.persist()"),
-    ("java", "App.java", "class Service { void persist() {} } class App { static Service local; static void run(){ local.persist(); } }", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n service: Service\n def run(self):\n  self.service.persist()", "self.service.persist()"),
-    ("kotlin", "App.kt", "class Service { fun persist() {} }\nfun run() { val local = Service(); local.persist() }", "local.persist()"),
-    ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist() {}\ntype App struct{ service *Service }\nfunc(a *App) run(){ a.service.persist() }", "a.service.persist()"),
-    ("rust", "app.rs", "struct Service {} impl Service { fn persist(&self) {} } struct App { service: Service } impl App { fn run(&self) { self.service.persist(); } }", "self.service.persist()"),
-])
+def assert_lifetime_call(language, site, target=None):
+    """Resolve one workflow site, including its owner and exact declaration."""
+    path, owner, evidence = site
+    repo = repository(language, project_sources(language, "receiver-lifetime"))
+    target_path, target_name = target or (
+        None, f"external:{language}:callable:{evidence.split('(')[0].rsplit('.', 1)[-1]}"
+    )
+    return assert_coffee_call(repo, (path, owner, evidence, target_path, target_name))
+
+
+PY_LEDGER = "src/coffee/inventory/ledger.py"
+PY_INTAKE = "src/coffee/orders/reservations.py"
+JAVA_INTAKE = "intake/ReservationIntake.java"
+KOTLIN_INTAKE = "intake/ReservationIntake.kt"
+GO_LEDGER = "reservations/ledger.go"
+RUST_INTAKE = "reservation_intake.rs"
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ("python", PY_LEDGER, "InjectedStation.fulfill", "self.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("python", PY_LEDGER, "StableStation.fulfill", "self.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("python", PY_LEDGER, "OpeningStation.fulfill", "self.ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("javascript", "reservations/Ledger.js", "OpeningStation.fulfill", "this.ledger.commit(order)", ("reservations/Ledger.js", "ReservationLedger.commit")),
+        ("javascript", "reservations/PickupPanel.jsx", "PickupPanel.fulfill", "this.ledger.commit(order)", ("reservations/Ledger.js", "ReservationLedger.commit")),
+        ("java", JAVA_INTAKE, "ReservationIntake.open", "local.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+        ("java", JAVA_INTAKE, "ReservationIntake.opening", "openingLedger.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+        ("kotlin", KOTLIN_INTAKE, "openPickup", "ledger.commit(order)", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+        ("go", GO_LEDGER, "Fulfill", "station.ledger.Commit(order)", (GO_LEDGER, "Commit")),
+        ("rust", RUST_INTAKE, "PickupStation.fulfill", "self.ledger.commit(order)", (RUST_INTAKE, "ReservationLedger.commit")),
+    ],
+)
 def test_constructor_and_field_receivers(case):
-    language, path, source, evidence = case
-    assert_target(language, {path: source}, (evidence, True))
+    language, path, owner, evidence, target = case
+    assert_lifetime_call(language, (path, owner, evidence), target)
 
 
-@pytest.mark.parametrize("case", [
-    ("python", "app.py", "class Service:\n def persist(self): pass\ndef run(local: Service):\n local = other\n local.persist()", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\ndef Service(): return other\ndef run():\n local = Service()\n local.persist()", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\ndef run():\n local.persist()\n local: Service = Service()", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\ndef run():\n if condition:\n  local = Service()\n local.persist()", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\ndef run():\n if condition:\n  local: Service = Service()\n local.persist()", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n def __init__(self):\n  self.service = Service()\n def run(self):\n  self.service = other\n  self.service.persist()", "self.service.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\nclass App:\n def __init__(self):\n  self.service = Service()\n def run(self):\n  self = other\n  self.service.persist()", "self.service.persist()"),
-    ("javascript", "app.js", "class Service { persist() {} } class App { constructor(){ this.service = new Service(); } run(){ this.service = other; this.service.persist(); } }", "this.service.persist()"),
-    ("javascript", "app.js", "class Service { persist() {} } function run(){ const local = new Service(); local.persist = other; local.persist(); }", "local.persist()"),
-    ("javascript", "app.js", "class Service { persist() {} } function run(){ let local = new Service(); local++; local.persist(); }", "local.persist()"),
-    ("javascript", "app.js", "class Service { persist() {} } function run(){ let local = new Service(); [local] = others; local.persist(); }", "local.persist()"),
-    ("python", "app.py", "class Service:\n def persist(self): pass\ndef run():\n local = Service()\n local, other = others\n local.persist()", "local.persist()"),
-    ("javascript", "app.js", "class Service { persist() {} } function run(){ const local = new Service(); function nested(local){ local.persist(); } }", "local.persist()"),
-    ("typescript", "app.ts", "class Service { persist() {} } class Other { persist() {} } function run(local: Service | Other){ local.persist(); }", "local.persist()"),
-    ("java", "App.java", "class Service { void persist() {} } class App { Service local; static void run(){ local.persist(); } }", "local.persist()"),
-    ("java", "App.java", "class Service { void persist() {} void persist(int x) {} } class App { void run(Service local){ local.persist(); } }", "local.persist()"),
-    ("java", "App.java", "class Service { void persist() {} } class App { Service local; void run(Unknown local){ local.persist(); } }", "local.persist()"),
-    ("kotlin", "App.kt", "class Service { fun persist() {} } class App(local: Service) { fun run(){ local.persist() } }", "local.persist()"),
-    ("rust", "app.rs", "struct Service {} impl Service { fn persist(&self) {} } fn run(local: Unknown){ local.persist(); }", "local.persist()"),
-    ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist() {}\nfunc run(local interface{}) { local.persist() }", "local.persist()"),
-    ("go", "app.go", "package main\ntype Service struct{}\nfunc(s *Service) persist() {}\nfunc run(local *Service) { if condition { local := other; local.persist() } }", "local.persist()"),
-])
+@pytest.mark.parametrize(
+    "case",
+    [
+        ("python", PY_INTAKE, "redirect_declared", "ledger.commit(order)"),
+        ("python", "src/coffee/orders/vendor_intake.py", "receive_remote", "ledger.commit(order)"),
+        ("python", PY_INTAKE, "receive_before_opening", "ledger.commit(order)"),
+        ("python", PY_INTAKE, "open_on_demand", "ledger.commit(order)"),
+        ("python", PY_INTAKE, "open_declared_on_demand", "ledger.commit(order)"),
+        ("python", PY_LEDGER, "RecoveryStation.redirect", "self.ledger.commit(order)"),
+        ("python", PY_LEDGER, "RemoteRecoveryStation.replace_station", "self.ledger.commit(order)"),
+        ("python", PY_INTAKE, "restore_batch", "ledger.commit(order)"),
+        ("javascript", "reservations/Ledger.js", "RecoveryStation.redirect", "this.ledger.commit(order)"),
+        ("javascript", "reservations/VendorMigration.js", "replaceMember", "ledger.commit(order)"),
+        ("javascript", "reservations/Intake.js", "advanceReceiver", "ledger.commit(order)"),
+        ("javascript", "reservations/Intake.js", "restoreBatch", "ledger.commit(order)"),
+        ("java", JAVA_INTAKE, "StaticDispatch.fulfill", "ledger.commit(order)"),
+        ("java", JAVA_INTAKE, "AuditedIntake.fulfill", "ledger.commit(order)"),
+        ("java", JAVA_INTAKE, "ReservationIntake.shadow", "ledger.commit(order)"),
+        ("kotlin", KOTLIN_INTAKE, "TemporaryIntake.fulfill", "ledger.commit(order)"),
+        ("rust", RUST_INTAKE, "restore", "ledger.commit(order)"),
+        ("go", GO_LEDGER, "ReceiveDynamic", "ledger.Commit(order)"),
+        *[(language, f"reservations/Intake.{ext}", "receiveUnion", "ledger.commit(order)")
+          for language, ext in (("typescript", "ts"), ("tsx", "tsx"))],
+    ],
+)
 def test_unsafe_receivers_stay_external(case):
-    language, path, source, evidence = case
-    assert_target(language, {path: source}, (evidence, False))
+    language, *site = case
+    assert_lifetime_call(language, site)
 
 
-@pytest.mark.parametrize("language, sources, evidence", [
-    ("java", {"service/OrderService.java": "package service; public class OrderService { public void saveOrder(int order) {} }", "app/App.java": "package app; import service.OrderService; class App { private final OrderService orderService; App(OrderService orderService){ this.orderService = orderService; } void run(){ orderService.saveOrder(1); } }"}, "orderService.saveOrder(1)"),
-    ("kotlin", {"service/OrderService.kt": "package service\nclass OrderService { fun persist(order: Int) {} }", "app/App.kt": "package app\nimport service.OrderService\nclass App { @Inject private lateinit var orderService: OrderService; fun run(){ orderService.persist(1) } }"}, "orderService.persist(1)"),
-    ("python", {"tools.py": "class Service:\n def persist(self): pass", "app.py": "import tools\ndef run(local: tools.Service):\n local.persist()"}, "local.persist()"),
-    ("typescript", {"tools.ts": "export class Service { persist() {} }", "app.ts": "import * as tools from './tools'; function run(local: tools.Service){ local.persist(); }"}, "local.persist()"),
-    ("go", {"tools/tools.go": "package tools\ntype Service struct{}\nfunc(s *Service) persist() {}", "app.go": "package main\nimport \"tools\"\nfunc run(local *tools.Service){ local.persist() }"}, "local.persist()"),
-    ("rust", {"tools.rs": "pub struct Service {} impl Service { pub fn persist(&self) {} }", "main.rs": "mod tools; fn run(local: &tools::Service){ local.persist(); }"}, "local.persist()"),
-])
-def test_type_visibility_follows_import_and_namespace_context(language, sources, evidence):
-    assert_target(language, sources, (evidence, True))
+@pytest.mark.parametrize(
+    "case",
+    [
+        ("python", PY_INTAKE, "fulfill", "ledger.commit(order)", (PY_LEDGER, "ReservationLedger.commit")),
+        ("java", JAVA_INTAKE, "ReservationIntake.fulfill", "ledger.commit(order)", ("reservations/ReservationLedger.java", "ReservationLedger.commit")),
+        ("kotlin", KOTLIN_INTAKE, "ReservationIntake.fulfill", "ledger.commit(order)", ("reservations/ReservationLedger.kt", "ReservationLedger.commit")),
+        ("go", "intake/orders.go", "Fulfill", "ledger.Commit(order)", (GO_LEDGER, "Commit")),
+        ("rust", RUST_INTAKE, "receive_qualified", "ledger.commit(order)", (RUST_INTAKE, "ReservationLedger.commit")),
+        *[(language, f"reservations/Intake.{ext}", "fulfill", "ledger.commit(order)", (f"reservations/Ledger.{ext}", "ReservationLedger.commit"))
+          for language, ext in (("typescript", "ts"), ("tsx", "tsx"))],
+    ],
+)
+def test_type_visibility_follows_import_and_namespace_context(case):
+    language, path, owner, evidence, target = case
+    assert_lifetime_call(language, (path, owner, evidence), target)
 
 
-@pytest.mark.parametrize("language, sources", [
-    ("python", {"tools.py": "class Service:\n def persist(self): pass", "app.py": "from tools import Service as Alias\nAlias.persist = other\ndef run():\n local = Alias()\n local.persist()"}),
-    ("javascript", {"tools.js": "export class Service { persist() {} }", "app.js": "import {Service as Alias} from './tools'; Alias.prototype.persist = other; function run(){ const local = new Alias(); local.persist(); }"}),
-])
-def test_imported_receiver_member_rebinding_is_not_ignored(language, sources):
-    assert_target(language, sources, ("local.persist()", False))
+@pytest.mark.parametrize("language,ext", [("javascript", "js"), ("typescript", "ts"), ("tsx", "tsx")])
+def test_imported_receiver_member_rebinding_is_not_ignored(language, ext):
+    assert_lifetime_call(language, (f"reservations/Intake.{ext}", "installVendor", "ledger.commit(order)"))
 
 
-def test_exchange_broker_constructor_injected_websocket_client():
-    sources = {
-        "service/OrderService.java": "package service; public class OrderService { public Order saveOrder(Order order){ return order; } }",
-        "client/OrderCreatedWebSocketClient.java": "package client; public class OrderCreatedWebSocketClient { public void sendAndWait(Event event) {} }",
-        "handler/OrderCreatedHandler.java": """package handler;
-import service.OrderService;
-import client.OrderCreatedWebSocketClient;
-class OrderCreatedHandler {
- private final OrderService orderService;
- private final OrderCreatedWebSocketClient orderCreatedWebSocketClient;
- @Inject OrderCreatedHandler(OrderService orderService, OrderCreatedWebSocketClient orderCreatedWebSocketClient) {
-  this.orderService = orderService;
-  this.orderCreatedWebSocketClient = orderCreatedWebSocketClient;
- }
- void onMessage(Order order, Event event) {
-  Order savedOrder = orderService.saveOrder(order);
-  orderCreatedWebSocketClient.sendAndWait(event);
- }
-}""",
-    }
-    assert_target("java", sources, ("orderService.saveOrder(order)", True))
-    assert_target("java", sources, ("orderCreatedWebSocketClient.sendAndWait(event)", True))
+def test_imported_python_receiver_member_rebinding_is_not_ignored():
+    assert_lifetime_call("python", ("src/coffee/orders/vendor_intake.py", "install_vendor", "ledger.commit(order)"))
+
+
+def test_constructor_injected_order_created_client():
+    assert_lifetime_call("java", (JAVA_INTAKE, "ReservationIntake.fulfill", "ledger.commit(order)"),
+                         ("reservations/ReservationLedger.java", "ReservationLedger.commit"))
+    assert_lifetime_call("java", (JAVA_INTAKE, "ReservationIntake.fulfill", "client.sendAndWait(saved)"),
+                         ("reservations/OrderCreatedClient.java", "OrderCreatedClient.sendAndWait"))
 
 
 def test_unrelated_constructor_assignments_are_separate_scopes():
-    source = "class Service:\n def persist(self): pass\nclass App:\n def __init__(self):\n  self.service = Service()\n def run(self):\n  self.service.persist()\nclass Other:\n def __init__(self):\n  self.service = unknown"
-    assert_target("python", {"app.py": source}, ("self.service.persist()", True))
+    assert_lifetime_call("python", (PY_LEDGER, "OpeningStation.fulfill", "self.ledger.commit(order)"),
+                         (PY_LEDGER, "ReservationLedger.commit"))
 
 
 def test_unimported_type_is_not_guessed_globally():
-    sources = {"tools.py": "class Service:\n def persist(self): pass", "app.py": "def run(local: Service):\n local.persist()"}
-    assert_target("python", sources, ("local.persist()", False))
+    assert_lifetime_call("python", ("src/coffee/orders/unconfigured_intake.py", "receive", "ledger.commit(order)"))

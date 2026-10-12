@@ -1,4 +1,4 @@
-"""Real expression callables, native metadata identity, and AST parentage."""
+"""Expression identity, metadata ownership, and AST parentage on coffee modules."""
 
 import unittest
 from dataclasses import replace
@@ -9,16 +9,13 @@ from tree_sitter_language_pack import ProcessConfig, StructureItem, process
 from atlas.parsing.adapters import get_adapter
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
-from tests.parsing_fixture import parsing_syntax
+from atlas.syntax import walk
+from tests.coffee_consolidation import coffee_source
 
 
-def flatten(
-    items: list[StructureItem],
-) -> list[tuple[StructureItem, StructureItem | None]]:
+def flatten(items: list[StructureItem]) -> list[tuple[StructureItem, StructureItem | None]]:
     result = []
-    stack: list[tuple[StructureItem, StructureItem | None]] = [
-        (item, None) for item in reversed(items)
-    ]
+    stack: list[tuple[StructureItem, StructureItem | None]] = [(item, None) for item in reversed(items)]
     while stack:
         item, parent = stack.pop()
         result.append((item, parent))
@@ -26,294 +23,227 @@ def flatten(
     return result
 
 
-def child_entries(item: StructureItem):
+def child_entries(item: StructureItem) -> list[tuple[StructureItem, StructureItem]]:
     return [(child, item) for child in reversed(item.children)]
 
 
-def walk(root: Node) -> list[Node]:
-    result = []
-    stack = [root]
-    while stack:
-        node = stack.pop()
-        result.append(node)
-        stack.extend(reversed(node.named_children))
-    return result
-
-
-NESTED_SOURCES = {
-    "java": """class Owner { static void outer(boolean ready) {
-      if (ready) ping();
-      use(x -> { if (x > 0) ping(); use(y -> y > 0 && ready ? 1 : 0); return x; });
-    } }""",
-    "kotlin": """fun outer(ready: Boolean) {
-      if (ready) ping()
-      use { x -> if (x > 0) ping(); use { y -> if (y > 0 && ready) 1 else 0 }; x }
-    }""",
-    "go": """package sample
-    func outer(ready bool) {
-      if ready { ping() }
-      use(func(x int) int {
-        if x > 0 { ping() }
-        use(func(y int) int { if y > 0 && ready { return 1 }; return 0 })
-        return x
-      })
-    }""",
-    "rust": """fn outer(ready: bool) {
-      if ready { ping(); }
-      consume(|x: i32| {
-        if x > 0 { ping(); }
-        consume(|y: i32| if y > 0 && ready { 1 } else { 0 }); x
-      });
-    }""",
-    "javascript": """function outer(ready) {
-      if (ready) ping();
-      use(x => { if (x > 0) ping(); use(y => y > 0 && ready ? 1 : 0); return x; });
-    }""",
-    "typescript": """function outer(ready: boolean) {
-      if (ready) ping();
-      use((x: number) => { if (x > 0) ping(); use((y: number) => y > 0 && ready ? 1 : 0); return x; });
-    }""",
-    "elixir": """defmodule Owner do
-      def outer(ready) do
-        if ready, do: ping()
-        use(fn x ->
-          if x > 0, do: ping()
-          use(fn y -> if y > 0 and ready, do: 1, else: 0 end)
-          x
-        end)
-      end
-    end""",
-    "python": """def outer(ready):
-    if ready:
-        ping()
-    use(lambda x: (use(lambda y: 1 if y > 0 and ready else 0), 1 if x else 0))
-""",
-}
-BOUND_SOURCES = {
-    "java": "class Owner { java.util.function.IntUnaryOperator field = x -> x; void outer() { use(x -> x); } }",
-    "kotlin": "typealias Callback = (Int) -> Int\nval top: Callback = { x -> x }\nfun outer(cb: Callback) { use { x -> x } }",
-    "go": "package sample\ntype Callback func(int) int\nvar top Callback = func(x int) int { return x }\nfunc outer(cb Callback) { use(func(x int) int { return x }) }",
-    "rust": "type Callback = fn(i32) -> i32; const TOP: Callback = |x| x; fn outer(cb: Callback) { consume(|x: i32| x); }",
-    "typescript": "type Callback = (x: number) => number; const top: Callback = x => x; function outer(cb: Callback) { use((x: number) => x); }",
-    "elixir": "top = fn x -> x end\ndefmodule Owner do\n def outer(cb), do: use(fn x -> x end)\nend",
-    "python": "from typing import Callable\ntop = lambda x: x\ndef outer(cb: Callable[[int], int]):\n return lambda x: x\n",
-}
+# Counts include all expression callables in the complete file, not function types.
+# Nested indices identify real callback-in-callback ownership in source order.
+APPLICATIONS = (
+    ("java", "reporting/SalesReport.java", ["include", None, None, None, None, None, None], 10, (4, 5), "discounts"),
+    ("kotlin", "reporting/SalesReport.kt", [None] * 8, 14, (3, 4), "discounts"),
+    ("go", "reporting/Dispatch.go", ["DispatchReady", "ready", "label", "archive", None, None, "normalize"], 9, (5, 6), "DispatchReceipts"),
+    ("rust", "brewing/inventory.rs", [None] * 4, 9, (2, 3), "restock"),
+    ("javascript", "ordering/Orders.js", ["priceOrder", None, None, "createOrder", "drinkTickets", "pickupQueue", None, None], 11, (6, 7), "groupTickets"),
+    ("typescript", "ordering/Orders.ts", ["priceOrder", None, None, "createOrder", "drinkTickets", "pickupQueue", None, None], 15, (6, 7), "groupTickets"),
+    ("elixir", "reporting/Dispatch.ex", [None] * 5, 7, (3, 4), "receipts"),
+    ("python", "src/coffee/reporting/sales.py", [None] * 3, 8, (1, 2), "discounts"),
+)
 
 
 class CallbackDeclarationTests(unittest.TestCase):
     def assert_callback_carriers(
-        self, syntax: ParsedSyntax, items: list[StructureItem], count: int
+        self, syntax: ParsedSyntax, items: list[StructureItem], count: int,
     ) -> list[tuple[StructureItem, StructureItem | None]]:
-        language = syntax.source.language
         root = syntax.tree()
-        expression_nodes = [
-            node
-            for node in walk(root)
-            if node.type in get_adapter(language).callback_types
-        ]
+        self.assertFalse(root.has_error)
+        callback_types = get_adapter(syntax.source.language).callback_types
+        expression_nodes = [node for node in walk(root) if node.type in callback_types]
         self.assertEqual(len(expression_nodes), count)
-        entries = flatten(items)
-        callbacks = []
-        by_span = {}
-        for item, parent in entries:
-            span = item.span
-            assert span is not None
-            key = (span.start_byte, span.end_byte, item.name)
-            self.assertNotIn(key, by_span)
-            by_span[key] = item
-            node = root.descendant_for_byte_range(span.start_byte, span.end_byte - 1)
-            assert node is not None
-            self.assertEqual(
-                (node.start_byte, node.end_byte), (span.start_byte, span.end_byte)
-            )
-            if node.type in get_adapter(language).callback_types:
-                self.assertEqual(str(item.kind).lower(), "function")
-                callbacks.append((item, parent))
+        declarations = self.assert_declaration_nodes(syntax, items)
+        by_span = {(node.start_byte, node.end_byte): item for item, _, node in declarations}
+        callbacks = [(item, parent) for item, parent, node in declarations if node.type in callback_types]
         self.assertEqual(len(callbacks), count)
-        self.assertEqual(
-            {
-                (item.span.start_byte, item.span.end_byte)
-                for item, _ in callbacks
-                if item.span
-            },
-            {(node.start_byte, node.end_byte) for node in expression_nodes},
-        )
+        self.assert_callback_spans(callbacks, expression_nodes)
+        self.assert_callback_parentage(root, callbacks, by_span)
         return callbacks
 
-    def test_nested_callbacks_match_real_ast_and_parentage_with_or_without_native(
-        self,
-    ) -> None:
-        for language, source in NESTED_SOURCES.items():
-            self.assert_nested_callback_variants(source, language)
+    def assert_declaration_nodes(self, syntax: ParsedSyntax, items: list[StructureItem]):
+        declarations = []
+        seen = set()
+        for item, parent in flatten(items):
+            node = self.assert_declaration_node(syntax, item)
+            key = (node.start_byte, node.end_byte)
+            self.assertNotIn(key, seen)
+            seen.add(key)
+            declarations.append((item, parent, node))
+        return declarations
 
-    def assert_nested_callback_variants(self, source, language):
-        for native in (
-            [],
-            process(source, ProcessConfig(language=language)).structure,
-        ):
-            with self.subTest(language=language, native=bool(native)):
-                items = extract_structure(parsing_syntax(source, language), native)
-                first, nested = self.assert_callback_carriers(
-                    parsing_syntax(source, language), items, 2
-                )
-                self.assertIsNotNone(first[1])
-                assert first[1] is not None
-                self.assertEqual(first[1].name, "outer")
-                self.assertIs(nested[1], first[0])
-                self.assertEqual([first[0].name, nested[0].name], [None, None])
+    def assert_declaration_node(self, syntax: ParsedSyntax, item: StructureItem) -> Node:
+        span = item.span
+        assert span is not None
+        node = syntax.tree().descendant_for_byte_range(span.start_byte, span.end_byte - 1)
+        assert node is not None
+        self.assertEqual((node.start_byte, node.end_byte), (span.start_byte, span.end_byte))
+        self.assertTrue(item.signature)
+        self.assertTrue(syntax.source.source[span.start_byte:span.end_byte].decode().startswith(item.signature or ""))
+        return node
 
-    def test_bound_expressions_not_function_type_nodes(self) -> None:
-        for language, source in BOUND_SOURCES.items():
-            with self.subTest(language=language):
-                self.assert_bound_expressions(source, language)
-
-    def assert_bound_expressions(self, source, language):
-        native = process(source, ProcessConfig(language=language)).structure
-        items = extract_structure(parsing_syntax(source, language), native)
-        callbacks = self.assert_callback_carriers(parsing_syntax(source, language), items, 2)
-        expected_name = {"java": "field", "typescript": "top", "go": "top"}.get(
-            language
-        )
-        self.assertEqual(callbacks[0][0].name, expected_name)
-        self.assertIsNone(callbacks[1][0].name)
-        self.assertIsNotNone(callbacks[1][1])
-        assert callbacks[1][1] is not None
-        self.assertEqual(callbacks[1][1].name, "outer")
-        callables = [
-            item
-            for item, _ in flatten(items)
-            if str(item.kind).lower() in {"function", "method"}
-        ]
-        self.assertEqual(len(callables), 3)
-
-    def test_native_duplicate_callback_metadata_merges_once_without_mutation(
-        self,
-    ) -> None:
-        for language, source in BOUND_SOURCES.items():
-            with self.subTest(language=language):
-                tagged = extract_structure(parsing_syntax(source, language))
-                callback = self.assert_callback_carriers(parsing_syntax(source, language), tagged, 2)[
-                    0
-                ][0]
-                native = process(source, ProcessConfig(language=language)).structure
-                decorated = replace(
-                    callback,
-                    doc_comment="callback docs",
-                    decorators=["native annotation"],
-                    children=[],
-                )
-                existing = [
-                    *native,
-                    replace(decorated, name=""),
-                    replace(decorated, name=None),
-                ]
-                original = repr(existing)
-                items = extract_structure(parsing_syntax(source, language), existing)
-                callbacks = self.assert_callback_carriers(parsing_syntax(source, language), items, 2)
-                self.assertEqual(callbacks[0][0].doc_comment, "callback docs")
-                self.assertEqual(callbacks[0][0].decorators, ["native annotation"])
-                self.assertEqual(repr(existing), original)
-
-    def test_unbound_callback_identity_ignores_conflicting_native_names(self) -> None:
-        source = "function outer() { use(x => x + 1); }"
-        callback = self.assert_callback_carriers(
-            parsing_syntax(source, "javascript"), extract_structure(parsing_syntax(source, "javascript")), 1
-        )[0][0]
-        native = [
-            replace(callback, name="stale-one", children=[]),
-            replace(callback, name="stale-two", children=[]),
-        ]
-        items = extract_structure(parsing_syntax(source, "javascript"), native)
-        self.assert_callback_carriers(parsing_syntax(source, "javascript"), items, 1)
-
-    def test_go_assigned_literal_accepts_safe_binding_not_receiver_assignment(
-        self,
-    ) -> None:
-        source = """package sample
-func outer() {
-  accept := func(x int) bool { return x > 0 }
-  left, right := func() {}, func() {}
-  object.run = func() {}
-  use(func() {})
-}
-"""
-        items = extract_structure(parsing_syntax(source, "go"))
-        callbacks = self.assert_callback_carriers(parsing_syntax(source, "go"), items, 5)
+    def assert_callback_spans(self, callbacks, expression_nodes):
         self.assertEqual(
-            [item.name for item, _ in callbacks],
-            ["accept", "left", "right", None, None],
+            {(item.span.start_byte, item.span.end_byte) for item, _ in callbacks if item.span},
+            {(node.start_byte, node.end_byte) for node in expression_nodes},
         )
-        self.assertTrue(all(parent is items[0] for _, parent in callbacks))
+        self.assertEqual([item.span.start_byte for item, _ in callbacks if item.span],
+                         sorted(node.start_byte for node in expression_nodes))
 
-    def test_kotlin_anonymous_fun_and_labeled_lambda_not_wrappers(self) -> None:
-        source = """typealias Callback = (Int) -> Int
-fun outer(cb: (Int) -> Int) {
-  val assigned = fun(x: Int): Int { return if (x > 0) x else 0 }
-  use(fun(x: Int) = if (x > 0) x else 0)
-  use label@ { x -> if (x > 0) x else 0 }
-}"""
-        items = extract_structure(parsing_syntax(source, "kotlin"))
-        callbacks = self.assert_callback_carriers(parsing_syntax(source, "kotlin"), items, 3)
-        self.assertTrue(
-            all(
-                item.name is None and parent.name == "outer"
-                for item, parent in callbacks
-                if parent
-            )
-        )
+    def assert_callback_parentage(self, root, callbacks, by_span):
+        for callback, parent in callbacks:
+            self.assertEqual(str(callback.kind).lower(), "function")
+            assert callback.span is not None
+            node = root.descendant_for_byte_range(callback.span.start_byte, callback.span.end_byte - 1)
+            assert node is not None
+            self.assertIs(parent, self.nearest_declaration(node, by_span))
 
-    def test_elixir_multiclause_fn_and_identical_expressions_stay_distinct(
-        self,
-    ) -> None:
-        source = """defmodule Owner do
-  def outer do
-    use(fn x when x > 0 -> if x > 1, do: 1, else: 0; _ -> 0 end)
-    use(fn x -> x end)
-    use(fn x -> x end)
-  end
-end"""
-        native = process(source, ProcessConfig(language="elixir")).structure
-        items = extract_structure(parsing_syntax(source, "elixir"), native)
-        callbacks = self.assert_callback_carriers(parsing_syntax(source, "elixir"), items, 3)
-        self.assertTrue(all(parent is items[0].children[0] for _, parent in callbacks))
+    @staticmethod
+    def nearest_declaration(node: Node, by_span: dict[tuple[int, int], StructureItem]):
+        ancestor = node.parent
+        while ancestor is not None:
+            key = (ancestor.start_byte, ancestor.end_byte)
+            declaration = by_span.get(key)
+            if declaration is not None and key != (node.start_byte, node.end_byte):
+                return declaration
+            ancestor = ancestor.parent
+        return None
 
-    def test_script_bindings_and_inline_functions_keep_single_identity(self) -> None:
-        source = """const named = () => 0;
-const generator = function* internal() { yield 1; };
-object.action = function () {};
-const holder = { apply: function* () {} };
-function outer() { use(() => 0, function () {}, function* () {}, function local() {}); return function () {}; }
-"""
+    def test_nested_callbacks_match_real_ast_and_parentage_with_or_without_native(self):
+        for application in APPLICATIONS:
+            self.assert_application_callbacks(application)
+
+    def assert_application_callbacks(self, application):
+        language, path, *_ = application
+        source = coffee_source(language, path)
+        syntax = ParsedSyntax(source)
+        for native in ([], process(source.source.decode(), ProcessConfig(language=language)).structure):
+            with self.subTest(language=language, native=bool(native)):
+                self.assert_native_callbacks(syntax, native, application)
+
+    def assert_native_callbacks(self, syntax, native, application):
+        _, _, expected_names, callable_count, nested, owner = application
+        original = repr(native)
+        items = extract_structure(syntax, native)
+        callbacks = self.assert_callback_carriers(syntax, items, len(expected_names))
+        self.assertEqual([item.name for item, _ in callbacks], expected_names)
+        self.assertEqual(sum(str(item.kind).lower() in {"function", "method"}
+                             for item, _ in flatten(items)), callable_count)
+        first, child = (callbacks[index] for index in nested)
+        assert first[1] is not None
+        self.assertEqual(first[1].name, owner)
+        self.assertIs(child[1], first[0])
+        self.assertEqual(repr(native), original)
+
+    def test_native_duplicate_callback_metadata_merges_once_without_mutation(self):
+        for application in APPLICATIONS:
+            with self.subTest(language=application[0]):
+                self.assert_duplicate_callback_metadata(application)
+
+    def assert_duplicate_callback_metadata(self, application):
+        language, path, expected_names, *_ = application
+        source = coffee_source(language, path)
+        syntax = ParsedSyntax(source)
+        tagged = extract_structure(syntax)
+        callback = self.assert_callback_carriers(syntax, tagged, len(expected_names))[0][0]
+        native = process(source.source.decode(), ProcessConfig(language=language)).structure
+        decorated = replace(callback, doc_comment="callback docs", decorators=["native annotation"], children=[])
+        existing = [*native, replace(decorated, name=""), replace(decorated, name=None)]
+        original = repr(existing)
+        items = extract_structure(syntax, existing)
+        callbacks = self.assert_callback_carriers(syntax, items, len(expected_names))
+        self.assertEqual([item.name for item, _ in callbacks], expected_names)
+        self.assertEqual(callbacks[0][0].doc_comment, "callback docs")
+        self.assertEqual(callbacks[0][0].decorators, ["native annotation"])
+        self.assertEqual(callbacks[0][0].signature, decorated.signature)
+        self.assertEqual(callbacks[0][0].span, decorated.span)
+        self.assertTrue(all(item.doc_comment != "callback docs" for item, _ in flatten(items)
+                            if item is not callbacks[0][0]))
+        self.assertEqual(repr(existing), original)
+
+    def test_unbound_callback_identity_ignores_conflicting_native_names(self):
+        source = coffee_source("javascript", "ordering/Orders.js")
+        syntax = ParsedSyntax(source)
+        tagged = extract_structure(syntax)
+        callback = self.assert_callback_carriers(syntax, tagged, 8)[6][0]
+        native = process(source.source.decode(), ProcessConfig(language="javascript")).structure
+        existing = [*native, replace(callback, name="stale-one", children=[]),
+                    replace(callback, name="stale-two", children=[])]
+        original = repr(existing)
+        items = extract_structure(syntax, existing)
+        callbacks = self.assert_callback_carriers(syntax, items, 8)
+        # Native names remain metadata, never a second expression identity.
+        self.assertEqual(callbacks[6][0].name, "stale-two")
+        self.assertIs(callbacks[7][1], callbacks[6][0])
+        self.assertEqual([item.name for item, _ in flatten(items)
+                          if item.name in {"stale-one", "stale-two"}], ["stale-two"])
+        self.assertEqual(repr(existing), original)
+
+    def test_go_assigned_literal_accepts_safe_binding_not_receiver_assignment(self):
+        syntax = ParsedSyntax(coffee_source("go", "reporting/Dispatch.go"))
+        items = extract_structure(syntax)
+        callbacks = self.assert_callback_carriers(syntax, items, 7)
+        self.assertEqual([item.name for item, _ in callbacks], ["DispatchReady", "ready", "label", "archive", None, None, "normalize"])
+        self.assertIsNone(callbacks[0][1])
+        self.assertTrue(all(parent is items[3] for _, parent in callbacks[1:6]))
+        self.assertIs(callbacks[6][1], callbacks[5][0])
+        self.assertFalse(items[0].children)  # DispatchFilter is a type, not a callable.
+        self.assertFalse(items[1].children)  # Notify's function type is not executable.
+
+    def test_kotlin_anonymous_fun_and_labeled_lambda_not_wrappers(self):
+        syntax = ParsedSyntax(coffee_source("kotlin", "reporting/Dispatch.kt"))
+        items = extract_structure(syntax)
+        callbacks = self.assert_callback_carriers(syntax, items, 4)
+        deliver = items[2].children[1]
+        self.assertEqual(deliver.name, "deliver")
+        self.assertTrue(all(item.name is None for item, _ in callbacks))
+        self.assertTrue(all(callbacks[index][1] is deliver for index in (0, 1, 3)))
+        self.assertEqual(callbacks[2][1].name if callbacks[2][1] else None, "formatReady")
+        self.assertFalse(items[1].children)  # DispatchFormatter is only a typealias.
+
+    def test_elixir_multiclause_fn_and_identical_expressions_stay_distinct(self):
+        source = coffee_source("elixir", "reporting/Dispatch.ex")
+        syntax = ParsedSyntax(source)
+        native = process(source.source.decode(), ProcessConfig(language="elixir")).structure
+        items = extract_structure(syntax, native)
+        callbacks = self.assert_callback_carriers(syntax, items, 5)
+        self.assertTrue(all(parent is items[0].children[0] for _, parent in callbacks[:4]))
+        self.assertEqual(callbacks[1][0].signature, callbacks[2][0].signature)
+        self.assertNotEqual(callbacks[1][0].span, callbacks[2][0].span)
+        self.assertFalse(callbacks[0][0].children)  # Two clauses form one fn carrier.
+        self.assertIs(callbacks[4][1], callbacks[3][0])
+
+    def test_script_bindings_and_inline_functions_keep_single_identity(self):
+        source = coffee_source("javascript", "ordering/Dispatch.js")
         for language in ("javascript", "typescript", "tsx"):
             with self.subTest(language=language):
-                self.assert_script_bindings(source, language)
+                self.assert_script_bindings(ParsedSyntax(replace(source, language=language)))
 
-    def assert_script_bindings(self, source, language):
-        native = process(source, ProcessConfig(language=language)).structure
-        items = extract_structure(parsing_syntax(source, language), native)
-        self.assert_callback_carriers(parsing_syntax(source, language), items, 9)
-        self.assertEqual(
-            [item.name for item in items],
-            ["named", "generator", "action", "apply", "outer"],
-        )
-        self.assertEqual(
-            [item.name for item in items[-1].children],
-            [None, None, None, "local", None],
-        )
+    def assert_script_bindings(self, syntax: ParsedSyntax):
+        source = syntax.source
+        native = process(source.source.decode(), ProcessConfig(language=source.language)).structure
+        original = repr(native)
+        items = extract_structure(syntax, native)
+        callbacks = self.assert_callback_carriers(syntax, items, 12)
+        self.assertEqual([item.name for item in items], ["dispatchLabel", "dispatchTickets", "Dispatch"])
+        self.assertEqual([item.name for item, _ in callbacks], [
+            "dispatchLabel", "dispatchTickets", "notify", "archive", None, None,
+            None, None, None, "dispatchTotal", None, None,
+        ])
+        schedule = next(item for item in items[2].children if item.name == "schedule")
+        self.assertEqual([item.name for item in schedule.children], [None, None, None, None, "dispatchTotal", None])
+        self.assertEqual(schedule.children[0].children[0].name, "ticketLabel")
+        self.assertEqual(repr(native), original)
 
-    def test_declarations_inside_callbacks_keep_expression_parent(self) -> None:
-        samples = {
-            "javascript": "function outer() { use(() => { function local() {} return local(); }); }",
-            "kotlin": "fun outer() { use { fun local() = 1; local() } }",
-            "rust": "fn outer() { consume(|| { fn local() {} local(); }); }",
-        }
-        for language, source in samples.items():
+    def test_declarations_inside_callbacks_keep_expression_parent(self):
+        for language, path, count, callback_index, local_name in [
+            ("javascript", "ordering/Dispatch.js", 12, 4, "ticketLabel"),
+            ("kotlin", "reporting/Dispatch.kt", 4, 1, "formatReady"),
+            ("rust", "Dispatch.rs", 2, 1, "label"),
+        ]:
             with self.subTest(language=language):
-                items = extract_structure(parsing_syntax(source, language))
-                callback = self.assert_callback_carriers(parsing_syntax(source, language), items, 1)[0][
-                    0
-                ]
-                self.assertEqual(callback.children[0].name, "local")
+                syntax = ParsedSyntax(coffee_source(language, path))
+                items = extract_structure(syntax)
+                callback = self.assert_callback_carriers(syntax, items, count)[callback_index][0]
+                self.assertEqual(callback.children[0].name, local_name)
+                self.assertEqual(str(callback.children[0].kind).lower(), "function")
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ from atlas.domain.models import (
     file_key,
 )
 from atlas.metrics.resolver import Connection, ExternalNode, ResolvedGraph
-from atlas.indexer import analyze_repository
+from tests.import_project_support import analyze, project_sources
 
 
 def view(keys: list[str], pairs: list[tuple[str, str]]) -> GraphView:
@@ -230,48 +230,57 @@ def test_all_levels_use_aggregated_internal_dependencies(tmp_path: Path) -> None
     assert build_dependency_views(snapshot["nodes"], snapshot["edges"]) == artifact.views
 
 
-def test_indexer_populates_metrics_and_excludes_unresolved_targets(
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "a.py").write_text(
-        "from b import middle\nimport missing\ndef entry():\n    return middle()\n"
-    )
-    (tmp_path / "b.py").write_text(
-        "from c import leaf\ndef middle():\n    return leaf()\n"
-    )
-    (tmp_path / "c.py").write_text("def leaf():\n    return 1\n")
-    (tmp_path / "z.py").write_text("def isolated():\n    return 0\n")
-    artifact = analyze_repository(tmp_path)
-    nodes = {node["name"]: node for node in artifact.nodes}
+def logistics_nodes(artifact):
+    return {node["name"]: node for node in artifact.nodes
+            if node["path"] and node["path"].startswith("src/coffee/logistics/")}
+
+
+def assert_source_evidence(edges, sources):
+    assert all(edge["evidence"] is not None and edge["evidence"] in sources[edge["path"]] for edge in edges)
+
+
+def assert_no_runtime_import_cycle(artifact, paths):
+    assert artifact.circularDependencies is not None
+    keys = {"file:" + path for path in paths}
+    assert not any(set(group["nodeStableKeys"]) & keys for group in artifact.circularDependencies["groups"])
+
+
+def test_indexer_populates_metrics_and_excludes_unresolved_targets(tmp_path: Path) -> None:
+    sources = project_sources("python", "delivery-impact")
+    artifact = analyze(tmp_path, sources)
+    prefix = "src/coffee/logistics/"
+    nodes = logistics_nodes(artifact)
     for name, values in {
-        "a.py": (0, 1, 0),
-        "b.py": (1, 1, 1),
-        "c.py": (1, 0, 2),
-        "entry": (0, 1, 0),
-        "middle": (1, 1, 1),
-        "leaf": (1, 0, 2),
-        "isolated": (0, 0, 0),
+        "delivery.py": (0, 1, 0), "packing.py": (1, 1, 1), "label.py": (1, 0, 2),
+        "deliver": (0, 1, 0), "pack": (1, 1, 1), "print_label": (1, 0, 2), "idle": (0, 0, 0),
     }.items():
         assert metric_values(nodes[name]) == counts(*values)
         assert nodes[name]["properties"]["instability"] == expected_metrics(*values)["instability"]
-    assert nodes["missing"]["level"] == "external"
-    assert nodes["missing"]["properties"] == {}
+    courier, = [node for node in artifact.nodes if node["stableKey"] == "external:python:callable:courier"]
+    assert courier["level"] == "external"
+    assert courier["properties"] == {}
+    calls = [edge for edge in artifact.edges if edge["type"] == "CALLS" and edge["path"].startswith(prefix)]
+    assert {edge["evidence"] for edge in calls} == {"pack()", "print_label()", "courier()"}
+    assert_source_evidence(calls, sources)
 
 
-def test_type_only_imports_contribute_compile_time_impact(tmp_path: Path) -> None:
-    (tmp_path / "a.ts").write_text(
-        'import type { B } from "./b";\nexport interface A { other: B; }\n'
-    )
-    (tmp_path / "b.ts").write_text(
-        'import type { A } from "./a";\nexport interface B { other: A; }\n'
-    )
-    artifact = analyze_repository(tmp_path)
-    files = [node for node in artifact.nodes if node["level"] == "file"]
+def assert_stock_compile_time_metrics(artifact, paths):
+    files = [node for node in artifact.nodes if node["level"] == "file" and node["path"] in paths]
     assert len(files) == 2
     assert all(metric_values(node) == counts(1, 1, 1) for node in files)
     assert all(node["properties"]["instability"] == 0.5 for node in files)
-    assert any(edge.get("typeOnly") for edge in artifact.edges)
-    assert artifact.circularDependencies == {"version": 1, "groups": []}
+
+
+def test_type_only_imports_contribute_compile_time_impact(tmp_path: Path) -> None:
+    sources = project_sources("typescript", "stock-back-reference")
+    artifact = analyze(tmp_path, sources)
+    paths = {"inventory/Stock.ts", "ordering/StockOrder.ts"}
+    assert_stock_compile_time_metrics(artifact, paths)
+    imports = [edge for edge in artifact.edges if edge["type"] == "IMPORTS" and edge["path"] in paths]
+    assert len(imports) == 2
+    assert sum(edge.get("typeOnly", False) for edge in imports) == 1
+    assert_source_evidence(imports, sources)
+    assert_no_runtime_import_cycle(artifact, paths)
 
 
 def strip_metrics(node: GraphNode) -> None:

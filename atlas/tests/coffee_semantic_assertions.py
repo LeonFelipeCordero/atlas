@@ -32,8 +32,13 @@ def assert_brewer_construction(test, graph, brewer):
         for edge in call_edges(graph)
         if edge["targetStableKey"] == brewer["stableKey"]
     ]
-    test.assertEqual(len(constructions), 1)
-    test.assertEqual(nodes[constructions[0]["sourceStableKey"]]["name"], "main")
+    language = graph["repository"]["languages"][0]
+    expected = {
+        "java": ["main", "OrderService"], "kotlin": ["main", "OrderService"],
+        "javascript": ["main", "constructor"], "typescript": ["main", "constructor"],
+        "python": ["main", "stocked"],
+    }
+    test.assertCountEqual([nodes[edge["sourceStableKey"]]["name"] for edge in constructions], expected[language])
 
 
 def assert_go_closure(test, graph):
@@ -53,7 +58,9 @@ def assert_go_closure(test, graph):
     test.assertTrue(
         any(
             edge["sourceStableKey"] == accept["stableKey"]
-            and nodes[edge["targetStableKey"]]["name"] == "portions"
+            and nodes[edge["targetStableKey"]]["name"] == "Portions"
+            and nodes[edge["targetStableKey"]]["level"] == "external"
+            and edge["evidence"] == "menu.Portions(name)"
             for edge in calls
         )
     )
@@ -66,24 +73,30 @@ def assert_elixir_recursion(test, graph):
         for edge in call_edges(graph)
         if nodes[edge["targetStableKey"]]["name"] == "retry"
     ]
-    test.assertEqual(len(retry_calls), 2)
-    test.assertEqual(
-        {edge["evidence"] for edge in retry_calls}, {"retry(attempts - 1)"}
-    )
-    test.assertEqual(len({edge["sourceStableKey"] for edge in retry_calls}), 1)
-    test.assertTrue(
-        any(edge["sourceStableKey"] == edge["targetStableKey"] for edge in retry_calls)
-    )
-    assert_elixir_inner_metrics(test, nodes)
+    test.assertEqual(len(retry_calls), 4)
+    recursive = calls_from_owner(nodes, retry_calls, "retry")
+    assert_recursive_dispatch(test, recursive)
+    from_main = calls_from_owner(nodes, retry_calls, "main")
+    test.assertEqual(len(from_main), 2)
+    test.assertEqual({edge["evidence"] for edge in from_main}, {"retry(2)"})
+    assert_elixir_inner_metrics(test, graph, nodes)
 
 
-def assert_elixir_inner_metrics(test, nodes):
-    test.assertFalse(
-        any(
-            node["level"] == "external" and node["name"] in {"if", "case"}
-            for node in nodes.values()
-        )
-    )
+def calls_from_owner(nodes, calls, name):
+    return [edge for edge in calls if nodes[edge["sourceStableKey"]]["name"] == name]
+
+
+def assert_recursive_dispatch(test, calls):
+    test.assertEqual(len(calls), 2)
+    test.assertEqual({edge["evidence"] for edge in calls}, {"retry(attempts - 1)"})
+    test.assertEqual(len({edge["sourceStableKey"] for edge in calls}), 1)
+    test.assertTrue(any(edge["sourceStableKey"] == edge["targetStableKey"] for edge in calls))
+
+
+def assert_elixir_inner_metrics(test, graph, nodes):
+    controls = [edge for edge in call_edges(graph)
+                if nodes[edge["targetStableKey"]]["name"] in {"if", "case"}]
+    test.assertTrue(all(edge["evidence"].startswith("Client.") for edge in controls))
     inner = next(
         node
         for node in nodes.values()
@@ -95,6 +108,8 @@ def assert_elixir_inner_metrics(test, nodes):
 
 
 def workflow_cases(language):
+    if language == "go":
+        return [("render", "Total", "reporting/"), ("dose", "Portions", "recipe/"), ("preview", "Receipt", "reporting/")]
     cases = [
         ("brew", "render", "reporting/"),
         ("brew", "portions", "brewing/recipe."),
@@ -104,8 +119,10 @@ def workflow_cases(language):
     ]
     if language != "kotlin":
         cases += [("render", "total", "reporting/")]
-    if language not in {"kotlin", "java"}:
+    if language not in {"kotlin", "java", "elixir"}:
         cases += [("total", "portions", "brewing/recipe.")]
+    if language == "elixir":
+        cases.remove(("render", "portions", "brewing/recipe."))
     return cases
 
 
@@ -152,6 +169,10 @@ def assert_workflow(test, language, graph):
         assert_workflow_case(test, context, case)
     if language == "java":
         assert_java_workflow_references(test, graph, nodes)
+    if language == "go":
+        assert_go_module_limitations(test, graph)
+    if language == "elixir":
+        assert_elixir_grouped_alias_limitation(test, graph)
 
 
 def assert_java_workflow_references(test, graph, nodes):
@@ -162,10 +183,69 @@ def assert_java_workflow_references(test, graph, nodes):
                 nodes[edge["targetStableKey"]]["path"],
             )
             for edge in graph["edges"]
-            if edge["type"] == "REFERENCES"
+            if edge["type"] == "REFERENCES" and edge["path"] == "reporting/Report.java"
         ],
         [("total", "brewing/Recipe.java")],
     )
+
+
+def module_imports(graph, fragment):
+    return [edge for edge in graph["edges"] if edge["type"] == "IMPORTS" and fragment in edge["evidence"]]
+
+
+def external_calls_named(graph, names):
+    nodes = nodes_by_key(graph)
+    return [edge for edge in call_edges(graph) if nodes[edge["targetStableKey"]]["level"] == "external" and nodes[edge["targetStableKey"]]["name"] in names]
+
+
+def source_edges(graph, kind, path):
+    return [edge for edge in graph["edges"] if edge["type"] == kind and edge["path"] == path]
+
+
+def assert_go_module_limitations(test, graph):
+    """Go cannot map example.com module imports to local packages yet."""
+    nodes = nodes_by_key(graph)
+    imports = module_imports(graph, "example.com/coffee/")
+    test.assertCountEqual([(edge["path"], edge["evidence"]) for edge in imports], [
+        ("brewing/brewer.go", 'menu "example.com/coffee/recipe"'),
+        ("brewing/brewer.go", '"example.com/coffee/reporting"'),
+        ("brewing/inventory.go", '"example.com/coffee/recipe"'),
+        ("brewing/fulfillment.go", '"example.com/coffee/recipe"'),
+        ("brewing/order.go", '"example.com/coffee/recipe"'),
+        ("main.go", '"example.com/coffee/brewing"'),
+        ("reporting/report.go", '"example.com/coffee/recipe"'),
+    ])
+    test.assertTrue(all(nodes[edge["targetStableKey"]]["level"] == "external" for edge in imports))
+    names = {"Normalize", "Render", "Portions", "Preview", "New", "Scale", "Dose", "Main"}
+    calls = external_calls_named(graph, names)
+    test.assertCountEqual([(edge["path"], edge["evidence"]) for edge in calls], [
+        ("brewing/brewer.go", "menu.Normalize(name)"),
+        ("brewing/brewer.go", "reporting.Render(nil)"),
+        ("brewing/brewer.go", "menu.Portions(name)"),
+        ("brewing/brewer.go", "reporting.Render(valid)"),
+        ("brewing/brewer.go", "menu.Portions(name)"),
+        ("brewing/brewer.go", 'reporting.Preview("espresso")'),
+        ("brewing/inventory.go", "recipe.Portions(name)"),
+        ("brewing/fulfillment.go", "recipe.Portions(name)"),
+        ("brewing/order.go", 'recipe.New("filter", len(order.Names))'),
+        ("brewing/order.go", "drink.Scale(len(order.Names), 0)"),
+        ("brewing/order.go", "scaled.Dose()"),
+        ("main.go", "brewing.Main()"),
+        ("reporting/report.go", "recipe.Portions(name)"),
+        ("reporting/report.go", "recipe.Portions(name)"),
+    ])
+
+
+def assert_elixir_grouped_alias_limitation(test, graph):
+    """Grouped aliases are not expanded; individual aliases still resolve."""
+    nodes = nodes_by_key(graph)
+    imports = source_edges(graph, "IMPORTS", "reporting/report.ex")
+    test.assertEqual([edge["evidence"] for edge in imports], ["alias Coffee.Brewing.{Inventory, Recipe}"])
+    test.assertEqual(nodes[imports[0]["targetStableKey"]]["level"], "external")
+    calls = source_edges(graph, "CALLS", "reporting/report.ex")
+    affected = [edge for edge in calls if nodes[edge["targetStableKey"]]["name"] in {"portions", "available"}]
+    test.assertCountEqual([edge["evidence"] for edge in affected], ["Recipe.portions(name)", "Recipe.portions(name)", "Inventory.available(stock, names)", "Recipe.portions"])
+    test.assertTrue(all(nodes[edge["targetStableKey"]]["level"] == "external" for edge in affected))
 
 
 def assert_library_output(test, graph, name):

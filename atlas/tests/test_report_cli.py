@@ -3,6 +3,7 @@
 import json
 import sqlite3
 from pathlib import Path
+from shutil import copytree, rmtree
 
 import pytest
 from click.testing import CliRunner
@@ -10,6 +11,7 @@ from click.testing import CliRunner
 from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 from atlas.domain.repositories import RepositoryError
+from tests.coffee_fixture import FIXTURE_ROOT
 
 
 @pytest.fixture
@@ -21,26 +23,7 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path) -> None:
-    root = tmp_path / "source"
-    root.mkdir()
-    (root / "a.py").write_text("import b\n")
-    (root / "b.py").write_text("import a\n")
-    (root / "app.py").write_text(
-        "def high(value):\n"
-        + "    if value: pass\n" * 8
-        + "\ndef nested(items):\n"
-        "    for item in items:\n"
-        "        for child in item:\n"
-        "            print(child)\n"
-        "\ndef deep(value):\n"
-        "    if value:\n"
-        "        if value:\n"
-        "            if value:\n"
-        "                if value:\n"
-        "                    return value\n"
-        "\ndef simple():\n"
-        "    return 1\n"
-    )
+    root = copytree(FIXTURE_ROOT / "python", tmp_path / "source")
     with repository_service(database) as service:
         registered = service.register({"name": "Example", "location": str(root)})
         other = service.register({"name": "Other", "location": str(root)})
@@ -53,26 +36,25 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     assert result.exit_code == 0, result.output
     assert "## Callables" in result.output
     assert "## Circular imports" in result.output
-    assert "app.py:1" in result.output
+    assert "src/coffee/brewing/brewer.py:49" in result.output
     assert "Cyclomatic complexity" in result.output and "Weighted complexity" in result.output
     assert "Nested loops" in result.output and "Decision depth" in result.output
-    assert "`a.py` → `b.py` → `a.py`" in result.output
+    assert "`src/coffee/brewing/recipe.py` → `src/coffee/reporting/report.py`" in result.output
     assert "limit" not in result.output
     assert "repositoryId" not in result.output
     structured = runner.invoke(main, ["report", "-f", str(root), "--format", "json"])
     assert structured.exit_code == 0, structured.output
     report = json.loads(structured.output)
     assert set(report) == {"summary", "nodes", "circularImports", "diagnostics"}
-    complexity = {node["subject"].split("::")[-1]: node["metrics"] for node in report["nodes"] if node["kind"] == "function"}
-    assert set(complexity) == {"high", "nested", "deep", "simple"}
-    assert complexity["high"]["weightedComplexity"] == 9
-    assert complexity["nested"]["nestedLoops"] == 1
-    assert complexity["deep"]["maxDecisionDepth"] == 4
-    assert complexity["simple"]["weightedComplexity"] == 1
-    assert report["circularImports"][0]["files"] == ["a.py", "b.py"]
+    complexity = {node["subject"]: node["metrics"] for node in report["nodes"] if node["level"] == "callable"}
+    assert complexity["src/coffee/brewing/brewer.py::Brewer.classify"]["weightedComplexity"] == 9
+    assert complexity["src/coffee/brewing/brewer.py::Brewer.score"]["nestedLoops"] == 1
+    assert complexity["src/coffee/brewing/brewer.py::Brewer.score"]["maxDecisionDepth"] == 3
+    assert complexity["src/coffee/orders/fulfillment.py::Fulfillment.scan"]["maxDecisionDepth"] == 4
+    assert complexity["src/coffee/brewing/recipe.py::portions"]["weightedComplexity"] == 1
+    assert report["circularImports"][0]["files"] == ["src/coffee/brewing/recipe.py", "src/coffee/reporting/report.py"]
     assert report["summary"]["circularImportGroups"] == 1
-    for source in root.iterdir():
-        source.unlink()
+    rmtree(root / "src")
     fresh = runner.invoke(main, ["report", "-f", str(root)])
     assert fresh.exit_code == 0, fresh.output
     assert "files: 0" in fresh.output and "circularImportGroups: 0" in fresh.output

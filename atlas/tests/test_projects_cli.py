@@ -2,12 +2,14 @@
 
 import json
 from pathlib import Path
+from shutil import copytree
 
 import pytest
 from click.testing import CliRunner
 
 from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
+from tests.coffee_fixture import FIXTURE_ROOT
 
 
 @pytest.fixture
@@ -19,9 +21,7 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_projects_lists_indexed_and_unindexed_projects(database: Path, tmp_path: Path) -> None:
-    root = tmp_path / "source"
-    root.mkdir()
-    (root / "app.py").write_text("def main():\n    return 1\n")
+    root = copytree(FIXTURE_ROOT / "python", tmp_path / "source")
     with repository_service(database) as service:
         indexed = service.register({"name": "École", "location": str(root)})
         unindexed = service.register({"name": "Other", "location": "elsewhere"})

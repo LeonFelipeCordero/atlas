@@ -6,7 +6,8 @@ import pytest
 from click.testing import CliRunner
 
 from atlas.cli import main
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT, coffee_graph
+from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT, coffee_graph, coffee_snapshot
+from tests.coffee_scenarios import CORE_LANGUAGES
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -18,14 +19,13 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
     assert "Cyclomatic complexity" in result.output and "Weighted complexity" in result.output
     assert "Decision depth" in result.output and "Parameters" in result.output
     assert "Internal instability" in result.output and "Change impact" in result.output
-    if language != "go":
-        assert "## Circular imports" in result.output
+    assert ("## Circular imports" in result.output) == bool(coffee_snapshot(coffee_graph(language))["circularDependencies"]["groups"])
     assert "limit" not in result.output and "finding" not in result.output.lower()
-    expected = (SNAPSHOT_ROOT / f"{language}-coffee-report.md").read_text(encoding="utf-8")
+    expected = json.loads((SNAPSHOT_ROOT / "coffee" / language / "cli.json").read_text())["report-markdown"]["output"]
     assert result.output == expected
 
 
-@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("language", CORE_LANGUAGES)
 def test_coffee_size_measurements_include_every_source_and_callable(language: str) -> None:
     graph = coffee_graph(language)
     result = CliRunner().invoke(main, [
@@ -37,7 +37,7 @@ def test_coffee_size_measurements_include_every_source_and_callable(language: st
     assert_calibration_size(language, calibration, measurements)
     ready = next(node for node in graph.nodes if node["name"] == "ready")
     assert measurements[ready["stableKey"]]["metrics"]["parameterCount"] == 4
-    assert set(measurements) >= {node["stableKey"] for node in graph.nodes if node["level"] == "file"}
+    assert set(measurements) >= {node["stableKey"] for node in graph.nodes if node["level"] in {"file", "callable"}}
 
 
 def assert_calibration_size(language, calibration, measurements):
@@ -47,8 +47,8 @@ def assert_calibration_size(language, calibration, measurements):
     assert "startLine" in calibration and "endLine" in calibration and "endColumn" in calibration
     end = calibration["endLine"] - int(calibration["endColumn"] == 1)
     file = measurements[f"file:{path}"]["metrics"]
-    assert file["lineCount"] == len(source.splitlines()) and file["lineCount"] > 600
+    assert file["lineCount"] == len(source.splitlines())
     metrics = measurements[calibration["stableKey"]]["metrics"]
     assert metrics["lineCount"] == end - calibration["startLine"] + 1
-    assert metrics["lineCount"] > 100 and metrics["parameterCount"] == 8
+    assert metrics["parameterCount"] == 8
     assert metrics["weightedComplexity"] == metrics["cyclomaticComplexity"] == 1

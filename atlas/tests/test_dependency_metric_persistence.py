@@ -1,5 +1,6 @@
 """Dependency metrics derive from complete persisted normalized report facts."""
 
+import shutil
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,7 +14,11 @@ from atlas.metrics.artifact import build_dependency_views
 from atlas.metrics.dependency_metrics import dependency_metrics
 from atlas.persistence.database import create_engine, migrate_database, repository_session
 from atlas.persistence.repositories import RepositoryStore
+from tests.coffee_fixture import FIXTURE_ROOT, coffee_graph
 from tests.graph_storage_fixture import graph_artifact
+
+OPERATIONAL_ROOT = Path(__file__).parent / "fixtures/variants/operational"
+ISOLATED_PATH = "src/coffee/maintenance/cleaning.py"
 
 
 def fact_views(facts: ReportFactsDTO) -> dict[str, dict[str, Any]]:
@@ -25,11 +30,10 @@ def fact_views(facts: ReportFactsDTO) -> dict[str, dict[str, Any]]:
 
 def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
     root = tmp_path / "source"
-    root.mkdir()
-    (root / "a.py").write_text("import b\n")
-    (root / "b.py").write_text("import a\n")
-    (root / "c.py").write_text("import a\n")
-    (root / "isolated.py").write_text("# no dependencies\n")
+    shutil.copytree(FIXTURE_ROOT / "python", root)
+    isolated = root / ISOLATED_PATH
+    isolated.parent.mkdir()
+    shutil.copyfile(OPERATIONAL_ROOT / "dependency-instability" / ISOLATED_PATH, isolated)
     path = tmp_path / "database.sqlite"
     migrate_database(path)
     with repository_service(path) as service:
@@ -40,24 +44,22 @@ def test_dependency_metrics_from_normalized_facts(tmp_path: Path) -> None:
         facts = service.get_report_facts(repository.id)
         assert facts is not None
     metrics = dependency_metrics(cast(GraphView, fact_views(facts)["file"]))
-    assert metrics["file:a.py"] == {
-        "fanIn": 2, "fanOut": 1, "transitiveChangeImpact": 2, "instability": 1 / 3,
+    isolated_metrics = {"fanIn": 0, "fanOut": 0, "transitiveChangeImpact": 0, "instability": None}
+    expected = {
+        node["stableKey"]: {name: node["properties"][name] for name in isolated_metrics}
+        for node in coffee_graph("python").nodes if node["level"] == "file"
     }
-    assert metrics["file:isolated.py"] == {
-        "fanIn": 0, "fanOut": 0, "transitiveChangeImpact": 0, "instability": None,
+    assert metrics == {**expected, f"file:{ISOLATED_PATH}": isolated_metrics}
+    assert metrics["file:src/coffee/brewing/brewer.py"] == {
+        "fanIn": 1, "fanOut": 2, "transitiveChangeImpact": 1, "instability": 2 / 3,
     }
-    assert facts.edges == facts.imports
+    assert facts.imports == [edge for edge in facts.edges if edge.type == "IMPORTS"]
+    assert {edge.type for edge in facts.edges} >= {"IMPORTS", "CALLS", "INHERITS"}
     assert facts.diagnostics == []
 
 
 def test_normalized_instability_excludes_duplicates_self_and_external_edges(tmp_path: Path) -> None:
-    root = tmp_path / "source"
-    root.mkdir()
-    (root / "stable.py").write_text("import unstable\nimport unstable\nimport stable\nimport missing\n")
-    (root / "unstable.py").write_text("import a\nimport b\nimport c\nimport d\n")
-    for peer in "abcd":
-        (root / f"{peer}.py").write_text("import stable\n")
-    (root / "isolated.py").write_text("# no dependencies\n")
+    root = OPERATIONAL_ROOT / "dependency-instability"
     path = tmp_path / "database.sqlite"
     migrate_database(path)
     with repository_service(path) as service:
@@ -66,13 +68,15 @@ def test_normalized_instability_excludes_duplicates_self_and_external_edges(tmp_
         facts = service.get_report_facts(repository.id)
         assert facts is not None
     metrics = dependency_metrics(cast(GraphView, fact_views(facts)["file"]))
-    assert metrics["file:stable.py"] == {
+    assert metrics["file:src/coffee/brewing/recipe.py"] == {
         "fanIn": 4, "fanOut": 1, "transitiveChangeImpact": 5, "instability": 0.2,
     }
-    assert metrics["file:unstable.py"] == {
+    assert metrics["file:src/coffee/brewing/brewer.py"] == {
         "fanIn": 1, "fanOut": 4, "transitiveChangeImpact": 5, "instability": 0.8,
     }
-    assert metrics["file:isolated.py"]["instability"] is None
+    assert metrics[f"file:{ISOLATED_PATH}"] == {
+        "fanIn": 0, "fanOut": 0, "transitiveChangeImpact": 0, "instability": None,
+    }
     assert len(facts.imports) == 12
     assert any(node.level == "external" for node in facts.nodes)
 

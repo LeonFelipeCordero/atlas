@@ -1,140 +1,83 @@
-import tempfile
-import unittest
-from dataclasses import dataclass
-from pathlib import Path
+"""Member, computed and ambiguous calls must not fall back to bare names."""
+
+import pytest
 
 from atlas.parsing.discovery import discover_files
 from atlas.parsing.parser import _extract_calls
-from atlas.indexer import analyze_repository
+from tests.import_project_support import analyze, project_sources
+
+COLLISIONS = [
+    ("python", "src/coffee/orders/reservations.py", "reserve(order)", "supplier.reserve(order)",
+     "src/coffee/inventory/delivery.py", "delivery_label(order)", "supplier.delivery_label(order)"),
+    ("typescript", "ordering/Reservations.ts", "reserve(order)", "supplier.reserve(order)",
+     "inventory/Delivery.ts", "deliveryLabel(order)", "supplier.deliveryLabel(order)"),
+    ("kotlin", "orders/Reservations.kt", "reserve(order)", "supplier.reserve(order)",
+     "inventory/Delivery.kt", "deliveryLabel(it)", "supplier.deliveryLabel(order)"),
+    ("java", "orders/Reservations.java", "reserve(order)", "supplier.reserve(order)",
+     "inventory/Delivery.java", "deliveryLabel(order)", "supplier.deliveryLabel(order)"),
+    ("go", "brewing/reservations.go", "Reserve(order)", "supplier.Reserve(order)",
+     "reporting/delivery.go", "DeliveryLabel(order)", "supplier.DeliveryLabel(order)"),
+    ("rust", "brewing/reservations.rs", "reserve(names, customer)", "supplier.reserve(names)",
+     "brewing/delivery.rs", "delivery_label(names, customer)", "supplier.delivery_label(names, customer)"),
+    ("csharp", "orders/Reservations.cs", "Reserve(customer, drink, units)", "supplier.Reserve(drink, units)",
+     "inventory/Delivery.cs", "DeliveryLabel(customer, drink.Key, drink.Value)", "supplier.DeliveryLabel(customer, drink, units)"),
+    ("ruby", "orders/reservations.rb", "reserve(customer, drink, units)", "supplier.reserve(drink, units)",
+     "inventory/delivery.rb", "delivery_label(customer, drink, units)", "supplier.delivery_label(customer, drink, units)"),
+]
 
 
-# The same collision in different grammars, without language-specific resolution.
-SAMPLES = {
-    "kt": ("fun from(x: Int) = x", "fun run() { context.select(X).from(X); from(X) }"),
-    "ts": (
-        "function from(x) { return x }",
-        "function run() { context.select(X).from(X); from(X) }",
-    ),
-    "py": (
-        "def convert(x): return x",
-        "def run():\n context.select(X).convert(X)\n convert(X)",
-    ),
-    "java": (
-        "class Factory { static int from(int x) { return x; } }",
-        "class App { void run() { context.select(X).from(X); from(X); } }",
-    ),
-    "go": (
-        "package main\nfunc Convert(x int) int { return x }",
-        "package main\nfunc run(){ context.Select(X).Convert(X); Convert(X) }",
-    ),
-    "rs": (
-        "fn convert(x: i32) -> i32 { x }",
-        "fn run(){ context.select(x).convert(x); convert(x); }",
-    ),
-    "cs": (
-        "class Factory { static int Convert(int x) { return x; } }",
-        "class App { void Run(){ context.Select(x).Convert(x); Convert(x); } }",
-    ),
-    "rb": (
-        "def convert(x)\n x\nend",
-        "def run()\n context.select(x).convert(x)\n convert(x)\nend",
-    ),
-}
+def calls_at(artifact, path, evidence):
+    calls = [edge for edge in artifact.edges
+             if edge["type"] == "CALLS" and edge["path"] == path and edge["evidence"] == evidence]
+    assert calls
+    return calls
 
 
-@dataclass(frozen=True)
-class CollisionSource:
-    extension: str
-    declaration: str
-    usage: str
+@pytest.mark.parametrize("case", COLLISIONS)
+@pytest.mark.parametrize("location", ["local", "global"])
+def test_member_collisions_never_use_local_or_global_name_fallback(tmp_path, case, location):
+    language, path, local_call, local_member, delivery_path, delivery_call, delivery_member = case
+    sources = project_sources(language, "member-collision")
+    artifact = analyze(tmp_path, sources)
+    member = local_member if location == "local" else delivery_member
+    control_path, control = (path, local_call) if location == "local" else (delivery_path, delivery_call)
+    member_calls = calls_at(artifact, path, member)
+    assert all(edge["targetStableKey"].startswith("external:") for edge in member_calls)
+    bare_calls = calls_at(artifact, control_path, control)
+    assert all(edge["targetStableKey"].startswith("symbol:") for edge in bare_calls)
+    assert_call_evidence(member_calls + bare_calls, sources)
 
 
-class CallResolutionTest(unittest.TestCase):
-    def test_member_collisions_never_use_local_or_global_name_fallback(self) -> None:
-        for extension, (declaration, usage) in SAMPLES.items():
-            self.check_collision_locations(extension, declaration, usage)
+def assert_call_evidence(calls, sources):
+    assert all(edge["evidence"] is not None and edge["evidence"] in sources[edge["path"]] for edge in calls)
 
-    def check_collision_locations(self, extension, declaration, usage) -> None:
-        for local in (False, True):
-            with self.subTest(extension=extension, local=local):
-                self.check_collision(CollisionSource(extension, declaration, usage), local)
 
-    def check_collision(self, source: CollisionSource, local: bool) -> None:
-        extension, declaration, usage = source.extension, source.declaration, source.usage
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            # Go requires just one package declaration in a combined source file.
-            combined = declaration + "\n" + usage.replace("package main\n", "")
-            (root / f"app.{extension}").write_text(combined if local else usage)
-            if not local:
-                (root / f"factory.{extension}").write_text(declaration)
-            artifact = analyze_repository(root)
-            self.assert_collision_calls(artifact)
+def test_computed_and_qualified_targets_are_not_bare(tmp_path):
+    sources = project_sources("typescript", "computed-receipt-calls")
+    analyze(tmp_path, sources)
+    source = next(source for source in discover_files(tmp_path) if source.path == "ordering/receipt.ts")
+    calls = _extract_calls(source)
+    assert calls
+    for call in calls:
+        assert call.bare_target == (call.name in {"factory", "helper"} and call.evidence in {"factory()", "helper()"})
+        assert source.source[call.start_byte:call.end_byte].decode() == call.evidence
+    computed, = [call for call in calls if call.evidence == "handlers[key](argument)"]
+    assert computed.name == "handlers[key]"
 
-    def assert_collision_calls(self, artifact) -> None:
-        calls = [edge for edge in artifact.edges if edge["type"] == "CALLS"]
-        member_calls = [edge for edge in calls if "." in str(edge["evidence"])]
-        self.assertTrue(member_calls)
-        self.assertTrue(
-            all(
-                str(edge["targetStableKey"]).startswith("external:")
-                for edge in member_calls
-            )
-        )
-        self.assert_bare_collision_calls(calls)
 
-    def assert_bare_collision_calls(self, calls) -> None:
-        bare_calls = [edge for edge in calls if "." not in str(edge["evidence"])]
-        self.assertTrue(
-            any(
-                str(edge["targetStableKey"]).startswith("symbol:")
-                for edge in bare_calls
-            )
-        )
+def test_ambiguous_bare_call_stays_external(tmp_path):
+    sources = project_sources("typescript", "ambiguous-roast-call")
+    artifact = analyze(tmp_path, sources)
+    calls = [edge for edge in artifact.edges if edge["type"] == "CALLS" and edge["path"] == "brewing/tasting.ts"]
+    assert len(calls) == 1
+    assert calls[0]["evidence"] == "roast()"
+    assert calls[0]["targetStableKey"] == "external:typescript:callable:roast"
 
-    def test_computed_and_qualified_targets_are_not_bare(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "app.ts").write_text(
-                "obj.convert(x); handlers[key](argument); factory(argument)(x); helper(x)"
-            )
-            source = next(iter(discover_files(root)))
-            calls = _extract_calls(source)
-            self.assertTrue(calls)
-            for call in calls:
-                self.assertEqual(call.bare_target, call.name in {"factory", "helper"})
-            computed = next(
-                call for call in calls if call.evidence == "handlers[key](argument)"
-            )
-            self.assertEqual(computed.name, "handlers[key]")
 
-    def test_ambiguous_bare_call_stays_external(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "a.ts").write_text("export function helper() {}")
-            (root / "b.ts").write_text("export function helper() {}")
-            (root / "app.ts").write_text("helper()")
-            artifact = analyze_repository(root)
-            call = next(edge for edge in artifact.edges if edge["type"] == "CALLS")
-            self.assertTrue(str(call["targetStableKey"]).startswith("external:"))
-
-    def test_jooq_from_does_not_resolve_to_response_factory(self) -> None:
-        declaration = "class BulkOperationResponse { companion object { fun from(result: BulkOperationResult) = BulkOperationResponse() } }"
-        usage = "class ChannelRepository { fun findById() = context.select(CHANNELS.asterisk()).from(CHANNELS) }"
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "QueueApi.kt").write_text(declaration)
-            (root / "ChannelRepository.kt").write_text(usage)
-            artifact = analyze_repository(root)
-            calls = [
-                edge
-                for edge in artifact.edges
-                if edge["type"] == "CALLS" and edge["path"] == "ChannelRepository.kt"
-            ]
-            self.assertTrue(calls)
-            self.assertTrue(
-                all(
-                    str(edge["targetStableKey"]).startswith("external:")
-                    for edge in calls
-                )
-            )
+def test_query_from_does_not_resolve_to_receipt_factory(tmp_path):
+    sources = project_sources("kotlin", "query-receipt-collision")
+    artifact = analyze(tmp_path, sources)
+    calls = [edge for edge in artifact.edges if edge["type"] == "CALLS" and edge["path"] == "inventory/StockRepository.kt"]
+    assert calls
+    assert any(edge["evidence"] is not None and '.from("stock")' in edge["evidence"] for edge in calls)
+    assert all(edge["targetStableKey"].startswith("external:") for edge in calls)

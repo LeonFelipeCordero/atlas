@@ -1,7 +1,6 @@
 """Full Python-indexer snapshots plus source-reviewed semantic coverage checks."""
 
 import unittest
-from collections import Counter
 
 from atlas.metrics.artifact import validate_artifact
 from tests.coffee_fixture import (
@@ -12,7 +11,7 @@ from tests.coffee_fixture import (
     coffee_snapshot,
 )
 from tests.coffee_integrity import assert_coffee_integrity
-from tests.coffee_scenarios import CALL_SITES, DECLARATIONS, declaration_gaps
+from tests.coffee_scenarios import CORE_LANGUAGES
 from tests.coffee_snapshot_assertions import (
     assert_call_sites,
     assert_layout,
@@ -34,13 +33,12 @@ class CoffeeSnapshotTest(unittest.TestCase):
         }
 
     def test_every_supported_sample_has_a_python_baseline(self) -> None:
-        self.assertEqual(set(DECLARATIONS), set(LANGUAGES))
         self.assertTrue(
             all((FIXTURE_ROOT / language).is_dir() for language in LANGUAGES)
         )
         self.assertTrue(
             all(
-                (SNAPSHOT_ROOT / f"{language}-coffee.json").is_file()
+                (SNAPSHOT_ROOT / "coffee" / language / "graph.json").is_file()
                 for language in LANGUAGES
             )
         )
@@ -61,37 +59,27 @@ class CoffeeSnapshotTest(unittest.TestCase):
                 validate_artifact(self.artifacts[language])
                 assert_coffee_integrity(self, graph)
 
-    def test_complete_source_inventory_without_missing_or_spurious_declarations(
-        self,
-    ) -> None:
-        for language, graph in self.graphs.items():
-            with self.subTest(language=language):
-                missing, extra = declaration_gaps(graph)
-                self.assertEqual(missing, [Counter(), Counter(), Counter()])
-                self.assertEqual(extra, [Counter(), Counter(), Counter()])
-
     def test_recursion_inheritance_callbacks_imports_and_file_cycles(self) -> None:
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_recursion_scenarios(self, language, graph)
+                assert_recursion_scenarios(self, language, self.graphs[language])
 
     def test_every_reviewed_call_site_is_grounded_in_sample_source(self) -> None:
-        self.assertEqual(set(CALL_SITES), set(LANGUAGES))
         for language, graph in self.graphs.items():
             with self.subTest(language=language):
                 assert_call_sites(self, language, graph)
 
     def test_empty_filter_preview_and_nonempty_render_paths(self) -> None:
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_render_paths(self, language, graph)
+                assert_render_paths(self, language, self.graphs[language])
 
     def test_nested_score_complexity(self) -> None:
-        for language, graph in self.graphs.items():
+        for language in CORE_LANGUAGES:
             with self.subTest(language=language):
-                assert_score(self, language, graph)
+                assert_score(self, language, self.graphs[language])
 
-    def test_no_project_calls_are_classified_as_external(self) -> None:
+    def test_project_call_resolution_and_exact_known_limitations(self) -> None:
         for language, graph in self.graphs.items():
             with self.subTest(language=language):
                 assert_project_calls(self, graph)

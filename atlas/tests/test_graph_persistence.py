@@ -1,6 +1,6 @@
 """Normalized graph facts, transaction boundaries, and SQLite snapshot reads."""
 
-import json
+from dataclasses import asdict
 import re
 import sqlite3
 from copy import deepcopy
@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .graph_storage_fixture import GRAPH_TABLES, graph_artifact, normalized_rows
+from tests.coffee_fixture import LANGUAGES, coffee_graph
 
 
 @pytest.fixture
@@ -263,15 +264,12 @@ def test_wal_reader_keeps_header_and_rows_in_one_snapshot(database: Path) -> Non
         engine.dispose()
 
 
-SNAPSHOTS = sorted((Path(__file__).parent / "snapshots").glob("*.json"))
-
-
-@pytest.mark.parametrize("snapshot", SNAPSHOTS, ids=lambda path: path.stem)
-def test_coffee_graphs_write_all_nodes_and_edge_occurrences(database: Path, snapshot: Path) -> None:
-    artifact = json.loads(snapshot.read_text())
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_coffee_graphs_write_all_nodes_and_edge_occurrences(database: Path, language: str) -> None:
+    artifact = asdict(coffee_graph(language))
     with repository_session(database) as session:
         store = RuntimeRepositoryStore(session)
-        result = store.save_new(snapshot.stem, ".", artifact)
+        result = store.save_new(language, ".", artifact)
         assert_saved(store, result.repositoryId, artifact)
     rows = normalized_rows(database, result.repositoryId)
     assert len(rows["graph_nodes"]) == len(artifact["nodes"])

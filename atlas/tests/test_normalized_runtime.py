@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from atlas.persistence.database import create_engine, migrate_database, repository_session
 from atlas.persistence.repositories import RepositoryStore
 from atlas.services.repositories import analyze_folder
+from .coffee_fixture import FIXTURE_ROOT
 from .graph_storage_fixture import graph_artifact
 
 
@@ -80,10 +81,7 @@ def test_report_facts_isolate_repositories_with_identical_node_keys(tmp_path: Pa
 
 
 def test_index_summary_counts_match_source_analysis(tmp_path: Path) -> None:
-    root = tmp_path / "source"
-    root.mkdir()
-    (root / "nested").mkdir()
-    (root / "nested/app.py").write_text("import os\nclass App:\n    def run(self): return os.getcwd()\n")
+    root = FIXTURE_ROOT / "python"
     artifact = analyze_folder(root)
     path = tmp_path / "summary.sqlite"
     migrate_database(path)

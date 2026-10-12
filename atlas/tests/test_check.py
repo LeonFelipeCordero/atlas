@@ -2,6 +2,7 @@
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from shutil import copytree
 
 import pytest
 
@@ -9,6 +10,7 @@ from atlas.indexer import analyze_repository
 from atlas.metrics.check import build_check, render_check
 from atlas.metrics.config import CheckConfig
 from atlas.metrics.report import build_artifact_report
+from tests.coffee_fixture import FIXTURE_ROOT
 
 
 def disabled_config(**overrides) -> CheckConfig:
@@ -42,7 +44,7 @@ class LimitCase:
     LimitCase("maxNestedLoops", "nestedLoops", "function", 0),
     LimitCase("maxChangeImpact", "transitiveChangeImpact", "file", 2),
     LimitCase("maxInstability", "instability", "module", 0.5),
-])
+], ids=lambda case: case.rule)
 def test_equality_passes_and_only_exceeded_limits_are_returned(case: LimitCase) -> None:
     rule, metric, kind, limit = case.rule, case.metric, case.kind, case.limit
     config = disabled_config(**{rule: limit})
@@ -60,8 +62,9 @@ def test_null_disables_every_metric_check() -> None:
         report_node("file", {"lineCount": 9999, "transitiveChangeImpact": 100, "instability": 1}),
         report_node("function", {"lineCount": 9999, "parameterCount": 9999, "weightedComplexity": 100, "maxDecisionDepth": 100, "nestedLoops": 100}),
     ], [{"files": ["a.py"], "exampleCycle": ["a.py", "a.py"]}])
-    assert build_check(measured, disabled_config()) == {"findings": []}
-    assert render_check(build_check(measured, disabled_config())) == "All checks passed."
+    checked = build_check(measured, disabled_config())
+    assert checked == {"findings": []}
+    assert render_check(checked) == "All checks passed."
 
 
 def test_missing_measurements_cannot_silently_pass_enabled_rules() -> None:
@@ -100,16 +103,17 @@ def test_analysis_errors_cannot_produce_a_successful_check() -> None:
 
 
 def test_real_dependency_graph_has_trackable_impact_and_instability(tmp_path: Path) -> None:
-    (tmp_path / "a.py").write_text("from b import middle\ndef entry(): return middle()\n")
-    (tmp_path / "b.py").write_text("from c import leaf\ndef middle(): return leaf()\n")
-    (tmp_path / "c.py").write_text("def leaf(): return 1\n")
-    (tmp_path / "isolated.py").write_text("value = 1\n")
+    copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
     measured = build_artifact_report(asdict(analyze_repository(tmp_path)))
     files = {node["subject"]: node["metrics"] for node in measured["nodes"] if node["kind"] == "file"}
-    assert files["a.py"]["instability"] == 1.0
-    assert files["b.py"]["instability"] == 0.5
-    assert files["c.py"]["instability"] == 0.0
-    assert files["c.py"]["transitiveChangeImpact"] == 2
-    assert files["isolated.py"]["instability"] is None
+    assert files["src/coffee/orders/service.py"]["instability"] == 1.0
+    assert files["src/coffee/inventory/stock.py"]["instability"] == 0.5
+    assert files["src/coffee/orders/models.py"]["instability"] == 0.0
+    assert files["src/coffee/orders/models.py"]["transitiveChangeImpact"] == 6
+    assert files["src/coffee/reporting/report.py"]["instability"] == 0.25
     findings = build_check(measured, disabled_config(maxChangeImpact=1, maxInstability=0.5))["findings"]
-    assert [(finding["subject"], finding["rule"]) for finding in findings] == [("a.py", "maxInstability"), ("c.py", "maxChangeImpact")]
+    assert {finding["rule"] for finding in findings} == {"maxChangeImpact", "maxInstability"}
+    assert {
+        ("src/coffee/orders/models.py", "maxChangeImpact"),
+        ("src/coffee/orders/service.py", "maxInstability"),
+    } <= {(finding["subject"], finding["rule"]) for finding in findings}

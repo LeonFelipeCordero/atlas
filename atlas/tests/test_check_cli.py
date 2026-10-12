@@ -2,82 +2,101 @@
 
 import json
 from pathlib import Path
+from shutil import copytree
 
 import pytest
 from click.testing import CliRunner
 
 from atlas.cli import main
+from atlas.metrics.config import CheckConfig
+from tests.coffee_fixture import FIXTURE_ROOT
+
+VARIANTS = Path(__file__).parent / "fixtures/variants/cli"
 
 
 def invoke(root: Path, *extra: str):
     return CliRunner().invoke(main, ["check", "-f", str(root), "--format", "json", *extra])
 
 
+def configure(root: Path, **limits) -> None:
+    (root / "atlas.json").write_text(json.dumps({**dict.fromkeys(CheckConfig.model_fields), **limits}))
+
+
 def test_default_parameter_limit_checks_current_code_and_exit_status(tmp_path: Path) -> None:
-    source = tmp_path / "app.py"
-    source.write_text("def wide(a, b, c, d): return a\n")
+    copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
+    copytree(VARIANTS / "station-over-limit", tmp_path, dirs_exist_ok=True)
+    configure(tmp_path, maxParameters=CheckConfig().maxParameters)
     result = invoke(tmp_path)
     assert result.exit_code == 1, result.output
     findings = json.loads(result.output)["findings"]
-    assert len(findings) == 1
-    assert findings[0]["rule"] == "maxParameters"
-    assert findings[0]["actual"] == 4 and findings[0]["limit"] == 3
-    source.write_text("def narrow(a, b, c): return a\n")
+    subject = "src/coffee/brewing/station.py::BrewingStation.ready"
+    finding = next(finding for finding in findings if finding["subject"] == subject)
+    assert finding["rule"] == "maxParameters"
+    assert finding["actual"] == 4 and finding["limit"] == 3
+    copytree(VARIANTS / "station-at-limit", tmp_path, dirs_exist_ok=True)
     result = invoke(tmp_path)
-    assert result.exit_code == 0, result.output
-    assert json.loads(result.output) == {"findings": []}
+    assert result.exit_code == 1, result.output
+    assert json.loads(result.output)["findings"] == [finding for finding in findings if finding["subject"] != subject]
 
 
 def test_cycles_fail_check_but_report_stays_quantitative(tmp_path: Path) -> None:
-    (tmp_path / "a.py").write_text("import b\n")
-    (tmp_path / "b.py").write_text("import a\n")
+    copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
+    configure(tmp_path, maxCircularImportGroups=CheckConfig().maxCircularImportGroups)
     failed = invoke(tmp_path)
     assert failed.exit_code == 1, failed.output
-    assert json.loads(failed.output)["findings"][0]["rule"] == "maxCircularImportGroups"
+    finding = json.loads(failed.output)["findings"][0]
+    assert finding["rule"] == "maxCircularImportGroups"
+    assert finding["actual"] == 1 and finding["limit"] == 0
+    assert finding["files"] == [
+        {"path": "src/coffee/brewing/recipe.py"}, {"path": "src/coffee/reporting/report.py"},
+    ]
     result = CliRunner().invoke(main, ["report", "-f", str(tmp_path), "--format", "json"])
     assert result.exit_code == 0, result.output
     measurements = json.loads(result.output)
     assert measurements["summary"]["circularImportGroups"] == 1
     assert measurements["circularImports"][0]["groupSize"] == 2
     assert "findings" not in measurements
-    (tmp_path / "atlas.json").write_text('{"maxCircularImportGroups": null}')
+    configure(tmp_path, maxCircularImportGroups=None)
     passed = invoke(tmp_path)
     assert passed.exit_code == 0, passed.output
     assert json.loads(passed.output) == {"findings": []}
 
 
 def test_partial_config_merges_defaults_and_disabled_checks(tmp_path: Path) -> None:
-    (tmp_path / "app.py").write_text("def wide(a, b, c, d):\n    for x in a:\n        for y in x:\n            pass\n")
-    (tmp_path / "atlas.json").write_text('{"maxParameters": 4}')
+    copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
+    config = {"maxParameters": None, "maxWeightedComplexity": None,
+              "maxDecisionDepth": None, "maxCircularImportGroups": None}
+    (tmp_path / "atlas.json").write_text(json.dumps(config))
     failed = invoke(tmp_path)
     assert failed.exit_code == 1, failed.output
     assert {finding["rule"] for finding in json.loads(failed.output)["findings"]} == {"maxNestedLoops"}
-    (tmp_path / "atlas.json").write_text('{"maxParameters": 4, "maxNestedLoops": null}')
+    (tmp_path / "atlas.json").write_text(json.dumps({**config, "maxNestedLoops": None}))
     passed = invoke(tmp_path)
     assert passed.exit_code == 0, passed.output
     assert json.loads(passed.output) == {"findings": []}
 
 
 def test_dependency_limits_are_read_from_project_configuration(tmp_path: Path) -> None:
-    (tmp_path / "a.py").write_text("import b\n")
-    (tmp_path / "b.py").write_text("import c\n")
-    (tmp_path / "c.py").write_text("value = 1\n")
-    (tmp_path / "atlas.json").write_text('{"maxChangeImpact": 1, "maxInstability": 0.5}')
+    copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
+    config = {**dict.fromkeys(CheckConfig.model_fields), "maxChangeImpact": 1, "maxInstability": 0.5}
+    (tmp_path / "atlas.json").write_text(json.dumps(config))
     result = invoke(tmp_path)
     assert result.exit_code == 1, result.output
     findings = json.loads(result.output)["findings"]
-    assert {(finding["rule"], finding["actual"], finding["limit"]) for finding in findings} == {
-        ("maxChangeImpact", 2, 1), ("maxInstability", 1.0, 0.5),
-    }
+    assert {finding["rule"] for finding in findings} == {"maxChangeImpact", "maxInstability"}
+    relevant = {(finding["subject"], finding["rule"], finding["actual"], finding["limit"]) for finding in findings}
+    assert {
+        ("src/coffee/inventory/stock.py", "maxChangeImpact", 2, 1),
+        ("src/coffee/orders/models.py", "maxChangeImpact", 6, 1),
+        ("src/coffee/orders/service.py", "maxInstability", 1.0, 0.5),
+    } <= relevant
 
 
 @pytest.mark.parametrize("flag", ["-f", "--f", "--folder", None])
 def test_check_defaults_aliases_and_analyzed_root_config(tmp_path: Path, monkeypatch, flag) -> None:
-    project = tmp_path / "project"
-    project.mkdir()
-    (project / "app.py").write_text("def wide(a,b,c,d): pass\n")
-    (project / "atlas.json").write_text('{"maxParameters": 4}')
-    (tmp_path / "atlas.json").write_text('{"maxParameters": 0}')
+    project = copytree(FIXTURE_ROOT / "python", tmp_path / "project")
+    configure(project, maxCircularImportGroups=1)
+    configure(tmp_path, maxCircularImportGroups=0)
     monkeypatch.chdir(project if flag is None else tmp_path)
     args = ["check"] if flag is None else ["check", flag, str(project)]
     result = CliRunner().invoke(main, args)
@@ -100,7 +119,7 @@ def test_check_default_never_opens_database(tmp_path: Path, monkeypatch) -> None
     assert not database.parent.exists()
 
 
-@pytest.mark.parametrize("source", ["{", '{"maxParameters": true}', '{"maxFanOut": 5}'])
+@pytest.mark.parametrize("source", ["{", '{"maxParameters": true}', '{"unknownRule": 1}'])
 def test_invalid_configuration_fails_before_analysis(tmp_path: Path, monkeypatch, source: str) -> None:
     from atlas.services import repositories
 
@@ -115,14 +134,15 @@ def test_invalid_configuration_fails_before_analysis(tmp_path: Path, monkeypatch
 
 
 def test_report_does_not_apply_project_limits(tmp_path: Path) -> None:
-    (tmp_path / "app.py").write_text("def f(a): return a\n")
-    (tmp_path / "atlas.json").write_text('{"maxParameters": 0}')
+    copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
+    copytree(VARIANTS / "station-over-limit", tmp_path, dirs_exist_ok=True)
+    configure(tmp_path, maxParameters=0)
     result = CliRunner().invoke(main, ["report", "-f", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert "Parameters" in result.output and "maximum" not in result.output
     result = CliRunner().invoke(main, ["check", "-f", str(tmp_path)])
     assert result.exit_code == 1, result.output
-    assert "maxParameters" in result.output and "app.py:1" in result.output
+    assert "maxParameters" in result.output and "src/coffee/brewing/station.py:9" in result.output
     assert "maximum: 0" in result.output
 
 
@@ -132,15 +152,15 @@ def test_missing_analysis_folder_is_an_error(tmp_path: Path) -> None:
     assert "Repository does not exist" in result.output
 
 
-@pytest.mark.parametrize("filename, source", [
-    ("bad.py", "def f(a):\n    return (\n"),
-    ("bad.js", "function f(a) { return ("),
+@pytest.mark.parametrize("overlay, filename", [
+    ("syntax-python", "src/coffee/brewing/recipe.py"),
+    ("syntax-javascript", "brewing/Brewer.js"),
 ])
-def test_real_syntax_errors_fail_check_even_with_all_limits_disabled(tmp_path: Path, filename: str, source: str) -> None:
-    from atlas.metrics.config import CheckConfig
-
-    (tmp_path / filename).write_text(source)
-    (tmp_path / "atlas.json").write_text(json.dumps(dict.fromkeys(CheckConfig.model_fields)))
+def test_real_syntax_errors_fail_check_even_with_all_limits_disabled(tmp_path: Path, overlay: str, filename: str) -> None:
+    language = "python" if overlay == "syntax-python" else "javascript"
+    copytree(FIXTURE_ROOT / language, tmp_path, dirs_exist_ok=True)
+    copytree(VARIANTS / overlay, tmp_path, dirs_exist_ok=True)
+    configure(tmp_path)
     failed = invoke(tmp_path)
     assert failed.exit_code == 1, failed.output
     findings = json.loads(failed.output)["findings"]

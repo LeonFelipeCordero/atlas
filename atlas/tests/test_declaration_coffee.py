@@ -1,14 +1,13 @@
-"""Source-reviewed inventories and AST containment across supported samples."""
+"""Declaration spans and AST ownership across the complete language projects."""
 
 import unittest
 
 from tree_sitter_language_pack import ProcessConfig, StructureItem, get_parser, process
 
-from atlas.parsing.discovery import SourceFile
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
-from tests.coffee_fixture import coffee_sources
-from tests.coffee_scenarios import DECLARATIONS
+from tests.coffee_fixture import LANGUAGES, coffee_sources
+from tests.project_snapshot_support import structure_value
 from tests.test_declaration_callbacks import flatten
 
 
@@ -24,40 +23,22 @@ def qualified_items(items: list[StructureItem]) -> list[tuple[str, StructureItem
 
 
 class CoffeeDeclarationTests(unittest.TestCase):
-    def test_supported_source_inventories_with_and_without_native_metadata(
-        self,
-    ) -> None:
-        for language, inventories in DECLARATIONS.items():
-            self.assert_source_inventories(language, inventories)
+    def test_whole_project_spans_ownership_and_native_nonmutation(self) -> None:
+        for language in LANGUAGES:
+            self.assert_project_spans(language)
 
-    def assert_source_inventories(self, language, inventories):
-        sources = coffee_sources(language)
-        self.assertEqual(len(sources), 3)
-        for file, inventory in zip(sources, inventories):
-            source = file.source
-            native = process(
-                source.decode(), ProcessConfig(language=language)
-            ).structure
-            self.assert_inventory(file, inventory, native)
+    def assert_project_spans(self, language):
+        for file in coffee_sources(language):
+            self.assert_source_variants(file)
 
-    def assert_inventory(
-        self,
-        file: SourceFile,
-        inventory: str,
-        native: list[StructureItem],
-    ) -> None:
+    def assert_source_variants(self, file):
+        native = process(file.source.decode(), ProcessConfig(language=file.language)).structure
+        before = structure_value(native)
         for existing in ([], native):
-            with self.subTest(
-                language=file.language, filename=file.path, native=bool(existing)
-            ):
-                self.assert_inventory_variant(file, inventory, existing)
-
-    def assert_inventory_variant(self, file, inventory, existing):
-        items = extract_structure(ParsedSyntax(file), existing)
-        self.assertEqual(
-            [name for name, _ in qualified_items(items)], inventory.split()
-        )
-        self.assert_ast_spans(file.source, file.language, items)
+            with self.subTest(language=file.language, filename=file.path, native=bool(existing)):
+                items = extract_structure(ParsedSyntax(file), existing)
+                self.assert_ast_spans(file.source, file.language, items)
+                self.assertEqual(structure_value(native), before)
 
     def assert_ast_spans(
         self, source: bytes, language: str, items: list[StructureItem]

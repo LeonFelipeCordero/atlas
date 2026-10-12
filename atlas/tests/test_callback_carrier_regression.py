@@ -1,54 +1,46 @@
-"""Parenthesized callback bindings have one carrier in parsing and resolution."""
+"""Whole dispatch sources retain one AST carrier and one local call owner."""
 
-import unittest
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
-from itertools import product
 
+import pytest
 from tree_sitter import Node
-from tree_sitter_language_pack import (
-    ProcessConfig,
-    Span,
-    StructureItem,
-    get_parser,
-    process,
-)
+from tree_sitter_language_pack import ProcessConfig, Span, process
 
-from atlas.parsing.adapters import get_adapter
-from atlas.parsing.discovery import SourceFile
 from atlas.domain.models import ParsedRepository
-from atlas.parsing.parser import parse_file
 from atlas.metrics.resolver import resolve_connections
+from atlas.parsing.adapters import get_adapter
+from atlas.parsing.discovery import discover_files
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
-from tests.parsing_fixture import parsing_syntax
-
+from atlas.syntax import walk
+from tests.coffee_consolidation import coffee_parsed, coffee_source, coffee_symbols
 
 LANGUAGES = ("javascript", "typescript", "tsx")
-CALLBACKS = (
-    "() => { function local() {} return local(); }",
-    "function internal() { function local() {} return local(); }",
-    "function* internal() { function local() {} yield local(); }",
-    "function* () { function local() {} yield local(); }",
-)
-CONTEXTS = (
-    ("const f = (((%s)));", "f"),
-    ("object.action = (((%s)));", "action"),
-    ("const holder = { apply: (((%s))) };", "apply"),
-)
+# Dispatch bindings retain their local helpers across native and fallback parsing.
+BINDINGS = {
+    "prepareOrder": ("hasDrinks", 1, 0),
+    "pickupLabel": ("customerLabel", 1, 0),
+    "drinkQueue": ("drinkLabel", 1, 2),
+    "readyOrders": ("ready", 1, 1),
+    "hold": ("holdNote", 2, 0),
+    "requeue": ("resetPickup", 1, 0),
+    "audit": ("empty", 1, 1),
+    "archive": ("archiveEntry", 1, 1),
+    "collect": ("queuePosition", 2, 0),
+    "receipt": ("itemCount", 1, 0),
+    "notifications": ("notification", 1, 1),
+    "deliveries": ("delivery", 1, 1),
+}
+VARIANTS = Path(__file__).parent / "fixtures/variants/parsing/tracking-nontransparent"
 
 
-def walk(root: Node) -> list[Node]:
-    nodes = []
-    stack = [root]
-    while stack:
-        node = stack.pop()
-        nodes.append(node)
-        stack.extend(reversed(node.named_children))
-    return nodes
+def tracking_source(language):
+    extension = {"javascript": "js", "typescript": "ts", "tsx": "tsx"}[language]
+    return coffee_source(language, f"{'ordering/' if language != 'tsx' else ''}TrackingCarriers.{extension}")
 
 
-def flatten(items: list[StructureItem]) -> list[StructureItem]:
+def flatten(items):
     result = []
     stack = list(reversed(items))
     while stack:
@@ -58,334 +50,225 @@ def flatten(items: list[StructureItem]) -> list[StructureItem]:
     return result
 
 
-def span(node: Node) -> Span:
+def span(node: Node):
     return Span(
-        start_byte=node.start_byte,
-        end_byte=node.end_byte,
-        start_line=node.start_point.row,
-        start_column=node.start_point.column,
-        end_line=node.end_point.row,
-        end_column=node.end_point.column,
+        start_byte=node.start_byte, end_byte=node.end_byte,
+        start_line=node.start_point.row, start_column=node.start_point.column,
+        end_line=node.end_point.row, end_column=node.end_point.column,
     )
 
 
-@dataclass(frozen=True)
-class BindingCase:
-    syntax: ParsedSyntax
-    name: str
-    callback_text: str
+def binding_context(language, name):
+    syntax = ParsedSyntax(tracking_source(language))
+    callback = next(item for item in flatten(extract_structure(syntax)) if item.name == name)
+    node = syntax.tree().descendant_for_byte_range(callback.span.start_byte, callback.span.end_byte - 1)
+    assert node is not None
+    assert node.type in get_adapter(language).callback_types
+    return syntax, callback, node
 
 
-@dataclass(frozen=True)
-class WrapperContext:
-    syntax: ParsedSyntax
-    name: str
-    callback_node: Node
-    callback: StructureItem
-    local: StructureItem
+def assert_carrier(syntax, node, case):
+    name, helper, existing = case
+    before = repr(existing)
+    matches = [item for item in flatten(extract_structure(syntax, existing)) if item.name == name]
+    assert len(matches) == 1
+    merged = matches[0]
+    assert merged.span == span(node)
+    assert [child.name for child in merged.children] == [helper]
+    assert syntax.source.source[node.start_byte:node.end_byte] == node.text
+    assert repr(existing) == before
 
 
-class CallbackCarrierRegressionTests(unittest.TestCase):
-    def test_exact_parser_and_resolved_graph_for_reported_arrow(self) -> None:
-        source = b"const f = (() => { function local() {} return local(); });"
-        for language in LANGUAGES:
-            with self.subTest(language=language):
-                self.assert_reported_arrow(source, language)
-
-    def assert_reported_arrow(self, source: bytes, language: str) -> None:
-        parsed = parse_file(SourceFile("main.js", Path("main.js"), language, source))
-        self.assertIsNone(parsed.parse_error)
-        self.assertEqual(len(parsed.symbols), 2)
-        callback, local = parsed.symbols
-        self.assertEqual(
-            [
-                (
-                    s.key,
-                    s.name,
-                    s.qualified_name,
-                    s.kind,
-                    s.parent_key,
-                    s.start_byte,
-                    s.end_byte,
-                    s.start_line,
-                    s.start_column,
-                    s.end_line,
-                    s.end_column,
-                )
-                for s in parsed.symbols
-            ],
-            [
-                (
-                    "symbol:main.js::f:11",
-                    "f",
-                    "main.js::f",
-                    "function",
-                    "file:main.js",
-                    11,
-                    56,
-                    1,
-                    12,
-                    1,
-                    57,
-                ),
-                (
-                    "symbol:main.js::f.local:19",
-                    "local",
-                    "main.js::f.local",
-                    "function",
-                    callback.key,
-                    19,
-                    38,
-                    1,
-                    20,
-                    1,
-                    39,
-                ),
-            ],
-        )
-        self.assert_reported_calls_and_graph(parsed, callback, local)
-
-    def assert_reported_calls_and_graph(self, parsed, callback, local) -> None:
-        self.assertEqual(
-            [
-                (
-                    c.name,
-                    c.start_byte,
-                    c.end_byte,
-                    c.line,
-                    c.evidence,
-                    c.bare_target,
-                    c.qualifier,
-                )
-                for c in parsed.calls
-            ],
-            [("local", 46, 53, 1, "local()", True, None)],
-        )
-        graph = resolve_connections(ParsedRepository([parsed]))
-        self.assertEqual(
-            [
-                (
-                    e.source_key,
-                    e.target_key,
-                    e.type,
-                    e.confidence,
-                    e.path,
-                    e.line,
-                    e.evidence,
-                )
-                for e in graph.connections
-            ],
-            [
-                (
-                    callback.key,
-                    local.key,
-                    "CALLS",
-                    "INFERRED",
-                    "main.js",
-                    1,
-                    "local()",
-                )
-            ],
-        )
-        self.assertEqual(graph.external_nodes, [])
-
-    def assert_binding_context(self, language: str, template: str, name: str) -> None:
-        for callback_text in CALLBACKS:
-            source = template % callback_text
-            native = process(source, ProcessConfig(language=language)).structure
-            case = BindingCase(ParsedSyntax(SourceFile("main.js", Path("main.js"), language, source.encode())), name, callback_text)
-            self.assert_binding_structure(case, native)
-            self.assert_binding_graph(source, language, name)
-
-    def assert_binding_structure(self, case: BindingCase, native):
-        for existing in ([], native):
-            self.assert_binding_item(case, existing)
-
-    def assert_binding_item(self, case: BindingCase, existing):
-        items = extract_structure(case.syntax, existing)
-        self.assertEqual([item.name for item in items], [case.name])
-        callback = items[0]
-        self.assertEqual([child.name for child in callback.children], ["local"])
-        start = case.syntax.source.source.index(case.callback_text.encode())
-        self.assertIsNotNone(callback.span)
-        assert callback.span is not None
-        self.assertEqual(
-            (callback.span.start_byte, callback.span.end_byte),
-            (start, start + len(case.callback_text)),
-        )
-
-    def assert_binding_graph(self, source, language, name):
-        parsed = parse_file(
-            SourceFile("main.js", Path("main.js"), language, source.encode())
-        )
-        self.assertIsNone(parsed.parse_error)
-        self.assertEqual([s.name for s in parsed.symbols], [name, "local"])
-        callback_symbol, local = parsed.symbols
-        self.assertEqual(local.parent_key, callback_symbol.key)
-        graph = resolve_connections(ParsedRepository([parsed]))
-        self.assertEqual(
-            [(e.source_key, e.target_key, e.evidence) for e in graph.connections],
-            [(callback_symbol.key, local.key, "local()")],
-        )
-        self.assertEqual(graph.external_nodes, [])
-
-    def test_parenthesized_arrow_named_expression_and_generators_in_bindings(
-        self,
-    ) -> None:
-        for language, (template, name) in product(LANGUAGES, CONTEXTS):
-            with self.subTest(language=language, context=template):
-                self.assert_binding_context(language, template, name)
-
-    def test_generator_ancestor_keeps_callback_and_local_call_owner(self) -> None:
-        source = "function* outer() { const f = ((function* internal() { function local() {} yield local(); })); yield f(); }"
-        for language in LANGUAGES:
-            with self.subTest(language=language):
-                self.assert_generator_ancestor(source, language)
-
-    def assert_generator_ancestor(self, source, language):
-        parsed = parse_file(
-            SourceFile("main.js", Path("main.js"), language, source.encode())
-        )
-        self.assertEqual([s.name for s in parsed.symbols], ["outer", "f", "local"])
-        outer, callback, local = parsed.symbols
-        self.assertEqual(callback.parent_key, outer.key)
-        self.assertEqual(local.parent_key, callback.key)
-        graph = resolve_connections(ParsedRepository([parsed]))
-        self.assertEqual(
-            [(e.source_key, e.target_key, e.evidence) for e in graph.connections],
-            [
-                (callback.key, local.key, "local()"),
-                (outer.key, callback.key, "f()"),
-            ],
-        )
-        self.assertEqual(graph.external_nodes, [])
-
-    def assert_native_wrappers(self, source: str, language: str, name: str) -> None:
-        root = get_parser(language).parse(source.encode()).root_node
-        nodes = walk(root)
-        callback_node = next(
-            node for node in nodes if node.type in get_adapter(language).callback_types
-        )
-        tagged = extract_structure(parsing_syntax(source, language))
-        callback = tagged[0]
-        local = callback.children[0]
-        wrappers = []
-        parent = callback_node.parent
-        while parent is not None and parent.type in {
-            "parenthesized_expression",
-            "variable_declarator",
-            "assignment_expression",
-            "pair",
-        }:
-            wrappers.append(parent)
-            parent = parent.parent
-        context = WrapperContext(ParsedSyntax(SourceFile("main.js", Path("main.js"), language, source.encode())), name, callback_node, callback, local)
-        for wrapper in wrappers:
-            self.assert_wrapper_endpoints(context, wrapper)
-
-    def assert_wrapper_endpoints(self, context: WrapperContext, wrapper):
-        callback_node = context.callback_node
-        for start, end in (
-            (wrapper, wrapper),
-            (wrapper, callback_node),
-            (callback_node, wrapper),
-        ):
-            self.assert_native_endpoint(context, (wrapper, start, end))
-
-    def assert_native_endpoint(self, context: WrapperContext, endpoints):
-        callback_node, callback, local = context.callback_node, context.callback, context.local
-        wrapper, start, end = endpoints
-        native_span = replace(
-            span(wrapper),
-            start_byte=start.start_byte,
-            start_line=start.start_point.row,
-            start_column=start.start_point.column,
-            end_byte=end.end_byte,
-            end_line=end.end_point.row,
-            end_column=end.end_point.column,
-        )
-        native = replace(
-            callback,
-            name="stale native name",
-            span=native_span,
-            signature="wrapper signature",
-            doc_comment="native docs",
-            decorators=["native annotation"],
-            visibility="public",
-            body_span=local.span,
-            children=[],
-        )
-        original = repr(native)
-        items = extract_structure(context.syntax, [native])
-        self.assertEqual(len(items), 1)
-        merged = items[0]
-        self.assertEqual(merged.name, context.name)
-        self.assertEqual(merged.span, span(callback_node))
-        self.assertEqual(
-            merged.signature,
-            callback_node.text.decode() if callback_node.text else "",
-        )
-        self.assertEqual(merged.doc_comment, "native docs")
-        self.assertEqual(merged.decorators, ["native annotation"])
-        self.assertEqual(merged.visibility, "public")
-        self.assertEqual(merged.body_span, local.span)
-        self.assertEqual([child.name for child in merged.children], ["local"])
-        self.assertEqual(repr(native), original)
-
-    def test_native_binding_and_parenthesis_spans_correct_both_endpoints(self) -> None:
-        contexts = (*CONTEXTS, ("consume(((%s)));", "internal"))
-        for language, (template, name) in product(LANGUAGES, contexts):
-            with self.subTest(language=language, context=template):
-                source = "/* café 😀 */\n" + template % CALLBACKS[1]
-                self.assert_native_wrappers(source, language, name)
-
-    def test_unresolved_binding_preserves_native_name_and_metadata_once(self) -> None:
-        source = "consume((() => { function local() {} return local(); }));"
-        for language in LANGUAGES:
-            with self.subTest(language=language):
-                self.assert_unresolved_binding(source, language)
-
-    def assert_unresolved_binding(self, source, language):
-        tagged = extract_structure(parsing_syntax(source, language))[0]
-        native = replace(
-            tagged,
-            name="native callback",
-            doc_comment="native docs",
-            children=[],
-        )
-        items = extract_structure(
-            parsing_syntax(source, language),
-            [
-                native,
-                replace(native, name=None),
-                replace(native, name=""),
-            ],
-        )
-        self.assertEqual([i.name for i in items], ["native callback"])
-        self.assertEqual(items[0].doc_comment, "native docs")
-        self.assertEqual([i.name for i in items[0].children], ["local"])
-
-    def test_only_parentheses_are_transparent_and_inline_names_stay_explicit(
-        self,
-    ) -> None:
-        source = """const f = (/* comment */ (() => 0));
-const sequence = (0, (() => 0));
-const invoked = ((() => 0))();
-const choice = (ready ? (() => 0) : (() => 1));
-consume(((function explicit() {})), ((function* generator() {})), (() => 0));
-"""
-        for language in LANGUAGES:
-            with self.subTest(language=language):
-                self.assert_transparent_parentheses(source, language)
-
-    def assert_transparent_parentheses(self, source, language):
-        items = extract_structure(parsing_syntax(source, language))
-        self.assertEqual(
-            [item.name for item in items],
-            ["f", None, None, None, None, "explicit", "generator", None],
-        )
-        self.assertEqual(len(flatten(items)), 8)
+def assert_local_owner(file, node, name):
+    helper, inputs, helper_inputs = BINDINGS[name]
+    owner, = coffee_symbols(file, name)
+    local, = coffee_symbols(file, f"{name}.{helper}")
+    assert local.parent_key == owner.key
+    assert (owner.start_byte, owner.end_byte) == (node.start_byte, node.end_byte)
+    call, = [call for call in file.calls if call.name == helper
+             and owner.start_byte <= call.start_byte < owner.end_byte]
+    assert_local_calls(file, (owner, local, call), name)
+    assert owner.key == f"symbol:{file.source.path}::{name}:{node.start_byte}"
+    assert owner.kind == local.kind == "function"
+    assert owner.parent_key == f"file:{file.source.path}"
+    assert (owner.parameter_count, local.parameter_count) == (inputs, helper_inputs)
+    assert owner.line_count == node.end_point.row - node.start_point.row + 1
 
 
-if __name__ == "__main__":
-    unittest.main()
+def assert_local_calls(file, symbols, name):
+    owner, local, call = symbols
+    graph = resolve_connections(ParsedRepository([file]))
+    calls = [edge for edge in graph.connections if edge.source_key == owner.key]
+    expected = [(local.key, "CALLS", "INFERRED", file.source.path, call.line, call.evidence)]
+    if name == "collect":
+        mutation, = [call for call in file.calls if call.name == "splice"]
+        expected.append((f"external:{file.source.language}:callable:splice", "CALLS", "INFERRED",
+                         file.source.path, mutation.line, mutation.evidence))
+    assert [(edge.target_key, edge.type, edge.confidence, edge.path, edge.line, edge.evidence)
+            for edge in calls] == expected
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("name", BINDINGS)
+@pytest.mark.parametrize("use_native", [False, True], ids=["fallback", "native"])
+def test_parenthesized_bindings_have_exact_carrier_and_local_owner(language, name, use_native):
+    syntax, _, node = binding_context(language, name)
+    native = process(syntax.source.source.decode(), ProcessConfig(language=language)).structure if use_native else []
+    assert_carrier(syntax, node, (name, BINDINGS[name][0], native))
+    assert_local_owner(coffee_parsed(language, syntax.source.path), node, name)
+
+
+def binding_wrapper(node):
+    wrapper = node.parent
+    while wrapper is not None and wrapper.type == "parenthesized_expression":
+        wrapper = wrapper.parent
+    assert wrapper is not None
+    return wrapper
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("case", [
+    (list(BINDINGS)[:4], "variable_declarator"),
+    (list(BINDINGS)[4:8], "assignment_expression"),
+    (list(BINDINGS)[8:], "pair"),
+])
+def test_all_binding_contexts_cover_all_four_carrier_styles(language, case):
+    names, context = case
+    nodes = [binding_context(language, name)[2] for name in names]
+    assert [node.type for node in nodes] == [
+        "arrow_function", "function_expression", "generator_function", "generator_function",
+    ]
+    assert [node.child_by_field_name("name") is not None for node in nodes] == [False, True, True, False]
+    assert [binding_wrapper(node).type for node in nodes] == [context] * 4
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_generator_ancestor_keeps_callback_and_local_call_owner(language):
+    file = coffee_parsed(language, tracking_source(language).path)
+    outer, = coffee_symbols(file, "trackBatch")
+    callback, = coffee_symbols(file, "trackBatch.collectTicket")
+    local, = coffee_symbols(file, "trackBatch.collectTicket.batchLabel")
+    assert callback.parent_key == outer.key
+    assert local.parent_key == callback.key
+    assert (outer.parameter_count, callback.parameter_count, local.parameter_count) == (1, 1, 0)
+    graph = resolve_connections(ParsedRepository([file]))
+    assert [(edge.source_key, edge.target_key, edge.evidence) for edge in graph.connections
+            if edge.source_key in {outer.key, callback.key}] == [
+                (callback.key, local.key, "batchLabel()"),
+                (outer.key, callback.key, "collectTicket(order)"),
+            ]
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("case", [("dispatchLabel", "internalTicket"), ("queueLabel", "<anonymous>")])
+def test_inline_dispatch_callbacks_keep_nearest_owner(language, case):
+    file = coffee_parsed(language, tracking_source(language).path)
+    dispatch, = coffee_symbols(file, "dispatchOrders")
+    symbols = {symbol.key: symbol for symbol in file.symbols}
+    graph = resolve_connections(ParsedRepository([file]))
+    name, callback_name = case
+    helper, = [symbol for symbol in file.symbols if symbol.name == name]
+    callback = symbols[helper.parent_key]
+    enclosing = symbols[callback.parent_key]
+    assert callback.name == callback_name
+    assert enclosing.parent_key == dispatch.key
+    assert callback.parameter_count == 1
+    assert helper.parameter_count == 0
+    assert [(edge.source_key, edge.target_key, edge.evidence) for edge in graph.connections
+            if edge.target_key == helper.key] == [(callback.key, helper.key, f"{name}()")]
+
+
+def assert_native_endpoint(binding, wrapper, endpoints):
+    syntax, callback, node = binding
+    start, end = endpoints
+    helper = callback.children[0].name
+    native_span = replace(
+        span(wrapper), start_byte=start.start_byte, start_line=start.start_point.row,
+        start_column=start.start_point.column, end_byte=end.end_byte,
+        end_line=end.end_point.row, end_column=end.end_point.column,
+    )
+    native = replace(
+        callback, name="stale pickup name", span=native_span, signature="wrapper signature",
+        doc_comment="pickup docs", decorators=["pickup annotation"], visibility="public",
+        body_span=callback.children[0].span, children=[],
+    )
+    originals = [native, replace(native, name=None), replace(native, name="")]
+    before = repr(originals)
+    items = flatten(extract_structure(syntax, originals))
+    matches = [item for item in items if item.span == span(node)]
+    assert len(matches) == 1
+    assert not any(item.name == "stale pickup name" for item in items)
+    assert sum(item.doc_comment == "pickup docs" for item in items) == 1
+    merged = matches[0]
+    assert merged.name == callback.name
+    assert merged.signature == node.text.decode()
+    assert merged.doc_comment == "pickup docs"
+    assert merged.decorators == ["pickup annotation"]
+    assert merged.visibility == "public"
+    assert merged.body_span == callback.children[0].span
+    assert [child.name for child in merged.children] == [helper]
+    assert repr(originals) == before
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("name", (*BINDINGS, "internalTicket"))
+@pytest.mark.parametrize("endpoint", ["both", "start", "end"])
+def test_native_wrappers_correct_both_endpoints_without_mutation(language, name, endpoint):
+    binding = binding_context(language, name)
+    syntax, _, node = binding
+    assert syntax.source.source[:node.start_byte].decode().find("café") >= 0
+    wrapper = node.parent
+    count = 0
+    while wrapper is not None and wrapper.type in {
+        "parenthesized_expression", "variable_declarator", "assignment_expression", "pair",
+    }:
+        start = node if endpoint == "end" else wrapper
+        end = node if endpoint == "start" else wrapper
+        assert_native_endpoint(binding, wrapper, (start, end))
+        count += 1
+        wrapper = wrapper.parent
+    assert count >= 2
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_unresolved_binding_preserves_native_name_and_metadata_once(language):
+    syntax = ParsedSyntax(tracking_source(language))
+    callback = next(item for item in flatten(extract_structure(syntax))
+                    if item.name is None and [child.name for child in item.children] == ["queueLabel"])
+    native = replace(callback, name="queued ticket", doc_comment="queue docs", children=[])
+    originals = [native, replace(native, name=None), replace(native, name="")]
+    before = repr(originals)
+    matches = [item for item in flatten(extract_structure(syntax, originals)) if item.span == callback.span]
+    assert len(matches) == 1
+    assert matches[0].name == "queued ticket"
+    assert matches[0].doc_comment == "queue docs"
+    assert [child.name for child in matches[0].children] == ["queueLabel"]
+    assert repr(originals) == before
+
+
+def receipt_callbacks(syntax, use_native):
+    native = process(syntax.source.source.decode(),
+                     ProcessConfig(language=syntax.source.language)).structure if use_native else []
+    owner, = extract_structure(syntax, native)
+    assert owner.name == "receiptPickup"
+    return owner.children
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("use_native", [False, True], ids=["fallback", "native"])
+def test_only_parentheses_are_transparent_and_inline_names_stay_explicit(language, use_native):
+    source, = [source for source in discover_files(VARIANTS) if source.language == language]
+    syntax = ParsedSyntax(source)
+    assert not syntax.tree().has_error
+    items = receipt_callbacks(syntax, use_native)
+    assert [item.name for item in items] == [
+        "trackingLabel", None, None, None, None, "explicitTicket", "ticketGenerator", None,
+    ]
+    assert len(flatten(items)) == 8
+    nodes: list[Node] = [node for node in walk(syntax.tree()) if node.type in get_adapter(language).callback_types]
+    assert len(nodes) == 8
+    actual = set()
+    for item in items:
+        assert item.span is not None
+        actual.add((item.span.start_byte, item.span.end_byte))
+    assert actual == {(node.start_byte, node.end_byte) for node in nodes}

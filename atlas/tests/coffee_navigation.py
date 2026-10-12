@@ -12,16 +12,16 @@ from click.testing import CliRunner
 
 from atlas.cli import main
 from atlas.persistence.database import migrate_database
-from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
+from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT, coffee_sources
 from tests.coffee_scenarios import EMPTY_BREW_CALL
 
-NAVIGATION_SNAPSHOT_ROOT = SNAPSHOT_ROOT / "graph-navigation"
+NAVIGATION_SNAPSHOT_ROOT = SNAPSHOT_ROOT / "coffee"
 
 # Source-reviewed paths, qualified declarations and kinds, not saved graph keys.
 DECLARATIONS = {
     "java": ("Brewer.java", "Recipe.java", "Report.java", "Brewer.brew", "Recipe.portions", "Report.render", "method"),
     "kotlin": ("Brewer.kt", "Recipe.kt", "Report.kt", "Brewer.brew", "portions", "render", "function"),
-    "go": ("brewer.go", "recipe.go", "report.go", "brew", "portions", "render", "function"),
+    "go": ("brewer.go", "recipe.go", "report.go", "brew", "Portions", "Render", "function"),
     "rust": ("brewer.rs", "recipe.rs", "report.rs", "brew", "portions", "render", "function"),
     "javascript": ("Brewer.js", "Recipe.js", "Report.js", "Brewer.brew", "Recipe.portions", "Report.render", "method"),
     "typescript": ("Brewer.ts", "Recipe.ts", "Report.ts", "Brewer.brew", "Recipe.portions", "Report.render", "method"),
@@ -78,7 +78,7 @@ def navigation_responses(language: str, database: Path) -> Record:
     with patch.dict(os.environ, {"DATABASE_PATH": str(database)}):
         root = FIXTURE_ROOT / language
         indexed = command(CliRunner(), "index", "--folder", str(root))
-        assert indexed["stats"]["files"] == 3 and indexed["stats"]["parseErrors"] == 0
+        assert indexed["stats"]["files"] == len(coffee_sources(language)) and indexed["stats"]["parseErrors"] == 0
         return CoffeeNavigation(root, indexed["repositoryId"]).collect()
 
 
@@ -118,11 +118,12 @@ class CoffeeNavigation:
     def select_core(self) -> None:
         brewer, recipe, report, brew_name, portions_name, render_name, kind = DECLARATIONS[self.root.name]
         base = "src/coffee/" if self.root.name == "python" else ""
-        brew_line = 7 if self.root.name == "elixir" else None
+        brew_line = 10 if self.root.name == "elixir" else None
+        recipe_folder = "recipe" if self.root.name == "go" else "brewing"
         selectors = {
             "render": Declaration(f"{base}reporting/{report}", render_name, kind),
             "brew": Declaration(f"{base}brewing/{brewer}", brew_name, kind, brew_line),
-            "portions": Declaration(f"{base}brewing/{recipe}", portions_name, kind),
+            "portions": Declaration(f"{base}{recipe_folder}/{recipe}", portions_name, kind),
         }
         for role, selector in selectors.items():
             self.selected[role] = declaration(self.responses[f"find_{role}"]["nodes"], selector)
@@ -142,6 +143,10 @@ class CoffeeNavigation:
         outgoing = self.query("context_brew_out", "context", brew, "--direction", "out", "--relations", "CALLS")
         incoming = self.query("context_portions_in", "context", portions, "--direction", "in", "--relations", "CALLS")
         path = self.query("path_brew_render", "path", brew, render, "--direction", "out", "--relations", "CALLS")
+        if self.root.name == "go":
+            self.assert_go_render_boundary(path, outgoing, brew)
+            assert [row["evidence"] for row in incoming["edges"]] == ["Portions(r.Name)"]
+            return
         assert path["status"] == "found" and path["path"] == [brew, render]
         edge, = path["pathEdges"]
         assert (edge["sourceStableKey"], edge["targetStableKey"], edge["type"]) == (brew, render, "CALLS")
@@ -150,6 +155,19 @@ class CoffeeNavigation:
         assert any(row["targetStableKey"] == portions for row in incoming["edges"])
         assert all(row["type"] == "CALLS" for row in [*outgoing["edges"], *incoming["edges"], *path["edges"]])
 
+    def assert_go_render_boundary(self, path: Record, outgoing: Record, brew: str) -> None:
+        assert_no_path(path)
+        external = "external:go:callable:Render"
+        calls = edges_targeting(outgoing, external)
+        assert [edge["evidence"] for edge in calls] == ["reporting.Render(nil)", "reporting.Render(valid)"]
+        assert all(edge["sourceStableKey"] == brew for edge in calls)
+        assert_unresolved_node(outgoing, external)
+        boundary = {"stableKey": external, "reason": "unresolved_or_ambiguous", "expandable": False}
+        assert boundary in outgoing["boundaries"] and boundary in path["boundaries"]
+        found = self.query("path_brew_external_render", "path", brew, external, "--relations", "CALLS")
+        assert found["status"] == "found" and found["path"] == [brew, external]
+        assert found["pathEdges"] == calls[:1]
+
     def source(self, label: str, node: Record) -> Record:
         source = self.query(label, "source", node["stableKey"])["source"]
         assert_verified_source(self.root, node, source)
@@ -157,7 +175,9 @@ class CoffeeNavigation:
 
     def imports(self) -> None:
         recipe_path = self.selected["portions"]["path"]
-        recipe = file_node(self.responses["find_brew"]["nodes"], recipe_path)
+        found = self.query("find_recipe_file", "find", recipe_path, "--limit", "100")
+        assert not found["truncated"]
+        recipe = file_node(found["nodes"], recipe_path)
         report = self.selected["report"]
         for label, seed, target in (("recipe", recipe, report), ("report", report, recipe)):
             payload = self.query(f"context_{label}_imports", "context", seed["stableKey"], "--relations", "IMPORTS", "--depth", "4")
@@ -168,12 +188,12 @@ class CoffeeNavigation:
         assert all(edge["type"] == "IMPORTS" for edge in payload["edges"])
         internal = internal_import_targets(payload, seed["stableKey"])
         # Java/Kotlin/Elixir import declarations, not files: no fabricated containment hops.
-        assert [node["path"] for node in internal] == ([] if self.root.name == "go" else [target["path"]])
+        expected = expected_import_paths(self.root.name, seed, target)
+        assert [node["path"] for node in internal] == expected
         assert not payload["truncated"]
         assert len(nodes) == len(payload["nodes"])
         if self.root.name in FILE_IMPORT_CYCLES:
-            assert {edge["sourceStableKey"] for edge in payload["edges"]} == {seed["stableKey"], target["stableKey"]}
-            assert len(payload["edges"]) == 2 and payload["boundaries"] == []
+            assert_file_import_cycle(payload, self.root.name, {seed["stableKey"], target["stableKey"]})
 
     def inheritance(self) -> None:
         counts = {row["type"]: row["count"] for row in self.responses["overview"]["relations"]}
@@ -227,12 +247,20 @@ class CoffeeNavigation:
         assert shown["ancestors"][0]["stableKey"] == brew["stableKey"]
         context = self.query("context_callback_out", "context", callback["stableKey"], "--relations", "CALLS")
         edge, = context["edges"]
-        assert (edge["sourceStableKey"], edge["targetStableKey"], edge["type"]) == (
-            callback["stableKey"], portions["stableKey"], "CALLS")
-        assert not context["truncated"] and context["boundaries"] == []
-        assert edge in self.responses["context_portions_in"]["edges"]
-        path = self.query("path_callback_portions", "path", callback["stableKey"], portions["stableKey"], "--relations", "CALLS")
-        assert path["status"] == "found" and path["path"] == [callback["stableKey"], portions["stableKey"]]
+        target = portions["stableKey"]
+        path = self.query("path_callback_portions", "path", callback["stableKey"], target, "--relations", "CALLS")
+        if self.root.name == "go":
+            assert path["status"] == "not_found" and path["path"] == path["pathEdges"] == []
+            target = "external:go:callable:Portions"
+            assert edge["evidence"] == "menu.Portions(name)"
+            assert context["boundaries"] == [{"stableKey": target, "reason": "unresolved_or_ambiguous", "expandable": False}]
+            path = self.query("path_callback_external_portions", "path", callback["stableKey"], target, "--relations", "CALLS")
+        else:
+            assert context["boundaries"] == []
+            assert edge in self.responses["context_portions_in"]["edges"]
+        assert (edge["sourceStableKey"], edge["targetStableKey"], edge["type"]) == (callback["stableKey"], target, "CALLS")
+        assert not context["truncated"]
+        assert path["status"] == "found" and path["path"] == [callback["stableKey"], target]
         assert path["pathEdges"] == [edge]
         source = self.source("source_callback", callback)
         assert edge["evidence"] in "\n".join(source["lines"])
@@ -249,13 +277,43 @@ class CoffeeNavigation:
     def retry_clauses(self, nodes: list[Record]) -> tuple[Record, set[str]]:
         brew = self.selected["brew"]
         qualified = brew["qualifiedName"].split("::", 1)[1].removesuffix("brew") + "retry"
-        line = 12 if self.root.name == "elixir" else None
+        line = 27 if self.root.name == "elixir" else None
         retry = declaration(nodes, Declaration(brew["path"], qualified, brew["kind"], line))
         expected = {retry["stableKey"]}
         if self.root.name == "elixir":
-            base = declaration(nodes, Declaration(brew["path"], qualified, brew["kind"], 11))
+            base = declaration(nodes, Declaration(brew["path"], qualified, brew["kind"], 26))
             expected.add(base["stableKey"])
         return retry, expected
+
+
+def edges_targeting(payload: Record, target: str) -> list[Record]:
+    return [edge for edge in payload["edges"] if edge["targetStableKey"] == target]
+
+
+def assert_unresolved_node(payload: Record, key: str) -> None:
+    node, = [node for node in payload["nodes"] if node["stableKey"] == key]
+    assert (node["level"], node["path"]) == ("unresolved", None)
+
+
+def assert_no_path(payload: Record) -> None:
+    assert (payload["status"], payload["path"], payload["pathEdges"]) == ("not_found", [], [])
+
+
+def expected_import_paths(language: str, seed: Record, target: Record) -> list[str]:
+    if language == "go" or (language == "elixir" and seed["path"] == "reporting/report.ex"):
+        return []
+    if language == "rust":
+        return [seed["path"], target["path"]]
+    return [target["path"]]
+
+
+def assert_file_import_cycle(payload: Record, language: str, sources: set[str]) -> None:
+    assert {edge["sourceStableKey"] for edge in payload["edges"]} == sources
+    if language == "rust":
+        assert len(payload["edges"]) == 5
+        assert payload["boundaries"] == [{"stableKey": "external:rust:module:crate::brewing::recipe::Recipe", "reason": "unresolved_or_ambiguous", "expandable": False}]
+    else:
+        assert len(payload["edges"]) == 2 and payload["boundaries"] == []
 
 
 def internal_import_targets(payload: Record, seed: str) -> list[Record]:

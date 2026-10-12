@@ -3,6 +3,7 @@
 import ast
 from importlib.util import resolve_name
 from itertools import chain
+from pathlib import Path
 
 
 def belongs_to(name: str, package: str) -> bool:
@@ -98,28 +99,9 @@ def import_targets(source: str, package: str) -> set[str]:
     return targets
 
 
-CHECK_LIMIT_LOOKUP = '''
-RULES = (
-    ("maxFileLines", "lineCount", {"file"}),
-    ("maxFunctionLines", "lineCount", {"function", "method"}),
-    ("maxParameters", "parameterCount", {"function", "method"}),
-    ("maxWeightedComplexity", "weightedComplexity", {"function", "method"}),
-    ("maxDecisionDepth", "maxDecisionDepth", {"function", "method"}),
-    ("maxNestedLoops", "nestedLoops", {"function", "method"}),
-)
-DEPENDENCY_RULES = (
-    ("maxChangeImpact", "transitiveChangeImpact"),
-    ("maxInstability", "instability"),
-)
-def _enabled_limits(node, config: CheckConfig):
-    rules = [(rule, metric) for rule, metric, kinds in RULES if node["kind"] in kinds]
-    if node["level"] in {"module", "file"}:
-        rules.extend(DEPENDENCY_RULES)
-    for rule, metric in rules:
-        maximum = getattr(config, rule)
-        if maximum is not None:
-            yield _MetricLimit(rule, metric, maximum)
-'''
+CHECK_LIMIT_LOOKUP = (
+    Path(__file__).parent / "fixtures/variants/policy/check-config/check_limits.py"
+).read_text(encoding="utf-8")
 
 
 def main_config_reflection_ids(tree: ast.AST, aliases: dict[str, str]) -> set[int]:
@@ -133,7 +115,7 @@ def main_config_reflection_ids(tree: ast.AST, aliases: dict[str, str]) -> set[in
 
 
 def exact_lookup_definitions(candidates: list[ast.AST]) -> bool:
-    expected = ast.parse(CHECK_LIMIT_LOOKUP).body
+    expected = [node for node in ast.parse(CHECK_LIMIT_LOOKUP).body if check_lookup_definition(node)]
     return [ast.dump(node) for node in candidates] == [ast.dump(node) for node in expected]
 
 

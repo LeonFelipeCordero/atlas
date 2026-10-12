@@ -1,22 +1,23 @@
-"""Adapter contracts and the Python-only language support boundary."""
+"""Adapter contracts exercised on whole coffee application modules."""
 
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
 from typing import get_args
+from unittest.mock import patch
 
-from tree_sitter_language_pack import SupportedLanguage, available_languages, get_parser
+from tree_sitter_language_pack import SupportedLanguage, available_languages
 
 from atlas.parsing.adapters import ADAPTERS, DEFAULT_ADAPTER, get_adapter
-from atlas.parsing.syntax import DeclarationCarrier, ImportPolicy, ParsedSyntax
-from tests.parsing_fixture import parsing_syntax
-from atlas.parsing.discovery import SourceFile, detect_language, discover_files
+from atlas.parsing.discovery import (
+    EXCLUDED_LANGUAGES, SUPPORTED_LANGUAGES, SourceFile, detect_language, discover_files,
+)
 from atlas.parsing.parser import parse_file
-from atlas.parsing.syntax import supplement_imports
-from atlas.syntax import walk
-from atlas.parsing.discovery import EXCLUDED_LANGUAGES, SUPPORTED_LANGUAGES
 from atlas.parsing.structure import _declaration_query, extract_structure
+from atlas.parsing.syntax import DeclarationCarrier, ImportPolicy, ParsedSyntax, supplement_imports
+from atlas.syntax import walk
+from tests.coffee_consolidation import coffee_source
 
 
 class AdapterContractTest(unittest.TestCase):
@@ -35,88 +36,89 @@ class AdapterContractTest(unittest.TestCase):
         self.assertNotIn("cpp", ADAPTERS)
 
     def test_hooks_return_common_carriers_and_call_site_contracts(self):
-        samples = {
-            "java": "class Service { Service() {} void run() { helper(); } }",
-            "kotlin": "class Service { fun run() = helper() }",
-            "go": "package demo\nfunc run() { f := func() { helper() }; f() }",
-            "rust": 'fn run() { println!("{}", helper()); }',
-            "javascript": "const run = () => helper();",
-            "typescript": "interface Service { run: () => number; } function run() { helper(); }",
-            "python": "def run():\n    helper()\n",
-            "elixir": "defmodule Service do\n  def run(), do: helper()\nend",
-        }
-        for language, sample in samples.items():
+        for language, path in [
+            ("java", "orders/OrderService.java"),
+            ("kotlin", "orders/OrderService.kt"),
+            ("go", "reporting/Dispatch.go"),
+            ("rust", "Dispatch.rs"),
+            ("javascript", "ordering/Orders.js"),
+            ("typescript", "ordering/Orders.ts"),
+            ("tsx", "App.tsx"),
+            ("python", "src/coffee/orders/service.py"),
+            ("elixir", "reporting/Dispatch.ex"),
+        ]:
             with self.subTest(language=language):
-                self.assert_sample_contract(language, sample)
+                self.assert_source_contract(coffee_source(language, path))
 
-    def assert_sample_contract(self, language, sample):
-        adapter = get_adapter(language)
-        root = get_parser(language).parse(sample.encode()).root_node
-        self.assert_declaration_carriers(adapter, root)
+    def assert_source_contract(self, source):
+        adapter = get_adapter(source.language)
+        root = ParsedSyntax(source).tree()
+        self.assertFalse(root.has_error)
+        carriers = [adapter.normalize_declaration(node) for node in walk(root)]
+        self.assertTrue(any(isinstance(carrier, DeclarationCarrier) for carrier in carriers))
+        self.assertTrue(all(carrier is None or isinstance(carrier, DeclarationCarrier) for carrier in carriers))
         sites = list(adapter.call_sites(root))
         self.assertTrue(sites)
         for site in sites:
-            self.assert_call_site_contract(adapter, site, sample)
-        parsed = parse_file(
-            SourceFile("sample", Path("sample"), language, sample.encode())
-        )
+            self.assert_call_site_contract(source, site)
+        parsed = parse_file(source)
         self.assertIsNone(parsed.parse_error)
         self.assertTrue(parsed.symbols)
         self.assertTrue(parsed.calls)
+        for call in parsed.calls:
+            self.assertEqual(source.source[call.start_byte:call.end_byte].decode(), call.evidence)
 
-    def assert_declaration_carriers(self, adapter, root):
-        for node in walk(root):
-            carrier = adapter.normalize_declaration(node)
-            self.assertTrue(carrier is None or isinstance(carrier, DeclarationCarrier))
-
-    def assert_call_site_contract(self, adapter, site, sample):
+    def assert_call_site_contract(self, source, site):
         node, offset, opaque, parents = site
         self.assertGreaterEqual(node.start_byte + offset, 0)
-        self.assertLessEqual(node.end_byte + offset, len(sample.encode()))
+        self.assertLessEqual(node.end_byte + offset, len(source.source))
         self.assertIsInstance(opaque, bool)
         self.assertIsInstance(parents, tuple)
-        name, bare, qualifier = adapter.normalize_call((node, offset, opaque, parents))
+        name, bare, qualifier = get_adapter(source.language).normalize_call(site)
         self.assertTrue(name is None or isinstance(name, str))
         self.assertIsInstance(bare, bool)
         self.assertTrue(qualifier is None or isinstance(qualifier, str))
 
     def test_kotlin_recovery_and_hierarchy_remain_shared(self):
-        source = b"""package demo
-class Service {
-    companion object Factory {
-        fun run() = helper()
-    }
-}
-"""
-        structure = extract_structure(parsing_syntax(source, "kotlin"), [])
-        self.assertEqual([item.name for item in structure], ["demo", "Service"])
-        factory = structure[1].children[0]
-        self.assertEqual(factory.name, "Factory")
-        self.assertEqual([item.name for item in factory.children], ["run"])
+        source = coffee_source("kotlin", "reporting/Dispatch.kt")
+        structure = extract_structure(ParsedSyntax(source), [])
+        self.assertEqual([item.name for item in structure], ["coffee.reporting", "DispatchFormatter", "Dispatch"])
+        factory = structure[2].children[-1]
+        self.assertEqual((factory.name, factory.kind), ("Factory", "class"))
+        self.assertEqual([item.name for item in factory.children], ["console"])
 
     def test_adapter_import_supplements_keep_original_evidence_and_line(self):
-        for language, sample, imports in [
-            (
-                "kotlin",
-                b"package demo\nimport demo.Helper\nclass Service {}",
-                [("import demo.Helper", 2)],
-            ),
-            ("rust", b"mod helper;\nmod inline { fn run() {} }", [("mod helper;", 1)]),
+        for language, path, expected in [
+            ("kotlin", "reporting/Dispatch.kt", [
+                ("import coffee.orders.Order", 3),
+                ("import coffee.orders.OrderStatus", 4),
+                ("import coffee.orders.receipt", 5),
+            ]),
+            ("rust", "main.rs", [
+                ("mod brewing;", 1), ("mod reporting;", 2), ("mod dispatch;", 4),
+            ]),
         ]:
             with self.subTest(language=language):
-                file = SourceFile("sample", Path("sample"), language, sample)
-                adapter = get_adapter(language)
-                self.assertEqual(adapter.imports(ParsedSyntax(file), []), imports)
-                self.assertEqual(adapter.imports(ParsedSyntax(file), imports), imports)
+                self.assert_import_supplements(ParsedSyntax(coffee_source(language, path)), expected)
+
+    def assert_import_supplements(self, syntax, expected):
+        native = list(reversed(expected))
+        original = native.copy()
+        adapter = get_adapter(syntax.source.language)
+        self.assertEqual(adapter.imports(syntax, []), expected)
+        self.assertEqual(adapter.imports(syntax, native), expected)
+        self.assertEqual(native, original)
+        for evidence, line in expected:
+            self.assertEqual(syntax.source.source.decode().splitlines()[line - 1], evidence)
 
     def test_shared_import_merging_defers_inline_module_policy_to_adapter(self):
-        sample = b"mod external;\nmod inline { fn run() {} }"
-        file = SourceFile("sample.rs", Path("sample.rs"), "rust", sample)
-        self.assertEqual(
-            supplement_imports(ParsedSyntax(file), [], ImportPolicy("mod_item")),
-            [("mod external;", 1), ("mod inline { fn run() {} }", 2)],
-        )
-        self.assertEqual(get_adapter("rust").imports(ParsedSyntax(file), []), [("mod external;", 1)])
+        source = coffee_source("rust", "Dispatch.rs")
+        syntax = ParsedSyntax(source)
+        self.assertEqual(supplement_imports(syntax, [], ImportPolicy("mod_item")), [
+            ("mod dispatch_report;", 2),
+            ('mod dispatch_labels {\n    pub fn pickup(name: &str) -> String {\n        format!("pickup:{}", name)\n    }\n}', 6),
+        ])
+        self.assertEqual(get_adapter("rust").imports(syntax, []), [("mod dispatch_report;", 2)])
 
 
 class LanguageSupportTest(unittest.TestCase):
@@ -128,7 +130,7 @@ class LanguageSupportTest(unittest.TestCase):
     def test_discovery_propagates_language_detection_errors(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "main.py").write_text("pass\n")
+            (root / "dispatch.py").write_bytes(coffee_source("python", "src/coffee/reporting/dispatch.py").source)
             with (
                 patch("atlas.parsing.discovery.detect_language_from_path", side_effect=RuntimeError("detection failed")),
                 self.assertRaisesRegex(RuntimeError, "detection failed"),
@@ -136,68 +138,68 @@ class LanguageSupportTest(unittest.TestCase):
                 discover_files(root)
 
     def test_discovery_excludes_c_and_cpp_without_narrowing_other_grammars(self):
+        # Detection is an extension boundary, independent of source validity.
+        application = coffee_source("java", "reporting/Dispatch.java").source
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for name in [
-                "main.c",
-                "main.h",
-                "main.cpp",
-                "main.hpp",
-                "main.cc",
-                "main.cxx",
-            ]:
-                (root / name).write_text("void run() {}")
-                self.assertIsNone(detect_language(root / name), name)
-            for name in [
-                "main.py",
-                "main.kt",
-                "main.go",
-                "main.java",
-                "main.rs",
-                "main.js",
-                "main.ts",
-                "main.ex",
-                "main.rb",
-                "main.agda",
-                "data.json",
-            ]:
-                (root / name).write_text("")
-                self.assertIsNotNone(detect_language(root / name), name)
+            for extension in ("c", "h", "cpp", "hpp", "cc", "cxx"):
+                path = root / f"Dispatch.{extension}"
+                path.write_bytes(application)
+                self.assertIsNone(detect_language(path), extension)
+            expected = {
+                "py": "python", "kt": "kotlin", "go": "go", "java": "java",
+                "rs": "rust", "js": "javascript", "ts": "typescript", "ex": "elixir",
+                "rb": "ruby", "agda": "agda", "json": "json",
+            }
+            for extension, language in expected.items():
+                path = root / f"Dispatch.{extension}"
+                path.write_bytes(application)
+                self.assertEqual(detect_language(path), language)
             files = discover_files(root)
-            self.assertEqual(len(files), 11)
+            self.assertEqual({file.path: file.language for file in files}, {
+                f"Dispatch.{extension}": language for extension, language in expected.items()
+            })
             self.assertFalse({"c", "cpp"} & {file.language for file in files})
 
     def test_call_parser_failure_propagates(self):
-        source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
+        source = coffee_source("python", "src/coffee/orders/service.py")
         with patch("atlas.parsing.parser.get_parser", side_effect=RuntimeError("unavailable")):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
 
     def test_native_processing_failure_propagates(self):
-        source = SourceFile("main.py", Path("main.py"), "python", b"pass\n")
+        source = coffee_source("python", "src/coffee/orders/service.py")
         with patch("atlas.parsing.parser.process", side_effect=RuntimeError("unavailable")):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
 
     def test_direct_extraction_rejects_c_cpp_before_parsing_or_queries(self):
+        source = coffee_source("java", "reporting/Dispatch.java")
         for language in ["c", "cpp"]:
             with self.subTest(language=language):
-                file = SourceFile("main", Path("main"), language, b"void run() {}")
-                with patch("atlas.parsing.parser.process") as process:
-                    with patch("atlas.parsing.parser.get_parser") as parser:
-                        with self.assertRaisesRegex(
-                            ValueError, "Unsupported Python importer"
-                        ):
-                            parse_file(file)
-                        process.assert_not_called()
-                        parser.assert_not_called()
-                _declaration_query.cache_clear()
-                with patch("atlas.parsing.structure.get_tags_query") as query:
-                    with self.assertRaisesRegex(
-                        ValueError, "Unsupported Python importer"
-                    ):
-                        extract_structure(ParsedSyntax(file))
-                    query.assert_not_called()
+                self.assert_unsupported_extraction(replace(source, language=language))
+
+    def assert_unsupported_extraction(self, file: SourceFile):
+        with (
+            patch("atlas.parsing.parser.process") as process,
+            patch("atlas.parsing.parser.get_parser") as parser,
+            self.assertRaisesRegex(ValueError, "Unsupported Python importer"),
+        ):
+            parse_file(file)
+        process.assert_not_called()
+        parser.assert_not_called()
+        _declaration_query.cache_clear()
+        try:
+            with (
+                patch("atlas.parsing.structure.get_tags_query") as query,
+                patch("atlas.parsing.syntax.get_parser") as syntax_parser,
+            ):
+                with self.assertRaisesRegex(ValueError, "Unsupported Python importer"):
+                    extract_structure(ParsedSyntax(file))
+                query.assert_not_called()
+                syntax_parser.assert_not_called()
+        finally:
+            _declaration_query.cache_clear()
 
 
 if __name__ == "__main__":

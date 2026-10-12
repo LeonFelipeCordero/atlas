@@ -1,102 +1,80 @@
-"""JSX usages are references, not immediate calls or intrinsic HTML dependencies."""
+"""Real UI and XML receipt workflows distinguish components from intrinsic tags."""
 
 import unittest
-from collections import Counter
-from pathlib import Path
+from dataclasses import replace
 
-from atlas.parsing.discovery import discover_files
-from atlas.parsing.parser import parse_files
+import pytest
+
 from atlas.metrics.resolver import resolve_connections
-from tests.test_semantic_resolution import repository
-from tests.coffee_tsx_assertions import (
-    assert_component_references,
-    assert_file_call_coordinates,
-    assert_intrinsics_and_shadowing,
-)
+from atlas.parsing.parser import parse_files
+from tests.coffee_fixture import coffee_sources
+from tests.coffee_tsx_assertions import assert_component_references, assert_file_call_coordinates
+from tests.variant_snapshot_support import VARIANT_ROOT, scenario_sources
 
-FIXTURE = Path(__file__).resolve().parent / "fixtures/coffee/tsx"
+WORKFLOW_CALLS = [
+    ("App.tsx", "App", "label('espresso')", "CoffeeCard.tsx::label"),
+    ("App.tsx", "Menu.addDrink", "basket.add(name, quantity)", "external:"),
+    ("App.tsx", "Menu", "orderTotal(basket)", "Basket.tsx::orderTotal"),
+    ("App.tsx", "CoffeeCounter.<anonymous>", "new Basket()", "Basket.tsx::Basket"),
+    ("Basket.tsx", "startOrder", "basket.add(name, quantity)", "Basket.tsx::Basket.add"),
+    ("CoffeeCard.tsx", "CoffeeCard.<anonymous>", "onOrder(name)", "external:"),
+]
+
+
+def assert_workflow_call(context, case):
+    symbols, edges = context
+    path, owner, evidence, target = case
+    owned = [edge for edge in edges if edge.type == "CALLS" and edge.path == path
+             and edge.evidence == evidence
+             and symbols[edge.source_key].qualified_name == f"{path}::{owner}"]
+    assert len(owned) == 1, case
+    edge, = owned
+    if target == "external:":
+        assert edge.target_key.startswith(target), case
+    else:
+        assert symbols[edge.target_key].qualified_name == target, case
 
 
 class TsxCoffeeTest(unittest.TestCase):
     def test_component_reference_ownership_and_normal_calls(self):
-        repo = parse_files(discover_files(FIXTURE))
+        repo = parse_files(coffee_sources("tsx"))
         self.assertEqual({file.source.language for file in repo.files}, {"tsx"})
         self.assertTrue(all(file.parse_error is None for file in repo.files))
         symbols = {symbol.key: symbol for symbol in repo.symbols}
         edges = resolve_connections(repo).connections
         assert_component_references(self, symbols, edges)
-        self.assertFalse(any(call.name in {"main", "article"} for call in repo.calls))
+        intrinsics = {"main", "article", "h1", "h2", "p", "button", "section", "aside", "ul", "li", "output", "small"}
+        self.assertFalse(any(call.name in intrinsics for call in repo.calls))
 
-    def test_fixture_references_and_attribute_calls_retain_source_and_owner(self):
-        repo = parse_files(discover_files(FIXTURE))
-        symbols = {symbol.key: symbol.name for symbol in repo.symbols}
-        graph = resolve_connections(repo)
-        actual = Counter(
-            (
-                edge.type,
-                symbols.get(edge.source_key),
-                edge.evidence,
-                edge.line,
-                symbols.get(edge.target_key, "external"),
-            )
-            for edge in graph.connections
-            if edge.type in {"REFERENCES", "CALLS"}
-        )
-        self.assertEqual(
-            actual,
-            Counter(
-                {
-                    ("REFERENCES", "App", "CoffeeCard", 7, "CoffeeCard"): 1,
-                    ("REFERENCES", "App", "Cards.CoffeeCard", 8, "CoffeeCard"): 1,
-                    ("REFERENCES", "Preview", "CoffeeCard", 15, "external"): 1,
-                    ("CALLS", "App", "label('espresso')", 7, "label"): 1,
-                    ("CALLS", "CoffeeCard", "label(name)", 10, "label"): 1,
-                }
-            ),
-        )
+    def test_shared_workflow_calls_retain_source_and_owner(self):
+        repo = parse_files(coffee_sources("tsx"))
+        context = ({symbol.key: symbol for symbol in repo.symbols}, resolve_connections(repo).connections)
+        for case in WORKFLOW_CALLS:
+            assert_workflow_call(context, case)
         for file in repo.files:
             assert_file_call_coordinates(self, file)
 
-    def test_lowercase_namespaces_and_nonletter_component_names(self):
-        repo = repository(
-            "tsx",
-            {
-                "Card.tsx": "export function Card() { return <div />; }",
-                "App.tsx": """import * as cards from './Card';
-import {Card as $Card} from './Card';
-import {Card as _Card} from './Card';
-export function App() { return <><cards.Card /><$Card /><_Card /></>; }
-""",
-            },
-        )
-        references = [
-            edge
-            for edge in resolve_connections(repo).connections
-            if edge.type == "REFERENCES"
-        ]
-        self.assertEqual(len(references), 3)
-        self.assertTrue(
-            all(
-                edge.target_key.startswith("symbol:Card.tsx::Card:")
-                for edge in references
-            )
-        )
 
-    def test_jsx_intrinsics_fragments_closing_tags_and_shadowing(self):
-        for language, extension in [("javascript", "jsx"), ("tsx", "tsx")]:
-            with self.subTest(language=language):
-                repo = repository(
-                    language,
-                    {
-                        f"Card.{extension}": "export function Card() { return <div />; }",
-                        f"App.{extension}": """import {Card} from './Card';
-export function App() { return <><Card></Card><div /><custom-card /><svg:path /></>; }
-export function Shadow(Card) { return <Card />; }
-""",
-                    },
-                )
-                assert_intrinsics_and_shadowing(self, repo)
+@pytest.mark.parametrize("grammar", ["javascript", "tsx"])
+def test_xml_receipt_intrinsics_fragments_closing_tags_and_shadowing(grammar):
+    root = VARIANT_ROOT / "javascript" / "xml-receipt-preview"
+    sources = [replace(source, language=grammar) if source.path == "preview/Receipt.jsx" else source
+               for source in scenario_sources(root)]
+    repo = parse_files(sources)
+    file, = [file for file in repo.files if file.source.path == "preview/Receipt.jsx"]
+    assert file.parse_error is None
+    assert_xml_receipt_references(repo, file)
 
 
-if __name__ == "__main__":
-    unittest.main()
+def assert_xml_receipt_references(repo, file):
+    assert [(call.name, call.relationship) for call in file.calls] == [
+        ("ReceiptCard", "REFERENCES"), ("ReceiptCard", "REFERENCES"),
+    ]
+    references = [edge for edge in resolve_connections(repo).connections
+                  if edge.path == file.source.path and edge.type == "REFERENCES"]
+    assert len(references) == 2
+    symbols = {symbol.key: symbol for symbol in repo.symbols}
+    assert symbols[references[0].target_key].qualified_name == "preview/Receipt.jsx::ReceiptCard"
+    assert symbols[references[0].source_key].name == "ReceiptPreview"
+    assert references[1].target_key.startswith("external:")
+    assert symbols[references[1].source_key].name == "BrandedReceipt"

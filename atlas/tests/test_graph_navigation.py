@@ -20,7 +20,12 @@ from atlas.persistence.navigation import GraphReader, navigation_reader
 from atlas.persistence.navigation_queries import AdjacencyRequest, adjacency
 from atlas.persistence.repositories import RepositoryStore
 from atlas.services.navigation import NavigationService
+from tests.coffee_fixture import FIXTURE_ROOT
 from tests.graph_storage_fixture import graph_artifact
+
+OPERATIONAL_ROOT = Path(__file__).parent / "fixtures/variants/operational"
+BREWER_SOURCE = FIXTURE_ROOT / "python/src/coffee/brewing/brewer.py"
+SOURCE_START, SOURCE_END = 34, 37
 
 
 @pytest.fixture
@@ -30,8 +35,9 @@ def graph(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, str, s
     migrate_database(path)
     source = tmp_path / "src/app.py"
     source.parent.mkdir()
-    source.write_text("def run():\n    worker()\n    return 1\n\ndef worker():\n    pass\n")
+    source.write_bytes(BREWER_SOURCE.read_bytes())
     artifact = graph_artifact()
+    artifact["nodes"][0].update(startLine=SOURCE_START, endLine=SOURCE_END)
     artifact["nodes"][2]["properties"]["sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
     artifact["edges"].append({**artifact["edges"][0], "sourceStableKey": "worker", "targetStableKey": "run"})
     artifact["diagnostics"].append({"severity": "warning", "path": "src/app.py", "language": "python", "message": "local warning"})
@@ -103,7 +109,7 @@ def test_directions_cycles_and_evidence(graph, direction) -> None:
         assert payload["edges"][0]["sourceStableKey"] == "worker"
 
 
-@pytest.mark.parametrize("cutoff", [("--depth", "0", "depth"), ("--max-nodes", "1", "maxNodes"), ("--max-edges", "1", "maxEdges")])
+@pytest.mark.parametrize("cutoff", [("--depth", "0", "depth"), ("--max-nodes", "1", "maxNodes"), ("--max-edges", "1", "maxEdges")], ids=lambda cutoff: cutoff[2])
 def test_context_cutoffs(graph, cutoff) -> None:
     option, value, reason = cutoff
     payload = command("context", "run", option, value)
@@ -247,34 +253,43 @@ def test_missing_schema_and_index(tmp_path: Path, graph) -> None:
             pass
 
 
-@pytest.mark.parametrize("separator", ["\u2028", "\u0085", "\f"])
-@pytest.mark.parametrize("newline", ["\n", "\r\n"])
-def test_source_spans_use_parser_lf_coordinates(graph, separator, newline) -> None:
+@pytest.mark.parametrize("newline", ["\n", "\r\n"], ids=["lf", "crlf"])
+@pytest.mark.parametrize("separator", ["\u2028", "\u0085", "\f"], ids=["line-separator", "next-line", "form-feed"])
+def test_source_spans_use_parser_lf_coordinates(graph, newline: str, separator: str) -> None:
     from atlas.services.repositories import analyze_folder
 
     root = graph[0].parent
-    lines = [f'label = "first{separator}second"', "def run():", "    return 42"]
-    (root / "src/app.py").write_bytes((newline.join(lines) + newline).encode("utf-8"))
+    contents = (OPERATIONAL_ROOT / "brewer-line-boundaries.py").read_bytes()
+    contents = contents.replace(b"<LINE_SEPARATOR>", separator.encode()).replace(b"\n", newline.encode())
+    lines = contents.decode("utf-8").split("\n")[:-1]
+    lines = [line.removesuffix("\r") for line in lines]
+    (root / "src/app.py").write_bytes(contents)
     with repository_session(graph[0]) as session:
         RepositoryStore(session).save(graph[1], analyze_folder(root))
-    key = command("find", "run")["nodes"][0]["stableKey"]
+    key = command("find", "retry")["nodes"][0]["stableKey"]
     source = command("source", key)["source"]
     assert source["status"] == "ok"
-    assert (source["startLine"], source["endLine"]) == (2, 3)
-    assert source["lines"] == lines[1:]
+    assert (source["startLine"], source["endLine"]) == (SOURCE_START + 1, SOURCE_END + 1)
+    assert source["lines"] == lines[SOURCE_START:SOURCE_END + 1]
     file_source = command("source", "file:src/app.py")["source"]
-    assert file_source["lines"] == lines
+    file_lines = file_source["lines"]
+    while file_source["truncated"]:
+        file_source = command("source", "file:src/app.py", "--start-line", str(file_source["nextStartLine"]))["source"]
+        assert file_source["status"] == "ok"
+        file_lines.extend(file_source["lines"])
+    assert file_lines == lines
 
 
 def test_source_verified_paged_changed_missing(graph) -> None:
     payload = command("source", "run", "--max-lines", "1")["source"]
-    assert payload["status"] == "ok" and payload["lines"] == ["def run():"]
-    assert payload["nextStartLine"] == 2
-    page = command("source", "run", "--start-line", "2")["source"]
-    assert page["lines"] == ["    worker()", "    return 1"]
+    lines = BREWER_SOURCE.read_text().split("\n")
+    assert payload["status"] == "ok" and payload["lines"] == [lines[SOURCE_START - 1]]
+    assert payload["nextStartLine"] == SOURCE_START + 1
+    page = command("source", "run", "--start-line", str(SOURCE_START + 1))["source"]
+    assert page["lines"] == lines[SOURCE_START:SOURCE_END]
     assert command("source", "worker")["source"]["status"] == "span_unavailable"
     source = graph[0].parent / "src/app.py"
-    source.write_text("changed\n")
+    source.write_bytes((OPERATIONAL_ROOT / "brewer-changed.py").read_bytes())
     changed = command("source", "run")["source"]
     assert changed["status"] == "changed" and "lines" not in changed
     source.unlink()
@@ -284,7 +299,7 @@ def test_source_verified_paged_changed_missing(graph) -> None:
 @pytest.mark.parametrize("unsafe", ["../outside.py", "/outside.py", "src/escape.py"])
 def test_source_unsafe_paths_and_symlink(graph, tmp_path: Path, unsafe: str) -> None:
     outside = tmp_path.parent / f"{tmp_path.name}-outside.py"
-    outside.write_text("secret\n")
+    outside.write_bytes(BREWER_SOURCE.read_bytes())
     (tmp_path / "src/escape.py").symlink_to(outside)
     with sqlite3.connect(graph[0]) as connection:
         connection.execute("UPDATE graph_nodes SET path=? WHERE repository_id=? AND node_key IN ('run','file')", (unsafe, graph[1]))
@@ -320,7 +335,9 @@ def test_source_file_size_is_bounded(graph) -> None:
 
 def test_source_long_line_output_is_bounded(graph) -> None:
     source = graph[0].parent / "src/app.py"
-    source.write_text("x" * 2_000_000)
+    contents = (OPERATIONAL_ROOT / "brewer-long-replay.py").read_bytes()
+    replay = json.dumps(json.loads((OPERATIONAL_ROOT / "order-replay.json").read_text())).encode()
+    source.write_bytes(contents.replace(b"<ORDER_REPLAY>", replay))
     with sqlite3.connect(graph[0]) as connection:
         connection.execute("UPDATE graph_files SET sha256=? WHERE repository_id=?", (hashlib.sha256(source.read_bytes()).hexdigest(), graph[1]))
     payload = command("source", "run", "--max-lines", "1")["source"]

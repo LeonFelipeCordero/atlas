@@ -1,5 +1,6 @@
 """Current SQLite schema and repository service regression tests."""
 
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from atlas.persistence.database import (
 )
 from sqlalchemy import text
 
+from tests.coffee_fixture import FIXTURE_ROOT
 from tests.graph_storage_fixture import GRAPH_TABLES
 
 
@@ -73,8 +75,7 @@ def test_service_requires_explicit_migration(tmp_path: Path) -> None:
 
 def test_service_reindex_resolves_name_and_rolls_back_failed_write(database: Path, tmp_path: Path) -> None:
     root = tmp_path / "source"
-    root.mkdir()
-    (root / "app.py").write_text("def run():\n    return 1\n")
+    shutil.copytree(FIXTURE_ROOT / "python", root)
     with repository_service(database) as service:
         first = service.register({"name": "  First ", "location": "source"})
         assert service.get_architecture(first.id) is None
@@ -114,6 +115,8 @@ def test_non_ascii_name_resolution_matches_sqlite_lower(database: Path, tmp_path
 
 
 def test_service_validation_and_shared_graph(database: Path, tmp_path: Path) -> None:
+    root = tmp_path / "coffee"
+    shutil.copytree(FIXTURE_ROOT / "python", root)
     with repository_service(database) as service:
         assert service.list() == []
         for invalid in ({}, None, {"name": " ", "location": "."}):
@@ -131,7 +134,7 @@ def test_service_validation_and_shared_graph(database: Path, tmp_path: Path) -> 
             with pytest.raises(RepositoryError) as error:
                 service.get_architecture(identifier)
             assert error.value.status == status
-        graph = service.index(repository.name, tmp_path)
+        graph = service.index(repository.name, root)
     with repository_service(database) as service:
         assert service.get_architecture(repository.id) == graph
 

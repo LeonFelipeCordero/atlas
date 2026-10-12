@@ -1,69 +1,96 @@
-"""Malformed source bytes retain original file identity but share decoded AST offsets."""
+"""Malformed coffee bytes retain file identity but share decoded AST offsets."""
 
 import hashlib
-import unittest
 from pathlib import Path
+
+import pytest
 
 from atlas.parsing.discovery import SourceFile
 from atlas.parsing.parser import parse_files
+from tests.coffee_fixture import FIXTURE_ROOT
 
 
-class InvalidUtf8Test(unittest.TestCase):
-    def test_original_file_digest_and_replacement_decoded_declarations(self) -> None:
-        sources = {
-            "app.ts": b'// \xff\xfe\xf0\x28\x8c\x28\nexport function value() { return "\xff" }\nvalue()\n',
-            "worker.py": b'# \x80\xed\xa0\x80\ndef work():\n return "\xff"\nwork()\n',
-            "worker.go": b"//\xff text\npackage main\nfunc f(){g()}\n",
-            "Worker.java": b"//\xff text\nclass A { void f(){g();} }\n",
-        }
-        languages = {
-            "ts": "typescript",
-            "py": "python",
-            "go": "go",
-            "java": "java",
-        }
-        repository = parse_files(
+VARIANT_ROOT = Path(__file__).parent / "fixtures/variants/operational/invalid-utf8"
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(
+            ("Report.ts", "typescript", "typescript/reporting/Report.ts", b"// tasting note: \xff\n",
             [
-                SourceFile(
-                    path,
-                    Path("/invalid") / path,
-                    languages[path.rsplit(".", 1)[1]],
-                    source,
-                )
-                for path, source in sources.items()
-            ]
-        )
-        expected = {
-            "app.ts": [("value", 25)],
-            "worker.py": [("work", 15)],
-            "worker.go": [("f", 24)],
-            "Worker.java": [("A", 11), ("f", 21)],
-        }
-        for file in repository.files:
-            with self.subTest(path=file.source.path):
-                self.assert_original_digest_and_decoded_declarations(file, sources, expected)
-
-    def assert_original_digest_and_decoded_declarations(self, file, sources, expected):
-        self.assertIsNone(file.parse_error)
-        self.assertEqual(
-            file.content_hash,
-            hashlib.sha256(sources[file.source.path]).hexdigest(),
-        )
-        self.assertEqual(
-            [(s.name, s.start_byte) for s in file.symbols],
-            expected[file.source.path],
-        )
-        self.assertEqual(len(file.calls), 1)
-        self.assertEqual(
-            file.calls[0].name,
-            {
-                "app.ts": "value",
-                "worker.py": "work",
-                "worker.go": "g",
-                "Worker.java": "g",
-            }[file.source.path],
-        )
-
-
-if __name__ == "__main__":
-    unittest.main()
+                ("Report", 76, 414), ("total", 93, 213), ("<anonymous>", 162, 204),
+                ("render", 217, 412), ("<anonymous>", 293, 335),
+            ],
+            [
+                ("reduce", 149, 208), ("portions", 183, 204), ("map", 283, 336),
+                ("portions", 312, 333), ("join", 359, 376), ("total", 386, 405),
+            ]),
+            id="typescript",
+        ),
+        pytest.param(
+            ("report.py", "python", "python/src/coffee/reporting/report.py", b"# tasting note: \xff\n",
+            [("Report", 58, 392), ("total", 94, 189), ("render", 213, 392), ("render", 395, 463)],
+            [
+                ("sum", 145, 189), ("portions", 149, 170), ("join", 268, 329),
+                ("portions", 287, 308), ("total", 371, 390), ("render", 443, 463),
+            ]),
+            id="python",
+        ),
+        pytest.param(
+            ("report.go", "go", "go/reporting/report.go", b"// tasting note: \xff\n",
+            [
+                ("Report", 105, 138), ("Total", 140, 269), ("Render", 271, 547),
+                ("Receipt", 549, 609), ("Preview", 684, 796),
+            ],
+            [
+                ("Portions", 228, 249), ("make", 320, 349), ("len", 338, 348),
+                ("append", 392, 458), ("Sprintf", 408, 457), ("Portions", 435, 456),
+                ("Sprintf", 470, 545), ("Join", 504, 530), ("Total", 532, 544),
+                ("Render", 592, 607), ("Receipt", 778, 794),
+            ]),
+            id="go",
+        ),
+        pytest.param(
+            ("Report.java", "java", "java/reporting/Report.java", b"// tasting note: \xff\n",
+            [
+                ("coffee.reporting", 21, 46), ("Report", 138, 584), ("Report", 170, 189),
+                ("total", 195, 310), ("render", 316, 582), ("<anonymous>", 423, 465),
+            ],
+            [
+                ("sum", 256, 303), ("mapToInt", 256, 297), ("stream", 256, 270),
+                ("portions", 280, 296), ("collect", 391, 512), ("map", 391, 466),
+                ("stream", 391, 405), ("portions", 444, 465), ("joining", 488, 511),
+                ("total", 563, 575),
+            ]),
+            id="java",
+        ),
+    ],
+)
+def test_original_file_digest_and_replacement_decoded_declarations(
+    case: tuple[str, str, str, bytes, list[tuple[str, int, int]], list[tuple[str, int, int]]],
+) -> None:
+    name, language, original, prefix, symbol_spans, call_spans = case
+    path = VARIANT_ROOT / name
+    raw = path.read_bytes()
+    assert raw == prefix + (FIXTURE_ROOT / original).read_bytes()
+    decoded = raw.decode("utf-8", errors="replace").encode("utf-8")
+    assert decoded == raw.replace(b"\xff", b"\xef\xbf\xbd")
+    assert len(decoded) == len(raw) + 2
+    source = SourceFile(name, path, language, raw)
+    repository = parse_files([source])
+    assert len(repository.files) == 1
+    file = repository.files[0]
+    assert file.source is source
+    assert file.source.path == name
+    assert file.source.absolute_path == path
+    assert file.parse_error is None
+    assert file.content_hash == hashlib.sha256(raw).hexdigest()
+    assert file.content_hash != hashlib.sha256(decoded).hexdigest()
+    assert [(s.name, s.start_byte, s.end_byte) for s in file.symbols] == symbol_spans
+    assert [(c.name, c.start_byte, c.end_byte) for c in file.calls] == call_spans
+    for call in file.calls:
+        assert call.evidence == decoded[call.start_byte:call.end_byte].decode("utf-8")
+        assert call.line == decoded.count(b"\n", 0, call.start_byte) + 1
+    assert source.source == raw
+    assert path.read_bytes() == raw
