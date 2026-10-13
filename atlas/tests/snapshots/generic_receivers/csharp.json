@@ -1,0 +1,107 @@
+[
+  [
+    "Ledger.cs::Intake.Annotated",
+    "ledger.Record()",
+    "symbol:Ledger.cs::Ledger.Record:19"
+  ],
+  [
+    "Ledger.cs::Intake.Local",
+    "new Ledger()",
+    "symbol:Ledger.cs::Ledger:0"
+  ],
+  [
+    "Ledger.cs::Intake.Local",
+    "ledger.Record()",
+    "symbol:Ledger.cs::Ledger.Record:19"
+  ],
+  [
+    "Ledger.cs::Intake.Inferred",
+    "new Ledger()",
+    "symbol:Ledger.cs::Ledger:0"
+  ],
+  [
+    "Ledger.cs::Intake.Inferred",
+    "ledger.Record()",
+    "symbol:Ledger.cs::Ledger.Record:19"
+  ],
+  [
+    "Ledger.cs::Intake.Direct",
+    "new Ledger().Record()",
+    "symbol:Ledger.cs::Ledger.Record:19"
+  ],
+  [
+    "Ledger.cs::Intake.Direct",
+    "new Ledger()",
+    "symbol:Ledger.cs::Ledger:0"
+  ],
+  [
+    "Ledger.cs::Intake.Unknown",
+    "unknown.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::Intake.Factory",
+    "MakeLedger()",
+    "symbol:Ledger.cs::Intake.MakeLedger:636"
+  ],
+  [
+    "Ledger.cs::Intake.Factory",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::Intake.Reassigned",
+    "new Ledger()",
+    "symbol:Ledger.cs::Ledger:0"
+  ],
+  [
+    "Ledger.cs::Intake.Reassigned",
+    "MakeLedger()",
+    "symbol:Ledger.cs::Intake.MakeLedger:636"
+  ],
+  [
+    "Ledger.cs::Intake.Reassigned",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::Intake.Other",
+    "new OtherLedger()",
+    "symbol:Ledger.cs::OtherLedger:45"
+  ],
+  [
+    "Ledger.cs::Intake.Other",
+    "ledger.Record()",
+    "symbol:Ledger.cs::OtherLedger.Record:69"
+  ],
+  [
+    "Ledger.cs::Intake.MakeLedger",
+    "new Ledger()",
+    "symbol:Ledger.cs::Ledger:0"
+  ],
+  [
+    "Ledger.cs::Intake.GenericMethod",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::Intake.GenericLocal",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::Intake.Constrained",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::GenericIntake.GenericClass",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ],
+  [
+    "Ledger.cs::GenericIntake.Nested.GenericNested",
+    "ledger.Record()",
+    "external:csharp:callable:Record"
+  ]
+]

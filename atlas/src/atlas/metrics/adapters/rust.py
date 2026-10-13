@@ -295,10 +295,30 @@ class RustResolution(ResolutionAdapter):
     def _has_self(self, resolver, method):
         syntax = resolver.syntax[method.file_path]
         node = syntax.node(method.start_byte, method.end_byte)
-        parameters = field(node, "parameters") if node else None
-        return bool(parameters and any(c.type == "self_parameter" for c in parameters.named_children))
+        return bool(node and self._has_self_node(node))
+
+    def static(self, syntax, symbol):
+        node = syntax.node(symbol.start_byte, symbol.end_byte)
+        if node and node.type == "function_item" and node.parent and node.parent.type == "declaration_list":
+            owner = node.parent.parent
+            if owner and owner.type == "impl_item":
+                return not self._has_self_node(node)
+        return super().static(syntax, symbol)
+
+    def _has_self_node(self, node):
+        parameters = field(node, "parameters")
+        return bool(parameters and any(
+            c.type == "self_parameter" or (field(c, "pattern") or c).type == "self"
+            for c in parameters.named_children
+        ))
+
+    def call_target(self, node):
+        if node and node.type == "struct_expression":
+            return field(node, "name"), None
+        return super().call_target(node)
 
     family = "rust"
+    receiver_class_nodes = {"struct_expression"}
     self_qualifiers = {"self"}
     scopes = SCOPES | {"declaration_list"}
     import_nodes = {"use_declaration", "mod_item"}

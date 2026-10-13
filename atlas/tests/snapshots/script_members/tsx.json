@@ -1,0 +1,359 @@
+[
+  {
+    "source": "members.tsx::ImportedPickup",
+    "evidence": "class ImportedPickup extends VendorBrewing",
+    "target": "vendor.tsx::ImportedBrewing",
+    "targetLine": 1,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Pickup",
+    "evidence": "class Pickup extends Brewing",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Delivery",
+    "evidence": "class Delivery extends Brewing",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Unknown",
+    "evidence": "class Unknown extends Missing",
+    "target": "external:tsx:Missing",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Dynamic",
+    "evidence": "class Dynamic extends chooseBase()",
+    "target": "external:tsx:chooseBase",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::CalledBase",
+    "evidence": "class CalledBase extends Brewing()",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Mutated",
+    "evidence": "class Mutated extends Brewing",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Window",
+    "evidence": "class Window extends Pickup",
+    "target": "members.tsx::Pickup",
+    "targetLine": 7,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Masked",
+    "evidence": "class Masked extends Brewing",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::PatchedPickup",
+    "evidence": "class PatchedPickup extends Patched",
+    "target": "members.tsx::Patched",
+    "targetLine": 26,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::CycleA",
+    "evidence": "class CycleA extends CycleB",
+    "target": "members.tsx::CycleB",
+    "targetLine": 30,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::CycleB",
+    "evidence": "class CycleB extends CycleA",
+    "target": "members.tsx::CycleA",
+    "targetLine": 29,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Initialized",
+    "evidence": "class Initialized extends Brewing",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Dynamic",
+    "evidence": "chooseBase()",
+    "target": "external:tsx:chooseBase",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::CalledBase",
+    "evidence": "Brewing()",
+    "target": "members.tsx::Brewing",
+    "targetLine": 4,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::Initialized.constructor",
+    "evidence": "super()",
+    "target": "external:tsx:super",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Pickup().brew(order)",
+    "target": "members.tsx::Brewing.brew",
+    "targetLine": 5,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Pickup()",
+    "target": "members.tsx::Pickup",
+    "targetLine": 7,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Delivery().brew(order)",
+    "target": "members.tsx::Delivery.brew",
+    "targetLine": 9,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Delivery()",
+    "target": "members.tsx::Delivery",
+    "targetLine": 8,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Unknown().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Unknown()",
+    "target": "members.tsx::Unknown",
+    "targetLine": 11,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Dynamic().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Dynamic()",
+    "target": "members.tsx::Dynamic",
+    "targetLine": 12,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new CalledBase().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new CalledBase()",
+    "target": "members.tsx::CalledBase",
+    "targetLine": 13,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Mutated().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Mutated()",
+    "target": "members.tsx::Mutated",
+    "targetLine": 14,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Menu().price(order)",
+    "target": "members.tsx::Menu.price",
+    "targetLine": 19,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Menu()",
+    "target": "members.tsx::Menu",
+    "targetLine": 16,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "quote(order)",
+    "target": "members.tsx::quote",
+    "targetLine": 23,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new ImportedPickup().brew(order)",
+    "target": "vendor.tsx::ImportedBrewing.brew",
+    "targetLine": 1,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new ImportedPickup()",
+    "target": "members.tsx::ImportedPickup",
+    "targetLine": 3,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Window().brew(order)",
+    "target": "members.tsx::Brewing.brew",
+    "targetLine": 5,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Window()",
+    "target": "members.tsx::Window",
+    "targetLine": 24,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Masked().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Masked()",
+    "target": "members.tsx::Masked",
+    "targetLine": 25,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new PatchedPickup().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new PatchedPickup()",
+    "target": "members.tsx::PatchedPickup",
+    "targetLine": 27,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new CycleA().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new CycleA()",
+    "target": "members.tsx::CycleA",
+    "targetLine": 29,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Repeated().price(order)",
+    "target": "external:tsx:price",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Repeated()",
+    "target": "members.tsx::Repeated",
+    "targetLine": 31,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new SignaturesOnly().price(order)",
+    "target": "external:tsx:price",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new SignaturesOnly()",
+    "target": "members.tsx::SignaturesOnly",
+    "targetLine": 35,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Initialized().brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Initialized()",
+    "target": "members.tsx::Initialized",
+    "targetLine": 38,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "new Pickup()",
+    "target": "members.tsx::Pickup",
+    "targetLine": 7,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "ledger.brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "unknown()",
+    "target": "external:tsx:unknown",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  },
+  {
+    "source": "members.tsx::serve",
+    "evidence": "ledger.brew(order)",
+    "target": "external:tsx:brew",
+    "targetLine": null,
+    "confidence": "INFERRED"
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "generic(true)",
+    "target": "external:kotlin:generic",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "accepts(ambiguous)",
+    "target": "external:kotlin:accepts",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "nullable(nullableValue)",
+    "target": "external:kotlin:nullable",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "uncertain(missing)",
+    "target": "external:kotlin:uncertain",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "accepts(\"coffee\")",
+    "target": "SafetyCoffee.kt::SafetyCoffee.accepts",
+    "signature": "fun accepts(value: String) {}",
+    "targetLine": 8
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "count()",
+    "target": "SafetyCoffee.kt::SafetyCoffee.count",
+    "signature": "fun count() {}",
+    "targetLine": 12
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "count(true)",
+    "target": "SafetyCoffee.kt::SafetyCoffee.count",
+    "signature": "fun count(value: Boolean) {}",
+    "targetLine": 13
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "accepts(aliased)",
+    "target": "external:kotlin:accepts",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "SafetyCoffee.kt::SafetyCoffee.run",
+    "evidence": "nullable(true)",
+    "target": "external:kotlin:nullable",
+    "signature": null,
+    "targetLine": null
+  }
+]

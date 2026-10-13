@@ -108,6 +108,7 @@ class Syntax:
         self.file = file
         self.adapter = adapter
         self.scopes = self.adapter.scopes
+        self.receiver_scope_cache: dict[str, list[tuple[list[Node], set[str]]]] = {}
 
     @cached_property
     def root(self) -> Node | None:

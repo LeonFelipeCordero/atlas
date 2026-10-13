@@ -18,6 +18,7 @@ RECEIVER_CALLS = [
     ("java", "orders/OrderService.java", "OrderService.fulfill", "brewer.brew(order.names())", "brewing/Brewer.java", "Brewer.brew"),
     ("java", "orders/OrderService.java", "OrderService.preview", "station.brew(order.names())", "brewing/Brewer.java", "Brewer.brew"),
     ("java", "orders/OrderService.java", "OrderService.stocked", 'inventory.receive(new Change("espresso", espresso, "opening"),\n                          new Change("filter", filter, "opening"))', "inventory/Inventory.java", "Inventory.receive"),
+    ("kotlin", "orders/OrderService.kt", "OrderService.fulfill", "inventory.reserve(order)", "inventory/Inventory.kt", "Inventory.reserve"),
     ("kotlin", "orders/OrderService.kt", "OrderService.fulfill", "brewer.brew(order.names())", "brewing/Brewer.kt", "Brewer.brew"),
     ("kotlin", "orders/OrderService.kt", "OrderService.preview", "station.brew(order.names())", "brewing/Brewer.kt", "Brewer.brew"),
     ("kotlin", "inventory/Inventory.kt", "Inventory.Companion.stocked", 'inventory.receive(Change("espresso", espresso, "opening"), Change("filter", filter, "opening"))', "inventory/Inventory.kt", "Inventory.receive"),
@@ -37,6 +38,11 @@ RECEIVER_CALLS = [
     ("rust", "brewing/brewer.rs", "Brewer.brew", "self.stock.reserve(name)", "brewing/inventory.rs", "Inventory.reserve"),
     ("rust", "main.rs", "main", "maker.brew(&names)", "brewing/brewer.rs", "Brewer.brew"),
     ("rust", "reporting/report.rs", "Report.estimate", "drink.portions()", "brewing/recipe.rs", "Recipe.portions"),
+    ("rust", "main.rs", "main", 'Inventory::new(&[("espresso", 12), ("filter", 9)])', "brewing/inventory.rs", "Inventory.new"),
+    ("rust", "main.rs", "main", "Brewer::new(stock)", "brewing/brewer.rs", "Brewer.new"),
+    ("rust", "main.rs", "main", 'Recipe::new("filter", 1)', "brewing/recipe.rs", "Recipe.new"),
+    ("rust", "reporting/mod.rs", "daily.close", "Receipt::new(names)", "reporting/report.rs", "Report.new"),
+    ("rust", "reporting/report.rs", "Report.estimate", 'Drink::new("filter", cups)', "brewing/recipe.rs", "Recipe.new"),
 ]
 
 
@@ -51,7 +57,6 @@ UNRESOLVED_RECEIVERS = [
     ("javascript", "ordering/OrderService.js", "OrderService.fulfill", "this.inventory.reserve(order)", "reserve", "Default constructor arguments do not type unannotated injected fields."),
     ("javascript", "ordering/OrderService.js", "OrderService.fulfill", "this.brewer.brew(names)", "brew", "Unannotated injected fields have no declared receiver type."),
     ("javascript", "ordering/OrderService.js", "OrderService.fulfill", "this.receipt.render(order)", "render", "Unannotated injected fields have no declared receiver type."),
-    ("kotlin", "orders/OrderService.kt", "OrderService.fulfill", "inventory.reserve(order)", "reserve", "Inventory primary field with a same-named secondary constructor parameter remains unresolved; Brewer field resolves."),
     ("tsx", "App.tsx", "Menu.addDrink", "basket.add(name, quantity)", "add", "Basket type nested in destructured prop is not a direct receiver binding."),
 ]
 

@@ -1,0 +1,134 @@
+[
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger = make_ledger"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger = make_ledger"
+  ],
+  [
+    "ledger",
+    "OtherLedger",
+    true,
+    "ledger = OtherLedger.new"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "other",
+    null,
+    true,
+    "other"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = Ledger.new"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger"
+  ],
+  [
+    "other",
+    null,
+    true,
+    "other"
+  ],
+  [
+    "flag",
+    null,
+    true,
+    "flag"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger = Ledger.new"
+  ]
+]

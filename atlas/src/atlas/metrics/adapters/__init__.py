@@ -9,6 +9,7 @@ from tree_sitter_language_pack import SupportedLanguage, available_languages
 from . import elixir, go, java, javascript, kotlin, python, rust, typescript
 from .base import MetricAdapter, MetricPolicy as MetricPolicy
 from .resolution import ResolutionAdapter
+from .generic import GenericResolution, receiver_coverage as _receiver_coverage
 
 DEFAULT_METRICS = replace(
     kotlin.METRICS,
@@ -58,7 +59,13 @@ _RESOLUTIONS = {
 }
 
 
+def receiver_coverage() -> dict[str, dict[str, object]]:
+    """Inventory dedicated and verified generic receiver policies across the catalog."""
+    return _receiver_coverage(SUPPORTED_LANGUAGES, _RESOLUTIONS)
+
+
 @lru_cache(maxsize=None)
 def get_resolution_adapter(language: str) -> ResolutionAdapter:
     """Return the resolution policy, or the conservative generic fallback."""
-    return _RESOLUTIONS.get(language, ResolutionAdapter)()
+    dedicated = _RESOLUTIONS.get(language)
+    return dedicated() if dedicated else GenericResolution(language)

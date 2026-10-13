@@ -19,6 +19,7 @@ from .resolution_paths import quoted_path
 from .base import COMMON_METRICS, MetricAdapter
 
 from .parameters import parameter_children, parameter_node
+from .script_resolution import inherited_members, member_mutation, member_write, same_declaration_group
 
 from ..resolution_contract import FUNCTIONS, CallTarget, ImportRequest
 
@@ -148,6 +149,70 @@ def _type_only_named_clause(node: Node) -> bool:
     return bool(specifiers) and all(map(_has_type_modifier, specifiers))
 
 
+def _field_masks_method(child: Node, name: str, implementations: set[str]) -> bool:
+    target = field(child, "name", "property")
+    if target is None:
+        return False
+    if target.type == "computed_property_name":
+        return True
+    return text(target) == name and _non_callable_member(child, name, implementations)
+
+
+def _non_callable_member(child: Node, name: str, implementations: set[str]) -> bool:
+    return (child.type in {"field_definition", "public_field_definition"}
+            or child.type in {"method_signature", "abstract_method_signature"} and name not in implementations
+            or any(c.type in {"get", "set"} for c in child.children))
+
+
+def _script_own_field(syntax, parent, name):
+    node = syntax.node(parent.start_byte, parent.end_byte)
+    body = field(node, "body")
+    if body is None:
+        return False
+    children = body.named_children
+    implementations = {text(field(c, "name")) for c in children if field(c, "body") is not None}
+    return any(_field_masks_method(child, name, implementations) for child in children)
+
+
+def _receiver_alias(node: Node, receivers: set[str]) -> str | None:
+    if node.type not in {"variable_declarator", "assignment_expression"}:
+        return None
+    if text(field(node, "value", "right")) not in receivers:
+        return None
+    target = field(node, "name", "left")
+    return text(target) if target is not None and target.type == "identifier" else None
+
+
+def _receiver_mutation(syntax, node: Node, receivers: set[str], name: str) -> bool:
+    return (node.type in syntax.adapter.member_writes
+            and member_write(text(syntax.adapter.write_target(node)), receivers, name)
+            or member_mutation(node, receivers))
+
+
+def _receiver_aliases(nodes: list[Node], receivers: set[str]) -> set[str]:
+    return {alias for n in nodes if (alias := _receiver_alias(n, receivers)) is not None}
+
+
+def _method_group(matches: list[Symbol]) -> bool:
+    return same_declaration_group(matches) and all(s.kind == "method" for s in matches)
+
+
+def _plain_method(node: Node | None) -> bool:
+    return (node is not None and node.type == "method_definition"
+            and field(node, "body") is not None
+            and not any(c.type in {"get", "set"} for c in node.children))
+
+
+def _script_mutation(syntax, parent, name):
+    receivers = {parent.name, parent.name + ".prototype"}
+    for _ in syntax.nodes:
+        aliases = _receiver_aliases(syntax.nodes, receivers)
+        if aliases <= receivers:
+            break
+        receivers |= aliases
+    return any(_receiver_mutation(syntax, node, receivers, name) for node in syntax.nodes)
+
+
 class JavaScriptResolution(ResolutionAdapter):
     receiver_bindings = staticmethod(script_bindings)
     def import_path(self, source: str) -> str:
@@ -166,9 +231,24 @@ class JavaScriptResolution(ResolutionAdapter):
     loop_bindings = {"for_statement", "for_in_statement"}
     static_nodes = {"static"}
     static_containers = {"modifiers"}
-    member_writes = assignments | {"update_expression"}
+    member_writes = assignments | {"update_expression", "unary_expression"}
     validate_receiver_initializer = True
     single_parameter_functions = {"arrow_function"}
+
+    def instance_members(self, resolver, parent, name):
+        return inherited_members(resolver, parent, name)
+
+    def select(self, identity, request, matches):
+        if len(matches) <= 1:
+            return matches
+        if not _method_group(matches):
+            return []
+        nodes = [identity.syntax[s.file_path].node(s.start_byte, s.end_byte) for s in matches]
+        if not all(_plain_method(node) for node in nodes):
+            return []
+        if len({identity.syntax[s.file_path].static(s) for s in matches}) != 1:
+            return []
+        return [max(matches, key=lambda s: s.start_byte)]
 
     def call_target(self, node):
         if node and node.type == "new_expression":
@@ -189,7 +269,7 @@ class JavaScriptResolution(ResolutionAdapter):
     def member_overwritten(self, syntax, parent, name):
         return super().member_overwritten(
             syntax, parent, name
-        ) or syntax.member_rebound(parent.name + ".prototype", name)
+        ) or _script_mutation(syntax, parent, name) or _script_own_field(syntax, parent, name)
 
     def binding(self, syntax, node, scope):
         if node.type == "function_declaration":

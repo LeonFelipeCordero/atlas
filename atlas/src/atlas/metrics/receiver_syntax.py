@@ -202,12 +202,19 @@ def go_bindings(syntax, node):
 def _go_short_bindings(syntax, node):
     target = field(node, "left")
     names = target.named_children if target else []
-    return [b for name in names if name.type == "identifier"
-            for b in declaration(syntax, node, Declaration(name, None))]
+    right = field(node, "right")
+    values = right.named_children if right else []
+    # Only pair one initializer per name; a multi-result call proves no type.
+    return [b for index, name in enumerate(names) if name.type == "identifier"
+            for b in declaration(syntax, node, Declaration(
+                name, None, values[index] if len(values) == len(names) else None))]
 
 
 def rust_bindings(syntax, node):
     if node.type not in {"parameter", "let_declaration", "field_declaration"}:
         return []
-    return declaration(syntax, node, Declaration(field(node, "pattern", "name"), type_name(field(node, "type")),
-                       member=node.type == "field_declaration"))
+    name = field(node, "pattern", "name")
+    if name is None or node.type == "let_declaration" and name.type != "identifier":
+        return []
+    return declaration(syntax, node, Declaration(name, type_name(field(node, "type")),
+                       field(node, "value"), member=node.type == "field_declaration"))

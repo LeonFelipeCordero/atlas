@@ -1,0 +1,122 @@
+[
+  [
+    "imported.php::imported",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "imported.php::imported_new",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ],
+  [
+    "imported.php::imported_new",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "imported.php::imported_direct",
+    "(new Ledger())->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "imported.php::imported_direct",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ],
+  [
+    "ledger.php::annotated",
+    "$ledger->record()",
+    "symbol:ledger.php::Ledger.record:25"
+  ],
+  [
+    "ledger.php::inferred",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ],
+  [
+    "ledger.php::inferred",
+    "$ledger->record()",
+    "symbol:ledger.php::Ledger.record:25"
+  ],
+  [
+    "ledger.php::direct",
+    "(new Ledger())->record()",
+    "symbol:ledger.php::Ledger.record:25"
+  ],
+  [
+    "ledger.php::direct",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ],
+  [
+    "ledger.php::unknown",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "ledger.php::reassigned",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ],
+  [
+    "ledger.php::reassigned",
+    "factory()",
+    "external:php:callable:factory"
+  ],
+  [
+    "ledger.php::reassigned",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "ledger.php::other",
+    "new OtherLedger()",
+    "external:php:callable:OtherLedger"
+  ],
+  [
+    "ledger.php::other",
+    "$ledger->record()",
+    "symbol:ledger.php::OtherLedger.record:72"
+  ],
+  [
+    "ledger.php::nullable",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "ledger.php::union_type",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "ledger.php::intersection_type",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "namespaced.php::namespaced",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "namespaced.php::namespaced_new",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ],
+  [
+    "namespaced.php::namespaced_new",
+    "$ledger->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "namespaced.php::namespaced_direct",
+    "(new Ledger())->record()",
+    "external:php:callable:record"
+  ],
+  [
+    "namespaced.php::namespaced_direct",
+    "new Ledger()",
+    "external:php:callable:Ledger"
+  ]
+]
