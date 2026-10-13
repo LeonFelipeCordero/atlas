@@ -7,24 +7,48 @@ from ...syntax import field, text
 from ..resolution_contract import ResolutionRequest
 
 
-def inherited_members(resolver, parent: Symbol, name: str, seen=None):
+def inherited_members(resolver, parent: Symbol, name: str):
     """Follow only one proven base; unknown bases and cycles remain unresolved."""
-    seen = set() if seen is None else seen
-    if parent.key in seen:
-        return []
-    seen = seen | {parent.key}
-    syntax = resolver.syntax[parent.file_path]
-    if (not _plain_class(syntax, parent) or syntax.adapter.member_overwritten(syntax, parent, name)
-            or _instance_member_write(syntax, parent, name)):
-        return []
-    direct = resolver._member_declarations(parent, name)
-    if direct:
-        return [] if _base_instance_write(resolver, parent, name, seen) else direct
-    # A non-callable own declaration also masks an inherited method.
-    if any(s.parent_key == parent.key and s.name == name for s in syntax.file.symbols):
-        return []
-    base = _base_class(resolver, parent)
-    return inherited_members(resolver, base, name, seen) if base is not None else []
+    return _InheritedMember(resolver, name).members(parent, set())
+
+
+class _InheritedMember:
+    def __init__(self, resolver, name):
+        self.resolver = resolver
+        self.name = name
+
+    def members(self, parent, seen):
+        if parent.key in seen:
+            return []
+        seen = seen | {parent.key}
+        syntax = self.resolver.syntax[parent.file_path]
+        if self._masked(syntax, parent):
+            return []
+        direct = self.resolver._member_declarations(parent, self.name)
+        if direct:
+            return [] if self.base_instance_write(parent, seen) else direct
+        return self._inherited(syntax, parent, seen)
+
+    def _masked(self, syntax, parent):
+        return (not _plain_class(syntax, parent)
+                or syntax.adapter.member_overwritten(syntax, parent, self.name)
+                or _instance_member_write(syntax, parent, self.name))
+
+    def _inherited(self, syntax, parent, seen):
+        # A non-callable own declaration also masks an inherited method.
+        if any(s.parent_key == parent.key and s.name == self.name for s in syntax.file.symbols):
+            return []
+        base = _base_class(self.resolver, parent)
+        return self.members(base, seen) if base is not None else []
+
+    def base_instance_write(self, parent, seen):
+        target = _base_class(self.resolver, parent)
+        if target is None or target.key in seen:
+            return False
+        syntax = self.resolver.syntax[target.file_path]
+        return (not _plain_class(syntax, target) or _instance_field(syntax, target, self.name)
+                or _instance_member_write(syntax, target, self.name)
+                or self.base_instance_write(target, seen | {target.key}))
 
 
 def _base_class(resolver, parent):
@@ -41,24 +65,22 @@ def _base_class(resolver, parent):
     return matches[0] if len(matches) == 1 and matches[0].kind == "class" else None
 
 
-def _base_instance_write(resolver, parent, name, seen):
-    target = _base_class(resolver, parent)
-    if target is None or target.key in seen:
-        return False
-    syntax = resolver.syntax[target.file_path]
-    return (not _plain_class(syntax, target) or _instance_field(syntax, target, name)
-            or _instance_member_write(syntax, target, name)
-            or _base_instance_write(resolver, target, name, seen | {target.key}))
-
-
 def _instance_member_write(syntax, parent, name):
-    for nodes, receivers in _receiver_scopes(syntax, parent):
-        if any(node.type in syntax.adapter.member_writes
-               and text(syntax.adapter.write_target(node)).strip() not in receivers
-               and member_write(text(syntax.adapter.write_target(node)), receivers, name)
-               or member_mutation(node, receivers) for node in nodes):
-            return True
-    return False
+    return any(_scope_member_write(syntax, scope, name)
+               for scope in _receiver_scopes(syntax, parent))
+
+
+def _scope_member_write(syntax, scope, name):
+    nodes, receivers = scope
+    return any(_instance_node_write(syntax, node, (receivers, name)) for node in nodes)
+
+
+def _instance_node_write(syntax, node, member):
+    receivers, name = member
+    return (node.type in syntax.adapter.member_writes
+            and text(syntax.adapter.write_target(node)).strip() not in receivers
+            and member_write(text(syntax.adapter.write_target(node)), receivers, name)
+            or member_mutation(node, receivers))
 
 
 def _receiver_scopes(syntax, parent):
@@ -98,15 +120,19 @@ def _lexical_aliases(nodes, receivers):
     """Retain possible aliases across rebindings and branches until a fixed point."""
     receivers = set(receivers)
     while True:
-        aliases = {text(target) for node in nodes
-                   if node.type in {"assignment", "named_expression", "assignment_expression",
-                                    "variable_declarator"}
-                   and text(field(node, "right", "value")) in receivers
-                   and (target := field(node, "left", "name")) is not None
-                   and target.type == "identifier"}
+        aliases = _lexical_alias_targets(nodes, receivers)
         if aliases <= receivers:
             return receivers
         receivers |= aliases
+
+
+def _lexical_alias_targets(nodes, receivers):
+    return {text(target) for node in nodes
+            if node.type in {"assignment", "named_expression", "assignment_expression",
+                             "variable_declarator"}
+            and text(field(node, "right", "value")) in receivers
+            and (target := field(node, "left", "name")) is not None
+            and target.type == "identifier"}
 
 
 def _instance_field(syntax, parent, name):
@@ -131,9 +157,14 @@ def _method_receiver(node, parent):
     owner = node.parent
     if owner is not None and owner.type == "decorated_definition":
         owner = owner.parent
+    if owner and owner.parent and owner.parent.start_byte == parent.start_byte:
+        return _first_receiver(node)
+    return None
+
+
+def _first_receiver(node):
     parameters = field(node, "parameters")
-    if (owner and owner.parent and owner.parent.start_byte == parent.start_byte
-            and parameters and parameters.named_children):
+    if parameters and parameters.named_children:
         return text(parameters.named_children[0]).split(":", 1)[0]
     return None
 
@@ -158,17 +189,20 @@ def member_write(target: str, receivers: set[str], name: str) -> bool:
 
 def _plain_base(syntax, parent, target):
     node = syntax.node(parent.start_byte, parent.end_byte)
-    if node is None or node.parent is not None and node.parent.type == "decorated_definition":
+    if not _plain_class(syntax, parent):
         return False
+    base = _single_base(node)
+    return bool(base and re.fullmatch(r"[\w$]+(?:\.[\w$]+)*", text(base)) and text(base) == target)
+
+
+def _single_base(node):
     bases = field(node, "superclasses")
-    if bases is None and node is not None:
+    if bases is None:
         bases = next((c for c in node.named_children if c.type == "class_heritage"), None)
     if bases is None or len(bases.named_children) != 1:
-        return False
+        return None
     base = bases.named_children[0]
-    if base.type == "extends_clause":
-        base = field(base, "value")
-    return bool(base and re.fullmatch(r"[\w$]+(?:\.[\w$]+)*", text(base)) and text(base) == target)
+    return field(base, "value") if base.type == "extends_clause" else base
 
 
 def same_declaration_group(matches: list[Symbol]) -> bool:
@@ -182,9 +216,17 @@ def executable_implementation(identity, matches: list[Symbol], signature_types: 
     nodes = [identity.syntax[s.file_path].node(s.start_byte, s.end_byte) for s in matches]
     if any(node is None for node in nodes):
         return []
-    bodies = [s for s, node in zip(matches, nodes) if field(node, "body") is not None]
-    signatures = [node for node in nodes if field(node, "body") is None]
-    if len(bodies) != 1 or any(node.type not in signature_types for node in signatures):
+    return _signature_implementation(list(zip(matches, nodes)), signature_types)
+
+
+def _signature_implementation(declarations, signature_types):
+    bodies = [s for s, node in declarations if field(node, "body") is not None]
+    signatures = [(s, node) for s, node in declarations if field(node, "body") is None]
+    if len(bodies) != 1:
         return []
-    return bodies if all(s.start_byte < bodies[0].start_byte for s, node in zip(matches, nodes)
-                         if field(node, "body") is None) else []
+    return bodies if _signatures_precede(signatures, bodies[0], signature_types) else []
+
+
+def _signatures_precede(signatures, body, signature_types):
+    return all(node.type in signature_types and s.start_byte < body.start_byte
+               for s, node in signatures)

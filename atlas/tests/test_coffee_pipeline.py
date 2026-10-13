@@ -111,10 +111,14 @@ def test_each_physical_project_has_analysis_seams():
     }
     assert {path.name for path in FIXTURE_ROOT.iterdir() if path.is_dir()} == set(LANGUAGES) | set(standalone)
     for group, languages in standalone.items():
-        root = FIXTURE_ROOT / group
-        assert {path.name for path in root.iterdir() if path.is_dir()} == languages
-        for language in languages:
-            assert_standalone_project_seams(group, language)
+        assert_standalone_group(group, languages)
+
+
+def assert_standalone_group(group, languages):
+    root = FIXTURE_ROOT / group
+    assert {path.name for path in root.iterdir() if path.is_dir()} == languages
+    for language in languages:
+        assert_standalone_project_seams(group, language)
 
 
 def assert_standalone_project_seams(group, language):

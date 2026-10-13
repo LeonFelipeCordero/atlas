@@ -66,16 +66,17 @@ class GenericResolution(ResolutionAdapter):
 
     def call_target(self, node):
         node = unwrapped(node)
-        if node is not None and node.type == "object_creation_expression":
-            if self.language == "csharp":
-                return field(node, "type"), None
-            if self.language == "php":
-                name = next((c for c in node.named_children if c.type == "name"), None)
-                return name, None
+        if node is not None and node.type == "object_creation_expression" and self.language in {"csharp", "php"}:
+            return self._construction_name(node), None
         if self.language == "ruby" and node is not None and self._ruby_new(node):
             return field(node, "receiver"), None
         callee, receiver = super().call_target(node)
         return callee, unwrapped(receiver)
+
+    def _construction_name(self, node):
+        if self.language == "csharp":
+            return field(node, "type")
+        return next((c for c in node.named_children if c.type == "name"), None)
 
     def normalized_call(self, call, callee, receiver):
         target = super().normalized_call(call, callee, receiver)
@@ -116,11 +117,18 @@ class GenericResolution(ResolutionAdapter):
     def _type_parameter_shadowed(node, name):
         parent = node.parent
         while parent is not None:
-            parameters = [c for c in parent.named_children if c.type == "type_parameter_list"]
-            if any(text(field(p, "name")) == name for group in parameters for p in group.named_children):
+            if GenericResolution._scope_shadows_type(parent, name):
                 return True
             parent = parent.parent
         return False
+
+    @staticmethod
+    def _scope_shadows_type(node, name):
+        return any(GenericResolution._parameter_list_shadows_type(child, name) for child in node.named_children)
+
+    @staticmethod
+    def _parameter_list_shadows_type(node, name):
+        return node.type == "type_parameter_list" and any(text(field(p, "name")) == name for p in node.named_children)
 
     def _declaration(self, node):
         if self.language == "csharp":
@@ -147,15 +155,19 @@ class GenericResolution(ResolutionAdapter):
     @staticmethod
     def _php_declaration(node):
         if node.type == "simple_parameter":
-            annotation = field(node, "type")
-            children = annotation.named_children if annotation is not None and annotation.type == "named_type" else []
-            name = children[0] if len(children) == 1 and children[0].type == "name" else None
-            return Declaration(field(node, "name"), type_name(name))
+            return Declaration(field(node, "name"), GenericResolution._php_parameter_type(node))
         if node.type == "assignment_expression":
             name = field(node, "left")
             if name is not None and name.type == "variable_name":
                 return Declaration(name, None, unwrapped(field(node, "right")))
         return None
+
+    @staticmethod
+    def _php_parameter_type(node):
+        annotation = field(node, "type")
+        children = annotation.named_children if annotation is not None and annotation.type == "named_type" else []
+        name = children[0] if len(children) == 1 and children[0].type == "name" else None
+        return type_name(name)
 
     def _ruby_declaration(self, node):
         if node.type != "assignment":
@@ -186,8 +198,11 @@ class GenericResolution(ResolutionAdapter):
     def receiver_type_allowed(self, syntax, name, member):
         if self.language == "php" and any(n.type in {"namespace_definition", "namespace_use_declaration"} for n in syntax.nodes):
             return False
-        if self.language == "ruby":
-            # A visible override of new invalidates the syntactic construction hint.
-            if any(n.type == "singleton_method" and text(field(n, "name")) == "new" for n in syntax.nodes):
-                return False
+        if self.language == "ruby" and self._ruby_new_overridden(syntax):
+            return False
         return super().receiver_type_allowed(syntax, name, member)
+
+    @staticmethod
+    def _ruby_new_overridden(syntax):
+        # A visible override of new invalidates the syntactic construction hint.
+        return any(n.type == "singleton_method" and text(field(n, "name")) == "new" for n in syntax.nodes)

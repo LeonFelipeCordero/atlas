@@ -40,6 +40,11 @@ def test_script_members_match_standalone_snapshot(language):
     for owner in ("Unknown", "Mutated", "Masked", "PatchedPickup", "CycleA", "Initialized"):
         assert calls[f"{prefix}{owner}().brew(order)"]["target"] == f"external:{language}:brew"
     assert calls["ledger.brew(order)"]["target"] == f"external:{language}:brew"
+    assert_script_implementations(calls, language, prefix)
+    assert_dynamic_bases(calls, language, prefix)
+
+
+def assert_script_implementations(calls, language, prefix):
     if language == "javascript":
         prices = [calls[f"new Menu().price({args})"] for args in ("", "order", "order, 1, 2")]
         assert len({(row["target"], row["targetLine"]) for row in prices}) == 1
@@ -51,6 +56,9 @@ def test_script_members_match_standalone_snapshot(language):
         assert calls["quote(order)"]["target"].endswith("::quote")
         assert calls[f"{prefix}Menu().price(order)"]["targetLine"] == (50 if language == "python" else 19)
         assert calls["quote(order)"]["targetLine"] == (62 if language == "python" else 23)
+
+
+def assert_dynamic_bases(calls, language, prefix):
     if language == "python":
         for owner in ("Ambiguous", "Dynamic", "Partial"):
             assert calls[f"{owner}().brew(order)"]["target"] == "external:python:brew"

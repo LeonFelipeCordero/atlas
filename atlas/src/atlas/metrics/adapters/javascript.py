@@ -183,7 +183,8 @@ def _receiver_alias(node: Node, receivers: set[str]) -> str | None:
     return text(target) if target is not None and target.type == "identifier" else None
 
 
-def _receiver_mutation(syntax, node: Node, receivers: set[str], name: str) -> bool:
+def _receiver_mutation(syntax, node: Node, member: tuple[set[str], str]) -> bool:
+    receivers, name = member
     return (node.type in syntax.adapter.member_writes
             and member_write(text(syntax.adapter.write_target(node)), receivers, name)
             or member_mutation(node, receivers))
@@ -210,7 +211,8 @@ def _script_mutation(syntax, parent, name):
         if aliases <= receivers:
             break
         receivers |= aliases
-    return any(_receiver_mutation(syntax, node, receivers, name) for node in syntax.nodes)
+    member = receivers, name
+    return any(_receiver_mutation(syntax, node, member) for node in syntax.nodes)
 
 
 class JavaScriptResolution(ResolutionAdapter):

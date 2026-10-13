@@ -39,10 +39,16 @@ def _add_providers(providers: dict[str, list[str]], imported: Node) -> None:
         providers.setdefault(local, []).append(_overload_target(imported, name, local))
 
 
-def _overload_provider(syntax, local, targets, decorators, position) -> bool:
-    return (len(targets) == 1 and targets[0] in decorators
-            and not syntax.shadowed(local, position)
-            and not syntax.member_rebound(local, "overload"))
+class _OverloadProviders:
+    def __init__(self, syntax, decorators, position):
+        self.syntax = syntax
+        self.decorators = decorators
+        self.position = position
+
+    def matches(self, local, targets) -> bool:
+        return (len(targets) == 1 and targets[0] in self.decorators
+                and not self.syntax.shadowed(local, self.position)
+                and not self.syntax.member_rebound(local, "overload"))
 
 
 def typing_overload(syntax, symbol: Symbol) -> bool:
@@ -54,8 +60,8 @@ def typing_overload(syntax, symbol: Symbol) -> bool:
     for imported in syntax.nodes:
         if _prior_import(syntax, imported, node.start_byte):
             _add_providers(providers, imported)
-    return any(_overload_provider(syntax, local, targets, decorators, node.start_byte)
-               for local, targets in providers.items())
+    selection = _OverloadProviders(syntax, decorators, node.start_byte)
+    return any(selection.matches(local, targets) for local, targets in providers.items())
 
 
 def overload_implementation(syntax, ordered: list[Symbol]) -> list[Symbol]:

@@ -32,25 +32,36 @@ def test_generic_hooks_verified_against_physical_grammar(language):
     repo = parse_files(discover_files((ROOT / language).resolve()))
     adapter = get_resolution_adapter(language)
     syntaxes = [Syntax(file, adapter) for file in repo.files]
-    assert all(s.root is not None and not s.root.has_error for s in syntaxes)
+    assert all(valid_syntax(s) for s in syntaxes)
     file = next(f for f in repo.files if Path(f.source.path).name.lower().startswith("ledger."))
     syntax = Syntax(file, adapter)
-    bindings = [b for n in syntax.nodes for b in adapter.receiver_bindings(syntax, n)]
-    actual = [[b.name, b.annotation, b.inferred, text(b.node)] for b in bindings]
-    assert actual == json.loads((SNAPSHOTS / f"{language}_bindings.json").read_text())
+    assert receiver_bindings_snapshot(syntax) == json.loads((SNAPSHOTS / f"{language}_bindings.json").read_text())
     if language == "php":
-        # Every physical member invocation must reach production resolution.
-        calls = [n for n in syntax.nodes if n.type == "member_call_expression"]
-        assert len(calls) == 9
-        assert all(text(adapter.call_target(n)[0]) == "record" for n in calls)
-        direct = next(n for n in calls if text(field(n, "object")).startswith("(new"))
-        _, receiver = adapter.call_target(direct)
-        assert receiver is not None and receiver.type == "object_creation_expression"
-        assert text(adapter.call_target(receiver)[0]) == "Ledger"
-        assert sum("->record" in c.evidence for c in file.calls) == 9
+        assert_php_invocations(syntax, adapter)
 
 
-@pytest.mark.parametrize(("language", "owners", "evidence", "target"), [
+def receiver_bindings_snapshot(syntax):
+    bindings = [b for n in syntax.nodes for b in syntax.adapter.receiver_bindings(syntax, n)]
+    return [[b.name, b.annotation, b.inferred, text(b.node)] for b in bindings]
+
+
+def valid_syntax(syntax):
+    return syntax.root is not None and not syntax.root.has_error
+
+
+def assert_php_invocations(syntax, adapter):
+    # Every physical member invocation must reach production resolution.
+    calls = [n for n in syntax.nodes if n.type == "member_call_expression"]
+    assert len(calls) == 9
+    assert all(text(adapter.call_target(n)[0]) == "record" for n in calls)
+    direct = next(n for n in calls if text(field(n, "object")).startswith("(new"))
+    _, receiver = adapter.call_target(direct)
+    assert receiver is not None and receiver.type == "object_creation_expression"
+    assert text(adapter.call_target(receiver)[0]) == "Ledger"
+    assert sum("->record" in c.evidence for c in syntax.file.calls) == 9
+
+
+@pytest.mark.parametrize("case", [
     ("csharp", ["Ledger.cs::Intake.GenericMethod", "Ledger.cs::Intake.GenericLocal",
                 "Ledger.cs::Intake.Constrained", "Ledger.cs::GenericIntake.GenericClass",
                 "Ledger.cs::GenericIntake.Nested.GenericNested"],
@@ -66,7 +77,8 @@ def test_generic_hooks_verified_against_physical_grammar(language):
     ("php", ["imported.php::imported_direct", "namespaced.php::namespaced_direct"],
      "(new Ledger())->record()", "external:php:callable:record"),
 ])
-def test_unsafe_generic_receivers_have_exact_unresolved_targets(language, owners, evidence, target):
+def test_unsafe_generic_receivers_have_exact_unresolved_targets(case):
+    language, owners, evidence, target = case
     graph = analyze_repository((ROOT / language).resolve())
     nodes = {n["stableKey"]: n for n in graph.nodes}
     actual = sorted(
