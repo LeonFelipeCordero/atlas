@@ -11,10 +11,12 @@ def source_text(payload: Record) -> str:
     excerpts = payload.get("sources")
     if excerpts is None:
         excerpts = [{"stableKey": payload["filters"]["key"], **payload["source"]}]
-    for excerpt in excerpts:
-        details = {key: value for key, value in excerpt.items() if key != "lines"}
-        lines = excerpt.get("lines", [])
-        numbered = [f"{number}: {line}" for number, line in enumerate(lines, excerpt.get("startLine", 1))]
-        sections.append("\n".join([f"### {excerpt.get('path', excerpt['stableKey'])}",
-                                   json.dumps(details, ensure_ascii=False), *numbered]))
+    sections.extend(excerpt_text(excerpt) for excerpt in excerpts)
     return "\n\n".join(sections)
+
+
+def excerpt_text(excerpt: Record) -> str:
+    details = {key: value for key, value in excerpt.items() if key != "lines"}
+    numbered = [f"{number}: {line}" for number, line in enumerate(excerpt.get("lines", []), excerpt.get("startLine", 1))]
+    return "\n".join([f"### {excerpt.get('path', excerpt['stableKey'])}",
+                      json.dumps(details, ensure_ascii=False), *numbered])

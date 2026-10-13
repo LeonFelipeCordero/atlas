@@ -288,9 +288,13 @@ def test_batch_source_preserves_order_status_and_metadata(graph) -> None:
     assert [source["status"] for source in payload["sources"]] == ["ok", "unavailable", "span_unavailable", "ok"]
     assert payload["diagnostics"] == command("source", "run")["diagnostics"]
     for source in payload["sources"]:
-        assert {key: value for key, value in source.items() if key != "stableKey"} == command(
-            "source", source["stableKey"], "--max-lines", "1"
-        )["source"]
+        assert_source_matches_single(source)
+
+
+def assert_source_matches_single(source: dict) -> None:
+    assert {key: value for key, value in source.items() if key != "stableKey"} == command(
+        "source", source["stableKey"], "--max-lines", "1"
+    )["source"]
 
 
 def test_batch_source_pagination_and_duplicate_keys(graph) -> None:
@@ -324,11 +328,15 @@ def test_source_numbered_text_preserves_excerpt_and_snapshot_details(graph, keys
     assert metadata["diagnostics"] == command("source", "run")["diagnostics"]
     assert len(sections) == len(keys) + 1
     for section, key in zip(sections[1:], keys):
-        heading, details, *lines = section.split("\n")
-        excerpt = command("source", key, "--max-lines", "1")["source"]
-        assert heading == f"### {excerpt.get('path', key)}"
-        assert json.loads(details) == {"stableKey": key, **{name: value for name, value in excerpt.items() if name != "lines"}}
-        assert lines == [f"{number}: {line}" for number, line in enumerate(excerpt.get("lines", []), excerpt.get("startLine", 1))]
+        assert_text_excerpt(section, key)
+
+
+def assert_text_excerpt(section: str, key: str) -> None:
+    heading, details, *lines = section.split("\n")
+    excerpt = command("source", key, "--max-lines", "1")["source"]
+    assert heading == f"### {excerpt.get('path', key)}"
+    assert json.loads(details) == {"stableKey": key, **{name: value for name, value in excerpt.items() if name != "lines"}}
+    assert lines == [f"{number}: {line}" for number, line in enumerate(excerpt.get("lines", []), excerpt.get("startLine", 1))]
 
 
 def test_batch_source_rejects_stale_revision_and_unknown_key(graph) -> None:

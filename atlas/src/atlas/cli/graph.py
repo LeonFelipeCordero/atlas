@@ -27,7 +27,8 @@ class GraphError(click.ClickException):
         click.echo(json.dumps({"error": self.message}), file=file, err=True)
 
 
-def emit(ctx: click.Context, command: str, output_format: str = "json", **options: Any) -> None:
+def emit(ctx: click.Context, command: str, **options: Any) -> None:
+    output_format = options.pop("output_format", "json")
     project, revision = ctx.obj
     try:
         with navigation_service(project, revision) as service:
