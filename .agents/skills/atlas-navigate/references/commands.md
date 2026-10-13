@@ -1,6 +1,6 @@
 # Atlas navigation commands
 
-All graph commands return JSON on stdout; errors go to stderr with a nonzero exit code. Run `atlas graph --help` and subcommand `--help` when unsure. Do not pass `--format json`: graph output is already JSON.
+All graph commands default to JSON on stdout; errors go to stderr with a nonzero exit code. Run `atlas graph --help` and subcommand `--help` when unsure. Only `source` supports `--format text` for numbered excerpts with metadata.
 
 Before project discovery, check database existence without opening or creating it. Use the Atlas environment's Python if `python3` is unavailable:
 
@@ -26,6 +26,7 @@ atlas graph --project "$PROJECT" --revision "$REVISION" context "$KEY" \
 atlas graph --project "$PROJECT" --revision "$REVISION" context "$KEY" \
   --direction in --relations CALLS,REFERENCES --depth 1
 atlas graph --project "$PROJECT" --revision "$REVISION" source "$KEY" --max-lines 80
+atlas graph --project "$PROJECT" --revision "$REVISION" source "$KEY" "$OTHER_KEY" --format text
 atlas graph --project "$PROJECT" --revision "$REVISION" path "$FROM" "$TO"
 ```
 
@@ -38,7 +39,7 @@ atlas graph --project "$PROJECT" --revision "$REVISION" path "$FROM" "$TO"
 | `show KEY` | Declaration details and containment ancestors |
 | `children KEY` | Bounded immediate children, not all descendants |
 | `context KEY` | Bounded dependency neighborhood with relationship evidence |
-| `source KEY` | Hash-checked local source for a declaration or file |
+| `source KEY...` | Hash-checked local source for one or more declarations or files |
 | `path FROM TO` | Bounded directed relationship path, not an execution trace |
 
 Context directions are `out`, `in`, and `both`. The default relations are `CALLS,REFERENCES`. Select `IMPORTS` for file/module dependencies and `INHERITS` for type relationships. Preserve type-only and unresolved-target distinctions. Use `children` for structural exploration rather than adding containment to a behavioral trace.
@@ -46,6 +47,8 @@ Context directions are `out`, `in`, and `both`. The default relations are `CALLS
 Every success includes `repositoryId`, `graphRevision`, `indexedAt`, effective `filters`, path-scoped `diagnostics`, and `diagnosticsTruncated`. Inspect these and `truncated` every time. `show.ancestors` is nearest-parent first. `context.boundaries` gives `stableKey`, `reason`, and `expandable`; expand only relevant keys. A `path.status` of `unknown` means limits prevented ruling out a connection; `not_found` is still only about the selected static relations.
 
 Page `children` with its returned `nextOffset` using `--offset`. Page `source` with `source.nextStartLine` using `--start-line` (absolute 1-based line within the symbol/file bounds). Only `source.status: ok` returns verified `lines`, `startLine`, `endLine`, `truncated`, and `nextStartLine`. Other statuses include `changed`, `missing`, `unsafe`, `unreadable`, `unverified`, `unavailable`, `unsupported_encoding`, `span_unavailable`, and `too_large`; use the fallback rules in the skill. Source reads are capped at 8 MiB per file and 16 KiB of excerpt text; `too_large` returns these byte limits without source lines. For an oversized excerpt, retry fewer lines or read the relevant current source with bounded ordinary tools. Never treat truncated evidence as a complete function body.
+
+Single-key source JSON retains its `source` object. Multiple keys return ordered `sources` entries with `stableKey` and the same per-excerpt fields, sharing graph metadata and diagnostics. `--max-lines` and `--start-line` apply to each excerpt; inspect each status and paginate individual keys with their own `nextStartLine`. Unknown keys fail the command; verification failures remain per-excerpt statuses. `--format text` retains snapshot and excerpt metadata alongside numbered lines.
 
 Defaults: `find --limit 10`; `children --limit 30 --offset 0`; `context --depth 2 --max-nodes 30 --max-edges 100`; `source --max-lines 80`; `path --max-depth 6 --max-nodes 30 --max-edges 100`. Path also accepts `--direction` and `--relations`. Navigation errors are JSON on stderr with exit 1; invalid CLI usage exits 2.
 

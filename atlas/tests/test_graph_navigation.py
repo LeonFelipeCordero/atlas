@@ -280,6 +280,73 @@ def test_source_spans_use_parser_lf_coordinates(graph, newline: str, separator: 
     assert file_lines == lines
 
 
+def test_batch_source_preserves_order_status_and_metadata(graph) -> None:
+    payload = command("source", "run", "external", "worker", "file", "--max-lines", "1")
+    assert payload["repositoryId"] == graph[1] and payload["graphRevision"] == graph[2]
+    assert payload["filters"] == {"keys": ["run", "external", "worker", "file"], "maxLines": 1, "startLine": None}
+    assert [source["stableKey"] for source in payload["sources"]] == ["run", "external", "worker", "file"]
+    assert [source["status"] for source in payload["sources"]] == ["ok", "unavailable", "span_unavailable", "ok"]
+    assert payload["diagnostics"] == command("source", "run")["diagnostics"]
+    for source in payload["sources"]:
+        assert_source_matches_single(source)
+
+
+def assert_source_matches_single(source: dict) -> None:
+    assert {key: value for key, value in source.items() if key != "stableKey"} == command(
+        "source", source["stableKey"], "--max-lines", "1"
+    )["source"]
+
+
+def test_batch_source_pagination_and_duplicate_keys(graph) -> None:
+    payload = command("source", "run", "run", "file", "--start-line", str(SOURCE_START + 1), "--max-lines", "1")
+    assert payload["sources"][0] == payload["sources"][1]
+    for source in payload["sources"]:
+        assert source["startLine"] == SOURCE_START + 1
+        assert len(source["lines"]) == 1 and source["truncated"]
+        assert source["nextStartLine"] == SOURCE_START + 2
+
+
+@pytest.mark.parametrize("status", ["changed", "missing"])
+def test_batch_source_keeps_verification_failures_per_excerpt(graph, status: str) -> None:
+    path = graph[0].parent / "src/app.py"
+    if status == "changed":
+        path.write_text("changed source\n")
+    else:
+        path.unlink()
+    sources = command("source", "run", "external", "file")["sources"]
+    assert [source["status"] for source in sources] == [status, "unavailable", status]
+    assert all("lines" not in source for source in sources)
+
+
+@pytest.mark.parametrize("keys", [("run",), ("run", "worker", "external")])
+def test_source_numbered_text_preserves_excerpt_and_snapshot_details(graph, keys) -> None:
+    result = CliRunner().invoke(main, ["graph", "--project", "Local", "source", *keys, "--max-lines", "1", "--format", "text"])
+    assert result.exit_code == 0, result.output
+    sections = result.stdout.strip().split("\n\n")
+    metadata = json.loads(sections[0])
+    assert metadata["graphRevision"] == graph[2]
+    assert metadata["diagnostics"] == command("source", "run")["diagnostics"]
+    assert len(sections) == len(keys) + 1
+    for section, key in zip(sections[1:], keys):
+        assert_text_excerpt(section, key)
+
+
+def assert_text_excerpt(section: str, key: str) -> None:
+    heading, details, *lines = section.split("\n")
+    excerpt = command("source", key, "--max-lines", "1")["source"]
+    assert heading == f"### {excerpt.get('path', key)}"
+    assert json.loads(details) == {"stableKey": key, **{name: value for name, value in excerpt.items() if name != "lines"}}
+    assert lines == [f"{number}: {line}" for number, line in enumerate(excerpt.get("lines", []), excerpt.get("startLine", 1))]
+
+
+def test_batch_source_rejects_stale_revision_and_unknown_key(graph) -> None:
+    result = CliRunner().invoke(main, ["graph", "--project", "Local", "--revision", "stale", "source", "run", "file"])
+    assert result.exit_code == 1 and "Stale graph revision" in json.loads(result.stderr)["error"]
+    result = CliRunner().invoke(main, ["graph", "--project", "Local", "source", "run", "unknown"])
+    assert result.exit_code == 1 and "Node not found" in json.loads(result.stderr)["error"]
+    assert result.stdout == ""
+
+
 def test_source_verified_paged_changed_missing(graph) -> None:
     payload = command("source", "run", "--max-lines", "1")["source"]
     lines = BREWER_SOURCE.read_text().split("\n")
