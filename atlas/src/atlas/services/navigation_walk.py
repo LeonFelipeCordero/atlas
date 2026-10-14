@@ -14,10 +14,11 @@ class Walk:
     cutoffs: dict[str, str] = field(default_factory=dict)
 
     def output(self) -> Record:
+        external = sorted(key for key, node in self.nodes.items() if node["external"])
         return {
             "nodes": list(self.nodes.values()), "edges": list(self.edges.values()),
             "boundaries": [{"stableKey": key, "reason": reason, "expandable": True} for key, reason in self.cutoffs.items()]
-            + [{"stableKey": key, "reason": "external_unresolved_or_ambiguous", "expandable": False} for key in sorted(key for key, node in self.nodes.items() if node["external"])],
+            + [{"stableKey": key, "reason": "external_unresolved_or_ambiguous", "expandable": False} for key in external],
             "truncated": bool(self.cutoffs),
         }
 
