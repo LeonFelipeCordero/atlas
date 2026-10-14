@@ -3,7 +3,14 @@
 import pytest
 
 from tests.import_project_support import project_sources
-from tests.test_semantic_resolution import assert_coffee_call, call_edges, repository
+from tests.test_semantic_resolution import (
+    assert_call_source,
+    assert_coffee_call,
+    call_edges,
+    coffee_owner_keys,
+    coffee_symbols,
+    repository,
+)
 
 
 def assert_target(language, sources, expected):
@@ -69,7 +76,6 @@ def test_constructor_and_field_receivers(case):
         ("javascript", "reservations/Intake.js", "advanceReceiver", "ledger.commit(order)"),
         ("javascript", "reservations/Intake.js", "restoreBatch", "ledger.commit(order)"),
         ("java", JAVA_INTAKE, "StaticDispatch.fulfill", "ledger.commit(order)"),
-        ("java", JAVA_INTAKE, "AuditedIntake.fulfill", "ledger.commit(order)"),
         ("java", JAVA_INTAKE, "ReservationIntake.shadow", "ledger.commit(order)"),
         ("kotlin", KOTLIN_INTAKE, "TemporaryIntake.fulfill", "ledger.commit(order)"),
         ("rust", RUST_INTAKE, "restore", "ledger.commit(order)"),
@@ -114,6 +120,20 @@ def test_constructor_injected_order_created_client():
                          ("reservations/ReservationLedger.java", "ReservationLedger.commit"))
     assert_lifetime_call("java", (JAVA_INTAKE, "ReservationIntake.fulfill", "client.sendAndWait(saved)"),
                          ("reservations/OrderCreatedClient.java", "OrderCreatedClient.sendAndWait"))
+
+
+def test_audit_receiver_selects_one_argument_overload():
+    repo = repository("java", project_sources("java", "receiver-lifetime"))
+    evidence = "ledger.commit(order)"
+    assert_call_source(repo, (JAVA_INTAKE, evidence))
+    owners = coffee_owner_keys(repo, (JAVA_INTAKE, "AuditedIntake.fulfill"))
+    overloads = coffee_symbols(repo, JAVA_INTAKE, "AuditLedger.commit")
+    assert {symbol.signature for symbol in overloads} == {
+        "Order commit(Order order)", "Order commit(Order order, String reason)",
+    }
+    target, = [symbol for symbol in overloads if symbol.signature == "Order commit(Order order)"]
+    edge, = [edge for edge in call_edges(repo, evidence) if edge.source_key in owners]
+    assert edge.target_key == target.key
 
 
 def test_unrelated_constructor_assignments_are_separate_scopes():

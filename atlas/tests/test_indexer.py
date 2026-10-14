@@ -22,7 +22,7 @@ APPLICATIONS = {
     "elixir": ("brewing/brewer.ex", "reporting/report.ex"),
     "python": ("src/coffee/brewing/brewer.py", "src/coffee/reporting/report.py"),
 }
-FILE_COUNTS = dict(zip(APPLICATIONS, (12, 12, 12, 9, 10, 13, 8, 10), strict=True))
+FILE_COUNTS = dict(zip(APPLICATIONS, (12, 12, 13, 10, 11, 14, 8, 10), strict=True))
 
 
 def copy_application(language: str, root: Path) -> Path:

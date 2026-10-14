@@ -1,0 +1,303 @@
+[
+  {
+    "source": "safety.py::Pickup.serve",
+    "evidence": "self.sip(order)",
+    "target": "safety.py::Brewing.sip",
+    "signature": "def sip(self, order):",
+    "targetLine": 7
+  },
+  {
+    "source": "safety.py::FalseSelf.serve",
+    "evidence": "self.sip(order)",
+    "target": "external:python:sip",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::AliasedStatic.serve",
+    "evidence": "self.sip(order)",
+    "target": "external:python:sip",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::WrongParameter.serve",
+    "evidence": "self.sip(order)",
+    "target": "external:python:sip",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::ReboundSelf.serve",
+    "evidence": "unknown()",
+    "target": "external:python:unknown",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::ReboundSelf.serve",
+    "evidence": "self.sip(order)",
+    "target": "external:python:sip",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::DynamicWrite.__init__",
+    "evidence": "setattr(receiver, 'brew', replacement)",
+    "target": "external:python:setattr",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::AliasMutator.__init__",
+    "evidence": "setattr(alias, 'brew', replacement)",
+    "target": "external:python:setattr",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::SafeAlias.unrelated",
+    "evidence": "unknown()",
+    "target": "external:python:unknown",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Pickup().brew(order)",
+    "target": "safety.py::Brewing.brew",
+    "signature": "def brew(self, order):",
+    "targetLine": 5
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Pickup()",
+    "target": "safety.py::Pickup",
+    "signature": "class Pickup(Brewing):",
+    "targetLine": 10
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasedSelf().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasedSelf()",
+    "target": "safety.py::AliasedSelf",
+    "signature": "class AliasedSelf(Brewing):",
+    "targetLine": 33
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Deleted().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Deleted()",
+    "target": "safety.py::Deleted",
+    "signature": "class Deleted(Brewing):",
+    "targetLine": 37
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Ambiguous().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Ambiguous()",
+    "target": "safety.py::Ambiguous",
+    "signature": "class Ambiguous(Brewing, Other):",
+    "targetLine": 45
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Override().brew(order)",
+    "target": "safety.py::Override.brew",
+    "signature": "def brew(self, order):",
+    "targetLine": 49
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Override()",
+    "target": "safety.py::Override",
+    "signature": "class Override(Brewing, Other):",
+    "targetLine": 48
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Decorated().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Decorated()",
+    "target": "safety.py::Decorated",
+    "signature": "class Decorated(Brewing):",
+    "targetLine": 53
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Menu().price(order)",
+    "target": "safety.py::Menu.price",
+    "signature": "def price(self, order):",
+    "targetLine": 61
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "Menu()",
+    "target": "safety.py::Menu",
+    "signature": "class Menu:",
+    "targetLine": 56
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DynamicWrite().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DynamicWrite()",
+    "target": "safety.py::DynamicWrite",
+    "signature": "class DynamicWrite(Brewing):",
+    "targetLine": 64
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "OwnOverride().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "OwnOverride()",
+    "target": "safety.py::OwnOverride",
+    "signature": "class OwnOverride(AliasedSelf):",
+    "targetLine": 68
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasWrite().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasWrite()",
+    "target": "safety.py::AliasWrite",
+    "signature": "class AliasWrite(Brewing):",
+    "targetLine": 72
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasMutator().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasMutator()",
+    "target": "safety.py::AliasMutator",
+    "signature": "class AliasMutator(Brewing):",
+    "targetLine": 78
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasOverride().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "AliasOverride()",
+    "target": "safety.py::AliasOverride",
+    "signature": "class AliasOverride(AliasWrite):",
+    "targetLine": 83
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "SafeAlias().brew(order)",
+    "target": "safety.py::Brewing.brew",
+    "signature": "def brew(self, order):",
+    "targetLine": 5
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "SafeAlias()",
+    "target": "safety.py::SafeAlias",
+    "signature": "class SafeAlias(Brewing):",
+    "targetLine": 87
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DecoratedBase().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DecoratedBase()",
+    "target": "safety.py::DecoratedBase",
+    "signature": "class DecoratedBase:",
+    "targetLine": 96
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DecoratedChild().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DecoratedChild()",
+    "target": "safety.py::DecoratedChild",
+    "signature": "class DecoratedChild(DecoratedBase):",
+    "targetLine": 100
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DecoratedGrandchild().brew(order)",
+    "target": "external:python:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "DecoratedGrandchild()",
+    "target": "safety.py::DecoratedGrandchild",
+    "signature": "class DecoratedGrandchild(DecoratedChild):",
+    "targetLine": 103
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "PlainGrandchild().brew(order)",
+    "target": "safety.py::PlainBase.brew",
+    "signature": "def brew(self, order):",
+    "targetLine": 107
+  },
+  {
+    "source": "safety.py::serve",
+    "evidence": "PlainGrandchild()",
+    "target": "safety.py::PlainGrandchild",
+    "signature": "class PlainGrandchild(PlainChild):",
+    "targetLine": 113
+  }
+]

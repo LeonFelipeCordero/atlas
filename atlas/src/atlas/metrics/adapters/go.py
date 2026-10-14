@@ -87,7 +87,7 @@ class GoResolution(ResolutionAdapter):
     receiver_updates = {"inc_statement", "dec_statement"}
     declarations = {"var_spec"}
     member_nodes = {"selector_expression": (("operand",), ("field",))}
-    receiver_class_nodes = {"compound_literal_expression"}
+    receiver_class_nodes = {"composite_literal", "unary_expression"}
 
     def binding(self, syntax, node, scope):
         if node.type == "range_clause":
@@ -97,7 +97,12 @@ class GoResolution(ResolutionAdapter):
         return super().binding(syntax, node, scope)
 
     def call_target(self, node):
-        if node and node.type == "compound_literal_expression":
+        if node and node.type == "unary_expression":
+            operand = field(node, "operand")
+            if text(field(node, "operator")) == "&" and operand and operand.type == "composite_literal":
+                return field(operand, "type"), None
+            return None, None
+        if node and node.type == "composite_literal":
             return field(node, "type"), None
         return super().call_target(node)
 

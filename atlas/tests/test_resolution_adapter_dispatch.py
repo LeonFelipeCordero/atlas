@@ -16,8 +16,8 @@ class ResolutionAdapterDispatchTest(unittest.TestCase):
             "rust": "RustResolution",
             "javascript": "JavaScriptResolution",
             "jsx": "JavaScriptResolution",
-            "typescript": "JavaScriptResolution",
-            "tsx": "JavaScriptResolution",
+            "typescript": "TypeScriptResolution",
+            "tsx": "TypeScriptResolution",
             "elixir": "ElixirResolution",
             "python": "PythonResolution",
         }

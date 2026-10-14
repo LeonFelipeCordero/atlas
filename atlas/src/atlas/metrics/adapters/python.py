@@ -22,6 +22,13 @@ from .resolution_paths import quoted_path
 from .base import COMMON_METRICS, MetricAdapter
 
 from .parameters import count_parameters, parameter_children, parameter_node
+from .script_resolution import inherited_members, same_declaration_group
+from .script_python_selection import (
+    overload_implementation,
+    bound_self as _bound_self,
+    import_names as _import_names,
+    typing_overload as _typing_overload,
+)
 
 from ...syntax import field, text
 
@@ -272,13 +279,6 @@ def _child_path(path: str, name: str) -> str:
     return path + ("" if path.endswith(".") else ".") + name
 
 
-def _import_names(node: Node) -> list[tuple[str, str]]:
-    return [
-        (text(field(child, "name") or child), text(field(child, "alias")))
-        for child in node.children_by_field_name("name")
-    ]
-
-
 def _import_node(ctx, file, position):
     return next(
         (
@@ -313,8 +313,25 @@ class PythonResolution(ResolutionAdapter):
     member_nodes = {"attribute": (("object",), ("attribute",))}
     assignments = {"assignment", "augmented_assignment", "named_expression"}
     loop_bindings = {"for_statement", "for_in_clause"}
-    member_writes = {"assignment", "augmented_assignment"}
+    member_writes = {"assignment", "augmented_assignment", "delete_statement"}
     rebound_declarations = {"function_definition", "class_definition"}
+
+    def instance_members(self, resolver, parent, name):
+        return inherited_members(resolver, parent, name)
+
+    def select(self, identity, request, matches):
+        if request.qualifier and request.qualifier.split(".")[0] == "self":
+            syntax = identity.syntax[request.file.source.path]
+            node = syntax.node(request.call.start_byte, request.call.end_byte)
+            if not _bound_self(syntax, node):
+                return []
+        if len(matches) <= 1:
+            return [s for s in matches if not _typing_overload(identity.syntax[s.file_path], s)]
+        if not same_declaration_group(matches):
+            return []
+        ordered = sorted(matches, key=lambda s: s.start_byte)
+        syntax = identity.syntax[ordered[0].file_path]
+        return overload_implementation(syntax, ordered)
 
     def module_index(self, repository, syntax) -> dict[str, list[ParsedFile]]:
         files = [

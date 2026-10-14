@@ -11,6 +11,7 @@ from dataclasses import replace
 from tree_sitter import Node
 
 from .java import JavaResolution
+from .callable_selection import select_callable
 
 from .base import COMMON_METRICS, MetricAdapter
 
@@ -66,6 +67,7 @@ class KotlinResolution(JavaResolution):
     family = "kotlin"
     scopes = SCOPES | {
         "lambda_literal",
+        "secondary_constructor",
         "function_body",
         "control_structure_body",
         "for_statement",
@@ -83,6 +85,9 @@ class KotlinResolution(JavaResolution):
             return None
         return super().write_target(node)
     single_parameter_functions = {"lambda_expression"}
+
+    def select(self, identity, request, matches):
+        return select_callable(identity, request, matches)
 
     def call_target(self, node):
         callee, receiver = super().call_target(node)

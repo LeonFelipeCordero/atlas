@@ -7,6 +7,7 @@ from ..receiver_syntax import java_bindings
 from tree_sitter import Node
 
 from .resolution import ResolutionAdapter
+from .callable_selection import select_callable
 
 from .resolution_paths import quoted_path
 
@@ -60,6 +61,9 @@ class JavaResolution(ResolutionAdapter):
     static_containers = {"modifiers"}
     member_writes = {"assignment_expression", "update_expression"}
     single_parameter_functions = {"lambda_expression"}
+
+    def select(self, identity, request, matches):
+        return select_callable(identity, request, matches)
 
     def call_target(self, node):
         if node and node.type == "object_creation_expression":

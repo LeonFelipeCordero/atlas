@@ -1,0 +1,80 @@
+[
+  [
+    "ledger",
+    "Ledger",
+    false,
+    "Ledger ledger"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    false,
+    "ledger = new Ledger()"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = new Ledger()"
+  ],
+  [
+    "unknown",
+    "dynamic",
+    false,
+    "dynamic unknown"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger = MakeLedger()"
+  ],
+  [
+    "ledger",
+    "Ledger",
+    true,
+    "ledger = new Ledger()"
+  ],
+  [
+    "ledger",
+    "OtherLedger",
+    true,
+    "ledger = new OtherLedger()"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "Ledger ledger"
+  ],
+  [
+    "input",
+    null,
+    true,
+    "Ledger input"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "ledger = input"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "Ledger ledger"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "Ledger ledger"
+  ],
+  [
+    "ledger",
+    null,
+    true,
+    "Ledger ledger"
+  ]
+]
