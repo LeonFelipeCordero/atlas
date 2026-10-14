@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { components, dependencyMetrics } from './graph-analysis'
+import { components, dependencyMetrics, internalNodes } from './graph-analysis'
 import { importCycles } from './import-cycles.servers'
 import type { ArtifactNode, DirectEdge } from './architecture-artifact'
 
@@ -160,6 +160,34 @@ test('instability uses distinct internal peers at each level, including hidden t
     'external-run',
   ])
     expect(metrics.has(key)).toBe(false)
+  expect(nodes).toEqual(snapshot)
+})
+
+test('internal nodes exclude subtrees marked external by either type or level without hiding tests', () => {
+  const nodes = hierarchyFixture()
+  const typeExternal = { ...node('type-external'), type: 'external' }
+  const descendant = {
+    ...node('type-external-child'),
+    parentStableKey: typeExternal.stableKey,
+    ancestorStableKeys: [typeExternal.stableKey],
+    depth: 1,
+  }
+  const levelExternal = {
+    ...node('level-external'),
+    level: 'external',
+  }
+  nodes.push(descendant, typeExternal, levelExternal)
+  const snapshot = structuredClone(nodes)
+  const internal = internalNodes(nodes)
+  expect(internal).toEqual(
+    nodes.slice(
+      0,
+      nodes.findIndex((entry) => entry.stableKey === 'external'),
+    ),
+  )
+  expect(internal.find((entry) => entry.stableKey === 'tests/test.ts')).toBe(
+    nodes.find((entry) => entry.stableKey === 'tests/test.ts'),
+  )
   expect(nodes).toEqual(snapshot)
 })
 

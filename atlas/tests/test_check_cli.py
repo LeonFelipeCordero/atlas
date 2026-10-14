@@ -22,6 +22,18 @@ def configure(root: Path, **limits) -> None:
     (root / "atlas.json").write_text(json.dumps({**dict.fromkeys(CheckConfig.model_fields), **limits}))
 
 
+def test_check_help_describes_model_defaults_and_check_semantics() -> None:
+    result = CliRunner().invoke(main, ["check", "--help"])
+    assert result.exit_code == 0, result.output
+    help_text = " ".join(result.output.split())
+    defaults = ", ".join(f"{rule}={default}" for rule, default in CheckConfig().model_dump().items() if default is not None)
+    assert f"Missing keys inherit defaults: {defaults}." in help_text
+    assert "=None" not in help_text
+    assert "maxChangeImpact and maxInstability are disabled by default and apply to files/modules." in help_text
+    assert "Null disables a check. Equality passes; violations exit 1." in help_text
+    assert "atlas.json in the analyzed folder, without saving by default." in help_text
+
+
 def test_default_parameter_limit_checks_current_code_and_exit_status(tmp_path: Path) -> None:
     copytree(FIXTURE_ROOT / "python", tmp_path, dirs_exist_ok=True)
     copytree(VARIANTS / "station-over-limit", tmp_path, dirs_exist_ok=True)

@@ -9,21 +9,16 @@ from atlas.domain.models import Complexity
 from atlas.metrics.adapters import get_metric_adapter
 from atlas.metrics.adapters.base import COMMON_METRICS
 from atlas.metrics.complexity import calculate_complexity
+from atlas.syntax import walk
 from tests.coffee_consolidation import coffee_node
 from tests.coffee_fixture import LANGUAGES, coffee_sources
-
-
-def syntax_nodes(root):
-    yield root
-    for child in root.named_children:
-        yield from syntax_nodes(child)
 
 
 def assert_source_policy(source):
     root = get_parser(source.language).parse(source.source).root_node
     assert not root.has_error, source.path
     policy = get_metric_adapter(source.language).metrics
-    scopes = [node for node in syntax_nodes(root) if policy.scope(node)]
+    scopes = [node for node in walk(root) if policy.scope(node)]
     for node in scopes:
         assert calculate_complexity(node, policy) == calculate_complexity(node)
     return len(scopes)

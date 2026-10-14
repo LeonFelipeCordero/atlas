@@ -12,13 +12,13 @@ class Walk:
     edges: dict[int, Record] = field(default_factory=dict)
     parents: dict[str, tuple[str, int]] = field(default_factory=dict)
     cutoffs: dict[str, str] = field(default_factory=dict)
-    external: set[str] = field(default_factory=set)
 
     def output(self) -> Record:
+        external = sorted(key for key, node in self.nodes.items() if node["external"])
         return {
             "nodes": list(self.nodes.values()), "edges": list(self.edges.values()),
             "boundaries": [{"stableKey": key, "reason": reason, "expandable": True} for key, reason in self.cutoffs.items()]
-            + [{"stableKey": key, "reason": "external_unresolved_or_ambiguous", "expandable": False} for key in sorted(self.external)],
+            + [{"stableKey": key, "reason": "external_unresolved_or_ambiguous", "expandable": False} for key in external],
             "truncated": bool(self.cutoffs),
         }
 
@@ -34,7 +34,6 @@ class Traversal:
         while self.frontier:
             current, distance = self.frontier.popleft()
             if self.walk.nodes[current]["external"]:
-                self.walk.external.add(current)
                 continue
             if distance >= self.request.depth:
                 self.walk.cutoffs[current] = "depth"

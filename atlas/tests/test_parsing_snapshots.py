@@ -139,12 +139,6 @@ def test_structure_native_variants(language):
         assert_native_structure(source)
 
 
-def syntax_nodes(root):
-    yield root
-    for child in root.named_children:
-        yield from syntax_nodes(child)
-
-
 def node_span(node):
     return Span(start_byte=node.start_byte, end_byte=node.end_byte,
                 start_line=node.start_point.row, start_column=node.start_point.column,

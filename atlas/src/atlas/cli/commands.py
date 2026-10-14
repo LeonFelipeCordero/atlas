@@ -7,6 +7,7 @@ from typing import Any
 import click
 
 from atlas.cli.graph import graph
+from atlas.metrics.config import CheckConfig
 
 @click.group(help="Analyze repositories and store their graphs in SQLite")
 def main() -> None:
@@ -79,9 +80,9 @@ def report_command(folder: Path, save: bool, output_format: str) -> None:
 
 @main.command("check", help=(
     "Check current sources against atlas.json in the analyzed folder, without saving by default. "
-    "Missing keys inherit defaults: maxFileLines=600, maxFunctionLines=100, "
-    "maxParameters=3, maxWeightedComplexity=8, maxDecisionDepth=3, "
-    "maxNestedLoops=0, maxCircularImportGroups=0. maxChangeImpact and "
+    "Missing keys inherit defaults: "
+    + ", ".join(f"{rule}={default}" for rule, default in CheckConfig().model_dump().items() if default is not None)
+    + ". maxChangeImpact and "
     "maxInstability are disabled by default and apply to files/modules. "
     "Null disables a check. Equality passes; violations exit 1."
 ))

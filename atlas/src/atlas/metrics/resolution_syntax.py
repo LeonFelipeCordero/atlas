@@ -191,15 +191,16 @@ class Syntax:
             for binding, scope, node in self.bindings
         )
 
-    def _imports_on_line(self, line: int) -> list[Node]:
-        return [
-            node
-            for node in self.nodes
-            if node.start_point.row + 1 == line and self.adapter.is_import_node(node)
-        ]
+    @cached_property
+    def import_nodes_by_line(self) -> dict[int, list[Node]]:
+        imports: dict[int, list[Node]] = {}
+        for node in self.nodes:
+            if self.adapter.is_import_node(node):
+                imports.setdefault(node.start_point.row + 1, []).append(node)
+        return imports
 
     def import_node(self, line: int, source: str | None = None) -> Node | None:
-        candidates = self._imports_on_line(line)
+        candidates = self.import_nodes_by_line.get(line, [])
         if source is not None:
             exact = [node for node in candidates if _same_import(node, source)]
             if exact:

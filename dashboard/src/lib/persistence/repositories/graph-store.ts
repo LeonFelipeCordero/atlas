@@ -1,4 +1,8 @@
-import { dependencyMetrics } from '../../graph-analysis'
+import {
+  dependencyMetrics,
+  internalNodes,
+  levelOwners,
+} from '../../graph-analysis'
 import { importCycles } from '../../import-cycles.servers'
 import { buildProjectGraph, getGraphTrail } from '../../project-graph'
 import { cycleContainsNode, projectCycles } from '../../graph-cycles'
@@ -54,13 +58,11 @@ export class GraphStore {
     keys: Array<string>,
     topology: Array<ArtifactNode>,
   ): GraphDetails {
-    const properties = new Map<
+    const details = new Map<
       string,
-      NonNullable<ArtifactNode['properties']>
-    >()
-    const symbols = new Map<
-      string,
-      Pick<ArtifactNode, 'signature' | 'startColumn' | 'endColumn'>
+      Pick<ArtifactNode, 'signature' | 'startColumn' | 'endColumn'> & {
+        properties: NonNullable<ArtifactNode['properties']>
+      }
     >()
     const metrics = dependencyMetrics(topology, this.queries.relations(id))
     for (const {
@@ -70,14 +72,18 @@ export class GraphStore {
       endColumn,
       ...row
     } of this.queries.metrics(id, keys)) {
-      properties.set(stableKey, {
-        ...compactProperties(row),
-        ...metrics.get(stableKey),
+      details.set(stableKey, {
+        signature,
+        startColumn,
+        endColumn,
+        properties: {
+          ...compactProperties(row),
+          ...metrics.get(stableKey),
+        },
       })
-      symbols.set(stableKey, { signature, startColumn, endColumn })
     }
     for (const row of this.queries.decorators(id, keys)) {
-      const values = properties.get(row.stableKey)!
+      const values = details.get(row.stableKey)!.properties
       const list = (values.decorators ??= []) as Array<string>
       list.push(row.decorator)
     }
@@ -86,8 +92,7 @@ export class GraphStore {
       .filter((node) => keySet.has(node.stableKey))
       .map((node) => ({
         ...node,
-        ...symbols.get(node.stableKey),
-        properties: properties.get(node.stableKey),
+        ...details.get(node.stableKey),
       }))
     return {
       nodes,
@@ -100,7 +105,7 @@ export class GraphStore {
     keys: Set<string>,
     topology: Array<ArtifactNode>,
   ): Record<string, FileComplexitySum> {
-    const lookup = new Map(topology.map((node) => [node.stableKey, node]))
+    const owners = levelOwners(topology, 'file')
     const sums = new Map(
       topology
         .filter((node) => keys.has(node.stableKey) && node.level === 'file')
@@ -113,10 +118,7 @@ export class GraphStore {
       .filter((node) => ['function', 'method'].includes(node.type))
       .map((node) => ({
         node,
-        file: [
-          node.stableKey,
-          ...node.ancestorStableKeys.slice().reverse(),
-        ].find((key) => lookup.get(key)?.level === 'file'),
+        file: owners.get(node.stableKey),
       }))
       .filter(({ file }) => file !== undefined && sums.has(file))
     const measurements = new Map(
@@ -156,21 +158,7 @@ export class GraphStore {
     }
     const visible = hideTestFiles(structure)
     const graph = buildProjectGraph(visible, scope)
-    const external = new Set(
-      nodes
-        .filter((node) => node.type === 'external' || node.level === 'external')
-        .map((node) => node.stableKey),
-    )
-    const internal = new Set(
-      visible.nodes
-        .filter(
-          (node) =>
-            ![node.stableKey, ...node.ancestorStableKeys].some((key) =>
-              external.has(key),
-            ),
-        )
-        .map((node) => node.stableKey),
-    )
+    const internal = new Set(internalNodes(nodes).map((node) => node.stableKey))
     const relations = visible.edges.filter(
       (edge) =>
         internal.has(edge.sourceStableKey) &&
