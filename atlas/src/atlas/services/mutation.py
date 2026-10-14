@@ -3,15 +3,15 @@
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 from uuid import uuid4
 
-from atlas.domain.mutation import MutationRepository, MutationSession, MutationSource, MutationTrial, MutationTrialInput
+from atlas.domain.mutation import MutationOutcome, MutationRepository, MutationSession, MutationSource, MutationTrial, MutationTrialInput
 from atlas.domain.repositories import RepositoryError
 from atlas.mutation.planning import plan_mutation
 
 
-OUTCOMES = ("killed", "survived", "invalid", "timeout", "error", "skipped")
+OUTCOMES = get_args(MutationOutcome)
 
 
 def source_status(root: Path, source: MutationSource) -> str:

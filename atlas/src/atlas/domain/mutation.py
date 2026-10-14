@@ -5,6 +5,10 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+MutationKind = Literal["predicate", "comparison", "logical"]
+MutationOutcome = Literal["killed", "survived", "invalid", "timeout", "error", "skipped"]
+
+
 class MutationValue(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -36,7 +40,7 @@ class MutationSite(MutationValue):
     site_id: str
     path: str
     language: str
-    kind: Literal["predicate", "comparison", "logical"]
+    kind: MutationKind
     expression: str
     context: str
     callable: str | None = None
@@ -95,7 +99,7 @@ class MutationTrialInput(MutationValue):
     schema_version: Literal[1]
     hypothesis: str = Field(min_length=1)
     patch: str
-    outcome: Literal["killed", "survived", "invalid", "timeout", "error", "skipped"]
+    outcome: MutationOutcome
     baseline: ExecutionEvidence | None = None
     mutant: ExecutionEvidence | None = None
     source_identity: SourceIdentity
@@ -113,21 +117,13 @@ class MutationTrialInput(MutationValue):
             raise ValueError("Executed trials require a patch and mutant evidence")
         if self.baseline.exit_code != 0:
             raise ValueError("Executed trials require a passing baseline")
-        self._validate_source_identity()
-        self._validate_outcome()
-        return self
-
-    def _validate_source_identity(self) -> None:
         if self.source_identity.mutant_file_hash is None or self.source_identity.restored_file_hash is None:
             raise ValueError("Executed trials require mutant and restored source hashes")
-
-    def _validate_outcome(self) -> None:
-        if self.mutant is None:
-            return
         if self.outcome == "survived" and self.mutant.exit_code != 0:
             raise ValueError("Survived trials require a passing mutant run")
         if self.outcome == "killed" and self.mutant.exit_code in (0, None):
             raise ValueError("Killed trials require a failing mutant run; explain assertion evidence")
+        return self
 
 
 class MutationTrial(MutationValue):

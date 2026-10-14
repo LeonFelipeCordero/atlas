@@ -14,7 +14,6 @@ import hashlib
 import json
 import posixpath
 from dataclasses import dataclass
-from typing import Literal
 
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
@@ -23,11 +22,11 @@ from ..domain.mutation import (
     CallableRegion,
     MutationDiagnostic,
     MutationExtraction,
+    MutationKind,
     MutationSite,
     MutationSpan,
 )
 
-Kind = Literal["predicate", "comparison", "logical"]
 LANGUAGES = frozenset({"python", "javascript", "typescript", "tsx"})
 CALLABLES = frozenset({
     "function_definition", "lambda", "function_declaration", "function_expression",
@@ -101,7 +100,7 @@ def _predicate(node: Node, language: str) -> tuple[bool, Node | None]:
     return _python_predicate(node) if language == "python" else (False, None)
 
 
-def _expression_kind(node: Node, source: bytes) -> Kind | None:
+def _expression_kind(node: Node, source: bytes) -> MutationKind | None:
     if node.type == "comparison_operator":
         return "comparison"
     if node.type == "boolean_operator":
@@ -120,9 +119,9 @@ def _callable_name(node: Node, source: bytes) -> str:
     if name is not None:
         return _text(name, source)
     parent = node.parent
-    if parent is not None and parent.type in {"variable_declarator", "assignment", "pair"}:
+    if parent is not None and parent.type in {"variable_declarator", "assignment", "pair", "field_definition", "public_field_definition"}:
         target = parent.child_by_field_name("name") or parent.child_by_field_name("left")
-        target = target or parent.child_by_field_name("key")
+        target = target or parent.child_by_field_name("key") or parent.child_by_field_name("property")
         if target is not None:
             return _text(target, source)
     return "<lambda>" if node.type == "lambda" else "<anonymous>"
@@ -155,7 +154,7 @@ class _Owner:
     context: str = ""
 
 
-def _site(file: _FileContext, candidate: tuple[Kind, Node], owner: _Owner) -> MutationSite:
+def _site(file: _FileContext, candidate: tuple[MutationKind, Node], owner: _Owner) -> MutationSite:
     kind, node = candidate
     span = _span(node)
     identity = json.dumps(
@@ -172,8 +171,8 @@ def _site(file: _FileContext, candidate: tuple[Kind, Node], owner: _Owner) -> Mu
 
 def _node_sites(
     node: Node, file: _FileContext, diagnostics: list[MutationDiagnostic],
-) -> list[tuple[Kind, Node]]:
-    sites: list[tuple[Kind, Node]] = []
+) -> list[tuple[MutationKind, Node]]:
+    sites: list[tuple[MutationKind, Node]] = []
     expected, predicate = _predicate(node, file.language)
     if predicate is not None:
         sites.append(("predicate", _unwrap(predicate)))
@@ -193,20 +192,24 @@ def _node_sites(
     return sites
 
 
+def _callable_region(node: Node) -> Node:
+    return node.parent if node.parent is not None and node.parent.type == "decorated_definition" else node
+
+
 def _ownership(node: Node, file: _FileContext, owner: _Owner) -> _Owner:
+    if node.type == "decorator" and node.parent is not None:
+        definition = node.parent.child_by_field_name("definition")
+        if definition is not None and definition.type in CALLABLES:
+            return _ownership(definition, file, owner)
     names = owner.names
-    if node.type in {"class_definition", "class_declaration", "class"}:
+    if node.type in {"class_definition", "class_declaration", "abstract_class_declaration", "class"}:
         name = node.child_by_field_name("name")
         names += (_text(name, file.source) if name is not None else "<class>",)
     if node.type not in CALLABLES:
         return _Owner(owner.identity, names, owner.context)
     names += (_callable_name(node, file.source),)
     identity = f"{file.path}::{'.'.join(names)}@{node.start_byte}"
-    return _Owner(identity, names, _text(node, file.source))
-
-
-def _children(node: Node, owner: _Owner) -> list[tuple[Node, _Owner]]:
-    return [(child, owner) for child in reversed(node.named_children)]
+    return _Owner(identity, names, _text(_callable_region(node), file.source))
 
 
 class _Extractor:
@@ -214,7 +217,7 @@ class _Extractor:
         self.file = file
         self.errors = errors
         self.result = MutationExtraction()
-        self.seen: set[tuple[Kind, int, int]] = set()
+        self.seen: set[tuple[MutationKind, int, int]] = set()
 
     def add_sites(self, node: Node, owner: _Owner) -> None:
         for candidate in _node_sites(node, self.file, self.result.diagnostics):
@@ -230,11 +233,12 @@ class _Extractor:
             return []
         owner = _ownership(node, self.file, owner)
         if node.type in CALLABLES:
+            region = _callable_region(node)
             self.result.callables.append(CallableRegion(
-                identity=owner.identity or "", start_byte=node.start_byte, end_byte=node.end_byte,
+                identity=owner.identity or "", start_byte=region.start_byte, end_byte=region.end_byte,
             ))
         self.add_sites(node, owner)
-        return _children(node, owner)
+        return [(child, owner) for child in reversed(node.named_children)]
 
     def extract(self, root: Node) -> MutationExtraction:
         pending = [(root, _Owner())]
@@ -243,10 +247,6 @@ class _Extractor:
             pending.extend(self.visit(node, owner))
         self.result.sites.sort(key=lambda site: (site.span.start_byte, site.span.end_byte, site.kind))
         return self.result
-
-
-def _extract(root: Node, file: _FileContext, errors: list[Node]) -> MutationExtraction:
-    return _Extractor(file, errors).extract(root)
 
 
 def extract_mutation_sites(path: str, language: str, source: bytes) -> MutationExtraction:
@@ -263,7 +263,7 @@ def extract_mutation_sites(path: str, language: str, source: bytes) -> MutationE
             path, "unsupported-language", f"Mutation extraction does not support {language!r}.",
         )])
     try:
-        source.decode("utf-8")
+        decoded = source.decode("utf-8")
     except UnicodeDecodeError as error:
         return MutationExtraction(diagnostics=[_diagnostic(
             path, "invalid-encoding", f"Source is not UTF-8 at byte {error.start}.",
@@ -276,8 +276,8 @@ def extract_mutation_sites(path: str, language: str, source: bytes) -> MutationE
         error.parent if error.parent is not None and error.parent != root else error
         for error in errors
     ]
-    file = _FileContext(path, language, source, hashlib.sha256(source).hexdigest(), source.decode("utf-8").splitlines())
-    result = _extract(root, file, recovery)
+    file = _FileContext(path, language, source, hashlib.sha256(source).hexdigest(), decoded.splitlines())
+    result = _Extractor(file, recovery).extract(root)
     result.diagnostics.extend(_diagnostic(
         path, "parse-error",
         f"Parser {'missing token' if error.is_missing else 'error region'} at bytes "

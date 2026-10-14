@@ -277,6 +277,31 @@ def test_blank_line_deletion_does_not_select_neighboring_callable(repository):
     assert not session.sites
 
 
+@pytest.mark.parametrize("suffix,grammar_suffix,change,owner", [
+    ("js", "js", b"const unused = 1; ", "C.f"),
+    ("ts", "ts", b"const unused = 1; ", "C.f"),
+    ("tsx", "ts", b"const unused = 1; ", "C.f"),
+    ("ts", "ts", b"const unused = 2; ", "A.f"),
+    ("tsx", "ts", b"const unused = 2; ", "A.f"),
+    ("py", "py", b"threshold > 0", "brew"),
+    ("py", "py", b"nested_limit > 0", "other.nested"),
+])
+def test_class_field_abstract_method_and_decorator_changes_select_only_owner(repository, suffix, grammar_suffix, change, owner):
+    before = (Path(__file__).parent / "fixtures/mutation" / f"ownership.{grammar_suffix}").read_bytes()
+    path = f"ownership.{suffix}"
+    put(repository, path, before)
+    base = commit(repository)
+    replacement = change.replace(b"> 0", b"> 1") if suffix == "py" else b""
+    put(repository, path, before.replace(change, replacement))
+    session = plan_mutation((), base)
+    assert session.sites
+    assert all(site.callable and f"::{owner}@" in site.callable for site in session.sites)
+    assert all(site.diff_relationship == "changed-callable" for site in session.sites)
+    if suffix == "py":
+        assert ("comparison", replacement.decode()) in [(site.kind, site.expression) for site in session.sites]
+    assert not session.limitations
+
+
 def test_revision_option_injection_rejected(repository):
     put(repository, "brew.py")
     commit(repository)

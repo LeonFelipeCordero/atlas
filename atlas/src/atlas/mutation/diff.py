@@ -147,34 +147,25 @@ def _callable_index(regions: list[CallableRegion]) -> dict[str, list[CallableReg
     return by_identity
 
 
-def _removed_identities(owners: set[str | None]) -> list[str]:
-    return sorted({_identity_key(owner) for owner in owners if owner is not None})
-
-
-@dataclass
-class _DeletionMapping:
-    path: str
-    old: MutationExtraction
-    current: MutationExtraction
-    blocks: list[tuple[int, int, int, int]]
-
-    def select(self, owners: set[str | None]) -> tuple[set[str | None], list[MutationDiagnostic]]:
-        selected: set[str | None] = {None} if None in owners else set()
-        diagnostics = []
-        old_by_identity = _callable_index(self.old.callables)
-        new_by_identity = _callable_index(self.current.callables)
-        for identity in _removed_identities(owners):
-            previous, candidates = old_by_identity[identity], new_by_identity[identity]
-            mapped = _mapped_callable(previous[0], candidates, self.blocks) if len(previous) == 1 else None
-            if mapped:
-                selected.add(mapped.identity)
-            else:
-                diagnostics.append(self.diagnostic(identity, candidates))
-        return selected, diagnostics
-
-    def diagnostic(self, identity: str, candidates: list[CallableRegion]) -> MutationDiagnostic:
-        code = "deleted-callable" if not candidates else "ambiguous-callable-mapping"
-        return MutationDiagnostic(path=self.path, code=code, message=f"Cannot select deleted code in callable {identity!r}: no reliable surviving mapping")
+def _map_deleted_owners(
+    path: str, old: MutationExtraction, current: MutationExtraction,
+    blocks: list[tuple[int, int, int, int]], owners: set[str | None],
+) -> tuple[set[str | None], list[MutationDiagnostic]]:
+    selected: set[str | None] = {None} if None in owners else set()
+    diagnostics = []
+    old_by_identity = _callable_index(old.callables)
+    new_by_identity = _callable_index(current.callables)
+    for identity in sorted({_identity_key(owner) for owner in owners if owner is not None}):
+        previous, candidates = old_by_identity[identity], new_by_identity[identity]
+        mapped = _mapped_callable(previous[0], candidates, blocks) if len(previous) == 1 else None
+        if mapped:
+            selected.add(mapped.identity)
+        else:
+            diagnostics.append(MutationDiagnostic(
+                path=path, code="deleted-callable" if not candidates else "ambiguous-callable-mapping",
+                message=f"Cannot select deleted code in callable {identity!r}: no reliable surviving mapping",
+            ))
+    return selected, diagnostics
 
 
 def _changed_regions(
@@ -206,7 +197,7 @@ def select_diff_sites(
     opcodes = _byte_opcodes(before, after)
     blocks = [(a, b, c, d) for tag, a, b, c, d in opcodes if tag == "equal"]
     changed, removed = _changed_regions((_Snapshot(before, old), _Snapshot(after, current)), opcodes)
-    mapped, diagnostics = _DeletionMapping(path, old, current, blocks).select(removed)
+    mapped, diagnostics = _map_deleted_owners(path, old, current, blocks, removed)
     changed.update(mapped)
     sites = _selected_sites(current, changed)
     if removed and not sites:

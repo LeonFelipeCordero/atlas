@@ -167,6 +167,28 @@ def test_nested_callable_ownership_and_regions(suffix, language):
     assert_nested_owners(source, result, language)
 
 
+@pytest.mark.parametrize("suffix,language,names", [
+    ("js", "javascript", ["C.f", "C.g"]),
+    ("ts", "typescript", ["C.f", "C.g", "A.f", "B.f"]),
+    ("ts", "tsx", ["C.f", "C.g", "A.f", "B.f"]),
+    ("py", "python", ["brew", "other", "other.nested"]),
+])
+def test_callable_fields_abstract_classes_and_decorator_context(suffix, language, names):
+    source = (FIXTURES / f"ownership.{suffix}").read_bytes()
+    result = extract_mutation_sites(f"ownership.{suffix}", language, source)
+    assert result.diagnostics == []
+    assert [region.identity.split("::")[1].split("@")[0] for region in result.callables] == names
+    regions = {region.identity: region for region in result.callables}
+    for site in result.sites:
+        assert_callable_context(source, site, regions)
+    if language == "python":
+        brew = next(site for site in result.sites if site.callable and "::brew@" in site.callable)
+        assert brew.context.startswith("@deco(threshold > 0)\ndef brew")
+        for expression, name in [("threshold > 0", "brew"), ("nested_limit > 0", "other.nested")]:
+            decorator = next(site for site in result.sites if site.expression == expression)
+            assert decorator.callable and f"::{name}@" in decorator.callable
+
+
 def test_unicode_byte_columns_multiline_and_raw_file_hash():
     source = 'if café == "🫘" and (\n    café != "☕"\n): pass\n'.encode()
     result = extract_mutation_sites("unicode.py", "python", source)
