@@ -364,12 +364,8 @@ class PythonResolution(ResolutionAdapter):
             for _ in range(dots - 1):
                 base = base.parent
             base = (base / module).resolve()
-            return [
-                f
-                for f in files
-                if f.source.absolute_path.resolve() == base.with_suffix(".py")
-                or f.source.absolute_path.resolve() == base / "__init__.py"
-            ]
+            targets = {base.with_suffix(".py"), base / "__init__.py"}
+            return [f for f in files if f.source.absolute_path.resolve() in targets]
         paths = {module + ".py", module + "/__init__.py"}
         return [f for f in files if f.source.path in paths]
 

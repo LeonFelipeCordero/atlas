@@ -134,6 +134,26 @@ def test_syntax_tree_reuse_is_local_to_each_file():
     assert all(symbol.file_path == file.source.path for file in repo.files for symbol in file.symbols)
 
 
+def test_import_node_lookup_indexes_each_coffee_tree_once():
+    repo = parse_files(coffee_sources("python"))
+    file = next(file for file in repo.files if file.source.path.endswith("brewer.py"))
+    adapter = get_resolution_adapter("python")
+    syntax = Syntax(file, adapter)
+    with patch.object(adapter, "is_import_node", wraps=adapter.is_import_node) as predicate:
+        nodes = [syntax.import_node(item.line, item.source) for item in file.imports]
+        assert all(node is not None for node in nodes)
+        scanned = len(syntax.nodes)
+        assert predicate.call_count == scanned
+        for item, node in zip(file.imports, nodes):
+            assert syntax.import_node(item.line, item.source) == node
+        assert syntax.import_node(0) is None
+        assert predicate.call_count == scanned
+        fresh = Syntax(file, adapter)
+        first = file.imports[0]
+        assert fresh.import_node(first.line, first.source) is not None
+        assert predicate.call_count == scanned + len(fresh.nodes)
+
+
 def test_syntax_tree_and_binding_scan_are_lazy_and_cached():
     repo = parse_files(coffee_sources("python"))
     file = next(file for file in repo.files if file.source.path.endswith("brewer.py"))
