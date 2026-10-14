@@ -10,6 +10,7 @@ from .models import (
     GraphDiagnosticRow, GraphEdgeRow, GraphNodeMetricRow, GraphNodeRow,
     GraphSymbolRow, RepositoryGraphRow,
 )
+from .navigation_queries import EDGE_COLUMNS, METRIC_COLUMNS
 
 
 class GraphReadRepository:
@@ -62,23 +63,14 @@ class GraphReadRepository:
             node.node_key.label("stableKey"), node.parent_key.label("parentStableKey"),
             node.type, node.level, node.kind, node.name,
             node.qualified_name.label("qualifiedName"), node.path,
-            symbol.start_line.label("startLine"), metric.line_count.label("lineCount"),
-            metric.parameter_count.label("parameterCount"),
-            metric.base_complexity.label("baseCyclomaticComplexity"),
-            metric.nested_complexity.label("nestedCyclomaticComplexity"),
-            metric.total_complexity.label("cyclomaticComplexity"),
-            metric.loop_complexity.label("loopNestedComplexity"),
-            metric.max_decision_depth.label("maxDecisionDepth"),
+            symbol.start_line.label("startLine"), *METRIC_COLUMNS,
         ).outerjoin(symbol, (symbol.repository_id == node.repository_id) & (symbol.node_key == node.node_key))
           .outerjoin(metric, (metric.repository_id == node.repository_id) & (metric.node_key == node.node_key))
           .where(node.repository_id == row.repository_id).order_by(node.ordinal)).mappings()
         nodes = [ReportNodeDTO.model_validate(record) for record in records]
         edge = GraphEdgeRow
-        records = self._session.execute(select(
-            edge.source_key.label("sourceStableKey"), edge.target_key.label("targetStableKey"),
-            edge.relationship.label("type"), edge.confidence, edge.path, edge.line,
-            edge.evidence, edge.type_only.label("typeOnly"),
-        ).where(edge.repository_id == row.repository_id, edge.relationship != "CONTAINS")
+        records = self._session.execute(select(*EDGE_COLUMNS)
+          .where(edge.repository_id == row.repository_id, edge.relationship != "CONTAINS")
           .order_by(edge.ordinal)).mappings()
         edges = [ReportImportDTO.model_validate(record) for record in records]
         diagnostic = GraphDiagnosticRow

@@ -121,7 +121,6 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
   const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
   const [selected, setSelected] = useState<string | null>(null)
   const [cycleId, setCycleId] = useState<string | null>(null)
-  const [focusId, setFocusId] = useState<string | null>(null)
   const view = useQuery({
     queryKey: [
       'graph-view',
@@ -176,7 +175,6 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
   const select = (id: string | null) => {
     setCycleId(null)
     setSelected(id)
-    setFocusId(id)
   }
   const open = (node: GraphNode) => {
     const destination = node.destination
@@ -185,7 +183,6 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
     setScope(nextScope)
     setCycleId(null)
     setSelected(destination?.focusId ?? null)
-    setFocusId(destination?.focusId ?? null)
   }
   const navigate = (index: number) => {
     setScope(data.trail[index].scope)
@@ -196,18 +193,16 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
       view={data}
       navigate={navigate}
       selected={selected}
-      focusId={focusId}
+      focusId={cycleId !== null ? null : selected}
       activeCycle={activeCycle}
       onSelect={select}
       onOpen={open}
       onCycle={(cycle) => {
         setCycleId(cycle.group.id)
-        setFocusId(null)
       }}
       onCycleScope={(cycle) => {
         setScope(cycle.scope)
         setSelected(null)
-        setFocusId(null)
         setCycleId(cycle.group.id)
       }}
     />

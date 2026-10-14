@@ -187,23 +187,28 @@ function addLevelMetrics(
   }
 }
 
+/** Exclude external roots and their entire subtrees using the full topology. */
+export function internalNodes(nodes: Array<ArtifactNode>): Array<ArtifactNode> {
+  const external = new Set(
+    nodes
+      .filter((node) => node.type === 'external' || node.level === 'external')
+      .map((node) => node.stableKey),
+  )
+  return nodes.filter(
+    (node) =>
+      ![node.stableKey, ...node.ancestorStableKeys].some((key) =>
+        external.has(key),
+      ),
+  )
+}
+
 /** Full internal topology, including hidden test dependents and type-only imports. */
 export function dependencyMetrics(
   nodes: Array<ArtifactNode>,
   edges: Array<Pick<DirectEdge, 'sourceStableKey' | 'targetStableKey'>>,
 ): Map<string, NodeDependencyMetrics> {
   const metrics = new Map<string, NodeDependencyMetrics>()
-  const external = new Set(
-    nodes
-      .filter((node) => node.type === 'external' || node.level === 'external')
-      .map((node) => node.stableKey),
-  )
-  const internal = nodes.filter(
-    (node) =>
-      ![node.stableKey, ...node.ancestorStableKeys].some((key) =>
-        external.has(key),
-      ),
-  )
+  const internal = internalNodes(nodes)
   for (const level of ['module', 'file', 'type', 'callable'])
     addLevelMetrics(levelAdjacency(internal, edges, level), metrics)
   return metrics

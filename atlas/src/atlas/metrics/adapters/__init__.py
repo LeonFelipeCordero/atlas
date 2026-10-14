@@ -2,9 +2,11 @@
 
 from dataclasses import replace
 from functools import lru_cache
-from typing import get_args
 
-from tree_sitter_language_pack import SupportedLanguage, available_languages
+from ...parsing.discovery import (
+    SUPPORTED_LANGUAGES as SUPPORTED_LANGUAGES,
+    require_supported_language,
+)
 
 from . import elixir, go, java, javascript, kotlin, python, rust, typescript
 from .base import MetricAdapter, MetricPolicy as MetricPolicy
@@ -33,15 +35,11 @@ ADAPTERS = {
     "elixir": elixir.ADAPTER,
     "python": python.ADAPTER,
 }
-SUPPORTED_LANGUAGES = (
-    frozenset(get_args(SupportedLanguage)) | frozenset(available_languages())
-) - {"c", "cpp"}
 
 
 def get_metric_adapter(language: str) -> MetricAdapter:
     """Select metric hooks using the importer language catalog, not extraction."""
-    if language not in SUPPORTED_LANGUAGES:
-        raise ValueError(f"Unsupported Python importer language: {language}")
+    require_supported_language(language)
     return ADAPTERS.get(language, DEFAULT_ADAPTER)
 
 

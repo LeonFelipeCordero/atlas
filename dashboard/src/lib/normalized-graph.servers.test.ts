@@ -206,9 +206,16 @@ function expectPartialDetails(view: GraphView) {
   expect(
     view.details.nodes.find((node) => node.stableKey === 'b.py')!.properties,
   ).toMatchObject({ fanIn: 1, fanOut: 1, instability: 0.5 })
-  expect(
-    view.details.nodes.find((node) => node.stableKey === 'nested')!.properties,
-  ).not.toHaveProperty('cyclomaticComplexity')
+  const nested = view.details.nodes.find((node) => node.stableKey === 'nested')!
+  expect(nested).toMatchObject({
+    signature: null,
+    startColumn: null,
+    endColumn: null,
+  })
+  expect(nested.properties).not.toHaveProperty('signature')
+  expect(nested.properties).not.toHaveProperty('startColumn')
+  expect(nested.properties).not.toHaveProperty('endColumn')
+  expect(nested.properties).not.toHaveProperty('cyclomaticComplexity')
   expect(view.details.fileComplexities['a.py']).toEqual({
     total: 1,
     measured: 1,
@@ -271,7 +278,20 @@ test('normalized-only DTOs preserve partial metrics, symbol details, ordered dia
     ancestorStableKeys: ['repo'],
     depth: 1,
   })
+  artifact.nodes.push({
+    ...artifact.nodes[1],
+    stableKey: 'external-child.py',
+    parentStableKey: 'external',
+    ancestorStableKeys: ['repo', 'external'],
+    depth: 2,
+  })
   artifact.edges.push(
+    {
+      ...artifact.edges[0],
+      sourceStableKey: 'external-child.py',
+      targetStableKey: 'a.py',
+    },
+    { ...artifact.edges[0], targetStableKey: 'external-child.py' },
     {
       sourceStableKey: 'b.py',
       targetStableKey: 'a.py',

@@ -135,12 +135,6 @@ class ImportBindings:
             self, ImportRequest(file, path, position)
         )
 
-    def import_key(
-        self, file: ParsedFile, source: str, position: int | None = None
-    ) -> str | None:
-        adapter = self.syntax[file.source.path].adapter
-        return adapter.import_key(self, ImportRequest(file, adapter.import_path(source), position, source))
-
     def _members(self, request: ImportRequest, name: str) -> list[Symbol]:
         return self.syntax[request.file.source.path].adapter.members(self, request, name)
 
