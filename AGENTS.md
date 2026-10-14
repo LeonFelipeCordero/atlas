@@ -8,7 +8,7 @@ Logic outside indexing, `check`, `report`, and graph navigation must have unit t
 
 # Checks
 
-Run these commands from the repository root.
+Always run these commands from the repository root to validate your changes.
 
 ## Importer
 
