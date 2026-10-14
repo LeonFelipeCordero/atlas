@@ -17,10 +17,18 @@ def git_root(path: Path) -> Path | None:
     return next((parent for parent in (path, *path.parents) if (parent / ".git").exists()), None)
 
 
+def _inside_other_scope(path: Path, requested: list[Path]) -> bool:
+    return any(path != other and path.is_relative_to(other) for other in requested)
+
+
+def _minimal_scopes(requested: list[Path]) -> tuple[Path, ...]:
+    return tuple(path for path in requested if not _inside_other_scope(path, requested))
+
+
 def normalize_scope(folders: tuple[Path, ...]) -> tuple[Path, tuple[Path, ...]]:
     cwd = Path.cwd().resolve()
     requested = sorted({validate_repository(folder) for folder in folders or (cwd,)})
-    scopes = tuple(path for path in requested if not any(path != other and path.is_relative_to(other) for other in requested))
+    scopes = _minimal_scopes(requested)
     repositories = {git_root(path) for path in scopes} - {None}
     if len(repositories) > 1:
         raise ValueError("Mutation folders span disjoint Git repositories")

@@ -13,6 +13,7 @@ functions, methods and lambdas, not classes.
 import hashlib
 import json
 import posixpath
+from dataclasses import dataclass
 from typing import Literal
 
 from tree_sitter import Node
@@ -81,6 +82,15 @@ def _unwrap(node: Node) -> Node:
     return node
 
 
+def _python_predicate(node: Node) -> tuple[bool, Node | None]:
+    children = [child for child in node.named_children if child.type != "comment"]
+    if node.type in {"assert_statement", "if_clause"}:
+        return True, children[0] if children else None
+    if node.type == "conditional_expression":
+        return True, children[1] if len(children) == 3 else None
+    return False, None
+
+
 def _predicate(node: Node, language: str) -> tuple[bool, Node | None]:
     if node.type in CONDITION_FIELDS:
         # A JS for(;;) intentionally has no predicate.
@@ -88,14 +98,7 @@ def _predicate(node: Node, language: str) -> tuple[bool, Node | None]:
         if condition is not None and condition.type == "empty_statement":
             condition = None
         return node.type != "for_statement" or condition is not None, condition
-    if language != "python":
-        return False, None
-    children = [child for child in node.named_children if child.type != "comment"]
-    if node.type in {"assert_statement", "if_clause"}:
-        return True, children[0] if children else None
-    if node.type == "conditional_expression":
-        return True, children[1] if len(children) == 3 else None
-    return False, None
+    return _python_predicate(node) if language == "python" else (False, None)
 
 
 def _expression_kind(node: Node, source: bytes) -> Kind | None:
@@ -133,87 +136,117 @@ def _span(node: Node) -> MutationSpan:
     )
 
 
-def _site(
-    path: str, language: str, source: bytes, file_hash: str,
-    node: Node, kind: Kind, owner: str | None, context: str,
-) -> MutationSite:
+@dataclass(frozen=True)
+class _FileContext:
+    path: str
+    language: str
+    source: bytes
+    file_hash: str
+    lines: list[str]
+
+    def nearby_text(self, node: Node) -> str:
+        return "\n".join(self.lines[max(0, node.start_point.row - 2):node.end_point.row + 3])
+
+
+@dataclass(frozen=True)
+class _Owner:
+    identity: str | None = None
+    names: tuple[str, ...] = ()
+    context: str = ""
+
+
+def _site(file: _FileContext, candidate: tuple[Kind, Node], owner: _Owner) -> MutationSite:
+    kind, node = candidate
     span = _span(node)
     identity = json.dumps(
-        [path, language, file_hash, kind, span.model_dump()],
+        [file.path, file.language, file.file_hash, kind, span.model_dump()],
         sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     ).encode("utf-8")
     return MutationSite(
-        site_id=hashlib.sha256(identity).hexdigest(), path=path, language=language,
-        kind=kind, expression=_text(node, source), context=context,
-        callable=owner, span=span, original_file_hash=file_hash,
+        site_id=hashlib.sha256(identity).hexdigest(), path=file.path, language=file.language,
+        kind=kind, expression=_text(node, file.source),
+        context=owner.context or file.nearby_text(node),
+        callable=owner.identity, span=span, original_file_hash=file.file_hash,
     )
 
 
 def _node_sites(
-    node: Node, language: str, source: bytes, path: str,
-    diagnostics: list[MutationDiagnostic],
+    node: Node, file: _FileContext, diagnostics: list[MutationDiagnostic],
 ) -> list[tuple[Kind, Node]]:
     sites: list[tuple[Kind, Node]] = []
-    expected, predicate = _predicate(node, language)
+    expected, predicate = _predicate(node, file.language)
     if predicate is not None:
         sites.append(("predicate", _unwrap(predicate)))
     elif expected:
         diagnostics.append(_diagnostic(
-            path, "unsupported-condition",
+            file.path, "unsupported-condition",
             f"Unsupported {node.type} condition at byte {node.start_byte}.",
         ))
     if node.type in {"switch_statement", "match_statement"}:
         diagnostics.append(_diagnostic(
-            path, "unsupported-condition",
+            file.path, "unsupported-condition",
             f"{node.type} patterns are not boolean predicates (byte {node.start_byte}).",
         ))
-    kind = _expression_kind(node, source)
+    kind = _expression_kind(node, file.source)
     if kind is not None:
         sites.append((kind, node))
     return sites
 
 
-def _ownership(
-    node: Node, source: bytes, path: str, owner: str | None, names: tuple[str, ...],
-) -> tuple[str | None, tuple[str, ...], CallableRegion | None]:
+def _ownership(node: Node, file: _FileContext, owner: _Owner) -> _Owner:
+    names = owner.names
     if node.type in {"class_definition", "class_declaration", "class"}:
         name = node.child_by_field_name("name")
-        names += (_text(name, source) if name is not None else "<class>",)
+        names += (_text(name, file.source) if name is not None else "<class>",)
     if node.type not in CALLABLES:
-        return owner, names, None
-    names += (_callable_name(node, source),)
-    owner = f"{path}::{'.'.join(names)}@{node.start_byte}"
-    return owner, names, CallableRegion(
-        identity=owner, start_byte=node.start_byte, end_byte=node.end_byte,
-    )
+        return _Owner(owner.identity, names, owner.context)
+    names += (_callable_name(node, file.source),)
+    identity = f"{file.path}::{'.'.join(names)}@{node.start_byte}"
+    return _Owner(identity, names, _text(node, file.source))
 
 
-def _extract(
-    root: Node, path: str, language: str, source: bytes, errors: list[Node],
-) -> MutationExtraction:
-    result = MutationExtraction()
-    file_hash = hashlib.sha256(source).hexdigest()
-    seen: set[tuple[Kind, int, int]] = set()
-    contexts: dict[str, str] = {}
-    lines = source.decode("utf-8").splitlines()
-    pending: list[tuple[Node, str | None, tuple[str, ...]]] = [(root, None, ())]
-    while pending:
-        node, owner, names = pending.pop()
+def _children(node: Node, owner: _Owner) -> list[tuple[Node, _Owner]]:
+    return [(child, owner) for child in reversed(node.named_children)]
+
+
+class _Extractor:
+    def __init__(self, file: _FileContext, errors: list[Node]) -> None:
+        self.file = file
+        self.errors = errors
+        self.result = MutationExtraction()
+        self.seen: set[tuple[Kind, int, int]] = set()
+
+    def add_sites(self, node: Node, owner: _Owner) -> None:
+        for candidate in _node_sites(node, self.file, self.result.diagnostics):
+            kind, expression = candidate
+            key = (kind, expression.start_byte, expression.end_byte)
+            if key in self.seen or _overlaps(expression, self.errors):
+                continue
+            self.result.sites.append(_site(self.file, candidate, owner))
+            self.seen.add(key)
+
+    def visit(self, node: Node, owner: _Owner) -> list[tuple[Node, _Owner]]:
         if node.type in EXCLUDED or node.is_error or node.is_missing:
-            continue
-        owner, names, region = _ownership(node, source, path, owner, names)
-        if region is not None:
-            result.callables.append(region)
-            contexts[region.identity] = _text(node, source)
-        for kind, candidate in _node_sites(node, language, source, path, result.diagnostics):
-            key = (kind, candidate.start_byte, candidate.end_byte)
-            if key not in seen and not _overlaps(candidate, errors):
-                context = contexts.get(owner or "") or "\n".join(lines[max(0, candidate.start_point.row - 2):candidate.end_point.row + 3])
-                result.sites.append(_site(path, language, source, file_hash, candidate, kind, owner, context))
-                seen.add(key)
-        pending.extend((child, owner, names) for child in reversed(node.named_children))
-    result.sites.sort(key=lambda site: (site.span.start_byte, site.span.end_byte, site.kind))
-    return result
+            return []
+        owner = _ownership(node, self.file, owner)
+        if node.type in CALLABLES:
+            self.result.callables.append(CallableRegion(
+                identity=owner.identity or "", start_byte=node.start_byte, end_byte=node.end_byte,
+            ))
+        self.add_sites(node, owner)
+        return _children(node, owner)
+
+    def extract(self, root: Node) -> MutationExtraction:
+        pending = [(root, _Owner())]
+        while pending:
+            node, owner = pending.pop()
+            pending.extend(self.visit(node, owner))
+        self.result.sites.sort(key=lambda site: (site.span.start_byte, site.span.end_byte, site.kind))
+        return self.result
+
+
+def _extract(root: Node, file: _FileContext, errors: list[Node]) -> MutationExtraction:
+    return _Extractor(file, errors).extract(root)
 
 
 def extract_mutation_sites(path: str, language: str, source: bytes) -> MutationExtraction:
@@ -243,7 +276,8 @@ def extract_mutation_sites(path: str, language: str, source: bytes) -> MutationE
         error.parent if error.parent is not None and error.parent != root else error
         for error in errors
     ]
-    result = _extract(root, path, language, source, recovery)
+    file = _FileContext(path, language, source, hashlib.sha256(source).hexdigest(), source.decode("utf-8").splitlines())
+    result = _extract(root, file, recovery)
     result.diagnostics.extend(_diagnostic(
         path, "parse-error",
         f"Parser {'missing token' if error.is_missing else 'error region'} at bytes "

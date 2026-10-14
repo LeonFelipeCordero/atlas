@@ -41,6 +41,13 @@ def commit(root: Path) -> str:
     return git(root, "rev-parse", "HEAD")
 
 
+def assert_captured_source(session, path: str, expected: bytes):
+    captured = next(source for source in session.sources if source.path == path)
+    assert base64.b64decode(captured.content_base64) == expected
+    assert captured.original_file_hash == hashlib.sha256(expected).hexdigest()
+    assert all(site.original_file_hash == captured.original_file_hash for site in session.sites if site.path == path)
+
+
 def test_exact_base_staged_unstaged_untracked_and_ignores(repository):
     root = repository
     (root / ".gitignore").write_text("ignored.py\n")
@@ -62,10 +69,7 @@ def test_exact_base_staged_unstaged_untracked_and_ignores(repository):
     assert session.scope.mode == "git-diff"
     assert {source.path for source in session.sources} == {"staged.py", "unstaged.py", "new.py", "plain.py"}
     assert {site.path for site in session.sites} == {"staged.py", "unstaged.py", "new.py"}
-    captured = next(source for source in session.sources if source.path == "staged.py")
-    assert base64.b64decode(captured.content_base64) == latest
-    assert captured.original_file_hash == hashlib.sha256(latest).hexdigest()
-    assert all(site.original_file_hash == captured.original_file_hash for site in session.sites if site.path == captured.path)
+    assert_captured_source(session, "staged.py", latest)
 
 
 def test_requested_commit_not_merge_base_and_folder_intersection(repository):

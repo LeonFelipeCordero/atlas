@@ -134,6 +134,14 @@ def _scope_directory(path: Path, folders: tuple[Path, ...]) -> bool:
     return not folders or any(path.is_relative_to(folder) or folder.is_relative_to(path) for folder in folders)
 
 
+def _scoped_directories(context: _DirectoryContext, directories: list[str], folders: tuple[Path, ...]) -> list[str]:
+    return [name for name in _visible_directories(context, directories) if _scope_directory(context.base / name, folders)]
+
+
+def _scope_file(path: Path, folders: tuple[Path, ...]) -> bool:
+    return not folders or any(path.is_relative_to(folder) for folder in folders)
+
+
 def _repository_paths(root: Path, folders: tuple[Path, ...] = ()) -> list[Path]:
     root = root.resolve()
     use_gitignore = (root / ".gitignore").is_file()
@@ -148,7 +156,7 @@ def _repository_paths(root: Path, folders: tuple[Path, ...] = ()) -> list[Path]:
         )
         atlas_rules = _directory_rules(base, atlas_directory_rules.get(base, []), ".atlasignore")
         context = _DirectoryContext(base, rules, atlas_rules, use_gitignore)
-        directories[:] = [name for name in _visible_directories(context, directories) if _scope_directory(base / name, folders)]
+        directories[:] = _scoped_directories(context, directories, folders)
         directory_rules.update(_child_rules(base, directories, rules))
         atlas_directory_rules.update(_child_rules(base, directories, atlas_rules))
         paths.extend(_directory_files(context, names))
@@ -195,7 +203,7 @@ def discover_files(root: Path, *, folders: tuple[Path, ...] = ()) -> list[Source
     """
     files = []
     for path in sorted(_repository_paths(root, folders)):
-        if folders and not any(path.is_relative_to(folder) for folder in folders):
+        if not _scope_file(path, folders):
             continue
         language = detect_language(path)
         if language:

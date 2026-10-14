@@ -2,6 +2,7 @@
 
 import subprocess
 from collections import defaultdict
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -48,27 +49,41 @@ def _line_offsets(source: bytes) -> tuple[list[bytes], list[int]]:
     return lines, offsets
 
 
-def _owners(regions: list[CallableRegion], start: int, end: int) -> set[str | None]:
-    """Partition a changed byte interval into innermost callable/module ownership."""
+@dataclass
+class _Snapshot:
+    source: bytes
+    extraction: MutationExtraction
+
+
+Opcode = tuple[str, int, int, int, int]
+
+
+def _ownership_boundaries(regions: list[CallableRegion], start: int, end: int) -> list[int]:
     boundaries = {start, end}
     for region in regions:
         if start < region.start_byte < end:
             boundaries.add(region.start_byte)
         if start < region.end_byte < end:
             boundaries.add(region.end_byte)
-    points = sorted(boundaries)
-    owners: set[str | None] = set()
-    for left, right in zip(points, points[1:]):
-        # Whitespace outside a callable is module-owned, never a neighboring function.
-        enclosing = [region for region in regions if region.start_byte <= left and right <= region.end_byte]
-        owner = min(enclosing, key=lambda region: region.end_byte - region.start_byte, default=None)
-        owners.add(owner.identity if owner else None)
-    return owners
+    return sorted(boundaries)
 
 
-def _changed_owners(
-    regions: list[CallableRegion], source: bytes, start: int, end: int, indentation: bool,
-) -> set[str | None]:
+def _interval_owner(regions: list[CallableRegion], left: int, right: int) -> str | None:
+    # Whitespace outside a callable is module-owned, never a neighboring function.
+    enclosing = [region for region in regions if region.start_byte <= left and right <= region.end_byte]
+    owner = min(enclosing, key=lambda region: region.end_byte - region.start_byte, default=None)
+    return owner.identity if owner else None
+
+
+def _owners(regions: list[CallableRegion], start: int, end: int) -> set[str | None]:
+    """Partition a changed byte interval into innermost callable/module ownership."""
+    points = _ownership_boundaries(regions, start, end)
+    return {_interval_owner(regions, left, right) for left, right in zip(points, points[1:])}
+
+
+def _changed_owners(snapshot: _Snapshot, interval: tuple[int, int], indentation: bool) -> set[str | None]:
+    source, regions = snapshot.source, snapshot.extraction.callables
+    start, end = interval
     # Whitespace can change behavior (Python suites or JS automatic semicolons).
     owners = _owners(regions, start, end)
     if not indentation or source[source.rfind(b"\n", 0, start) + 1:start].strip(b" \t"):
@@ -82,18 +97,25 @@ def _changed_owners(
     return owners
 
 
-def _byte_opcodes(before: bytes, after: bytes) -> list[tuple[str, int, int, int, int]]:
+def _refine_replacement(sources: tuple[bytes, bytes], opcode: Opcode) -> list[Opcode]:
+    before, after = sources
+    _, left, end, right, stop = opcode
+    matcher = SequenceMatcher(None, before[left:end], after[right:stop], autojunk=False)
+    return [(kind, left + i, left + j, right + k, right + stop) for kind, i, j, k, stop in matcher.get_opcodes()]
+
+
+def _byte_opcodes(before: bytes, after: bytes) -> list[Opcode]:
     """Keep line anchors, refining replacements so unrelated same-line owners stay out."""
     old_lines, old_offsets = _line_offsets(before)
     new_lines, new_offsets = _line_offsets(after)
     opcodes = []
     for tag, a, b, c, d in SequenceMatcher(None, old_lines, new_lines, autojunk=False).get_opcodes():
         left, right = old_offsets[a], new_offsets[c]
-        if tag != "replace":
-            opcodes.append((tag, left, old_offsets[b], right, new_offsets[d]))
-            continue
-        matcher = SequenceMatcher(None, before[left:old_offsets[b]], after[right:new_offsets[d]], autojunk=False)
-        opcodes.extend((kind, left + i, left + j, right + k, right + stop) for kind, i, j, k, stop in matcher.get_opcodes())
+        opcode = (tag, left, old_offsets[b], right, new_offsets[d])
+        if tag == "replace":
+            opcodes.extend(_refine_replacement((before, after), opcode))
+        else:
+            opcodes.append(opcode)
     return opcodes
 
 
@@ -118,47 +140,75 @@ def _identity_key(identity: str) -> str:
     return name if separator and offset.isdigit() else identity
 
 
-def _deleted_owners(
-    path: str, owners: set[str | None], old: MutationExtraction, current: MutationExtraction,
-    blocks: list[tuple[int, int, int, int]],
-) -> tuple[set[str | None], list[MutationDiagnostic]]:
-    selected: set[str | None] = {None} if None in owners else set()
-    diagnostics = []
-    old_by_identity: dict[str, list[CallableRegion]] = defaultdict(list)
-    new_by_identity: dict[str, list[CallableRegion]] = defaultdict(list)
-    for region in old.callables:
-        old_by_identity[_identity_key(region.identity)].append(region)
-    for region in current.callables:
-        new_by_identity[_identity_key(region.identity)].append(region)
-    for identity in sorted({_identity_key(owner) for owner in owners if owner is not None}):
-        previous, candidates = old_by_identity[identity], new_by_identity[identity]
-        mapped = _mapped_callable(previous[0], candidates, blocks) if len(previous) == 1 else None
-        if mapped:
-            selected.add(mapped.identity)
-            continue
+def _callable_index(regions: list[CallableRegion]) -> dict[str, list[CallableRegion]]:
+    by_identity: dict[str, list[CallableRegion]] = defaultdict(list)
+    for region in regions:
+        by_identity[_identity_key(region.identity)].append(region)
+    return by_identity
+
+
+def _removed_identities(owners: set[str | None]) -> list[str]:
+    return sorted({_identity_key(owner) for owner in owners if owner is not None})
+
+
+@dataclass
+class _DeletionMapping:
+    path: str
+    old: MutationExtraction
+    current: MutationExtraction
+    blocks: list[tuple[int, int, int, int]]
+
+    def select(self, owners: set[str | None]) -> tuple[set[str | None], list[MutationDiagnostic]]:
+        selected: set[str | None] = {None} if None in owners else set()
+        diagnostics = []
+        old_by_identity = _callable_index(self.old.callables)
+        new_by_identity = _callable_index(self.current.callables)
+        for identity in _removed_identities(owners):
+            previous, candidates = old_by_identity[identity], new_by_identity[identity]
+            mapped = _mapped_callable(previous[0], candidates, self.blocks) if len(previous) == 1 else None
+            if mapped:
+                selected.add(mapped.identity)
+            else:
+                diagnostics.append(self.diagnostic(identity, candidates))
+        return selected, diagnostics
+
+    def diagnostic(self, identity: str, candidates: list[CallableRegion]) -> MutationDiagnostic:
         code = "deleted-callable" if not candidates else "ambiguous-callable-mapping"
-        diagnostics.append(MutationDiagnostic(path=path, code=code, message=f"Cannot select deleted code in callable {identity!r}: no reliable surviving mapping"))
-    return selected, diagnostics
+        return MutationDiagnostic(path=self.path, code=code, message=f"Cannot select deleted code in callable {identity!r}: no reliable surviving mapping")
 
 
-def select_diff_sites(
-    path: str, before: bytes, after: bytes, old: MutationExtraction, current: MutationExtraction,
-) -> tuple[list[MutationSite], list[MutationDiagnostic]]:
-    """Select surviving sites in changed owning callables, not neighboring functions."""
-    opcodes = _byte_opcodes(before, after)
-    blocks = [(a, b, c, d) for tag, a, b, c, d in opcodes if tag == "equal"]
+def _changed_regions(
+    snapshots: tuple[_Snapshot, _Snapshot], opcodes: list[Opcode],
+) -> tuple[set[str | None], set[str | None]]:
+    old, current = snapshots
     changed: set[str | None] = set()
     removed: set[str | None] = set()
     for tag, a, b, c, d in opcodes:
         if tag == "equal":
             continue
-        edited = before[a:b] + after[c:d]
+        edited = old.source[a:b] + current.source[c:d]
         indentation = bool(edited) and not edited.strip(b" \t")
-        changed.update(_changed_owners(current.callables, after, c, d, indentation))
-        removed.update(_changed_owners(old.callables, before, a, b, indentation))
-    mapped, diagnostics = _deleted_owners(path, removed, old, current, blocks)
+        changed.update(_changed_owners(current, (c, d), indentation))
+        removed.update(_changed_owners(old, (a, b), indentation))
+    return changed, removed
+
+
+def _selected_sites(current: MutationExtraction, changed: set[str | None]) -> list[MutationSite]:
+    return [site.model_copy(update={"diff_relationship": "changed-callable" if site.callable else "changed-module"}) for site in current.sites if site.callable in changed]
+
+
+def select_diff_sites(
+    path: str, sources: tuple[bytes, bytes], extractions: tuple[MutationExtraction, MutationExtraction],
+) -> tuple[list[MutationSite], list[MutationDiagnostic]]:
+    """Select surviving sites in changed owning callables, not neighboring functions."""
+    before, after = sources
+    old, current = extractions
+    opcodes = _byte_opcodes(before, after)
+    blocks = [(a, b, c, d) for tag, a, b, c, d in opcodes if tag == "equal"]
+    changed, removed = _changed_regions((_Snapshot(before, old), _Snapshot(after, current)), opcodes)
+    mapped, diagnostics = _DeletionMapping(path, old, current, blocks).select(removed)
     changed.update(mapped)
-    sites = [site.model_copy(update={"diff_relationship": "changed-callable" if site.callable else "changed-module"}) for site in current.sites if site.callable in changed]
+    sites = _selected_sites(current, changed)
     if removed and not sites:
         diagnostics.append(MutationDiagnostic(path=path, code="no-executable-sites", message="Changed/deleted regions leave no selected executable mutation sites"))
     return sites, diagnostics

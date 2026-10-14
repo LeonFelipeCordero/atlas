@@ -98,6 +98,22 @@ def test_tsx_runtime_only_snapshot():
     assert result.diagnostics == []
 
 
+def assert_byte_position(source, position):
+    byte, line, column = position
+    assert line == source[:byte].count(b"\n") + 1
+    assert column == byte - source.rfind(b"\n", 0, byte)
+
+
+def assert_original_site(source, site):
+    span = site.span
+    assert source[span.start_byte:span.end_byte].decode() == site.expression
+    assert site.original_file_hash == hashlib.sha256(source).hexdigest()
+    assert site.diff_relationship == "folder-scope"
+    assert len(site.site_id) == 64
+    assert_byte_position(source, (span.start_byte, span.start_line, span.start_column))
+    assert_byte_position(source, (span.end_byte, span.end_line, span.end_column))
+
+
 @pytest.mark.parametrize("suffix,language", [
     ("py", "python"), ("js", "javascript"), ("ts", "typescript"), ("tsx", "tsx"),
 ])
@@ -109,21 +125,35 @@ def test_original_byte_spans_hashes_and_determinism(suffix, language, crlf):
     assert result == extract_mutation_sites(f"./{path}", language, source)
     assert len({site.site_id for site in result.sites}) == len(result.sites)
     for site in result.sites:
-        span = site.span
-        assert source[span.start_byte:span.end_byte].decode() == site.expression
-        assert site.original_file_hash == hashlib.sha256(source).hexdigest()
-        assert site.diff_relationship == "folder-scope"
-        assert len(site.site_id) == 64
-        for byte, line, column in [
-            (span.start_byte, span.start_line, span.start_column),
-            (span.end_byte, span.end_line, span.end_column),
-        ]:
-            assert line == source[:byte].count(b"\n") + 1
-            assert column == byte - source.rfind(b"\n", 0, byte)
+        assert_original_site(source, site)
     edited = extract_mutation_sites(path, language, source + b"\n")
     assert {site.site_id for site in result.sites}.isdisjoint(site.site_id for site in edited.sites)
     moved = extract_mutation_sites("other/path", language, source)
     assert {site.site_id for site in result.sites}.isdisjoint(site.site_id for site in moved.sites)
+
+
+def assert_callable_context(source, site, regions):
+    assert site.expression in site.context
+    if site.callable is None:
+        return
+    region = regions[site.callable]
+    assert region.start_byte <= site.span.start_byte < site.span.end_byte <= region.end_byte
+    assert site.context == source[region.start_byte:region.end_byte].decode("utf-8")
+
+
+def assert_nested_source(source, region, language):
+    assert source[region.start_byte:region.end_byte].startswith(
+        b"def nested" if language == "python" else b"function nested"
+    )
+
+
+def assert_nested_owners(source, result, language):
+    regions = {region.identity: region for region in result.callables}
+    nested = next(site for site in result.sites if site.expression == "value > 2")
+    assert nested.callable is not None and "Machine.serve.nested@" in nested.callable
+    accepts = next(site for site in result.sites if site.expression in {"value == 3 or ready", "value == 3 || ready"})
+    assert accepts.callable is not None and "Machine.serve.accepts@" in accepts.callable
+    assert_nested_source(source, regions[nested.callable], language)
 
 
 @pytest.mark.parametrize("suffix,language", [("py", "python"), ("js", "javascript")])
@@ -133,20 +163,8 @@ def test_nested_callable_ownership_and_regions(suffix, language):
     assert identities[:4] == ["brew", "Machine.serve", "Machine.serve.nested", "Machine.serve.accepts"]
     regions = {region.identity: region for region in result.callables}
     for site in result.sites:
-        if site.callable is None:
-            assert site.expression in site.context
-            continue
-        region = regions[site.callable]
-        assert region.start_byte <= site.span.start_byte < site.span.end_byte <= region.end_byte
-        assert site.context == source[region.start_byte:region.end_byte].decode("utf-8")
-        assert site.expression in site.context
-    nested = next(site for site in result.sites if site.expression == "value > 2")
-    assert nested.callable is not None and "Machine.serve.nested@" in nested.callable
-    accepts = next(site for site in result.sites if site.expression in {"value == 3 or ready", "value == 3 || ready"})
-    assert accepts.callable is not None and "Machine.serve.accepts@" in accepts.callable
-    assert source[regions[nested.callable].start_byte:regions[nested.callable].end_byte].startswith(
-        b"def nested" if language == "python" else b"function nested"
-    )
+        assert_callable_context(source, site, regions)
+    assert_nested_owners(source, result, language)
 
 
 def test_unicode_byte_columns_multiline_and_raw_file_hash():

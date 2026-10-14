@@ -170,6 +170,24 @@ def test_syntax_tree_and_binding_scan_are_lazy_and_cached():
         parser.assert_called_once_with("python")
 
 
+def test_member_write_targets_are_indexed_once_per_file():
+    repo = parse_files(coffee_sources("python"))
+    file = next(file for file in repo.files if file.source.path.endswith("brewer.py"))
+    adapter = get_resolution_adapter("python")
+    syntax = Syntax(file, adapter)
+    expected = sum(node.type in adapter.member_writes for node in syntax.nodes)
+    assert expected > 0
+    with patch.object(adapter, "write_target", wraps=adapter.write_target) as target:
+        syntax.member_rebound("self", "retry")
+        assert target.call_count == expected
+        syntax.member_rebound("self", "other")
+        syntax.member_rebound("machine", "retry")
+        assert target.call_count == expected
+        fresh = Syntax(file, adapter)
+        fresh.member_rebound("self", "retry")
+        assert target.call_count == 2 * expected
+
+
 def test_path_resolution_is_cached_only_within_one_repository():
     repo = parse_files(coffee_sources("python"))
     file = next(file for file in repo.files if file.source.path.endswith("brewer.py"))

@@ -20,13 +20,12 @@ from .diff import base_sources, resolve_base, select_diff_sites
 from .scope import normalize_scope
 
 
-def _snapshot(path: str, language: str, content: bytes, deleted: bool = False) -> MutationSource:
+def _snapshot(path: str, language: str, content: bytes) -> MutationSource:
     return MutationSource(
         path=path,
         language=language,
         original_file_hash=hashlib.sha256(content).hexdigest(),
         content_base64=base64.b64encode(content).decode("ascii"),
-        deleted=deleted,
     )
 
 
@@ -47,7 +46,7 @@ def _diff_plan(files: list[SourceFile], previous: dict[str, tuple[str, bytes]]):
         file = working.get(path)
         language, before = previous.get(path, (file.language if file else "", b""))
         if file is None:
-            sources.append(_snapshot(path, language, before, deleted=True))
+            sources.append(_snapshot(path, language, before).model_copy(update={"deleted": True}))
             extraction = extract_mutation_sites(path, language, before)
             diagnostics.extend(extraction.diagnostics)
             diagnostics.append(MutationDiagnostic(path=path, code="deleted-file", message="Deleted source has no executable mutation sites"))
@@ -57,7 +56,7 @@ def _diff_plan(files: list[SourceFile], previous: dict[str, tuple[str, bytes]]):
         sources.append(_snapshot(path, file.language, file.source))
         current = extract_mutation_sites(path, file.language, file.source)
         old = extract_mutation_sites(path, language, before) if path in previous else MutationExtraction()
-        selected, limitations = select_diff_sites(path, before, file.source, old, current)
+        selected, limitations = select_diff_sites(path, (before, file.source), (old, current))
         sites.extend(selected)
         diagnostics.extend(current.diagnostics)
         diagnostics.extend(old.diagnostics)
