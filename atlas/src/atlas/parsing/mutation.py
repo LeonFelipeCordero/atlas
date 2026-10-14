@@ -120,8 +120,9 @@ def _callable_name(node: Node, source: bytes) -> str:
         return _text(name, source)
     parent = node.parent
     if parent is not None and parent.type in {"variable_declarator", "assignment", "pair", "field_definition", "public_field_definition"}:
-        target = parent.child_by_field_name("name") or parent.child_by_field_name("left")
-        target = target or parent.child_by_field_name("key") or parent.child_by_field_name("property")
+        target = next(filter(None, (
+            parent.child_by_field_name(field) for field in ("name", "left", "key", "property")
+        )), None)
         if target is not None:
             return _text(target, source)
     return "<lambda>" if node.type == "lambda" else "<anonymous>"

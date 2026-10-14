@@ -181,12 +181,16 @@ def test_callable_fields_abstract_classes_and_decorator_context(suffix, language
     regions = {region.identity: region for region in result.callables}
     for site in result.sites:
         assert_callable_context(source, site, regions)
-    if language == "python":
-        brew = next(site for site in result.sites if site.callable and "::brew@" in site.callable)
-        assert brew.context.startswith("@deco(threshold > 0)\ndef brew")
-        for expression, name in [("threshold > 0", "brew"), ("nested_limit > 0", "other.nested")]:
-            decorator = next(site for site in result.sites if site.expression == expression)
-            assert decorator.callable and f"::{name}@" in decorator.callable
+
+
+def test_decorator_context_and_ownership():
+    source = (FIXTURES / "ownership.py").read_bytes()
+    result = extract_mutation_sites("ownership.py", "python", source)
+    sites = {site.expression: site for site in result.sites}
+    assert sites["threshold > 0"].context.startswith("@deco(threshold > 0)\ndef brew")
+    for expression, name in [("threshold > 0", "brew"), ("nested_limit > 0", "other.nested")]:
+        decorator = sites[expression]
+        assert decorator.callable and f"::{name}@" in decorator.callable
 
 
 def test_unicode_byte_columns_multiline_and_raw_file_hash():

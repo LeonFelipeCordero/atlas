@@ -277,7 +277,7 @@ def test_blank_line_deletion_does_not_select_neighboring_callable(repository):
     assert not session.sites
 
 
-@pytest.mark.parametrize("suffix,grammar_suffix,change,owner", [
+@pytest.mark.parametrize("case", [
     ("js", "js", b"const unused = 1; ", "C.f"),
     ("ts", "ts", b"const unused = 1; ", "C.f"),
     ("tsx", "ts", b"const unused = 1; ", "C.f"),
@@ -286,7 +286,8 @@ def test_blank_line_deletion_does_not_select_neighboring_callable(repository):
     ("py", "py", b"threshold > 0", "brew"),
     ("py", "py", b"nested_limit > 0", "other.nested"),
 ])
-def test_class_field_abstract_method_and_decorator_changes_select_only_owner(repository, suffix, grammar_suffix, change, owner):
+def test_class_field_abstract_method_and_decorator_changes_select_only_owner(repository, case):
+    suffix, grammar_suffix, change, owner = case
     before = (Path(__file__).parent / "fixtures/mutation" / f"ownership.{grammar_suffix}").read_bytes()
     path = f"ownership.{suffix}"
     put(repository, path, before)

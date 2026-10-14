@@ -117,13 +117,16 @@ class MutationTrialInput(MutationValue):
             raise ValueError("Executed trials require a patch and mutant evidence")
         if self.baseline.exit_code != 0:
             raise ValueError("Executed trials require a passing baseline")
+        self._validate_mutant(self.mutant)
+        return self
+
+    def _validate_mutant(self, mutant: ExecutionEvidence) -> None:
         if self.source_identity.mutant_file_hash is None or self.source_identity.restored_file_hash is None:
             raise ValueError("Executed trials require mutant and restored source hashes")
-        if self.outcome == "survived" and self.mutant.exit_code != 0:
+        if self.outcome == "survived" and mutant.exit_code != 0:
             raise ValueError("Survived trials require a passing mutant run")
-        if self.outcome == "killed" and self.mutant.exit_code in (0, None):
+        if self.outcome == "killed" and mutant.exit_code in (0, None):
             raise ValueError("Killed trials require a failing mutant run; explain assertion evidence")
-        return self
 
 
 class MutationTrial(MutationValue):
