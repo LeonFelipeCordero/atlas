@@ -8,13 +8,14 @@ Before project discovery, check database existence without opening or creating i
 python3 -c 'import os; from pathlib import Path; p=Path(os.environ["DATABASE_PATH"]).expanduser() if os.environ.get("DATABASE_PATH") else Path(os.environ.get("XDG_DATA_HOME") or Path.home()/".local/share").expanduser()/"atlas/atlas.sqlite"; print(p); raise SystemExit(0 if p.is_file() else 1)'
 ```
 
-If this exits nonzero, do not run `atlas projects`: it can create an empty database. Explain the prerequisite or fall back to local file navigation. With an existing database:
+If this exits nonzero, do not run `atlas projects`: it can create an empty database. Explain the prerequisite or fall back to local file navigation. With an existing database, start inside the intended indexed checkout:
 
 ```sh
-atlas projects
-atlas graph --project "$PROJECT" overview
-atlas graph --project "$PROJECT" find 'save_folder' --limit 5
+atlas graph overview
+atlas graph find 'save_folder' --limit 5
 ```
+
+Use `atlas projects` and `atlas graph --project "$PROJECT" overview` when outside the checkout or when its registration is ambiguous. Confirm the overview's folder/identity before using its graph.
 
 Select an exact key from `find`, not merely the first match. Capture its graph revision and use it to keep later queries consistent:
 
@@ -22,7 +23,7 @@ Select an exact key from `find`, not merely the first match. Capture its graph r
 atlas graph --project "$PROJECT" --revision "$REVISION" show "$KEY"
 atlas graph --project "$PROJECT" --revision "$REVISION" children "$KEY" --limit 30
 atlas graph --project "$PROJECT" --revision "$REVISION" context "$KEY" \
-  --direction out --relations CALLS,REFERENCES --depth 2 --max-nodes 30 --max-edges 100
+  --direction out --relations CALLS,REFERENCES --depth 1 --max-nodes 12 --max-edges 30
 atlas graph --project "$PROJECT" --revision "$REVISION" context "$KEY" \
   --direction in --relations CALLS,REFERENCES --depth 1
 atlas graph --project "$PROJECT" --revision "$REVISION" source "$KEY" --max-lines 80
@@ -49,6 +50,10 @@ Every success includes `repositoryId`, `graphRevision`, `indexedAt`, effective `
 Page `children` with its returned `nextOffset` using `--offset`. Page `source` with `source.nextStartLine` using `--start-line` (absolute 1-based line within the symbol/file bounds). Only `source.status: ok` returns verified `lines`, `startLine`, `endLine`, `truncated`, and `nextStartLine`. Other statuses include `changed`, `missing`, `unsafe`, `unreadable`, `unverified`, `unavailable`, `unsupported_encoding`, `span_unavailable`, and `too_large`; use the fallback rules in the skill. Source reads are capped at 8 MiB per file and 16 KiB of excerpt text; `too_large` returns these byte limits without source lines. For an oversized excerpt, retry fewer lines or read the relevant current source with bounded ordinary tools. Never treat truncated evidence as a complete function body.
 
 Single-key source JSON retains its `source` object. Multiple keys return ordered `sources` entries with `stableKey` and the same per-excerpt fields, sharing graph metadata and diagnostics. `--max-lines` and `--start-line` apply to each excerpt; inspect each status and paginate individual keys with their own `nextStartLine`. Unknown keys fail the command; verification failures remain per-excerpt statuses. `--format text` retains snapshot and excerpt metadata alongside numbered lines.
+
+For behavioral investigation, prefer concrete `find --limit 5`, focused context, and batched `source --format text` over broad graphs. Path search uses positional query text, for example `atlas graph --revision "$REVISION" find 'worker/scheduler.ts' --limit 5`; `find` has no `--path` filter. For a symbol, search its concrete name and inspect returned paths; do not assume combined name/path filtering. CLI defaults below are not required starting budgets. If output is clipped by the harness as well as by Atlas, reduce the next batch; do not assume the last excerpt was visible. A compact JSON projection must retain identity/revision, diagnostics and truncation flags, boundaries, node keys/paths, and pertinent edges with relationship/confidence/type-only/evidence distinctions. Do not drop uncertainty metadata to save tokens.
+
+Ordinary search complements Atlas. Discover paths before searching guessed directories. A search exit 1 can mean no matches, not broken tooling; avoid `&&` before unrelated verification when no match is expected. If the harness rewrites `rg`/`find` and rejects options, switch to a known working search/read tool rather than repeating the same command. Do not hide genuine path/syntax errors as no matches.
 
 Defaults: `find --limit 10`; `children --limit 30 --offset 0`; `context --depth 2 --max-nodes 30 --max-edges 100`; `source --max-lines 80`; `path --max-depth 6 --max-nodes 30 --max-edges 100`. Path also accepts `--direction` and `--relations`. Navigation errors are JSON on stderr with exit 1; invalid CLI usage exits 2.
 
