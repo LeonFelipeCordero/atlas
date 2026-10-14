@@ -1,0 +1,107 @@
+{
+  "sites": [
+    {
+      "site_id": "fcbbd15699da6a57786203b1ea3cce2295003cdc546f1ae65bb27c75f1e23271",
+      "path": "interpolations.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "x > 0",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 96,
+        "end_byte": 101,
+        "start_line": 3,
+        "start_column": 29,
+        "end_line": 3,
+        "end_column": 34
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "e2335db3f7c9e6d39322d1c61fc934e501309d946ba229ac7a5c482b13506fd9",
+      "path": "interpolations.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "x < 10",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 112,
+        "start_line": 3,
+        "start_column": 39,
+        "end_line": 3,
+        "end_column": 45
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "40cb4bcc8d96670376d3812b8cda8d63522b2418bc007cdd6356ba595a55ff5d",
+      "path": "interpolations.js",
+      "language": "javascript",
+      "kind": "logical",
+      "expression": "x < 10 && x !== 3",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 39,
+        "end_line": 3,
+        "end_column": 56
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "f46b737e06d312db703548a072e51917145fe66abb62998a98b3ba490aab88f7",
+      "path": "interpolations.js",
+      "language": "javascript",
+      "kind": "predicate",
+      "expression": "x < 10 && x !== 3",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 39,
+        "end_line": 3,
+        "end_column": 56
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "23e4ed52e1eb23d7fdcffb3ce885454afc9a6b28787d1a0b2a1e315648b6c6ac",
+      "path": "interpolations.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "x !== 3",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 116,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 49,
+        "end_line": 3,
+        "end_column": 56
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "interpolations.js::describe@0",
+      "start_byte": 0,
+      "end_byte": 143
+    }
+  ],
+  "diagnostics": []
+}

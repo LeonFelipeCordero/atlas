@@ -1,0 +1,385 @@
+{
+  "sites": [
+    {
+      "site_id": "eee1ba9253953b524c4c380d3c2eaa841ac6501dd5d070bb3ebad583381ccf64",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "logical",
+      "expression": "ready && amount > 0",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 96,
+        "end_byte": 115,
+        "start_line": 4,
+        "start_column": 7,
+        "end_line": 4,
+        "end_column": 26
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "55f843935acff76e41770d3d5521b21b9107d495f3a00ecc37cb3902ff0f0844",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "logical",
+      "expression": "ready && amount > 0 || amount === 3",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 96,
+        "end_byte": 131,
+        "start_line": 4,
+        "start_column": 7,
+        "end_line": 4,
+        "end_column": 42
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "898af3f0443c072d32f1e735304fd6fab66e6f74acc747009402f8d26c0d6662",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "predicate",
+      "expression": "ready && amount > 0 || amount === 3",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 96,
+        "end_byte": 131,
+        "start_line": 4,
+        "start_column": 7,
+        "end_line": 4,
+        "end_column": 42
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "23ff0163c246f45fe49c2d288ec3496dda473271ddaf9ae8c4b2852bad533101",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "amount > 0",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 105,
+        "end_byte": 115,
+        "start_line": 4,
+        "start_column": 16,
+        "end_line": 4,
+        "end_column": 26
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "821b1c06a72850226f2de593339ef19bf1fca5da2cb6dae318b52486f9a5053d",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "amount === 3",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 119,
+        "end_byte": 131,
+        "start_line": 4,
+        "start_column": 30,
+        "end_line": 4,
+        "end_column": 42
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "75164c0b10dde82c22a5c32ec58c438a28267f75fd02546643c4c9b51601765e",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "amount !== 0",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 146,
+        "end_byte": 158,
+        "start_line": 5,
+        "start_column": 12,
+        "end_line": 5,
+        "end_column": 24
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "5668bd1d8fa3985a49283d0c0ac618ff120391e4c0cb9577e73ec758bc42b91c",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "predicate",
+      "expression": "amount !== 0",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 146,
+        "end_byte": 158,
+        "start_line": 5,
+        "start_column": 12,
+        "end_line": 5,
+        "end_column": 24
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "f9fdd3d1d991d5e800bb757d0db6a7a019a4ec842115f7ad41e2a12e38b285d1",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "i < amount",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 192,
+        "end_byte": 202,
+        "start_line": 7,
+        "start_column": 19,
+        "end_line": 7,
+        "end_column": 29
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "f997f931a900ea5a219860f4bcb09b17fe4fd0c3923d47aea7ea4d4ff7111b6c",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "predicate",
+      "expression": "i < amount",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 192,
+        "end_byte": 202,
+        "start_line": 7,
+        "start_column": 19,
+        "end_line": 7,
+        "end_column": 29
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "3845f7a6e0a3602016532760d6eae35cbbfd0a9ff33f5f7c4356fcb3e7c31560",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "amount >= 0",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 260,
+        "end_byte": 271,
+        "start_line": 9,
+        "start_column": 27,
+        "end_line": 9,
+        "end_column": 38
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "4ed974650015b98f86655d5e139d2ab0922472c576b9c6c77f12d3d5fa123ca7",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "predicate",
+      "expression": "amount >= 0",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 260,
+        "end_byte": 271,
+        "start_line": 9,
+        "start_column": 27,
+        "end_line": 9,
+        "end_column": 38
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "588320837062add01f6f6e60873daf3edc5901334230dbc9628d5e8ad42e11d7",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "predicate",
+      "expression": "ready",
+      "context": "function brew(amount, ready) {\n  if (ready && amount > 0 || amount === 3) {\n    while (amount !== 0) amount--;\n  }\n  for (let i = 0; i < amount; i++) {}\n  for (;;) { break; }\n  do { amount--; } while (amount >= 0);\n  return ready ? \"hot\" : \"cold\";\n}",
+      "callable": "conditions.js::brew@59",
+      "span": {
+        "start_byte": 283,
+        "end_byte": 288,
+        "start_line": 10,
+        "start_column": 10,
+        "end_line": 10,
+        "end_column": 15
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "fc40c9bf1fc0f044bbf0dba7581f41d7007adf217f6638fed97de8da786c239c",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "value > 2",
+      "context": "function nested(value) { return value > 2 && ready; }",
+      "callable": "conditions.js::Machine.serve.nested@346",
+      "span": {
+        "start_byte": 378,
+        "end_byte": 387,
+        "start_line": 14,
+        "start_column": 37,
+        "end_line": 14,
+        "end_column": 46
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "e1429f56f904b84b99437310f983835f29e54ffcc200304a8d70279cde74a620",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "logical",
+      "expression": "value > 2 && ready",
+      "context": "function nested(value) { return value > 2 && ready; }",
+      "callable": "conditions.js::Machine.serve.nested@346",
+      "span": {
+        "start_byte": 378,
+        "end_byte": 396,
+        "start_line": 14,
+        "start_column": 37,
+        "end_line": 14,
+        "end_column": 55
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "eaa96c60c342b2bf381cc796a6d67cd5390e0ef9b0ef0d02e78458081dc30977",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "value == 3",
+      "context": "value => value == 3 || ready",
+      "callable": "conditions.js::Machine.serve.accepts@420",
+      "span": {
+        "start_byte": 429,
+        "end_byte": 439,
+        "start_line": 15,
+        "start_column": 30,
+        "end_line": 15,
+        "end_column": 40
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "3f7617d2f4bde467e46111acee38d427574fbc092ddf2e77ba74ab48b7783dc8",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "logical",
+      "expression": "value == 3 || ready",
+      "context": "value => value == 3 || ready",
+      "callable": "conditions.js::Machine.serve.accepts@420",
+      "span": {
+        "start_byte": 429,
+        "end_byte": 448,
+        "start_line": 15,
+        "start_column": 30,
+        "end_line": 15,
+        "end_column": 49
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "8a5e4d3f58c05816855823362de0fb4a49ad2d989650d1856382938e2bee19f4",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "value in {x: 1}",
+      "context": "function(value) { return value in {x: 1}; }",
+      "callable": "conditions.js::anonymous@497",
+      "span": {
+        "start_byte": 522,
+        "end_byte": 537,
+        "start_line": 19,
+        "start_column": 44,
+        "end_line": 19,
+        "end_column": 59
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "8cb72473a7fd2ddee5c1682f3b6b5cc515cd0a86711d3adf05b783a8b605ca51",
+      "path": "conditions.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "label instanceof String",
+      "context": "function*() { yield label instanceof String; }",
+      "callable": "conditions.js::generator@560",
+      "span": {
+        "start_byte": 580,
+        "end_byte": 603,
+        "start_line": 20,
+        "start_column": 39,
+        "end_line": 20,
+        "end_column": 62
+      },
+      "original_file_hash": "44a7564f85c53505305619b669eb95a5c118dd6f286e55d5c4e0a8c6d098cc13",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "conditions.js::brew@59",
+      "start_byte": 59,
+      "end_byte": 308
+    },
+    {
+      "identity": "conditions.js::Machine.serve@327",
+      "start_byte": 327,
+      "end_byte": 476
+    },
+    {
+      "identity": "conditions.js::Machine.serve.nested@346",
+      "start_byte": 346,
+      "end_byte": 399
+    },
+    {
+      "identity": "conditions.js::Machine.serve.accepts@420",
+      "start_byte": 420,
+      "end_byte": 448
+    },
+    {
+      "identity": "conditions.js::anonymous@497",
+      "start_byte": 497,
+      "end_byte": 540
+    },
+    {
+      "identity": "conditions.js::generator@560",
+      "start_byte": 560,
+      "end_byte": 606
+    }
+  ],
+  "diagnostics": [
+    {
+      "path": "conditions.js",
+      "code": "unsupported-condition",
+      "message": "switch_statement patterns are not boolean predicates (byte 608)."
+    }
+  ]
+}

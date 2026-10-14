@@ -1,0 +1,174 @@
+{
+  "sites": [
+    {
+      "site_id": "cce698f6f5d55e4e6d406f50580961cd585d35d0be4f253e1d888506b43e5842",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "amount > 0",
+      "context": "(amount: number): boolean => amount > 0 && amount < 10",
+      "callable": "conditions.ts::Machine.accepts.check@339",
+      "span": {
+        "start_byte": 368,
+        "end_byte": 378,
+        "start_line": 8,
+        "start_column": 48,
+        "end_line": 8,
+        "end_column": 58
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "01454ef42258629d039886f7ad9e1f43e675f9f1e775664b8aa40da1d313a130",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "logical",
+      "expression": "amount > 0 && amount < 10",
+      "context": "(amount: number): boolean => amount > 0 && amount < 10",
+      "callable": "conditions.ts::Machine.accepts.check@339",
+      "span": {
+        "start_byte": 368,
+        "end_byte": 393,
+        "start_line": 8,
+        "start_column": 48,
+        "end_line": 8,
+        "end_column": 73
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "4552c00d87f201e6ab0cceea9175ca9236a415c725deb685b9345bb58cef8336",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "amount < 10",
+      "context": "(amount: number): boolean => amount > 0 && amount < 10",
+      "callable": "conditions.ts::Machine.accepts.check@339",
+      "span": {
+        "start_byte": 382,
+        "end_byte": 393,
+        "start_line": 8,
+        "start_column": 62,
+        "end_line": 8,
+        "end_column": 73
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "43f5a0d2ed8a2e8b1c4c54ca42c7e2854a637d099cddd83ad0c17db86a39a07a",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "logical",
+      "expression": "check(value) || value === 12",
+      "context": "accepts(value: number): value is number {\n    const check = (amount: number): boolean => amount > 0 && amount < 10;\n    return check(value) || value === 12;\n  }",
+      "callable": "conditions.ts::Machine.accepts@279",
+      "span": {
+        "start_byte": 406,
+        "end_byte": 434,
+        "start_line": 9,
+        "start_column": 12,
+        "end_line": 9,
+        "end_column": 40
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "00ae4f6e2958e263f80a59dc3af581b15b91b9e4c8082ae1dea30975d1bdbf2c",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "value === 12",
+      "context": "accepts(value: number): value is number {\n    const check = (amount: number): boolean => amount > 0 && amount < 10;\n    return check(value) || value === 12;\n  }",
+      "callable": "conditions.ts::Machine.accepts@279",
+      "span": {
+        "start_byte": 422,
+        "end_byte": 434,
+        "start_line": 9,
+        "start_column": 28,
+        "end_line": 9,
+        "end_column": 40
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "6280f232c3c9a64fa941d80f4efd20212606975ddece71243af6aa693a04bc61",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "value.length > 0",
+      "context": "function generic<T extends string>(value: T) {\n  if (value.length > 0) return value;\n  return value ? value : \"\";\n}",
+      "callable": "conditions.ts::generic@442",
+      "span": {
+        "start_byte": 495,
+        "end_byte": 511,
+        "start_line": 13,
+        "start_column": 7,
+        "end_line": 13,
+        "end_column": 23
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "9e4382a6090e3771d521e46289e41eb9eda9c0d4564ba19bdf9f7d2a0c5837bb",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "predicate",
+      "expression": "value.length > 0",
+      "context": "function generic<T extends string>(value: T) {\n  if (value.length > 0) return value;\n  return value ? value : \"\";\n}",
+      "callable": "conditions.ts::generic@442",
+      "span": {
+        "start_byte": 495,
+        "end_byte": 511,
+        "start_line": 13,
+        "start_column": 7,
+        "end_line": 13,
+        "end_column": 23
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "0fdea22df09d1fa81110826af4785684577eac0c3b46e5acbdd059bb85deeb79",
+      "path": "conditions.ts",
+      "language": "typescript",
+      "kind": "predicate",
+      "expression": "value",
+      "context": "function generic<T extends string>(value: T) {\n  if (value.length > 0) return value;\n  return value ? value : \"\";\n}",
+      "callable": "conditions.ts::generic@442",
+      "span": {
+        "start_byte": 536,
+        "end_byte": 541,
+        "start_line": 14,
+        "start_column": 10,
+        "end_line": 14,
+        "end_column": 15
+      },
+      "original_file_hash": "b149b094a7f079245f8a469fe90408b4a58b46c5644dc837a3ba2c30e8269aa6",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "conditions.ts::Machine.accepts@279",
+      "start_byte": 279,
+      "end_byte": 439
+    },
+    {
+      "identity": "conditions.ts::Machine.accepts.check@339",
+      "start_byte": 339,
+      "end_byte": 393
+    },
+    {
+      "identity": "conditions.ts::generic@442",
+      "start_byte": 442,
+      "end_byte": 557
+    }
+  ],
+  "diagnostics": []
+}

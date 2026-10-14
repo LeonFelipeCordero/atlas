@@ -1,0 +1,32 @@
+{
+  "trial_id": "<trial-1>",
+  "session_id": "<session_id>",
+  "site_id": "71bdd0b5fb00e46ed24af11d92366e3dd986fee2f37bd18c20d58908956d39fa",
+  "recorded_at": "<recorded_at>",
+  "provenance": "agent-reported",
+  "result": {
+    "schema_version": 1,
+    "hypothesis": "Exact minimum must be accepted",
+    "patch": "- amount >= minimum\n+ amount > minimum\n",
+    "outcome": "survived",
+    "baseline": {
+      "command": "pytest",
+      "exit_code": 0,
+      "duration_seconds": 1.0,
+      "log_reference": "baseline.log"
+    },
+    "mutant": {
+      "command": "pytest",
+      "exit_code": 0,
+      "duration_seconds": 1.0,
+      "log_reference": "mutant.log"
+    },
+    "source_identity": {
+      "original_file_hash": "4ac7a13d648d1f24ec5e948f5b31d3d818f3f45836ce05dfe59f64963b741a22",
+      "mutant_file_hash": "5bec49b8d00af5bef1e2c251a9a9f9dddc29d9b2526851a788d71da41a22010a",
+      "restored_file_hash": "4ac7a13d648d1f24ec5e948f5b31d3d818f3f45836ce05dfe59f64963b741a22"
+    },
+    "explanation": "Unchanged tests passed; restored original bytes"
+  },
+  "current_source_status": "matches-session"
+}

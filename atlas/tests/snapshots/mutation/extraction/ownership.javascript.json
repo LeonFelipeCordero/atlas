@@ -1,0 +1,55 @@
+{
+  "sites": [
+    {
+      "site_id": "853299b5e2166a64d28aae80f1a238f3144338c985c6d1d7e672d81503ba97fe",
+      "path": "ownership.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "x > 0",
+      "context": "x => { const unused = 1; return x > 0; }",
+      "callable": "ownership.js::C.f@16",
+      "span": {
+        "start_byte": 48,
+        "end_byte": 53,
+        "start_line": 2,
+        "start_column": 39,
+        "end_line": 2,
+        "end_column": 44
+      },
+      "original_file_hash": "eb98ad25ea4c9371eb7f068c8a3eabad904e4fb3cc2bbcd7b22556d7702d31ee",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "873e962c355f7827a2bbd75791151b3775464fa952fe87ab795efb0669206124",
+      "path": "ownership.js",
+      "language": "javascript",
+      "kind": "comparison",
+      "expression": "x > 2",
+      "context": "x => x > 2",
+      "callable": "ownership.js::C.g@64",
+      "span": {
+        "start_byte": 69,
+        "end_byte": 74,
+        "start_line": 3,
+        "start_column": 12,
+        "end_line": 3,
+        "end_column": 17
+      },
+      "original_file_hash": "eb98ad25ea4c9371eb7f068c8a3eabad904e4fb3cc2bbcd7b22556d7702d31ee",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "ownership.js::C.f@16",
+      "start_byte": 16,
+      "end_byte": 56
+    },
+    {
+      "identity": "ownership.js::C.g@64",
+      "start_byte": 64,
+      "end_byte": 74
+    }
+  ],
+  "diagnostics": []
+}

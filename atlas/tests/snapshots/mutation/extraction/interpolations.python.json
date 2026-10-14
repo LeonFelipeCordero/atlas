@@ -1,0 +1,107 @@
+{
+  "sites": [
+    {
+      "site_id": "0e7bd03debf00a63ee95d59c7d5d1f3011da6c5211e4b3ec4a041855cb85a633",
+      "path": "interpolations.py",
+      "language": "python",
+      "kind": "comparison",
+      "expression": "x > 0",
+      "context": "def describe(x):\n    text = \"literal x > 100 and x < 200\"\n    return f\"literal x > 99: {x > 0}, {'yes' if x < 10 and x != 3 else 'no'}\"",
+      "callable": "interpolations.py::describe@0",
+      "span": {
+        "start_byte": 88,
+        "end_byte": 93,
+        "start_line": 3,
+        "start_column": 31,
+        "end_line": 3,
+        "end_column": 36
+      },
+      "original_file_hash": "122afd4684182526835ff6d63fd09ddb99a95fa8730538972172ff917148cbbe",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "80a28905ebb543ae354812143a3f4631657830bead23c2f350a49554ce62f794",
+      "path": "interpolations.py",
+      "language": "python",
+      "kind": "comparison",
+      "expression": "x < 10",
+      "context": "def describe(x):\n    text = \"literal x > 100 and x < 200\"\n    return f\"literal x > 99: {x > 0}, {'yes' if x < 10 and x != 3 else 'no'}\"",
+      "callable": "interpolations.py::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 112,
+        "start_line": 3,
+        "start_column": 49,
+        "end_line": 3,
+        "end_column": 55
+      },
+      "original_file_hash": "122afd4684182526835ff6d63fd09ddb99a95fa8730538972172ff917148cbbe",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "e33b70a5c32f493a9aaab2a0e660acfa67ce60ef98c2c0d0af5d965940224c8e",
+      "path": "interpolations.py",
+      "language": "python",
+      "kind": "logical",
+      "expression": "x < 10 and x != 3",
+      "context": "def describe(x):\n    text = \"literal x > 100 and x < 200\"\n    return f\"literal x > 99: {x > 0}, {'yes' if x < 10 and x != 3 else 'no'}\"",
+      "callable": "interpolations.py::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 49,
+        "end_line": 3,
+        "end_column": 66
+      },
+      "original_file_hash": "122afd4684182526835ff6d63fd09ddb99a95fa8730538972172ff917148cbbe",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "26716a49e73a62ca16597465a8410e1c374b28fac6602d6f32b6fefbe44d5c01",
+      "path": "interpolations.py",
+      "language": "python",
+      "kind": "predicate",
+      "expression": "x < 10 and x != 3",
+      "context": "def describe(x):\n    text = \"literal x > 100 and x < 200\"\n    return f\"literal x > 99: {x > 0}, {'yes' if x < 10 and x != 3 else 'no'}\"",
+      "callable": "interpolations.py::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 49,
+        "end_line": 3,
+        "end_column": 66
+      },
+      "original_file_hash": "122afd4684182526835ff6d63fd09ddb99a95fa8730538972172ff917148cbbe",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "1340c6bcd8be3b62e1abd8973b346e17ef9801f71fef80ce466d60fc6b972d69",
+      "path": "interpolations.py",
+      "language": "python",
+      "kind": "comparison",
+      "expression": "x != 3",
+      "context": "def describe(x):\n    text = \"literal x > 100 and x < 200\"\n    return f\"literal x > 99: {x > 0}, {'yes' if x < 10 and x != 3 else 'no'}\"",
+      "callable": "interpolations.py::describe@0",
+      "span": {
+        "start_byte": 117,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 60,
+        "end_line": 3,
+        "end_column": 66
+      },
+      "original_file_hash": "122afd4684182526835ff6d63fd09ddb99a95fa8730538972172ff917148cbbe",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "interpolations.py::describe@0",
+      "start_byte": 0,
+      "end_byte": 135
+    }
+  ],
+  "diagnostics": []
+}

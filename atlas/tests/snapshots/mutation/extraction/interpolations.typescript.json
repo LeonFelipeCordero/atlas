@@ -1,0 +1,107 @@
+{
+  "sites": [
+    {
+      "site_id": "241e983129953794ca045e12916e5d04a0c1c21e2b6528842bf6d0a028414324",
+      "path": "interpolations.js",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x > 0",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 96,
+        "end_byte": 101,
+        "start_line": 3,
+        "start_column": 29,
+        "end_line": 3,
+        "end_column": 34
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "e01f76f27161ceb9d3341ddb5f0a92328e07695529729c0efd9b17098f53adec",
+      "path": "interpolations.js",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x < 10",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 112,
+        "start_line": 3,
+        "start_column": 39,
+        "end_line": 3,
+        "end_column": 45
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "ffbdaf73d1c777d5bc068dd9a9d51a794f8fa36a8d2053c55d0db64e0aa3aaa9",
+      "path": "interpolations.js",
+      "language": "typescript",
+      "kind": "logical",
+      "expression": "x < 10 && x !== 3",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 39,
+        "end_line": 3,
+        "end_column": 56
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "f89159c0ddc47e5a545287e326f23cb3eb7938cbeeaf80eb873b2b79db5ecec4",
+      "path": "interpolations.js",
+      "language": "typescript",
+      "kind": "predicate",
+      "expression": "x < 10 && x !== 3",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 106,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 39,
+        "end_line": 3,
+        "end_column": 56
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "a7644889e38e6aa8bbca60ccdbc72c7fbd3e181cc9823e76dbf977c4d1b2dd1b",
+      "path": "interpolations.js",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x !== 3",
+      "context": "function describe(x) {\n  const text = \"literal x > 100 && x < 200\";\n  return `literal x > 99: ${x > 0}, ${x < 10 && x !== 3 ? \"yes\" : \"no\"}`;\n}",
+      "callable": "interpolations.js::describe@0",
+      "span": {
+        "start_byte": 116,
+        "end_byte": 123,
+        "start_line": 3,
+        "start_column": 49,
+        "end_line": 3,
+        "end_column": 56
+      },
+      "original_file_hash": "4706647ae34c8d63084d40f1b639be01ba367c4bab057016f1b9e33df2c10cb0",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "interpolations.js::describe@0",
+      "start_byte": 0,
+      "end_byte": 143
+    }
+  ],
+  "diagnostics": []
+}

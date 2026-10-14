@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "extraction_version": 1,
+  "session_id": "<session_id>",
+  "created_at": "<created_at>",
+  "root": "<project>",
+  "scope": {
+    "mode": "folder",
+    "folders": [
+      "."
+    ],
+    "requested_base": null,
+    "resolved_base": null
+  },
+  "sites": [
+    {
+      "site_id": "71bdd0b5fb00e46ed24af11d92366e3dd986fee2f37bd18c20d58908956d39fa",
+      "path": "payments.py",
+      "language": "python",
+      "kind": "comparison",
+      "expression": "amount >= minimum",
+      "context": "def accept_payment(amount, minimum):\n    if amount >= minimum:\n        return True\n    return False",
+      "callable": "payments.py::accept_payment@65",
+      "span": {
+        "start_byte": 109,
+        "end_byte": 126,
+        "start_line": 5,
+        "start_column": 8,
+        "end_line": 5,
+        "end_column": 25
+      },
+      "original_file_hash": "4ac7a13d648d1f24ec5e948f5b31d3d818f3f45836ce05dfe59f64963b741a22",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "14501cba3fcd0df0246c36e908a8434ce595db6b817a7d4c5663c4a5fd8d2306",
+      "path": "payments.py",
+      "language": "python",
+      "kind": "predicate",
+      "expression": "amount >= minimum",
+      "context": "def accept_payment(amount, minimum):\n    if amount >= minimum:\n        return True\n    return False",
+      "callable": "payments.py::accept_payment@65",
+      "span": {
+        "start_byte": 109,
+        "end_byte": 126,
+        "start_line": 5,
+        "start_column": 8,
+        "end_line": 5,
+        "end_column": 25
+      },
+      "original_file_hash": "4ac7a13d648d1f24ec5e948f5b31d3d818f3f45836ce05dfe59f64963b741a22",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "limitations": [],
+  "sources": [
+    {
+      "path": "payments.py",
+      "language": "python",
+      "original_file_hash": "4ac7a13d648d1f24ec5e948f5b31d3d818f3f45836ce05dfe59f64963b741a22",
+      "deleted": false,
+      "current_source_status": "missing"
+    }
+  ],
+  "provenance": "agent-reported",
+  "trials": [],
+  "outcome_counts": {
+    "killed": 0,
+    "survived": 0,
+    "invalid": 0,
+    "timeout": 0,
+    "error": 0,
+    "skipped": 0
+  },
+  "unexplored_sites": [
+    "71bdd0b5fb00e46ed24af11d92366e3dd986fee2f37bd18c20d58908956d39fa",
+    "14501cba3fcd0df0246c36e908a8434ce595db6b817a7d4c5663c4a5fd8d2306"
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "sites": [
+    {
+      "site_id": "e9c94d77646ef68a999724ab28efa94308fac795e616b71681ee37451c4dfd17",
+      "path": "ownership.py",
+      "language": "python",
+      "kind": "predicate",
+      "expression": "enabled",
+      "context": "if enabled:\n    run()\n",
+      "callable": null,
+      "span": {
+        "start_byte": 3,
+        "end_byte": 10,
+        "start_line": 1,
+        "start_column": 4,
+        "end_line": 1,
+        "end_column": 11
+      },
+      "original_file_hash": "5bf19b1bc5a364bdeea8f8dc7791f0470674ebfce03f73a966f0f102199d302c",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "517c0209d04c2c88e68e77c1f91178448d25ccbeb768202bc32b0e97d3a5ea75",
+      "path": "ownership.py",
+      "language": "python",
+      "kind": "comparison",
+      "expression": "threshold > 0",
+      "context": "@deco(threshold > 0)\ndef brew(ready):\n    if ready:\n        return 1\n    return 0",
+      "callable": "ownership.py::brew@45",
+      "span": {
+        "start_byte": 30,
+        "end_byte": 43,
+        "start_line": 5,
+        "start_column": 7,
+        "end_line": 5,
+        "end_column": 20
+      },
+      "original_file_hash": "5bf19b1bc5a364bdeea8f8dc7791f0470674ebfce03f73a966f0f102199d302c",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "d984b9bafe5b848590457d64aaaa20b62274ea3687e667967d6ab691875328c8",
+      "path": "ownership.py",
+      "language": "python",
+      "kind": "predicate",
+      "expression": "ready",
+      "context": "@deco(threshold > 0)\ndef brew(ready):\n    if ready:\n        return 1\n    return 0",
+      "callable": "ownership.py::brew@45",
+      "span": {
+        "start_byte": 69,
+        "end_byte": 74,
+        "start_line": 7,
+        "start_column": 8,
+        "end_line": 7,
+        "end_column": 13
+      },
+      "original_file_hash": "5bf19b1bc5a364bdeea8f8dc7791f0470674ebfce03f73a966f0f102199d302c",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "43c179f32a5e520fd114249f8039c2e5930c80a7bad25ef50c1c86320690b25b",
+      "path": "ownership.py",
+      "language": "python",
+      "kind": "comparison",
+      "expression": "nested_limit > 0",
+      "context": "@deco(nested_limit > 0)\n    def nested(value):\n        if value:\n            return 3\n        return 0",
+      "callable": "ownership.py::other.nested@158",
+      "span": {
+        "start_byte": 136,
+        "end_byte": 152,
+        "start_line": 13,
+        "start_column": 11,
+        "end_line": 13,
+        "end_column": 27
+      },
+      "original_file_hash": "5bf19b1bc5a364bdeea8f8dc7791f0470674ebfce03f73a966f0f102199d302c",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "75b67d203142fc509c1a3fe7b2e16e6590a15985cd16a7b2f0d47db750d188b1",
+      "path": "ownership.py",
+      "language": "python",
+      "kind": "predicate",
+      "expression": "value",
+      "context": "@deco(nested_limit > 0)\n    def nested(value):\n        if value:\n            return 3\n        return 0",
+      "callable": "ownership.py::other.nested@158",
+      "span": {
+        "start_byte": 188,
+        "end_byte": 193,
+        "start_line": 15,
+        "start_column": 12,
+        "end_line": 15,
+        "end_column": 17
+      },
+      "original_file_hash": "5bf19b1bc5a364bdeea8f8dc7791f0470674ebfce03f73a966f0f102199d302c",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "a527b183c53723542d4645057d3fa7569f9ac168387696742a44545327d6fb2b",
+      "path": "ownership.py",
+      "language": "python",
+      "kind": "predicate",
+      "expression": "ready",
+      "context": "def other(ready):\n    @deco(nested_limit > 0)\n    def nested(value):\n        if value:\n            return 3\n        return 0\n\n    if ready:\n        return 2\n    return 0",
+      "callable": "ownership.py::other@108",
+      "span": {
+        "start_byte": 241,
+        "end_byte": 246,
+        "start_line": 19,
+        "start_column": 8,
+        "end_line": 19,
+        "end_column": 13
+      },
+      "original_file_hash": "5bf19b1bc5a364bdeea8f8dc7791f0470674ebfce03f73a966f0f102199d302c",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "ownership.py::brew@45",
+      "start_byte": 24,
+      "end_byte": 105
+    },
+    {
+      "identity": "ownership.py::other@108",
+      "start_byte": 108,
+      "end_byte": 277
+    },
+    {
+      "identity": "ownership.py::other.nested@158",
+      "start_byte": 130,
+      "end_byte": 232
+    }
+  ],
+  "diagnostics": []
+}

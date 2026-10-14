@@ -1,0 +1,74 @@
+{
+  "sites": [
+    {
+      "site_id": "61af40e738ae3d1ba777f19659c550aadb6061425f402d0d53b89d3feae2a8c8",
+      "path": "conditions.tsx",
+      "language": "tsx",
+      "kind": "comparison",
+      "expression": "amount > 0",
+      "context": "(amount: number) => amount > 0 ? <span>{label}</span> : null",
+      "callable": "conditions.tsx::Panel.render@146",
+      "span": {
+        "start_byte": 166,
+        "end_byte": 176,
+        "start_line": 4,
+        "start_column": 38,
+        "end_line": 4,
+        "end_column": 48
+      },
+      "original_file_hash": "afe3268aab58df048042d822eba3b4a5e9c0522bb0f67024200869f095692124",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "6cb075aefdc09ce2be607857d8fb7fd7c9976197aec7b07dfe0c9dbb3ca0731d",
+      "path": "conditions.tsx",
+      "language": "tsx",
+      "kind": "predicate",
+      "expression": "amount > 0",
+      "context": "(amount: number) => amount > 0 ? <span>{label}</span> : null",
+      "callable": "conditions.tsx::Panel.render@146",
+      "span": {
+        "start_byte": 166,
+        "end_byte": 176,
+        "start_line": 4,
+        "start_column": 38,
+        "end_line": 4,
+        "end_column": 48
+      },
+      "original_file_hash": "afe3268aab58df048042d822eba3b4a5e9c0522bb0f67024200869f095692124",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "d44b8779805a152b72ecc68a108f9ec9fc28b2d553772e5fe5c23ca7c0710819",
+      "path": "conditions.tsx",
+      "language": "tsx",
+      "kind": "logical",
+      "expression": "ready && render(3)",
+      "context": "function Panel({ready}: {ready: boolean}) {\n  const render = (amount: number) => amount > 0 ? <span>{label}</span> : null;\n  return <section title=\"x > y && z\">{ready && render(3)}</section>;\n}",
+      "callable": "conditions.tsx::Panel@85",
+      "span": {
+        "start_byte": 246,
+        "end_byte": 264,
+        "start_line": 5,
+        "start_column": 39,
+        "end_line": 5,
+        "end_column": 57
+      },
+      "original_file_hash": "afe3268aab58df048042d822eba3b4a5e9c0522bb0f67024200869f095692124",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "conditions.tsx::Panel@85",
+      "start_byte": 85,
+      "end_byte": 278
+    },
+    {
+      "identity": "conditions.tsx::Panel.render@146",
+      "start_byte": 146,
+      "end_byte": 206
+    }
+  ],
+  "diagnostics": []
+}

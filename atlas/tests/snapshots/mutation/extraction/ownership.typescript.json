@@ -1,0 +1,103 @@
+{
+  "sites": [
+    {
+      "site_id": "1bfd7a00ba1d317d98955973c824d6947f201abac29cb8b4b00ee32a7b1f6694",
+      "path": "ownership.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x > 0",
+      "context": "(x: number) => { const unused = 1; return x > 0; }",
+      "callable": "ownership.ts::C.f@16",
+      "span": {
+        "start_byte": 58,
+        "end_byte": 63,
+        "start_line": 2,
+        "start_column": 49,
+        "end_line": 2,
+        "end_column": 54
+      },
+      "original_file_hash": "80d34af722b821caf978210be62083f2b24b143fc6b4ebbf1e5e1ab4de8a1b42",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "9888a5db36a285fb81242eb05492575f3611ded6843cba32a48129caf42d2595",
+      "path": "ownership.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x > 2",
+      "context": "(x: number) => x > 2",
+      "callable": "ownership.ts::C.g@74",
+      "span": {
+        "start_byte": 89,
+        "end_byte": 94,
+        "start_line": 3,
+        "start_column": 22,
+        "end_line": 3,
+        "end_column": 27
+      },
+      "original_file_hash": "80d34af722b821caf978210be62083f2b24b143fc6b4ebbf1e5e1ab4de8a1b42",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "b641a3e642e295f03581ebcc06215375c127a619bbc1adb2b843ad595cb5d709",
+      "path": "ownership.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x > 0",
+      "context": "f(x: number) { const unused = 2; return x > 0; }",
+      "callable": "ownership.ts::A.f@120",
+      "span": {
+        "start_byte": 160,
+        "end_byte": 165,
+        "start_line": 7,
+        "start_column": 43,
+        "end_line": 7,
+        "end_column": 48
+      },
+      "original_file_hash": "80d34af722b821caf978210be62083f2b24b143fc6b4ebbf1e5e1ab4de8a1b42",
+      "diff_relationship": "folder-scope"
+    },
+    {
+      "site_id": "67768841a44c5b688416a2e50849cef00c27f0e14b63f7f2dfea424245bcae36",
+      "path": "ownership.ts",
+      "language": "typescript",
+      "kind": "comparison",
+      "expression": "x > 2",
+      "context": "f(x: number) { return x > 2; }",
+      "callable": "ownership.ts::B.f@193",
+      "span": {
+        "start_byte": 215,
+        "end_byte": 220,
+        "start_line": 11,
+        "start_column": 25,
+        "end_line": 11,
+        "end_column": 30
+      },
+      "original_file_hash": "80d34af722b821caf978210be62083f2b24b143fc6b4ebbf1e5e1ab4de8a1b42",
+      "diff_relationship": "folder-scope"
+    }
+  ],
+  "callables": [
+    {
+      "identity": "ownership.ts::C.f@16",
+      "start_byte": 16,
+      "end_byte": 66
+    },
+    {
+      "identity": "ownership.ts::C.g@74",
+      "start_byte": 74,
+      "end_byte": 94
+    },
+    {
+      "identity": "ownership.ts::A.f@120",
+      "start_byte": 120,
+      "end_byte": 168
+    },
+    {
+      "identity": "ownership.ts::B.f@193",
+      "start_byte": 193,
+      "end_byte": 223
+    }
+  ],
+  "diagnostics": []
+}

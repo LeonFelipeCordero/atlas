@@ -9,6 +9,7 @@ from click.testing import CliRunner
 
 from atlas.bootstrap import migrate_database
 from atlas.cli.commands import main
+from tests.mutation_snapshot_support import MutationSnapshots
 from tests.mutation_support import trial_input
 
 
@@ -29,10 +30,11 @@ def test_cli_persist_resume_record_and_report(project: Path) -> None:
     plan_result = runner.invoke(main, ["mutation", "plan", "--format", "json"])
     assert plan_result.exit_code == 0, plan_result.output
     plan = json.loads(plan_result.output)
-    assert plan["scope"]["mode"] == "folder"
-    assert plan["sites"]
-    assert len(plan["unexplored_sites"]) == len(plan["sites"])
-    assert plan["trials"] == []
+    snapshots = MutationSnapshots(project)
+    snapshots.check("plan", plan_result.output)
+    plan_markdown = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"]])
+    assert plan_markdown.exit_code == 0, plan_markdown.output
+    snapshots.check("plan", plan_markdown.output, markdown=True)
     site = plan["sites"][0]
     trial = trial_input(site["original_file_hash"])
     result_path = project / "trial.json"
@@ -40,28 +42,51 @@ def test_cli_persist_resume_record_and_report(project: Path) -> None:
     record_result = runner.invoke(main, ["mutation", "record", "--session", plan["session_id"], "--site", site["site_id"], "--result", str(result_path)])
     assert record_result.exit_code == 0, record_result.output
     acknowledgement = json.loads(record_result.output)
-    assert acknowledgement["provenance"] == "agent-reported"
-    assert acknowledgement["current_source_status"] == "matches-session"
+    snapshots.check("record", record_result.output)
     report_result = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"], "--format", "json"])
     report = json.loads(report_result.output)
     assert report_result.exit_code == 0
     assert report["trials"][0]["trial_id"] == acknowledgement["trial_id"]
-    assert report["outcome_counts"]["survived"] == 1
+    snapshots.check("report", report_result.output)
     markdown = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"]])
     assert markdown.exit_code == 0
-    for text in ("agent-reported", "candidate testing gaps", "baseline.log", "mutant.log", "matches-session", "amount >= minimum", "scope"):
-        assert text.lower() in markdown.output.lower()
+    snapshots.check("report", markdown.output, markdown=True)
     assert (project / "payments.py").read_bytes() == original
     again = json.loads(runner.invoke(main, ["mutation", "plan"]).output)
     assert again["session_id"] != plan["session_id"]
     assert again["sites"] == plan["sites"]
 
 
+def test_cli_reports_all_agent_outcomes(project: Path) -> None:
+    runner = CliRunner()
+    planned = runner.invoke(main, ["mutation", "plan"])
+    assert planned.exit_code == 0, planned.output
+    plan = json.loads(planned.output)
+    snapshots = MutationSnapshots(project)
+    for outcome in ("killed", "survived", "invalid", "timeout", "error", "skipped"):
+        site = plan["sites"][-1] if outcome == "skipped" else plan["sites"][0]
+        data = trial_input(site["original_file_hash"]).model_dump()
+        data["outcome"] = outcome
+        data["mutant"]["exit_code"] = 0 if outcome == "survived" else 1
+        result_path = project / "trial.json"
+        result_path.write_text(json.dumps(data))
+        recorded = runner.invoke(main, ["mutation", "record", "--session", plan["session_id"], "--site", site["site_id"], "--result", str(result_path)])
+        assert recorded.exit_code == 0, recorded.output
+    report = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"], "--format", "json"])
+    assert report.exit_code == 0, report.output
+    snapshots.check("all-outcomes", report.output)
+    markdown = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"]])
+    assert markdown.exit_code == 0, markdown.output
+    snapshots.check("all-outcomes", markdown.output, markdown=True)
+
+
 def test_cli_repeatable_folder_aliases_and_markdown(project: Path) -> None:
     result = CliRunner().invoke(main, ["mutation", "plan", "-f", ".", "--f", "./", "--folder", "../project", "--format", "markdown"])
     assert result.exit_code == 0, result.output
-    assert "Mutation experiment ledger" in result.output
-    assert "folders: ." in result.output
+    snapshots = MutationSnapshots(project)
+    session_line = next(line for line in result.output.splitlines() if line.startswith("Session:"))
+    snapshots.replacements[session_line.split("`")[1]] = "<session_id>"
+    snapshots.check("plan", result.output, markdown=True)
 
 
 def test_cli_reports_staleness_without_rewriting_snapshot(project: Path) -> None:
@@ -71,8 +96,13 @@ def test_cli_reports_staleness_without_rewriting_snapshot(project: Path) -> None
     report_result = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"], "--format", "json"])
     assert report_result.exit_code == 0
     report = json.loads(report_result.output)
-    assert report["sources"][0]["current_source_status"] == "differs"
+    snapshots = MutationSnapshots(project)
+    snapshots.check("stale-report", report_result.output)
     assert report["sites"] == plan["sites"]
+    (project / "payments.py").unlink()
+    missing = runner.invoke(main, ["mutation", "report", "--session", plan["session_id"], "--format", "json"])
+    assert missing.exit_code == 0, missing.output
+    snapshots.check("missing-report", missing.output)
 
 
 @pytest.mark.parametrize("args,message", [
