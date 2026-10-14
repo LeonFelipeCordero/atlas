@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from atlas.persistence.database import migrate_database
+from tests.test_mutation_schema import SCHEMA as MUTATION_SCHEMA
 
 # type, NOT NULL, primary-key position (SQLite PRAGMA table_info).
 SCHEMA = {
@@ -109,7 +110,7 @@ def database(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def test_exact_table_inventory_and_deferred_parentage(database: Path) -> None:
     with sqlite3.connect(database) as db:
         tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        assert {row[0] for row in tables} == {"alembic_version", *SCHEMA}
+        assert {row[0] for row in tables} == {"alembic_version", *SCHEMA, *MUTATION_SCHEMA}
         ddl = db.execute("SELECT sql FROM sqlite_master WHERE name='graph_nodes'").fetchone()[0]
         assert "DEFERRABLE INITIALLY DEFERRED" in ddl
         assert "UNIQUE (repository_id, ordinal)" in ddl

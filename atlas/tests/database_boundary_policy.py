@@ -23,6 +23,7 @@ REVISIONS = frozenset({
     "atlas.persistence.migrations.versions.0002_graph_nodes",
     "atlas.persistence.migrations.versions.0003_graph_relations",
     "atlas.persistence.migrations.versions.0004_drop_graph_artifact",
+    "atlas.persistence.migrations.versions.0005_mutation_ledger",
 })
 INFRASTRUCTURE = frozenset({
     "atlas.persistence.database", "atlas.persistence.navigation_database",
@@ -31,7 +32,8 @@ INFRASTRUCTURE = frozenset({
 ORM_MODULES = frozenset({
     "atlas.persistence.repositories", "atlas.persistence.navigation",
     "atlas.persistence.navigation_queries", "atlas.persistence.graph_queries",
-    "atlas.persistence.models",
+    "atlas.persistence.models", "atlas.persistence.mutation_models",
+    "atlas.persistence.mutation_repository",
 })
 REPOSITORY_MODULES = INFRASTRUCTURE | ORM_MODULES | {"atlas.persistence.graph_records"}
 FACTORY = "atlas.services.factories"
@@ -39,8 +41,9 @@ FACTORY_IMPORTS = frozenset({
     "atlas.persistence.repositories.repository_store",
     "atlas.persistence.navigation.navigation_reader",
     "atlas.persistence.database.migrate_database",
+    "atlas.persistence.mutation_repository.mutation_store",
 })
-SERVICE_EXPORTS = frozenset({"repository_service", "navigation_service", "migrate_database"})
+SERVICE_EXPORTS = frozenset({"repository_service", "navigation_service", "mutation_service", "migrate_database"})
 DB_PACKAGES = ("sqlalchemy", "sqlite3", "aiosqlite", "alembic", "psycopg", "psycopg2", "asyncpg", "pymysql", "MySQLdb", "duckdb")
 DB_METHODS = frozenset({
     "execute", "executemany", "executescript", "exec_driver_sql", "query", "scalar", "scalars",
@@ -55,7 +58,7 @@ DB_CONSTRUCTORS = frozenset({
 HANDLES = frozenset({"session", "_session", "connection", "_connection", "engine", "_engine", "cursor", "_cursor"})
 SESSION_METHODS = frozenset({"get", "add", "add_all", "delete", "refresh", "merge", "expunge", "expunge_all", "close"})
 PORTS = frozenset({"repository", "reader", "_repository", "_reader"})
-PORT_TYPES = frozenset({"atlas.domain.repositories.RepositoryProtocol", "atlas.domain.navigation.NavigationReader"})
+PORT_TYPES = frozenset({"atlas.domain.repositories.RepositoryProtocol", "atlas.domain.navigation.NavigationReader", "atlas.domain.mutation.MutationRepository"})
 RAW_EXPRESSIONS = frozenset({"text", "literal_column", "column", "table", "TextClause", "TextualSelect", "ColumnClause", "quoted_name", "custom_op", "DDL", "compiles"})
 RAW_OPERATIONS = frozenset({"exec_driver_sql", "executescript", "executemany", "cursor", "from_statement", "op", "bool_op", "prefix_with", "suffix_with"})
 SCHEMA_OPERATIONS = frozenset({"create_table", "drop_table", "add_column", "drop_column", "alter_column", "create_index", "drop_index", "create_foreign_key", "create_unique_constraint", "create_check_constraint", "create_primary_key", "drop_constraint", "rename_table"})
@@ -416,7 +419,7 @@ def port_escape_violations(value: ast.AST, aliases: dict[str, str]) -> set[str]:
 
 
 def service_constructor_violations(function: ast.FunctionDef | ast.AsyncFunctionDef, aliases: dict[str, str]) -> set[str]:
-    protocols = {"_repository": "atlas.domain.repositories.RepositoryProtocol", "_reader": "atlas.domain.navigation.NavigationReader"}
+    protocols = {"_repository": {"atlas.domain.repositories.RepositoryProtocol", "atlas.domain.mutation.MutationRepository"}, "_reader": {"atlas.domain.navigation.NavigationReader"}}
     parameters = {arg.arg: arg.annotation for arg in function.args.args}
     violations: set[str] = set()
     pairs = list(chain.from_iterable(map(assignment_pairs, ast.walk(function))))
@@ -437,7 +440,7 @@ def parameter_assignment_aliases(target, value, parameters):
 
 
 def constructor_protocol_matches(annotation, aliases, protocol):
-    return annotation is not None and qualified_name(annotation_expression(annotation), aliases) == protocol
+    return annotation is not None and qualified_name(annotation_expression(annotation), aliases) in protocol
 
 
 @dataclass

@@ -130,7 +130,11 @@ def _visible_directories(directory: _DirectoryContext, directories: list[str]):
     return [name for name in directories if _include_directory(directory, name)]
 
 
-def _repository_paths(root: Path) -> list[Path]:
+def _scope_directory(path: Path, folders: tuple[Path, ...]) -> bool:
+    return not folders or any(path.is_relative_to(folder) or folder.is_relative_to(path) for folder in folders)
+
+
+def _repository_paths(root: Path, folders: tuple[Path, ...] = ()) -> list[Path]:
     root = root.resolve()
     use_gitignore = (root / ".gitignore").is_file()
     directory_rules: dict[Path, list[tuple[Path, GitIgnoreSpec]]] = {}
@@ -144,7 +148,7 @@ def _repository_paths(root: Path) -> list[Path]:
         )
         atlas_rules = _directory_rules(base, atlas_directory_rules.get(base, []), ".atlasignore")
         context = _DirectoryContext(base, rules, atlas_rules, use_gitignore)
-        directories[:] = _visible_directories(context, directories)
+        directories[:] = [name for name in _visible_directories(context, directories) if _scope_directory(base / name, folders)]
         directory_rules.update(_child_rules(base, directories, rules))
         atlas_directory_rules.update(_child_rules(base, directories, atlas_rules))
         paths.extend(_directory_files(context, names))
@@ -172,11 +176,12 @@ def detect_language(path: Path) -> str | None:
     return language if is_supported_language(language) else None
 
 
-def discover_files(root: Path) -> list[SourceFile]:
+def discover_files(root: Path, *, folders: tuple[Path, ...] = ()) -> list[SourceFile]:
     """Read recognized files in sorted path order, applying discovery ignore rules.
 
     Args:
         root: Resolved absolute directory, normally from validate_repository.
+        folders: Optional resolved subtrees; inherit root ignores but never read other sources.
     Returns:
         Source records with root-relative POSIX paths and raw file bytes.
     Raises:
@@ -189,7 +194,9 @@ def discover_files(root: Path) -> list[SourceFile]:
         files = discover_files(validate_repository(Path(".")))
     """
     files = []
-    for path in sorted(_repository_paths(root)):
+    for path in sorted(_repository_paths(root, folders)):
+        if folders and not any(path.is_relative_to(folder) for folder in folders):
+            continue
         language = detect_language(path)
         if language:
             files.append(

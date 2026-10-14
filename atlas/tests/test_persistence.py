@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from tests.coffee_fixture import FIXTURE_ROOT
 from tests.graph_storage_fixture import GRAPH_TABLES
+from tests.test_mutation_schema import SCHEMA as MUTATION_SCHEMA
 
 
 @pytest.fixture
@@ -28,7 +29,7 @@ def database(tmp_path: Path) -> Path:
 def test_current_schema_and_constraints(database: Path) -> None:
     with sqlite3.connect(database) as db:
         assert db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall() == [
-            (name,) for name in sorted(("alembic_version", "repositories", "repository_graphs", *GRAPH_TABLES))
+            (name,) for name in sorted(("alembic_version", "repositories", "repository_graphs", *GRAPH_TABLES, *MUTATION_SCHEMA))
         ]
         assert db.execute("PRAGMA table_info('repositories')").fetchall() == [
             (0, "id", "TEXT", 1, None, 1),

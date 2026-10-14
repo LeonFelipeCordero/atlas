@@ -3,6 +3,7 @@
 from alembic import context
 from atlas.persistence.database import create_engine
 from atlas.persistence.models import Base
+from atlas.persistence import mutation_models as mutation_models
 from sqlalchemy import Connection
 
 config = context.config

@@ -90,7 +90,7 @@ test('UI opens a Python-migrated database without owning migrations', () => {
   expect(listRepositories(database)).toEqual([repository])
   expect(
     database.query('SELECT version_num FROM alembic_version').get(),
-  ).toEqual({ version_num: '0004_drop_graph_artifact' })
+  ).toEqual({ version_num: '0005_mutation_ledger' })
   expect(
     database
       .query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -104,6 +104,10 @@ test('UI opens a Python-migrated database without owning migrations', () => {
     { name: 'graph_node_metrics' },
     { name: 'graph_nodes' },
     { name: 'graph_symbols' },
+    { name: 'mutation_sessions' },
+    { name: 'mutation_sites' },
+    { name: 'mutation_sources' },
+    { name: 'mutation_trials' },
     { name: 'repositories' },
     { name: 'repository_graphs' },
   ])

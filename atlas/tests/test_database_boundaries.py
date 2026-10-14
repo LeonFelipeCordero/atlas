@@ -123,6 +123,7 @@ def test_repository_ownership_is_frozen_and_pure_records_are_not_orm() -> None:
             "0002_graph_nodes",
             "0003_graph_relations",
             "0004_drop_graph_artifact",
+            "0005_mutation_ledger",
         )
     }
 

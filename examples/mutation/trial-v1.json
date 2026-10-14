@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "hypothesis": "Illustrative only: rejecting the exact minimum should break a boundary test. Replace all evidence with actual experiment values.",
+  "patch": "--- a/src/payments.py\n+++ b/src/payments.py\n@@ -2 +2 @@\n-    if amount >= minimum:\n+    if amount > minimum:\n",
+  "outcome": "survived",
+  "baseline": {
+    "command": "uv run pytest",
+    "exit_code": 0,
+    "duration_seconds": 1.2,
+    "log_reference": "evidence/baseline.log"
+  },
+  "mutant": {
+    "command": "uv run pytest",
+    "exit_code": 0,
+    "duration_seconds": 1.3,
+    "log_reference": "evidence/mutant.log"
+  },
+  "source_identity": {
+    "original_file_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "mutant_file_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "restored_file_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "explanation": "Illustrative only, not real evidence. Tests passed with the changed boundary; original bytes were restored."
+}
