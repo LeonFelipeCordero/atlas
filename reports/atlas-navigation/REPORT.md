@@ -7,12 +7,15 @@ Plain source navigation was faster and cheaper in all three original comparisons
 | Three projects combined | Original Atlas | Plain | Revised Atlas |
 |---|---:|---:|---:|
 | Processed tokens, including cached context | 1,832,100 | 766,810 | 1,255,032 |
+| Uncached input + output tokens | 196,132 | 162,138 | 172,536 |
+| Cache-read tokens | 1,635,968 | 604,672 | 1,082,496 |
 | Estimated cost | $0.710541 | $0.504623 | $0.592914 |
 | Tool calls | 84 | 91 | 86 |
 | Model responses | 66 | 40 | 60 |
 | Mean investigation time | 229.218 s | 164.468 s | 179.680 s |
 | Supported checkpoints, out of 36 | 32 | 36 | 29 |
 | Wrong / omitted checkpoints | 0 / 4 | 0 / 0 | 0 / 7 |
+| Rubric completeness | 88.9% | 100% | 80.6% |
 
 Original Atlas vs plain: **139% more tokens, 41% more cost, 39% more time**. Revised Atlas used 31.5% fewer tokens than original Atlas, but covered less. Still 63.7% more tokens and 17.5% more cost than plain. Only revised TypeScript finished faster than plain.
 
@@ -48,11 +51,19 @@ Broad queries, test-heavy contexts, clipping, and repeated source reads added ou
 
 PR #24 narrowed searches/context, moved source reads earlier, limited repeated graph exploration, and added boundary checks. No Atlas implementation changed. This follow-up edits reports only; skills unchanged.
 
-| Revised run | Tokens | Tools | Responses | Time | Est. cost | Supported / wrong / omitted |
+| Run | Tokens | Tools | Responses | Time | Est. cost | Supported / wrong / omitted |
 |---|---:|---:|---:|---:|---:|---|
-| PY | 391,969 | 33 | 19 | 201.082 s | $0.202744 | 12 / 0 / 0 |
-| TS | 520,842 | 36 | 23 | 164.952 s | $0.202191 | 6 / 0 / 6 |
-| EX | 342,221 | 17 | 18 | 173.005 s | $0.187978 | 11 / 0 / 1 |
+| PY original Atlas | 513,941 | 32 | 18 | 204.898 s | $0.237007 | 12 / 0 / 0 |
+| PY plain | 282,834 | 27 | 13 | 156.429 s | $0.181260 | 12 / 0 / 0 |
+| PY revised Atlas | 391,969 | 33 | 19 | 201.082 s | $0.202744 | 12 / 0 / 0 |
+| TS original Atlas | 846,734 | 33 | 28 | 268.942 s | $0.259241 | 10 / 0 / 2 |
+| TS plain | 277,913 | 37 | 15 | 179.022 s | $0.187644 | 12 / 0 / 0 |
+| TS revised Atlas | 520,842 | 36 | 23 | 164.952 s | $0.202191 | 6 / 0 / 6 |
+| EX original Atlas | 471,425 | 19 | 20 | 213.814 s | $0.214293 | 10 / 0 / 2 |
+| EX plain | 206,063 | 27 | 12 | 157.953 s | $0.135720 | 12 / 0 / 0 |
+| EX revised Atlas | 342,221 | 17 | 18 | 173.005 s | $0.187978 | 11 / 0 / 1 |
+
+Revised vs original Atlas: cost −16.6%, tools **+2.4%**, responses −9.1%, time −21.6%. PY time barely changed (−1.9%) and tools increased. TS had the largest time reduction (−38.7%) and largest coverage loss. EX improved coverage/cost/time vs original Atlas, but remained 38.5% costlier and 9.5% slower than plain.
 
 Python kept full coverage. Elixir added the history cap but still omitted the CPU predicate. TypeScript reduced its separate OTP runtime to a paragraph, omitting RPC completion/failure boundaries, validated records/startup refresh, failed-refresh fingerprint behavior, manual retry, monitored UI completion, and registration failure. That lost coverage can explain part of the savings.
 
@@ -66,7 +77,7 @@ Two revised agents invented unsupported `graph find --path`. PR #24's final skil
 
 Tokens: sum session `usage.totalTokens` = input + output + cache read + cache write. Repeated cached context counts; reasoning is already included in output. No cache writes recorded.
 
-Cost: sum recorded `usage.cost.total`, not verified billing. Recorded rates: $2/M input, $10/M output, $0.10/M cache read. Token growth and cost growth differ because cached tokens cost less.
+Cost: sum recorded `usage.cost.total`, not verified billing. Recorded rates: $2/M input, $10/M output, $0.10/M cache read. Original Atlas's uncached input/output was only 21.0% above plain despite 138.9% more total tokens. Revised uncached usage fell 12.0% vs original Atlas, not 31.5%; still 6.4% above plain. Most token savings were reduced repeated cache reads, not a 31.5% reduction in uncached work or evidence of fewer unique source bytes read.
 
 Tools: persisted tool calls, including prompt/skill reads and answer writes. One bash call can run several CLI commands. Responses: persisted assistant messages, not hidden HTTP retries. Time: first user to final assistant outer timestamp. Summed agent times are not experiment wall time.
 
