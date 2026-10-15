@@ -97,6 +97,12 @@ def _kind(operator: str) -> MutationKind | None:
     return "assignment" if operator in _ASSIGNMENT else None
 
 
+def _operator_kind(operator: str, language: str, expression_type: str) -> MutationKind | None:
+    if operator == "*" and language in {"rust", "go"} and expression_type == "unary_expression":
+        return None  # Pointer dereference is not arithmetic multiplication.
+    return _kind(operator)
+
+
 def _operators(node: Node, language: str) -> list[tuple[MutationKind, Node]]:
     if node.type not in _EXPRESSIONS[language]:
         return []
@@ -106,9 +112,7 @@ def _operators(node: Node, language: str) -> list[tuple[MutationKind, Node]]:
         if token.is_named and token.type != "assignment_operator" and node.field_name_for_child(i) not in {"operator", "operators"}:
             continue
         operator = " ".join(text(token).split())
-        if operator == "*" and language in {"rust", "go"} and node.type == "unary_expression":
-            continue  # Pointer dereference is not arithmetic multiplication.
-        kind = _kind(operator)
+        kind = _operator_kind(operator, language, node.type)
         if kind is not None:
             result.append((kind, token))
     return result
@@ -294,13 +298,15 @@ class _Extraction:
                 self.analysis.candidates.append(candidate)
                 self.seen.add(candidate.id)
 
+    def visit(self, node: Node, owner: MutationCallable | None) -> list[tuple[Node, MutationCallable | None]]:
+        if not node.named_child_count or self.skip(node):
+            return []
+        owner = _callable(node, self.source.language) or owner
+        if node.type in self.site_types:
+            self.record(node, owner)
+        return [(child, owner) for child in reversed(node.named_children)]
+
     def run(self, root: Node) -> None:
         pending: list[tuple[Node, MutationCallable | None]] = [(root, None)]
         while pending:
-            node, owner = pending.pop()
-            if not node.named_child_count or self.skip(node):
-                continue
-            owner = _callable(node, self.source.language) or owner
-            if node.type in self.site_types:
-                self.record(node, owner)
-            pending.extend((child, owner) for child in reversed(node.named_children))
+            pending.extend(self.visit(*pending.pop()))
