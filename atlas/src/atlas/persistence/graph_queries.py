@@ -1,6 +1,7 @@
 """Concrete read repository for focused normalized summaries and report facts."""
 
 import json
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -62,6 +63,21 @@ class GraphReadRepository:
             entity.repository_id == identifier
         )) or 0
 
+    def _report_diagnostics(self, identifier: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        diagnostic = GraphDiagnosticRow
+        diagnostics = self._session.execute(select(
+            diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
+        ).where(diagnostic.repository_id == identifier)
+          .order_by(diagnostic.ordinal)).mappings()
+        parse_diagnostics, mutation_diagnostics = [], []
+        for record in diagnostics:
+            message = record["message"]
+            if record["severity"] == "warning" and message.startswith(MUTATION_DIAGNOSTIC_PREFIX):
+                mutation_diagnostics.append(json.loads(message.removeprefix(MUTATION_DIAGNOSTIC_PREFIX)))
+            else:
+                parse_diagnostics.append(dict(record))
+        return parse_diagnostics, mutation_diagnostics
+
     def _report_facts(self, row: RepositoryGraphRow) -> ReportFactsDTO:
         node, symbol, metric = GraphNodeRow, GraphSymbolRow, GraphNodeMetricRow
         records = self._session.execute(select(
@@ -78,18 +94,7 @@ class GraphReadRepository:
           .where(edge.repository_id == row.repository_id, edge.relationship != "CONTAINS")
           .order_by(edge.ordinal)).mappings()
         edges = [ReportImportDTO.model_validate(record) for record in records]
-        diagnostic = GraphDiagnosticRow
-        diagnostics = self._session.execute(select(
-            diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
-        ).where(diagnostic.repository_id == row.repository_id)
-          .order_by(diagnostic.ordinal)).mappings()
-        parse_diagnostics, mutation_diagnostics = [], []
-        for record in diagnostics:
-            message = record["message"]
-            if record["severity"] == "warning" and message.startswith(MUTATION_DIAGNOSTIC_PREFIX):
-                mutation_diagnostics.append(json.loads(message.removeprefix(MUTATION_DIAGNOSTIC_PREFIX)))
-            else:
-                parse_diagnostics.append(dict(record))
+        parse_diagnostics, mutation_diagnostics = self._report_diagnostics(row.repository_id)
         candidate = GraphMutationCandidateRow
         candidates = self._session.scalars(select(candidate.payload).where(
             candidate.repository_id == row.repository_id,

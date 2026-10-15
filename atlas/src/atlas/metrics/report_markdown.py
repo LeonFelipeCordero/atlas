@@ -95,6 +95,15 @@ def _mutation_candidate_row(candidate: dict[str, Any]) -> str:
     return "| " + " | ".join(code(cell) for cell in cells) + " |"
 
 
+def _mutation_diagnostics(diagnostics: list[dict[str, Any]]) -> list[str]:
+    if not diagnostics:
+        return []
+    return ["", "### Candidate analysis limitations", "", *(
+        f"- {code(item['path'])} [{code(item['code'])}]: {item['message']}"
+        for item in diagnostics
+    )]
+
+
 def _mutation_candidates(report: dict[str, Any]) -> str:
     candidates = report.get("mutationCandidates", [])
     diagnostics = report.get("mutationCandidateDiagnostics", [])
@@ -110,12 +119,7 @@ def _mutation_candidates(report: dict[str, Any]) -> str:
         rows.extend(["", "| Location (byte columns) | Kind | Operator | Original source |",
                      "| --- | --- | --- | --- |"])
         rows.extend(_mutation_candidate_row(candidate) for candidate in candidates)
-    if diagnostics:
-        rows.extend(["", "### Candidate analysis limitations", ""])
-        rows.extend(
-            f"- {code(item['path'])} [{code(item['code'])}]: {item['message']}"
-            for item in diagnostics
-        )
+    rows.extend(_mutation_diagnostics(diagnostics))
     return "\n".join(rows)
 
 

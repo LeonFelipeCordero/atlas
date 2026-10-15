@@ -48,13 +48,16 @@ def assert_candidate_bytes(language: str, candidates: list[dict]) -> None:
     for candidate in candidates:
         source = (ROOT / language / candidate["path"]).read_bytes()
         assert candidate["sourceHash"] == sha256(source).hexdigest()
-        for field, text in (("span", "originalText"), ("expressionSpan", "expressionText")):
-            span = candidate[field]
-            assert source[span["startByte"]:span["endByte"]].decode() == candidate[text]
-            assert span["startLine"] == source.count(b"\n", 0, span["startByte"]) + 1
-            assert span["startColumn"] == span["startByte"] - source.rfind(b"\n", 0, span["startByte"])
+        assert_span_bytes(source, candidate["span"], candidate["originalText"])
+        assert_span_bytes(source, candidate["expressionSpan"], candidate["expressionText"])
     identities = [candidate["id"] for candidate in candidates]
     assert len(identities) == len(set(identities))
+
+
+def assert_span_bytes(source: bytes, span: dict, text: str) -> None:
+    assert source[span["startByte"]:span["endByte"]].decode() == text
+    assert span["startLine"] == source.count(b"\n", 0, span["startByte"]) + 1
+    assert span["startColumn"] == span["startByte"] - source.rfind(b"\n", 0, span["startByte"])
 
 
 @pytest.mark.parametrize("language", LANGUAGES)

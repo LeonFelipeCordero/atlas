@@ -420,6 +420,14 @@ def _add_external_nodes(graph: ResolvedGraph, nodes: list[dict[str, object]]) ->
         )
 
 
+def _mutation_analysis(repository: ParsedRepository) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    analyses = [extract_candidates(file.source) for file in repository.files]
+    return (
+        [candidate.model_dump() for analysis in analyses for candidate in analysis.candidates],
+        [diagnostic.model_dump() for analysis in analyses for diagnostic in analysis.diagnostics],
+    )
+
+
 def build_artifact(
     root: Path, repository: ParsedRepository, graph: ResolvedGraph
 ) -> GraphArtifact:
@@ -482,7 +490,7 @@ def build_artifact(
     views = build_dependency_views(nodes, edges)
     _add_dependency_metrics(nodes, views)
     level_counts = {level: len(view["nodes"]) for level, view in views.items()}
-    mutation_analysis = [extract_candidates(file.source) for file in repository.files]
+    mutation_candidates, mutation_diagnostics = _mutation_analysis(repository)
     return GraphArtifact(
         2,
         {
@@ -507,8 +515,8 @@ def build_artifact(
         cast(dict[str, GraphView], views),
         cast(list[Diagnostic], diagnostics),
         circular_dependencies(nodes, edges),
-        [candidate.model_dump() for analysis in mutation_analysis for candidate in analysis.candidates],
-        [diagnostic.model_dump() for analysis in mutation_analysis for diagnostic in analysis.diagnostics],
+        mutation_candidates,
+        mutation_diagnostics,
     )
 
 
