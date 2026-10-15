@@ -78,6 +78,7 @@ class ReportFactsDTO(BaseModel):
     imports: list[ReportImportDTO]
     edges: list[ReportImportDTO] = Field(default_factory=list)
     diagnostics: list[dict[str, Any]] = Field(default_factory=list)
+    mutationCandidates: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RepositoryProtocol(Protocol):

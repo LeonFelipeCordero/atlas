@@ -23,6 +23,7 @@ REVISIONS = frozenset({
     "atlas.persistence.migrations.versions.0002_graph_nodes",
     "atlas.persistence.migrations.versions.0003_graph_relations",
     "atlas.persistence.migrations.versions.0004_drop_graph_artifact",
+    "atlas.persistence.migrations.versions.0005_mutation_candidates",
 })
 INFRASTRUCTURE = frozenset({
     "atlas.persistence.database", "atlas.persistence.navigation_database",

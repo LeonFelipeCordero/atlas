@@ -30,6 +30,13 @@ SCHEMA = {
         "repository_id": ("TEXT", 1, 1), "node_key": ("TEXT", 1, 2),
         "byte_count": ("INTEGER", 0, 0), "sha256": ("TEXT", 0, 0),
     },
+    "graph_mutation_candidates": {
+        "repository_id": ("TEXT", 1, 1), "candidate_id": ("TEXT", 1, 2),
+        "file_key": ("TEXT", 1, 0), "ordinal": ("INTEGER", 1, 0),
+        "path": ("TEXT", 1, 0), "language": ("TEXT", 1, 0),
+        "source_hash": ("TEXT", 1, 0), "kind": ("TEXT", 1, 0),
+        "operator": ("TEXT", 0, 0), "payload": ("TEXT", 1, 0),
+    },
     "graph_symbols": {
         "repository_id": ("TEXT", 1, 1), "node_key": ("TEXT", 1, 2),
         "start_line": ("INTEGER", 0, 0), "start_column": ("INTEGER", 0, 0),
@@ -69,6 +76,7 @@ FOREIGN_KEYS = {
         ("parent_key", "graph_nodes", "node_key", "NO ACTION"),
     ],
     "graph_files": [("repository_id", "graph_nodes", "repository_id", "CASCADE"), ("node_key", "graph_nodes", "node_key", "CASCADE")],
+    "graph_mutation_candidates": [("repository_id", "graph_files", "repository_id", "CASCADE"), ("file_key", "graph_files", "node_key", "CASCADE")],
     "graph_symbols": [("repository_id", "graph_nodes", "repository_id", "CASCADE"), ("node_key", "graph_nodes", "node_key", "CASCADE")],
     "graph_node_metrics": [("repository_id", "graph_nodes", "repository_id", "CASCADE"), ("node_key", "graph_nodes", "node_key", "CASCADE")],
     "graph_node_decorators": [("repository_id", "graph_symbols", "repository_id", "CASCADE"), ("node_key", "graph_symbols", "node_key", "CASCADE")],
@@ -96,6 +104,7 @@ INDEXES = {
         "graph_edges_target": ("repository_id", "target_key", "relationship", "ordinal"),
     },
     "graph_diagnostics": {"graph_diagnostics_path": ("repository_id", "path")},
+    "graph_mutation_candidates": {"graph_mutation_candidates_file": ("repository_id", "file_key")},
 }
 
 

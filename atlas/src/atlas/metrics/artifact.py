@@ -1,6 +1,6 @@
 """Build and validate in-memory version-2 repository graph artifacts."""
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass as standard_dataclass
+from dataclasses import asdict, dataclass as standard_dataclass, field
 from datetime import datetime, timezone
 from math import isfinite
 from pathlib import Path, PurePosixPath
@@ -13,6 +13,7 @@ from typing_extensions import Self
 from .cycles import CircularDependencies, circular_dependencies
 from .dependency_metrics import METRIC_NAMES, dependency_metrics
 from ..domain.models import ParsedRepository, file_key
+from ..parsing.mutation_candidates import extract_candidates
 from .resolver import ResolvedGraph
 from ..domain.models import (
     MODEL_CONFIG,
@@ -40,6 +41,7 @@ class GraphArtifact:
     views: dict[str, GraphView]
     diagnostics: list[Diagnostic]
     circularDependencies: CircularDependencies | None = None
+    mutationCandidates: list[dict[str, Any]] = field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_references(self) -> Self:
@@ -417,6 +419,10 @@ def _add_external_nodes(graph: ResolvedGraph, nodes: list[dict[str, object]]) ->
         )
 
 
+def _mutation_analysis(repository: ParsedRepository) -> list[dict[str, Any]]:
+    return [candidate.model_dump() for file in repository.files for candidate in extract_candidates(file.source).candidates]
+
+
 def build_artifact(
     root: Path, repository: ParsedRepository, graph: ResolvedGraph
 ) -> GraphArtifact:
@@ -479,6 +485,7 @@ def build_artifact(
     views = build_dependency_views(nodes, edges)
     _add_dependency_metrics(nodes, views)
     level_counts = {level: len(view["nodes"]) for level, view in views.items()}
+    mutation_candidates = _mutation_analysis(repository)
     return GraphArtifact(
         2,
         {
@@ -503,6 +510,7 @@ def build_artifact(
         cast(dict[str, GraphView], views),
         cast(list[Diagnostic], diagnostics),
         circular_dependencies(nodes, edges),
+        mutation_candidates,
     )
 
 

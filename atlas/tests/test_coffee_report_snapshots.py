@@ -20,7 +20,8 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
     assert "Decision depth" in result.output and "Parameters" in result.output
     assert "Internal instability" in result.output and "Change impact" in result.output
     assert ("## Circular imports" in result.output) == bool(coffee_snapshot(coffee_graph(language))["circularDependencies"]["groups"])
-    assert "limit" not in result.output and "finding" not in result.output.lower()
+    metrics = result.output.split("## Mutation candidates", 1)[0]
+    assert "limit" not in metrics and "finding" not in metrics.lower()
     expected = json.loads((SNAPSHOT_ROOT / "coffee" / language / "cli.json").read_text())["report-markdown"]["output"]
     assert result.output == expected
 

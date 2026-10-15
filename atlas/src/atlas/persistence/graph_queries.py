@@ -1,5 +1,8 @@
 """Concrete read repository for focused normalized summaries and report facts."""
 
+import json
+from typing import Any
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -7,7 +10,7 @@ from atlas.domain.repositories import (
     GraphDTO, GraphStatsDTO, ReportFactsDTO, ReportImportDTO, ReportNodeDTO,
 )
 from .models import (
-    GraphDiagnosticRow, GraphEdgeRow, GraphNodeMetricRow, GraphNodeRow,
+    GraphDiagnosticRow, GraphEdgeRow, GraphMutationCandidateRow, GraphNodeMetricRow, GraphNodeRow,
     GraphSymbolRow, RepositoryGraphRow,
 )
 from .navigation_queries import EDGE_COLUMNS, METRIC_COLUMNS
@@ -38,7 +41,9 @@ class GraphReadRepository:
         levels = dict(counts)
         symbols = self._count(GraphSymbolRow, row.repository_id)
         edges = self._count(GraphEdgeRow, row.repository_id)
-        diagnostics = self._count(GraphDiagnosticRow, row.repository_id)
+        diagnostics = self._session.scalar(select(func.count()).select_from(GraphDiagnosticRow).where(
+            GraphDiagnosticRow.repository_id == row.repository_id, GraphDiagnosticRow.severity == "error",
+        )) or 0
         assert row.graph_revision is not None
         return GraphDTO(
             repositoryId=row.repository_id, graphRevision=row.graph_revision,
@@ -57,6 +62,14 @@ class GraphReadRepository:
             entity.repository_id == identifier
         )) or 0
 
+    def _report_diagnostics(self, identifier: str) -> list[dict[str, Any]]:
+        diagnostic = GraphDiagnosticRow
+        diagnostics = self._session.execute(select(
+            diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
+        ).where(diagnostic.repository_id == identifier)
+          .order_by(diagnostic.ordinal)).mappings()
+        return [dict(record) for record in diagnostics]
+
     def _report_facts(self, row: RepositoryGraphRow) -> ReportFactsDTO:
         node, symbol, metric = GraphNodeRow, GraphSymbolRow, GraphNodeMetricRow
         records = self._session.execute(select(
@@ -73,14 +86,14 @@ class GraphReadRepository:
           .where(edge.repository_id == row.repository_id, edge.relationship != "CONTAINS")
           .order_by(edge.ordinal)).mappings()
         edges = [ReportImportDTO.model_validate(record) for record in records]
-        diagnostic = GraphDiagnosticRow
-        diagnostics = self._session.execute(select(
-            diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
-        ).where(diagnostic.repository_id == row.repository_id)
-          .order_by(diagnostic.ordinal)).mappings()
+        candidate = GraphMutationCandidateRow
+        candidates = self._session.scalars(select(candidate.payload).where(
+            candidate.repository_id == row.repository_id,
+        ).order_by(candidate.ordinal))
         assert row.graph_revision is not None
         return ReportFactsDTO(
             graphRevision=row.graph_revision, nodes=nodes, edges=edges,
             imports=[edge for edge in edges if edge.type == "IMPORTS"],
-            diagnostics=[dict(record) for record in diagnostics],
+            diagnostics=self._report_diagnostics(row.repository_id),
+            mutationCandidates=[json.loads(payload) for payload in candidates],
         )

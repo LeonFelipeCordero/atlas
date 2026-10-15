@@ -40,12 +40,12 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     assert "Cyclomatic complexity" in result.output and "Weighted complexity" in result.output
     assert "Nested loops" in result.output and "Decision depth" in result.output
     assert "`src/coffee/brewing/recipe.py` → `src/coffee/reporting/report.py`" in result.output
-    assert "limit" not in result.output
+    assert "limit" not in result.output.split("## Mutation candidates", 1)[0]
     assert "repositoryId" not in result.output
     structured = runner.invoke(main, ["report", "-f", str(root), "--format", "json"])
     assert structured.exit_code == 0, structured.output
     report = json.loads(structured.output)
-    assert set(report) == {"summary", "nodes", "circularImports", "diagnostics"}
+    assert set(report) == {"summary", "nodes", "circularImports", "diagnostics", "mutationCandidates"}
     complexity = {node["subject"]: node["metrics"] for node in report["nodes"] if node["level"] == "callable"}
     assert complexity["src/coffee/brewing/brewer.py::Brewer.classify"]["weightedComplexity"] == 9
     assert complexity["src/coffee/brewing/brewer.py::Brewer.score"]["nestedLoops"] == 1

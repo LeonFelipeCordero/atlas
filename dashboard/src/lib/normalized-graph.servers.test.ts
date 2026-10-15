@@ -311,6 +311,12 @@ test('normalized-only DTOs preserve partial metrics, symbol details, ordered dia
       confidence: 'EXTRACTED',
     },
   )
+  artifact.diagnostics!.push({
+    severity: 'warning',
+    path: 'a.py',
+    language: 'python',
+    message: 'Parse warning',
+  })
   const id = save(artifact)
   const other = fixture()
   other.nodes.find((node) => node.stableKey === 'run')!.name =
