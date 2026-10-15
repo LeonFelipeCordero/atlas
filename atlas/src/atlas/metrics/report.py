@@ -128,6 +128,8 @@ def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:
         ],
         "circularImports": _cycle_measurements(cycles["groups"], nodes),
         "diagnostics": diagnostics,
+        "mutationCandidates": artifact.get("mutationCandidates", []),
+        "mutationCandidateDiagnostics": artifact.get("mutationCandidateDiagnostics", []),
     }
 
 
@@ -143,4 +145,6 @@ def build_report(graph: ReportFactsDTO) -> dict[str, Any]:
         "nodes": [_record_node(record) for record in graph.nodes],
         "edges": [edge.model_dump() for edge in graph.edges or graph.imports],
         "diagnostics": graph.diagnostics,
+        "mutationCandidates": graph.mutationCandidates,
+        "mutationCandidateDiagnostics": graph.mutationCandidateDiagnostics,
     })

@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from 'drizzle-orm'
+import { and, eq, inArray, ne, notLike, or } from 'drizzle-orm'
 import {
   graphDecorators,
   graphDiagnostics,
@@ -220,7 +220,15 @@ export class GraphQueries {
         message: graphDiagnostics.message,
       })
       .from(graphDiagnostics)
-      .where(eq(graphDiagnostics.repositoryId, id))
+      .where(
+        and(
+          eq(graphDiagnostics.repositoryId, id),
+          or(
+            ne(graphDiagnostics.severity, 'warning'),
+            notLike(graphDiagnostics.message, 'Mutation candidates: %'),
+          ),
+        ),
+      )
       .orderBy(graphDiagnostics.ordinal)
       .all()
   }

@@ -109,7 +109,9 @@ def test_each_physical_project_has_analysis_seams():
         "safety_review": {"java", "kotlin", "python", "javascript", "typescript"},
         "generic_receivers": {"csharp", "ruby", "php"},
     }
-    assert {path.name for path in FIXTURE_ROOT.iterdir() if path.is_dir()} == set(LANGUAGES) | set(standalone)
+    candidate_languages = {"java", "kotlin", "python", "javascript", "typescript", "tsx", "rust", "go", "elixir", "php", "ruby"}
+    assert {path.name for path in (FIXTURE_ROOT / "mutation_candidates").iterdir() if path.is_dir()} == candidate_languages
+    assert {path.name for path in FIXTURE_ROOT.iterdir() if path.is_dir()} == set(LANGUAGES) | set(standalone) | {"mutation_candidates"}
     for group, languages in standalone.items():
         assert_standalone_group(group, languages)
 

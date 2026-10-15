@@ -42,7 +42,7 @@ def test_report_contains_below_and_above_thresholds_and_keeps_input() -> None:
     artifact = {"nodes": [file_node("app.py"), callable_node("simple", Complexity(total=1, depth=0)), callable_node("complex", Complexity(total=10, loops=2))]}
     original = deepcopy(artifact)
     report = build_artifact_report(artifact)
-    assert set(report) == {"summary", "nodes", "circularImports", "diagnostics"}
+    assert set(report) == {"summary", "nodes", "circularImports", "diagnostics", "mutationCandidates", "mutationCandidateDiagnostics"}
     measurements = {node["subject"]: node["metrics"] for node in report["nodes"]}
     assert measurements["App.simple"]["weightedComplexity"] == 1
     assert measurements["App.complex"]["cyclomaticComplexity"] == 8
@@ -84,6 +84,7 @@ def test_empty_graph_still_has_quantitative_summary() -> None:
     assert report == {
         "summary": {"files": 0, "modules": 0, "types": 0, "callables": 0, "circularImportGroups": 0, "parseErrors": 0},
         "nodes": [], "circularImports": [], "diagnostics": [],
+        "mutationCandidates": [], "mutationCandidateDiagnostics": [],
     }
     assert "files: 0" in render_markdown(report)
 

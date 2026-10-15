@@ -1,13 +1,16 @@
 """Concrete read repository for focused normalized summaries and report facts."""
 
+import json
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from atlas.domain.repositories import (
     GraphDTO, GraphStatsDTO, ReportFactsDTO, ReportImportDTO, ReportNodeDTO,
 )
+from .graph_records import MUTATION_DIAGNOSTIC_PREFIX
 from .models import (
-    GraphDiagnosticRow, GraphEdgeRow, GraphNodeMetricRow, GraphNodeRow,
+    GraphDiagnosticRow, GraphEdgeRow, GraphMutationCandidateRow, GraphNodeMetricRow, GraphNodeRow,
     GraphSymbolRow, RepositoryGraphRow,
 )
 from .navigation_queries import EDGE_COLUMNS, METRIC_COLUMNS
@@ -38,7 +41,9 @@ class GraphReadRepository:
         levels = dict(counts)
         symbols = self._count(GraphSymbolRow, row.repository_id)
         edges = self._count(GraphEdgeRow, row.repository_id)
-        diagnostics = self._count(GraphDiagnosticRow, row.repository_id)
+        diagnostics = self._session.scalar(select(func.count()).select_from(GraphDiagnosticRow).where(
+            GraphDiagnosticRow.repository_id == row.repository_id, GraphDiagnosticRow.severity == "error",
+        )) or 0
         assert row.graph_revision is not None
         return GraphDTO(
             repositoryId=row.repository_id, graphRevision=row.graph_revision,
@@ -78,9 +83,22 @@ class GraphReadRepository:
             diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
         ).where(diagnostic.repository_id == row.repository_id)
           .order_by(diagnostic.ordinal)).mappings()
+        parse_diagnostics, mutation_diagnostics = [], []
+        for record in diagnostics:
+            message = record["message"]
+            if record["severity"] == "warning" and message.startswith(MUTATION_DIAGNOSTIC_PREFIX):
+                mutation_diagnostics.append(json.loads(message.removeprefix(MUTATION_DIAGNOSTIC_PREFIX)))
+            else:
+                parse_diagnostics.append(dict(record))
+        candidate = GraphMutationCandidateRow
+        candidates = self._session.scalars(select(candidate.payload).where(
+            candidate.repository_id == row.repository_id,
+        ).order_by(candidate.ordinal))
         assert row.graph_revision is not None
         return ReportFactsDTO(
             graphRevision=row.graph_revision, nodes=nodes, edges=edges,
             imports=[edge for edge in edges if edge.type == "IMPORTS"],
-            diagnostics=[dict(record) for record in diagnostics],
+            diagnostics=parse_diagnostics,
+            mutationCandidates=[json.loads(payload) for payload in candidates],
+            mutationCandidateDiagnostics=mutation_diagnostics,
         )

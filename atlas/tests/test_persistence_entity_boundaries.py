@@ -124,7 +124,7 @@ def graph_record_violations(source: str) -> set[str]:
     """Optional graph_records.py is not another repository or ORM layer."""
     violations = entity_violations(source)
     for target in import_targets(source, "atlas.persistence"):
-        if target and target.split(".")[0] not in {"typing", "__future__"}:
+        if target and target.split(".")[0] not in {"typing", "__future__"} and target not in {"json", "json.dumps"}:
             violations.add(target)
     return violations
 

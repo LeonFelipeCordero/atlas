@@ -1,5 +1,6 @@
 """Readable quantitative Markdown and shared literal source formatting."""
 
+from collections import Counter
 from typing import Any
 
 METRIC_LABELS = {
@@ -87,6 +88,37 @@ def _dependencies(nodes: list[dict[str, Any]]) -> list[str]:
     ]
 
 
+def _mutation_candidate_row(candidate: dict[str, Any]) -> str:
+    span = candidate["span"]
+    location = f"{candidate['path']}:{span['startLine']}:{span['startColumn']}"
+    cells = [location, candidate["kind"], candidate.get("operator") or "—", candidate["originalText"]]
+    return "| " + " | ".join(code(cell) for cell in cells) + " |"
+
+
+def _mutation_candidates(report: dict[str, Any]) -> str:
+    candidates = report.get("mutationCandidates", [])
+    diagnostics = report.get("mutationCandidateDiagnostics", [])
+    if not candidates and not diagnostics:
+        return ""
+    counts = Counter(candidate["kind"] for candidate in candidates)
+    rows = [
+        "## Mutation candidates", "",
+        "Identified source sites only; no mutations generated or tests executed.", "",
+        ", ".join(f"{kind}: {count}" for kind, count in sorted(counts.items())) or "No candidates.",
+    ]
+    if candidates:
+        rows.extend(["", "| Location (byte columns) | Kind | Operator | Original source |",
+                     "| --- | --- | --- | --- |"])
+        rows.extend(_mutation_candidate_row(candidate) for candidate in candidates)
+    if diagnostics:
+        rows.extend(["", "### Candidate analysis limitations", ""])
+        rows.extend(
+            f"- {code(item['path'])} [{code(item['code'])}]: {item['message']}"
+            for item in diagnostics
+        )
+    return "\n".join(rows)
+
+
 def render_markdown(report: dict[str, Any]) -> str:
     summary = report["summary"]
     parts = ["# Metrics", "\n".join(f"- {name}: {value}" for name, value in summary.items())]
@@ -99,4 +131,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"- {code(diagnostic.get('path') or 'Unknown file')}: {diagnostic['message']}"
             for diagnostic in report["diagnostics"]
         ))
+    candidates = _mutation_candidates(report)
+    if candidates:
+        parts.append(candidates)
     return "\n\n".join(parts)

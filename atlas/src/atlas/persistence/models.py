@@ -74,6 +74,26 @@ class GraphFileRow(Base):
     )
 
 
+class GraphMutationCandidateRow(Base):
+    __tablename__ = "graph_mutation_candidates"
+
+    repository_id: Mapped[str] = mapped_column(Text, primary_key=True, nullable=False)
+    candidate_id: Mapped[str] = mapped_column(Text, primary_key=True, nullable=False)
+    file_key: Mapped[str] = mapped_column(Text, nullable=False)
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str] = mapped_column(Text, nullable=False)
+    source_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    operator: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(["repository_id", "file_key"], ["graph_files.repository_id", "graph_files.node_key"], ondelete="CASCADE"),
+        Index("graph_mutation_candidates_file", "repository_id", "file_key"),
+    )
+
+
 class GraphSymbolRow(Base):
     __tablename__ = "graph_symbols"
 

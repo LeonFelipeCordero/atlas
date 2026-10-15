@@ -20,6 +20,7 @@ from .graph_records import (
     file_records,
     graph_metadata,
     metric_records,
+    mutation_candidate_records,
     node_records,
     symbol_records,
     validate_parentage,
@@ -31,6 +32,7 @@ from .models import (
     GraphDiagnosticRow,
     GraphEdgeRow,
     GraphFileRow,
+    GraphMutationCandidateRow,
     GraphNodeDecoratorRow,
     GraphNodeMetricRow,
     GraphNodeRow,
@@ -153,6 +155,7 @@ class RepositoryStore(GraphReadRepository):
         self._session.execute(delete(GraphDiagnosticRow).where(GraphDiagnosticRow.repository_id == identifier))
         self._insert_records(GraphNodeRow, node_records(identifier, artifact))
         self._insert_records(GraphFileRow, file_records(identifier, artifact))
+        self._insert_records(GraphMutationCandidateRow, mutation_candidate_records(identifier, artifact))
         self._insert_records(GraphSymbolRow, symbol_records(identifier, artifact))
         self._insert_records(GraphNodeMetricRow, metric_records(identifier, artifact))
         self._insert_records(GraphNodeDecoratorRow, decorator_records(identifier, artifact))

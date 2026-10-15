@@ -312,6 +312,11 @@ test('normalized-only DTOs preserve partial metrics, symbol details, ordered dia
     },
   )
   const id = save(artifact)
+  database
+    .query(
+      "INSERT INTO graph_diagnostics (repository_id, ordinal, severity, path, language, message) VALUES (?, 99, 'warning', 'a.py', 'python', 'Mutation candidates: {}')",
+    )
+    .run(id)
   const other = fixture()
   other.nodes.find((node) => node.stableKey === 'run')!.name =
     'other-repository'
