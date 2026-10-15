@@ -7,6 +7,7 @@ from typing import Any
 import click
 
 from atlas.cli.graph import graph
+from atlas.cli.mutations import mutations_command
 from atlas.metrics.config import CheckConfig
 
 @click.group(help="Analyze repositories and store their graphs in SQLite")
@@ -106,6 +107,7 @@ def check_command(folder: Path, save: bool, output_format: str) -> None:
 
 
 main.add_command(graph)
+main.add_command(mutations_command)
 
 
 if __name__ == "__main__":

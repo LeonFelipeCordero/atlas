@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from atlas.mutations.config import MutationConfig
+
 
 class CheckConfig(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", allow_inf_nan=False)
@@ -19,14 +21,23 @@ class CheckConfig(BaseModel):
     maxInstability: float | None = Field(default=None, ge=0, le=1)
 
 
+class ProjectConfig(CheckConfig):
+    mutations: MutationConfig = Field(default_factory=MutationConfig)
+
+
 def load_config(root: Path) -> CheckConfig:
+    """Keep quantitative checks independent of replacement configuration."""
+    return CheckConfig.model_validate(load_project_config(root).model_dump(exclude={"mutations"}))
+
+
+def load_project_config(root: Path) -> ProjectConfig:
     """Read only the analyzed folder's atlas.json; absence means defaults."""
     path = root / "atlas.json"
     try:
         source = path.read_text(encoding="utf-8")
     except FileNotFoundError:
-        return CheckConfig()
+        return ProjectConfig()
     try:
-        return CheckConfig.model_validate_json(source)
+        return ProjectConfig.model_validate_json(source)
     except ValidationError as error:
         raise ValueError(f"Invalid {path}: {error}") from error
