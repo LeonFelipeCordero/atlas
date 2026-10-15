@@ -10,6 +10,7 @@ from atlas.domain.models import SourceFile
 from atlas.parsing.structure import _declaration_query, extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_consolidation import coffee_source
+from tests.variant_snapshot_support import scenario_sources, VARIANT_ROOT
 
 
 def merged(source: SourceFile) -> list[StructureItem]:
@@ -141,10 +142,10 @@ class CanonicalDeclarationTests(unittest.TestCase):
         self.assertEqual(items[1].doc_comment, "class docs")
         self.assertEqual(names(items[1].children), ["subtotal", "espresso"])
 
-    def test_missing_tags_and_unrelated_native_languages(self) -> None:
-        source = coffee_source("csharp", "reporting/Dispatch.cs")
-        native = process(source.source.decode(), ProcessConfig(language="csharp")).structure
-        self.assertEqual(names(native), ["Dispatch"])
+    def test_missing_tags_preserves_native_metadata(self) -> None:
+        source, = scenario_sources(VARIANT_ROOT / "lua/generic-fallback")
+        native = process(source.source.decode(), ProcessConfig(language="lua")).structure
+        self.assertEqual(names(native), ["label", "dispatch"])
         original = repr(native)
         _declaration_query.cache_clear()
         try:
@@ -154,12 +155,6 @@ class CanonicalDeclarationTests(unittest.TestCase):
                 self.assertEqual(repr(native), original)
         finally:
             _declaration_query.cache_clear()
-        items = merged(coffee_source("ruby", "reporting/Dispatch.rb"))
-        self.assertEqual(names(items), ["Coffee"])
-        self.assertEqual(names(items[0].children), ["Reporting"])
-        dispatcher = items[0].children[0].children[0]
-        self.assertEqual(dispatcher.name, "Dispatch")
-        self.assertEqual(names(dispatcher.children), ["initialize", "deliver", "preview"])
 
 
 if __name__ == "__main__":

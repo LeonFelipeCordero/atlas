@@ -17,6 +17,7 @@ from atlas.parsing.discovery import SourceFile
 from atlas.parsing.parser import _extract_calls, parse_files
 from tests.coffee_fixture import coffee_sources
 from tests.import_project_support import project_sources
+from tests.variant_snapshot_support import scenario_sources, VARIANT_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
 ANALYSIS_BUDGET_SECONDS = 15
@@ -57,13 +58,9 @@ def test_data_grammars_do_not_parse_or_walk_for_impossible_calls():
 
 
 def test_default_adapter_still_extracts_calls_when_grammar_supports_them():
-    sources = project_sources("ruby", "member-collision")
-    path = "orders/reservations.rb"
-    source = SourceFile(path, ROOT / path, "ruby", sources[path].encode())
+    source, = scenario_sources(VARIANT_ROOT / "lua/generic-fallback")
     assert [call.evidence for call in _extract_calls(source)] == [
-        'require_relative "../inventory/inventory"',
-        "inventory.reserve(drink, units)", "reserve(customer, drink, units)",
-        "supplier.reserve(drink, units)", "supplier.delivery_label(customer, drink, units)",
+        "print(label(order))", "label(order)", 'dispatch({name = "coffee"})',
     ]
 
 

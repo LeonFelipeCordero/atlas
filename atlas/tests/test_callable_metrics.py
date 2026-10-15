@@ -7,6 +7,7 @@ from atlas.bootstrap import repository_service
 from atlas.indexer import analyze_repository
 from atlas.persistence.database import migrate_database
 from tests.coffee_consolidation import COFFEE_ROOT, coffee_parsed, coffee_symbols
+from tests.variant_snapshot_support import VARIANT_ROOT
 
 @pytest.mark.parametrize(
     "case",
@@ -131,10 +132,10 @@ def test_elixir_clauses_keep_identity_and_counts(name):
 
 
 def test_unknown_parameter_property_is_omitted():
-    graph = analyze_repository(COFFEE_ROOT / "ruby")
+    graph = analyze_repository(VARIANT_ROOT / "lua/generic-fallback")
     callable_node, = [node for node in graph.nodes
-                      if node["path"] == "tracking.rb" and node["name"] == "record"]
-    assert callable_node["properties"]["lineCount"] == 5
+                      if node["path"] == "dispatch.lua" and node["name"] == "dispatch"]
+    assert callable_node["properties"]["lineCount"] == 3
     assert "parameterCount" not in callable_node["properties"]
 
 

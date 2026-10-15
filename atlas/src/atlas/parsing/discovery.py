@@ -21,7 +21,8 @@ from tree_sitter_language_pack import (
 
 from ..domain.models import SourceFile
 
-EXCLUDED_LANGUAGES = frozenset({"c", "cpp"})
+# PHPDoc and RBS are companion grammars for unsupported PHP and Ruby.
+EXCLUDED_LANGUAGES = frozenset({"c", "cpp", "csharp", "php", "phpdoc", "ruby", "rbs"})
 # Include the pinned catalog's on-demand grammars, not only bundled ones.
 SUPPORTED_LANGUAGES = (
     frozenset(get_args(SupportedLanguage)) | frozenset(available_languages())

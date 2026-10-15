@@ -9,6 +9,7 @@ from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import DeclarationHeader, ParsedSyntax
 from atlas.syntax import walk
 from tests.coffee_consolidation import coffee_source
+from tests.variant_snapshot_support import scenario_sources, VARIANT_ROOT
 
 
 class ExtractionAdapterTest(unittest.TestCase):
@@ -25,10 +26,11 @@ class ExtractionAdapterTest(unittest.TestCase):
         ]:
             with self.subTest(language=language, declaration=name):
                 self.assert_inheritance(coffee_source(language, path), (name, expected))
-        self.assertIs(get_adapter("ruby"), DEFAULT_ADAPTER)
-        source = coffee_source("ruby", "reporting/Dispatch.rb")
-        dispatcher = extract_structure(ParsedSyntax(source))[0].children[0].children[0]
-        self.assertEqual(DEFAULT_ADAPTER.inheritance(DeclarationHeader("ruby", "class", dispatcher.signature or "")), [])
+        self.assertIs(get_adapter("lua"), DEFAULT_ADAPTER)
+        source, = scenario_sources(VARIANT_ROOT / "lua/generic-fallback")
+        declaration = extract_structure(ParsedSyntax(source))[0]
+        self.assertEqual(declaration.name, "label")
+        self.assertEqual(DEFAULT_ADAPTER.inheritance(DeclarationHeader("lua", "function", declaration.signature or "")), [])
 
     def assert_inheritance(self, source, expectation):
         name, expected = expectation

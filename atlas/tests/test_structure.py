@@ -7,6 +7,7 @@ from tree_sitter_language_pack import ProcessConfig, get_tags_query, process
 from atlas.parsing.structure import _declaration_query, extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_consolidation import coffee_source
+from tests.variant_snapshot_support import scenario_sources, VARIANT_ROOT
 
 
 def names(items):
@@ -133,21 +134,9 @@ class StructureTagsTest(unittest.TestCase):
                     self.assertEqual(names(structure[0].children), ["lineTotal", None, None])
                     self.assertEqual(names(structure[2].children), ["ticket"])
 
-    def test_ruby_native_nesting(self) -> None:
-        source = coffee_source("ruby", "reporting/Dispatch.rb")
-        native = process(source.source.decode(), ProcessConfig(language="ruby")).structure
-        original = repr(native)
-        structure = extract_structure(ParsedSyntax(source), native)
-        self.assertEqual(names(structure), ["Coffee"])
-        self.assertEqual(names(structure[0].children), ["Reporting"])
-        dispatcher = structure[0].children[0].children[0]
-        self.assertEqual(dispatcher.name, "Dispatch")
-        self.assertEqual(names(dispatcher.children), ["initialize", "deliver", "preview"])
-        self.assertEqual(repr(native), original)
-
     def test_missing_bundled_tags_preserves_native_extraction(self) -> None:
-        source = coffee_source("csharp", "reporting/Dispatch.cs")
-        native = process(source.source.decode(), ProcessConfig(language="csharp")).structure
+        source, = scenario_sources(VARIANT_ROOT / "lua/generic-fallback")
+        native = process(source.source.decode(), ProcessConfig(language="lua")).structure
         self.assertTrue(native)
         with patch("atlas.parsing.structure.get_tags_query", return_value=None):
             self.assertIs(extract_structure(ParsedSyntax(source), native), native)
