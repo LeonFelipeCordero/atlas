@@ -25,8 +25,7 @@ def expected_snapshot(language: str) -> dict:
     graph = json.loads((root / "graph.json").read_text())
     cli = json.loads((root / "cli.json").read_text())
     return {"candidates": graph["mutationCandidates"],
-            "diagnostics": graph["mutationCandidateDiagnostics"],
-            "markdown": cli["report-markdown"]["output"].split("## Mutation candidates", 1)[1]}
+            "markdown": cli["report-markdown"]["output"].partition("## Mutation candidates")[2]}
 
 
 def candidate_snapshot(language: str) -> dict:
@@ -38,8 +37,7 @@ def candidate_snapshot(language: str) -> dict:
     markdown = CliRunner().invoke(main, ["report", "-f", str(source_root(language))])
     assert markdown.exit_code == 0, markdown.output
     return {"candidates": report["mutationCandidates"],
-            "diagnostics": report["mutationCandidateDiagnostics"],
-            "markdown": markdown.output.split("## Mutation candidates", 1)[1]}
+            "markdown": markdown.output.partition("## Mutation candidates")[2]}
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -51,7 +49,6 @@ def test_candidate_pipeline_snapshot(language: str, tmp_path: Path, monkeypatch:
     assert not database.parent.exists()
     artifact = analyze_folder(source_root(language))
     assert artifact["mutationCandidates"] == expected["candidates"]
-    assert artifact["mutationCandidateDiagnostics"] == expected["diagnostics"]
     assert artifact["stats"]["parseErrors"] == 0
     assert_candidate_bytes(language, expected["candidates"])
 
@@ -87,7 +84,6 @@ def test_saved_candidate_report_matches_fresh_report(language: str, tmp_path: Pa
         project, = service.list()
         stored = service.report(project.name)
         assert stored["mutationCandidates"] == report["mutationCandidates"]
-        assert stored["mutationCandidateDiagnostics"] == report["mutationCandidateDiagnostics"]
         assert stored["summary"]["parseErrors"] == 0
     again = runner.invoke(main, [*args, "--save"])
     assert again.output == fresh.output
@@ -113,4 +109,4 @@ def test_changed_and_deleted_sources_refresh_analysis(tmp_path: Path) -> None:
         source.unlink()
         service.save_folder(root, analyze_folder(root))
         deleted = service.get_report_facts(saved.repositoryId)
-        assert deleted is not None and deleted.mutationCandidates == deleted.mutationCandidateDiagnostics == []
+        assert deleted is not None and deleted.mutationCandidates == []

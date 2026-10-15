@@ -25,10 +25,10 @@ def candidate_artifact() -> dict:
     artifact["mutationCandidates"] = [candidate, {**candidate, "id": "candidate-2"}]
     del artifact["mutationCandidates"][1]["operator"]
     del artifact["mutationCandidates"][1]["callable"]
-    artifact["mutationCandidateDiagnostics"] = [{
-        "path": "src/app.py", "language": "python", "code": "unsupported",
-        "message": "Exact diagnostic: é\n", "line": 1,
-    }]
+    artifact["diagnostics"].append({
+        "severity": "warning", "path": "src/app.py", "language": "python",
+        "message": "Exact parse warning: é\n",
+    })
     return artifact
 
 
@@ -46,7 +46,7 @@ def candidate_rows(path: Path, identifier: str) -> list[tuple]:
         ).fetchall()
 
 
-def test_exact_roundtrip_and_warning_separation(database: Path) -> None:
+def test_exact_roundtrip_preserves_parse_diagnostics(database: Path) -> None:
     artifact = candidate_artifact()
     with repository_session(database) as session:
         result = RepositoryStore(session).save_new("Candidates", ".", artifact)
@@ -55,7 +55,6 @@ def test_exact_roundtrip_and_warning_separation(database: Path) -> None:
         facts = store.report_facts(result.repositoryId)
         assert facts is not None
         assert facts.mutationCandidates == artifact["mutationCandidates"]
-        assert facts.mutationCandidateDiagnostics == artifact["mutationCandidateDiagnostics"]
         assert facts.diagnostics == artifact["diagnostics"]
         summary = store.graph(result.repositoryId)
         assert summary is not None and summary.stats.parseErrors == 1
@@ -65,7 +64,7 @@ def test_exact_roundtrip_and_warning_separation(database: Path) -> None:
     with sqlite3.connect(database) as db:
         diagnostic = db.execute("SELECT severity,message FROM graph_diagnostics WHERE ordinal=1").fetchone()
         assert diagnostic[0] == "warning"
-        assert diagnostic[1].startswith("Mutation candidates: ")
+        assert diagnostic[1] == "Exact parse warning: é\n"
 
 
 def test_refresh_replaces_candidates_and_diagnostics(database: Path) -> None:
@@ -74,15 +73,15 @@ def test_refresh_replaces_candidates_and_diagnostics(database: Path) -> None:
         store = RepositoryStore(session)
         identifier = store.save_new("Refresh", ".", artifact).repositoryId
         artifact["mutationCandidates"] = [artifact["mutationCandidates"][1]]
-        artifact["mutationCandidateDiagnostics"] = []
+        artifact["diagnostics"] = []
         store.save(identifier, artifact)
         facts = store.report_facts(identifier)
         assert facts is not None and facts.mutationCandidates == artifact["mutationCandidates"]
-        assert facts.mutationCandidateDiagnostics == []
+        assert facts.diagnostics == []
         store.save(identifier, graph_artifact())
         facts = store.report_facts(identifier)
         assert facts is not None and facts.mutationCandidates == []
-        assert facts.mutationCandidateDiagnostics == []
+        assert facts.diagnostics == graph_artifact()["diagnostics"]
     assert candidate_rows(database, identifier) == []
 
 

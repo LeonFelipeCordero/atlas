@@ -42,7 +42,6 @@ class GraphArtifact:
     diagnostics: list[Diagnostic]
     circularDependencies: CircularDependencies | None = None
     mutationCandidates: list[dict[str, Any]] = field(default_factory=list)
-    mutationCandidateDiagnostics: list[dict[str, Any]] = field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_references(self) -> Self:
@@ -420,12 +419,8 @@ def _add_external_nodes(graph: ResolvedGraph, nodes: list[dict[str, object]]) ->
         )
 
 
-def _mutation_analysis(repository: ParsedRepository) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    analyses = [extract_candidates(file.source) for file in repository.files]
-    return (
-        [candidate.model_dump() for analysis in analyses for candidate in analysis.candidates],
-        [diagnostic.model_dump() for analysis in analyses for diagnostic in analysis.diagnostics],
-    )
+def _mutation_analysis(repository: ParsedRepository) -> list[dict[str, Any]]:
+    return [candidate.model_dump() for file in repository.files for candidate in extract_candidates(file.source).candidates]
 
 
 def build_artifact(
@@ -490,7 +485,7 @@ def build_artifact(
     views = build_dependency_views(nodes, edges)
     _add_dependency_metrics(nodes, views)
     level_counts = {level: len(view["nodes"]) for level, view in views.items()}
-    mutation_candidates, mutation_diagnostics = _mutation_analysis(repository)
+    mutation_candidates = _mutation_analysis(repository)
     return GraphArtifact(
         2,
         {
@@ -516,7 +511,6 @@ def build_artifact(
         cast(list[Diagnostic], diagnostics),
         circular_dependencies(nodes, edges),
         mutation_candidates,
-        mutation_diagnostics,
     )
 
 

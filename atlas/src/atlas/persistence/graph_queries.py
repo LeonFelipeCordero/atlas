@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from atlas.domain.repositories import (
     GraphDTO, GraphStatsDTO, ReportFactsDTO, ReportImportDTO, ReportNodeDTO,
 )
-from .graph_records import MUTATION_DIAGNOSTIC_PREFIX
 from .models import (
     GraphDiagnosticRow, GraphEdgeRow, GraphMutationCandidateRow, GraphNodeMetricRow, GraphNodeRow,
     GraphSymbolRow, RepositoryGraphRow,
@@ -63,20 +62,13 @@ class GraphReadRepository:
             entity.repository_id == identifier
         )) or 0
 
-    def _report_diagnostics(self, identifier: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    def _report_diagnostics(self, identifier: str) -> list[dict[str, Any]]:
         diagnostic = GraphDiagnosticRow
         diagnostics = self._session.execute(select(
             diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message,
         ).where(diagnostic.repository_id == identifier)
           .order_by(diagnostic.ordinal)).mappings()
-        parse_diagnostics, mutation_diagnostics = [], []
-        for record in diagnostics:
-            message = record["message"]
-            if record["severity"] == "warning" and message.startswith(MUTATION_DIAGNOSTIC_PREFIX):
-                mutation_diagnostics.append(json.loads(message.removeprefix(MUTATION_DIAGNOSTIC_PREFIX)))
-            else:
-                parse_diagnostics.append(dict(record))
-        return parse_diagnostics, mutation_diagnostics
+        return [dict(record) for record in diagnostics]
 
     def _report_facts(self, row: RepositoryGraphRow) -> ReportFactsDTO:
         node, symbol, metric = GraphNodeRow, GraphSymbolRow, GraphNodeMetricRow
@@ -94,7 +86,6 @@ class GraphReadRepository:
           .where(edge.repository_id == row.repository_id, edge.relationship != "CONTAINS")
           .order_by(edge.ordinal)).mappings()
         edges = [ReportImportDTO.model_validate(record) for record in records]
-        parse_diagnostics, mutation_diagnostics = self._report_diagnostics(row.repository_id)
         candidate = GraphMutationCandidateRow
         candidates = self._session.scalars(select(candidate.payload).where(
             candidate.repository_id == row.repository_id,
@@ -103,7 +94,6 @@ class GraphReadRepository:
         return ReportFactsDTO(
             graphRevision=row.graph_revision, nodes=nodes, edges=edges,
             imports=[edge for edge in edges if edge.type == "IMPORTS"],
-            diagnostics=parse_diagnostics,
+            diagnostics=self._report_diagnostics(row.repository_id),
             mutationCandidates=[json.loads(payload) for payload in candidates],
-            mutationCandidateDiagnostics=mutation_diagnostics,
         )

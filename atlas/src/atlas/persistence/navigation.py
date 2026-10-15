@@ -13,7 +13,6 @@ from .models import (
     GraphDiagnosticRow, GraphEdgeRow, GraphFileRow, GraphNodeDecoratorRow,
     GraphNodeRow, RepositoryGraphRow, RepositoryRow,
 )
-from .graph_records import MUTATION_DIAGNOSTIC_PREFIX
 from .navigation_database import readonly_session
 from .navigation_queries import AdjacencyRequest, adjacency, metrics, nodes
 
@@ -136,7 +135,6 @@ class GraphReader:
         diagnostic = GraphDiagnosticRow
         return self._rows(select(diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message).where(
             diagnostic.repository_id == self.snapshot.repository_id, diagnostic.path.in_(paths),
-            ~((diagnostic.severity == "warning") & diagnostic.message.startswith(MUTATION_DIAGNOSTIC_PREFIX)),
         ).order_by(diagnostic.ordinal).limit(limit))
 
     def file(self, path: str) -> list[Record]:

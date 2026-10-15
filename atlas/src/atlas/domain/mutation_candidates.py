@@ -48,22 +48,9 @@ class MutationCandidate(BaseModel):
     callable: MutationCallable | None = None
 
 
-class MutationCandidateDiagnostic(BaseModel):
-    """An extraction limitation; never evidence of mutation execution."""
-
-    model_config = ConfigDict(strict=True, frozen=True)
-
-    path: str
-    language: str
-    code: str
-    message: str
-    span: MutationSpan | None = None
-
-
 class MutationCandidateAnalysis(BaseModel):
-    """Deterministically ordered candidates and extraction diagnostics."""
+    """Deterministically ordered mutation candidates."""
 
     model_config = ConfigDict(strict=True, frozen=True)
 
     candidates: list[MutationCandidate]
-    diagnostics: list[MutationCandidateDiagnostic]

@@ -45,7 +45,7 @@ def test_index_then_report_analyzes_fresh_folder(database: Path, tmp_path: Path)
     structured = runner.invoke(main, ["report", "-f", str(root), "--format", "json"])
     assert structured.exit_code == 0, structured.output
     report = json.loads(structured.output)
-    assert set(report) == {"summary", "nodes", "circularImports", "diagnostics", "mutationCandidates", "mutationCandidateDiagnostics"}
+    assert set(report) == {"summary", "nodes", "circularImports", "diagnostics", "mutationCandidates"}
     complexity = {node["subject"]: node["metrics"] for node in report["nodes"] if node["level"] == "callable"}
     assert complexity["src/coffee/brewing/brewer.py::Brewer.classify"]["weightedComplexity"] == 9
     assert complexity["src/coffee/brewing/brewer.py::Brewer.score"]["nestedLoops"] == 1

@@ -27,7 +27,6 @@ def source(text: str | bytes, language: str = "python", path: str = "sample.py")
 ])
 def test_supported_adapters(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
-    assert not analysis.diagnostics
     assert {item.kind for item in analysis.candidates} >= {"condition", "comparison", "logical", "arithmetic"}
     assert all(item.callable is not None and item.callable.name == "f" for item in analysis.candidates)
 
@@ -70,7 +69,6 @@ def test_python_multiword_and_chained_operators() -> None:
 ])
 def test_condition_shapes(language: str, text: str, condition: str) -> None:
     analysis = extract_candidates(source(text, language))
-    assert not analysis.diagnostics
     assert condition in [item.originalText for item in analysis.candidates if item.kind == "condition"]
 
 
@@ -87,7 +85,6 @@ def test_condition_shapes(language: str, text: str, condition: str) -> None:
 ])
 def test_exclusions(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
-    assert not analysis.diagnostics
     assert not analysis.candidates
 
 
@@ -102,13 +99,11 @@ def test_exclusions(language: str, text: str) -> None:
 ])
 def test_runtime_interpolation(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
-    assert not analysis.diagnostics
     assert [(item.kind, item.originalText) for item in analysis.candidates] == [("arithmetic", "+")]
 
 
 def test_elixir_truthy_conditions_and_strict_guards() -> None:
     analysis = extract_candidates(source("def f(x) when x > 0 do\n unless x, do: x || 1\nend", "elixir"))
-    assert not analysis.diagnostics
     assert [item.originalText for item in analysis.candidates if item.kind == "condition"] == ["x > 0", "x"]
     assert [(item.operator, item.kind) for item in analysis.candidates if item.operator == "||"] == [("||", "logical")]
 
@@ -116,18 +111,15 @@ def test_elixir_truthy_conditions_and_strict_guards() -> None:
 def test_rust_let_chains_are_not_boolean_conditions() -> None:
     analysis = extract_candidates(source("fn f(x:Option<i32>){if let Some(y) = x && y > 0 {} }", "rust"))
     assert not analysis.candidates
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-condition"]
 
 
-@pytest.mark.parametrize(("text", "language", "code"), [
-    (b"if a > \xff: pass", "python", "invalid-utf8"),
-    ("if (", "python", "syntax-error"),
-    ("a + b", "ruby", "unsupported-language"),
+@pytest.mark.parametrize(("text", "language"), [
+    (b"if a > \xff: pass", "python"),
+    ("if (", "python"),
+    ("a + b", "ruby"),
 ])
-def test_diagnostic_failures(text: str | bytes, language: str, code: str) -> None:
-    analysis = extract_candidates(source(text, language))
-    assert not analysis.candidates
-    assert [item.code for item in analysis.diagnostics] == [code]
+def test_unanalyzable_sources_have_no_candidates(text: str | bytes, language: str) -> None:
+    assert not extract_candidates(source(text, language)).candidates
 
 
 def test_operator_sites_are_distinct_from_conditions() -> None:
@@ -148,28 +140,23 @@ def test_operator_sites_are_distinct_from_conditions() -> None:
 ])
 def test_compound_assignment(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
-    assert not analysis.diagnostics
     assert [(item.kind, item.operator) for item in analysis.candidates] == [("assignment", "+=")]
 
 
 def test_elixir_quoted_and_attribute_syntax_is_not_runtime() -> None:
     analysis = extract_candidates(source("quote do\n if x > 0, do: x + 1\nend\n@type t :: 1 + 2", "elixir"))
     assert not analysis.candidates
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-construct"] * 2
 
 
-@pytest.mark.parametrize(("language", "text", "operator"), [
-    ("elixir", 'x = "a" <> "b"', "<>"),
-    ("elixir", "x = a <<< 2", "<<<"),
-    ("javascript", "x = a & b;", "&"),
-    ("python", "x = a << 1", "<<"),
-    ("php", '<?php $x .= "a";', ".="),
+@pytest.mark.parametrize(("language", "text"), [
+    ("elixir", 'x = "a" <> "b"'),
+    ("elixir", "x = a <<< 2"),
+    ("javascript", "x = a & b;"),
+    ("python", "x = a << 1"),
+    ("php", '<?php $x .= "a";'),
 ])
-def test_unsupported_operators_are_diagnosed(language: str, text: str, operator: str) -> None:
-    analysis = extract_candidates(source(text, language))
-    assert not analysis.candidates
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-operator"]
-    assert operator in analysis.diagnostics[0].message
+def test_unsupported_operators_are_excluded(language: str, text: str) -> None:
+    assert not extract_candidates(source(text, language)).candidates
 
 
 @pytest.mark.parametrize(("language", "text"), [
@@ -177,21 +164,17 @@ def test_unsupported_operators_are_diagnosed(language: str, text: str, operator:
     ("go", "package p\nfunc f(p *int){x := *p}"),
 ])
 def test_pointer_dereference_is_not_multiplication(language: str, text: str) -> None:
-    analysis = extract_candidates(source(text, language))
-    assert not analysis.candidates
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-operator"]
+    assert not extract_candidates(source(text, language)).candidates
 
 
 def test_elixir_zero_arity_callable_name() -> None:
     analysis = extract_candidates(source("def f, do: x + 1", "elixir"))
-    assert not analysis.diagnostics
     assert analysis.candidates[0].callable is not None
     assert analysis.candidates[0].callable.name == "f"
 
 
 def test_php_alternate_inequality_is_comparison() -> None:
     analysis = extract_candidates(source("<?php $x = $a <> $b;", "php"))
-    assert not analysis.diagnostics
     assert [(item.kind, item.operator) for item in analysis.candidates] == [("comparison", "<>")]
 
 
@@ -199,36 +182,30 @@ def test_php_alternate_inequality_is_comparison() -> None:
 def test_elixir_macro_definitions_are_not_runtime(definition: str) -> None:
     analysis = extract_candidates(source(f"{definition} f(x), do: x + 1", "elixir"))
     assert not analysis.candidates
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-construct"]
 
 
 def test_elixir_patterns_are_not_arithmetic_expressions() -> None:
     analysis = extract_candidates(source("def f(-1), do: 2 + 1\ncase x do\n -1 -> x + 1\nend", "elixir"))
     assert [item.operator for item in analysis.candidates] == ["+", "+"]
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-construct"]
 
 
 def test_rust_const_generic_and_array_types_are_not_runtime() -> None:
     analysis = extract_candidates(source("fn f<const N: usize>() { let a: [i32; 1 + 2]; let b = f::<{1+2}>(); }", "rust"))
     assert not analysis.candidates
-    assert not analysis.diagnostics
 
 
 def test_python_match_guard_is_condition_not_pattern() -> None:
     analysis = extract_candidates(source("match x:\n case -1: pass\n case y if y > 0: pass\n"))
     assert [(item.kind, item.originalText) for item in analysis.candidates] == [("condition", "y > 0"), ("comparison", ">")]
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-construct"]
 
 
 def test_kotlin_when_patterns_are_not_arithmetic() -> None:
     analysis = extract_candidates(source("fun f(x:Int){when(x){-1 -> x+1; else -> 0}}", "kotlin"))
     assert [item.operator for item in analysis.candidates] == ["+"]
-    assert [item.code for item in analysis.diagnostics] == ["unsupported-construct"]
 
 
 def test_jsx_text_is_not_expression_syntax() -> None:
     analysis = extract_candidates(source("const x=<p>a + b &gt; c {a+b}</p>;", "tsx"))
-    assert not analysis.diagnostics
     assert [item.operator for item in analysis.candidates] == ["+"]
 
 

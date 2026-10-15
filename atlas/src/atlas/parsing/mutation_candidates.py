@@ -19,7 +19,6 @@ from atlas.domain.mutation_candidates import (
     MutationCallable,
     MutationCandidate,
     MutationCandidateAnalysis,
-    MutationCandidateDiagnostic,
     MutationKind,
     MutationSpan,
 )
@@ -74,7 +73,6 @@ _COMPARISONS = {"==", "!=", "===", "!==", "<", "<=", ">", ">=", "in", "not in", 
 _LOGICAL = {"and", "or", "not", "&&", "||", "!", "??", "andalso", "orelse", "xor"}
 _ARITHMETIC = {"+", "-", "*", "/", "//", "%", "**"}
 _ASSIGNMENT = {"+=", "-=", "*=", "/=", "//=", "%=", "**=", "&&=", "||=", "??="}
-_UNSUPPORTED = {"switch_statement", "switch_expression", "match_statement", "match_expression", "when_expression", "macro_invocation", "stab_clause"}
 
 
 def _text(node: Node, data: bytes) -> str:
@@ -126,15 +124,13 @@ def _operator_kind(operator: str, language: str, expression_type: str) -> Mutati
     return _kind(operator)
 
 
-def _operators(node: Node, source: SourceFile, analysis: MutationCandidateAnalysis) -> list[tuple[MutationKind, Node]]:
+def _operators(node: Node, source: SourceFile) -> list[tuple[MutationKind, Node]]:
     result: list[tuple[MutationKind, Node]] = []
     for token in _operator_tokens(node, source):
         operator = " ".join(_text(token, source.source).split())
         kind = _operator_kind(operator, source.language, node.type)
         if kind is not None:
             result.append((kind, token))
-        elif operator not in {"=", "when", "(", ")", ","}:
-            analysis.diagnostics.append(_diagnostic(source, ("unsupported-operator", f"Operator {operator!r} has no mutation mapping for {source.language}."), token))
     return result
 
 
@@ -233,33 +229,23 @@ def _callable(node: Node, source: SourceFile) -> MutationCallable | None:
     return MutationCallable(name=_text(name, source.source) if name is not None else "<anonymous>", span=_span(node), originalText=_text(node, source.source))
 
 
-def _diagnostic(source: SourceFile, detail: tuple[str, str], node: Node | None = None) -> MutationCandidateDiagnostic:
-    code, message = detail
-    return MutationCandidateDiagnostic(path=source.path, language=source.language, code=code, message=message, span=_span(node) if node is not None else None)
-
-
 def extract_candidates(source: SourceFile) -> MutationCandidateAnalysis:
     """Extract from exact source bytes; reject invalid encoding or syntax wholesale."""
-    analysis = MutationCandidateAnalysis(candidates=[], diagnostics=[])
+    analysis = MutationCandidateAnalysis(candidates=[])
     try:
         source.source.decode("utf-8")
     except UnicodeDecodeError:
-        analysis.diagnostics.append(_diagnostic(source, ("invalid-utf8", "Source is not valid UTF-8; extraction skipped.")))
         return analysis
     if source.language not in _EXPRESSIONS:
-        analysis.diagnostics.append(_diagnostic(source, ("unsupported-language", "No mutation adapter for this language.")))
         return analysis
     try:
         root = get_parser(source.language).parse(source.source).root_node
-    except (LookupError, ValueError) as error:
-        analysis.diagnostics.append(_diagnostic(source, ("parser-unavailable", str(error))))
+    except (LookupError, ValueError):
         return analysis
     if root.has_error:
-        analysis.diagnostics.append(_diagnostic(source, ("syntax-error", "Parse contains errors or missing tokens; extraction skipped."), root))
         return analysis
     _extract_tree(root, source, analysis)
     analysis.candidates.sort(key=lambda item: (item.span.startByte, item.span.endByte, item.kind, item.id))
-    analysis.diagnostics.sort(key=lambda item: (item.span.startByte if item.span else -1, item.code))
     return analysis
 
 
@@ -276,14 +262,11 @@ def _elixir_pattern(node: Node, source: SourceFile) -> bool:
     return _elixir_target(parent.parent, source) in {"def", "defp"}
 
 
-def _elixir_excluded(node: Node, source: SourceFile) -> str | None:
-    if source.language != "elixir":
-        return None
-    if _elixir_target(node, source) in {"quote", "defmacro", "defmacrop"}:
-        return "Elixir quoted AST and macro definitions are not runtime expression syntax; extraction skipped."
-    if node.type == "unary_operator" and _text(node, source.source).startswith("@"):
-        return "Elixir module attribute/type syntax is not analyzed for runtime mutations."
-    return None
+def _elixir_excluded(node: Node, source: SourceFile) -> bool:
+    return source.language == "elixir" and (
+        _elixir_target(node, source) in {"quote", "defmacro", "defmacrop"}
+        or (node.type == "unary_operator" and _text(node, source.source).startswith("@"))
+    )
 
 
 @dataclass
@@ -316,12 +299,8 @@ class _Extraction:
     def skip(self, node: Node) -> bool:
         if self.source.language == "elixir" and _elixir_pattern(node, self.source):
             return True
-        excluded = _elixir_excluded(node, self.source)
-        if excluded is not None:
-            self.analysis.diagnostics.append(_diagnostic(self.source, ("unsupported-construct", excluded), node))
+        if _elixir_excluded(node, self.source):
             return True
-        if node.type in {"let_condition", "let_chain"}:
-            self.analysis.diagnostics.append(_diagnostic(self.source, ("unsupported-condition", "Rust let conditions/chains are pattern bindings, not boolean mutation sites."), node))
         return node.type in _EXCLUDED or "comment" in node.type
 
     def sites(self, node: Node) -> list[tuple[MutationKind, Node, Node]]:
@@ -329,7 +308,7 @@ class _Extraction:
         sites: list[tuple[MutationKind, Node, Node]] = []
         if condition is not None and condition.type not in {"let_condition", "let_chain"}:
             sites.append(("condition", condition, condition))
-        sites.extend((kind, token, node) for kind, token in _operators(node, self.source, self.analysis))
+        sites.extend((kind, token, node) for kind, token in _operators(node, self.source))
         return sites
 
     def record(self, node: Node, owner: MutationCallable | None) -> None:
@@ -343,8 +322,6 @@ class _Extraction:
         if not node.named_child_count or self.skip(node):
             return []
         owner = _callable(node, self.source) or owner
-        if node.type in _UNSUPPORTED:
-            self.analysis.diagnostics.append(_diagnostic(self.source, ("unsupported-construct", f"{node.type} is not modeled as a boolean condition."), node))
         if node.type in self.site_types:
             self.record(node, owner)
         return [(child, owner) for child in reversed(node.named_children)]

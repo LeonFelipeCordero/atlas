@@ -3,8 +3,6 @@
 import json
 from typing import Any
 
-MUTATION_DIAGNOSTIC_PREFIX = "Mutation candidates: "
-
 METRIC_NAMES = (
     "lineCount", "parameterCount", "baseCyclomaticComplexity",
     "nestedCyclomaticComplexity", "loopNestedComplexity", "cyclomaticComplexity",
@@ -22,7 +20,7 @@ def _decorators(node: dict[str, Any]) -> list[str]:
 
 
 def validate_collections(artifact: dict[str, Any]) -> None:
-    for name in ("nodes", "edges", "diagnostics", "mutationCandidates", "mutationCandidateDiagnostics"):
+    for name in ("nodes", "edges", "diagnostics", "mutationCandidates"):
         if name in artifact and not isinstance(artifact[name], list):
             raise ValueError("Graph artifact collections must be arrays")
     for node in artifact.get("nodes", []):
@@ -187,8 +185,7 @@ def mutation_candidate_records(repository_id: str, artifact: dict[str, Any]) -> 
 
 
 def diagnostic_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
-    diagnostics = artifact.get("diagnostics", [])
-    records = [
+    return [
         {
             "repository_id": repository_id,
             "ordinal": ordinal,
@@ -197,16 +194,5 @@ def diagnostic_records(repository_id: str, artifact: dict[str, Any]) -> list[dic
             "language": diagnostic["language"],
             "message": diagnostic["message"],
         }
-        for ordinal, diagnostic in enumerate(diagnostics)
-    ]
-    return records + [
-        {
-            "repository_id": repository_id,
-            "ordinal": len(diagnostics) + ordinal,
-            "severity": "warning",
-            "path": diagnostic["path"],
-            "language": diagnostic["language"],
-            "message": MUTATION_DIAGNOSTIC_PREFIX + json.dumps(diagnostic, ensure_ascii=False),
-        }
-        for ordinal, diagnostic in enumerate(artifact.get("mutationCandidateDiagnostics", []))
+        for ordinal, diagnostic in enumerate(artifact.get("diagnostics", []))
     ]

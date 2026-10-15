@@ -95,31 +95,19 @@ def _mutation_candidate_row(candidate: dict[str, Any]) -> str:
     return "| " + " | ".join(code(cell) for cell in cells) + " |"
 
 
-def _mutation_diagnostics(diagnostics: list[dict[str, Any]]) -> list[str]:
-    if not diagnostics:
-        return []
-    return ["", "### Candidate analysis limitations", "", *(
-        f"- {code(item['path'])} [{code(item['code'])}]: {item['message']}"
-        for item in diagnostics
-    )]
-
-
 def _mutation_candidates(report: dict[str, Any]) -> str:
     candidates = report.get("mutationCandidates", [])
-    diagnostics = report.get("mutationCandidateDiagnostics", [])
-    if not candidates and not diagnostics:
+    if not candidates:
         return ""
     counts = Counter(candidate["kind"] for candidate in candidates)
     rows = [
         "## Mutation candidates", "",
         "Identified source sites only; no mutations generated or tests executed.", "",
-        ", ".join(f"{kind}: {count}" for kind, count in sorted(counts.items())) or "No candidates.",
+        ", ".join(f"{kind}: {count}" for kind, count in sorted(counts.items())),
+        "", "| Location (byte columns) | Kind | Operator | Original source |",
+        "| --- | --- | --- | --- |",
     ]
-    if candidates:
-        rows.extend(["", "| Location (byte columns) | Kind | Operator | Original source |",
-                     "| --- | --- | --- | --- |"])
-        rows.extend(_mutation_candidate_row(candidate) for candidate in candidates)
-    rows.extend(_mutation_diagnostics(diagnostics))
+    rows.extend(_mutation_candidate_row(candidate) for candidate in candidates)
     return "\n".join(rows)
 
 
