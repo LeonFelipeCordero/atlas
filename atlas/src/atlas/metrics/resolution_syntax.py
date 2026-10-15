@@ -224,13 +224,15 @@ class Syntax:
                 return True
         return False
 
+    @cached_property
+    def written_members(self) -> set[str]:
+        return {
+            text(self.adapter.write_target(node)).replace(" ", "")
+            for node in self.nodes if node.type in self.adapter.member_writes
+        }
+
     def member_rebound(self, qualifier: str, name: str) -> bool:
-        for node in self.nodes:
-            if node.type not in self.adapter.member_writes:
-                continue
-            if text(self.adapter.write_target(node)).replace(" ", "") == qualifier + "." + name:
-                return True
-        return False
+        return qualifier + "." + name in self.written_members
 
     def static(self, symbol: Symbol) -> bool:
         return self.adapter.static(self, symbol)
