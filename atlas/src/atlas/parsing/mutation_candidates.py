@@ -34,7 +34,6 @@ _EXPRESSIONS: dict[str, set[str]] = {
     "rust": {"binary_expression", "unary_expression", "compound_assignment_expr"},
     "go": {"binary_expression", "unary_expression", "assignment_statement"},
     "elixir": {"binary_operator", "unary_operator"},
-    "php": {"binary_expression", "unary_op_expression", "augmented_assignment_expression"},
 }
 _CONDITIONS: dict[str, set[str]] = {
     "python": {"if_statement", "elif_clause", "while_statement", "conditional_expression", "if_clause", "assert_statement"},
@@ -45,7 +44,6 @@ _CONDITIONS: dict[str, set[str]] = {
     "kotlin": {"if_expression", "while_statement", "do_while_statement"},
     "rust": {"if_expression", "while_expression"},
     "go": {"if_statement", "for_clause", "for_statement"},
-    "php": {"if_statement", "else_if_clause", "while_statement", "do_statement", "for_statement", "conditional_expression"},
     "elixir": set(),
 }
 _CALLABLES: dict[str, set[str]] = {
@@ -57,7 +55,6 @@ _CALLABLES: dict[str, set[str]] = {
     "kotlin": {"function_declaration", "anonymous_function", "lambda_literal"},
     "rust": {"function_item", "closure_expression"},
     "go": {"function_declaration", "method_declaration", "func_literal"},
-    "php": {"function_definition", "method_declaration", "anonymous_function", "arrow_function"},
     "elixir": {"anonymous_function"},
 }
 _EXCLUDED = {
@@ -69,8 +66,8 @@ _EXCLUDED = {
     "const_parameter", "array_type", "literal_pattern", "range_pattern",
     "let_condition", "let_chain", "token_tree", "macro_definition", "when_condition",
 }
-_COMPARISONS = {"==", "!=", "===", "!==", "<", "<=", ">", ">=", "in", "not in", "is", "is not", "instanceof", "!in", "!is", "<>", "=~", "<=>"}
-_LOGICAL = {"and", "or", "not", "&&", "||", "!", "??", "andalso", "orelse", "xor"}
+_COMPARISONS = {"==", "!=", "===", "!==", "<", "<=", ">", ">=", "in", "not in", "is", "is not", "instanceof", "!in", "!is", "=~"}
+_LOGICAL = {"and", "or", "not", "&&", "||", "!", "??", "andalso", "orelse"}
 _ARITHMETIC = {"+", "-", "*", "/", "//", "%", "**"}
 _ASSIGNMENT = {"+=", "-=", "*=", "/=", "//=", "%=", "**=", "&&=", "||=", "??="}
 
@@ -116,9 +113,6 @@ def _operator_tokens(node: Node, source: SourceFile) -> list[Node]:
 
 
 def _operator_kind(operator: str, language: str, expression_type: str) -> MutationKind | None:
-    # Elixir <> concatenates binaries; PHP <> compares for inequality.
-    if operator == "<>" and language != "php":
-        return None
     if operator == "*" and language in {"rust", "go"} and expression_type == "unary_expression":
         return None  # Pointer dereference is not arithmetic multiplication.
     return _kind(operator)

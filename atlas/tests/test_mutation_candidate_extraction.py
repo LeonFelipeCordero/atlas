@@ -23,7 +23,6 @@ def source(text: str | bytes, language: str = "python", path: str = "sample.py")
     ("rust", "fn f(x:i32){if x > 0 && !false { let y = x + 1; }}"),
     ("go", "package p\nfunc f(x int){if x > 0 && !false { x = x + 1 }}"),
     ("elixir", "def f(x) do\n if x > 0 && !false, do: x + 1\nend"),
-    ("php", "<?php function f($x){if($x > 0 && !$x) return $x + 1;}"),
 ])
 def test_supported_adapters(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
@@ -64,7 +63,6 @@ def test_python_multiword_and_chained_operators() -> None:
     ("go", "package p\nfunc f(){for i:=0;i<2;i++ {}}", "i<2"),
     ("go", "package p\nfunc f(x int){for x>0 {}}", "x>0"),
     ("kotlin", "fun f(x:Int){while(x>0){}; do {} while(x<2)}", "x>0"),
-    ("php", "<?php for($i=0;$i<2;$i++) {}", "$i<2"),
     ("python", "x = a if b else c\n", "b"),
 ])
 def test_condition_shapes(language: str, text: str, condition: str) -> None:
@@ -81,7 +79,6 @@ def test_condition_shapes(language: str, text: str, condition: str) -> None:
     ("rust", 'fn f(){for x in xs {} let s="a + b";}'),
     ("go", 'package p\nfunc f(){for range xs {} }'),
     ("elixir", 'x = "a + b"\ny = ~r/a+b/'),
-    ("php", '<?php foreach($xs as $x) {} $s="a + b";'),
 ])
 def test_exclusions(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
@@ -93,7 +90,6 @@ def test_exclusions(language: str, text: str) -> None:
     ("javascript", 'const s=`x=${a + 1}`;'),
     ("tsx", 'const s=<div>{a + 1}</div>;'),
     ("javascript", 'const s=<div>{a + 1}</div>;'),
-    ("php", '<?php $s="x={$a[1 + 1]}";'),
     ("kotlin", 'val s="x=${a + 1}"'),
     ("elixir", 's = "x=#{a + 1}"'),
 ])
@@ -136,7 +132,6 @@ def test_operator_sites_are_distinct_from_conditions() -> None:
     ("kotlin", "fun f(){x += 2}"),
     ("rust", "fn f(){x += 2;}"),
     ("go", "package p\nfunc f(){x += 2}"),
-    ("php", "<?php $x += 2;"),
 ])
 def test_compound_assignment(language: str, text: str) -> None:
     analysis = extract_candidates(source(text, language))
@@ -153,7 +148,6 @@ def test_elixir_quoted_and_attribute_syntax_is_not_runtime() -> None:
     ("elixir", "x = a <<< 2"),
     ("javascript", "x = a & b;"),
     ("python", "x = a << 1"),
-    ("php", '<?php $x .= "a";'),
 ])
 def test_unsupported_operators_are_excluded(language: str, text: str) -> None:
     assert not extract_candidates(source(text, language)).candidates
@@ -171,11 +165,6 @@ def test_elixir_zero_arity_callable_name() -> None:
     analysis = extract_candidates(source("def f, do: x + 1", "elixir"))
     assert analysis.candidates[0].callable is not None
     assert analysis.candidates[0].callable.name == "f"
-
-
-def test_php_alternate_inequality_is_comparison() -> None:
-    analysis = extract_candidates(source("<?php $x = $a <> $b;", "php"))
-    assert [(item.kind, item.operator) for item in analysis.candidates] == [("comparison", "<>")]
 
 
 @pytest.mark.parametrize("definition", ["defmacro", "defmacrop"])

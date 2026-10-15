@@ -16,10 +16,6 @@ from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES as COFFEE_LANGUAGES, SN
 LANGUAGES = COFFEE_LANGUAGES
 
 
-def source_root(language: str) -> Path:
-    return FIXTURE_ROOT / "generic_receivers" / "php" if language == "php" else FIXTURE_ROOT / language
-
-
 def expected_snapshot(language: str) -> dict:
     root = SNAPSHOT_ROOT / "coffee" / language
     graph = json.loads((root / "graph.json").read_text())
@@ -30,11 +26,11 @@ def expected_snapshot(language: str) -> dict:
 
 def candidate_snapshot(language: str) -> dict:
     result = CliRunner().invoke(main, [
-        "report", "-f", str(source_root(language)), "--format", "json",
+        "report", "-f", str(FIXTURE_ROOT / language), "--format", "json",
     ])
     assert result.exit_code == 0, result.output
     report = json.loads(result.output)
-    markdown = CliRunner().invoke(main, ["report", "-f", str(source_root(language))])
+    markdown = CliRunner().invoke(main, ["report", "-f", str(FIXTURE_ROOT / language)])
     assert markdown.exit_code == 0, markdown.output
     return {"candidates": report["mutationCandidates"],
             "markdown": markdown.output.partition("## Mutation candidates")[2]}
@@ -47,7 +43,7 @@ def test_candidate_pipeline_snapshot(language: str, tmp_path: Path, monkeypatch:
     expected = expected_snapshot(language)
     assert candidate_snapshot(language) == expected
     assert not database.parent.exists()
-    artifact = analyze_folder(source_root(language))
+    artifact = analyze_folder(FIXTURE_ROOT / language)
     assert artifact["mutationCandidates"] == expected["candidates"]
     assert artifact["stats"]["parseErrors"] == 0
     assert_candidate_bytes(language, expected["candidates"])
@@ -55,7 +51,7 @@ def test_candidate_pipeline_snapshot(language: str, tmp_path: Path, monkeypatch:
 
 def assert_candidate_bytes(language: str, candidates: list[dict]) -> None:
     for candidate in candidates:
-        source = (source_root(language) / candidate["path"]).read_bytes()
+        source = (FIXTURE_ROOT / language / candidate["path"]).read_bytes()
         assert candidate["sourceHash"] == sha256(source).hexdigest()
         assert_span_bytes(source, candidate["span"], candidate["originalText"])
         assert_span_bytes(source, candidate["expressionSpan"], candidate["expressionText"])
@@ -69,12 +65,12 @@ def assert_span_bytes(source: bytes, span: dict, text: str) -> None:
     assert span["startColumn"] == span["startByte"] - source.rfind(b"\n", 0, span["startByte"])
 
 
-@pytest.mark.parametrize("language", (*LANGUAGES, "php"))
+@pytest.mark.parametrize("language", LANGUAGES)
 def test_saved_candidate_report_matches_fresh_report(language: str, tmp_path: Path) -> None:
     database = tmp_path / "atlas.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})
-    args = ["report", "-f", str(source_root(language)), "--format", "json"]
+    args = ["report", "-f", str(FIXTURE_ROOT / language), "--format", "json"]
     fresh = runner.invoke(main, args)
     saved = runner.invoke(main, [*args, "--save"])
     assert saved.exit_code == 0, saved.output
@@ -92,7 +88,7 @@ def test_saved_candidate_report_matches_fresh_report(language: str, tmp_path: Pa
 def test_changed_and_deleted_sources_refresh_analysis(tmp_path: Path) -> None:
     root = tmp_path / "coffee"
     root.mkdir()
-    copyfile(source_root("python") / "src/coffee/brewing/brewer.py", root / "brewer.py")
+    copyfile(FIXTURE_ROOT / "python/src/coffee/brewing/brewer.py", root / "brewer.py")
     database = tmp_path / "atlas.sqlite"
     migrate_database(database)
     with repository_service(database) as service:
