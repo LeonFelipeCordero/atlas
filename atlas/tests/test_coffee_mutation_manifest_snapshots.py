@@ -12,9 +12,10 @@ from atlas.cli import main
 from atlas.mutations.config import MutationConfig
 from atlas.mutations.report import build_mutation_report
 from atlas.mutations.rules import REGISTRY
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT
+from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
 
 RULES = {rule.id: sorted({mapping.replacement for mapping in rule.mappings}) for rule in REGISTRY}
+LANGUAGES = tuple(dict.fromkeys(mapping.language for rule in REGISTRY for mapping in rule.mappings))
 
 
 @pytest.mark.parametrize("language", LANGUAGES)

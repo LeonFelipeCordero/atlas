@@ -59,8 +59,7 @@ null-coalescing and all other unlisted operators
 are excluded, not silently normalized. Condition candidates remain inspectable but
 have no replacement rule: no whole-expression true/false literals, no iterable-for
 conversion, and no language-agnostic boolean substitution. Phase-one conservative
-Rust macro/token-tree and pattern exclusions remain in force. Ruby/C# have no
-phase-one candidates and no rules.
+Rust macro/token-tree and pattern exclusions remain in force.
 
 Syntax support is **not** proof of type validity, successful compilation, changed
 behavior or safety to execute. For example `/` may change numeric types, `+` may
