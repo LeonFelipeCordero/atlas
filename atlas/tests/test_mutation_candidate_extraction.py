@@ -112,7 +112,7 @@ def test_rust_let_chains_are_not_boolean_conditions() -> None:
 @pytest.mark.parametrize(("text", "language"), [
     (b"if a > \xff: pass", "python"),
     ("if (", "python"),
-    ("a + b", "ruby"),
+    ("a + b", "unsupported"),
 ])
 def test_unanalyzable_sources_have_no_candidates(text: str | bytes, language: str) -> None:
     assert not extract_candidates(source(text, language)).candidates

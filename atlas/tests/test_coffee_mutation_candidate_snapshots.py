@@ -11,9 +11,9 @@ from click.testing import CliRunner
 from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 from atlas.services.repositories import analyze_folder
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES as COFFEE_LANGUAGES, SNAPSHOT_ROOT
+from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
 
-LANGUAGES = COFFEE_LANGUAGES
+LANGUAGES = ("java", "kotlin", "go", "rust", "javascript", "typescript", "elixir", "python", "tsx")
 
 
 def expected_snapshot(language: str) -> dict:
