@@ -15,6 +15,7 @@ from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
 from atlas.domain.models import SourceFile
+from atlas.syntax import text
 from atlas.domain.mutation_candidates import (
     MutationCallable,
     MutationCandidate,
@@ -72,10 +73,6 @@ _ARITHMETIC = {"+", "-", "*", "/", "//", "%", "**"}
 _ASSIGNMENT = {"+=", "-=", "*=", "/=", "//=", "%=", "**=", "&&=", "||=", "??="}
 
 
-def _text(node: Node, data: bytes) -> str:
-    return data[node.start_byte:node.end_byte].decode("utf-8")
-
-
 def _span(node: Node) -> MutationSpan:
     return MutationSpan(
         startByte=node.start_byte, endByte=node.end_byte,
@@ -100,38 +97,26 @@ def _kind(operator: str) -> MutationKind | None:
     return "assignment" if operator in _ASSIGNMENT else None
 
 
-def _operator_tokens(node: Node, source: SourceFile) -> list[Node]:
-    if node.type not in _EXPRESSIONS[source.language]:
+def _operators(node: Node, language: str) -> list[tuple[MutationKind, Node]]:
+    if node.type not in _EXPRESSIONS[language]:
         return []
-    # Named tokens (Python's `is not`, Kotlin's assignment operator) may
-    # themselves contain tokens. Select only direct operator children.
-    return [child for i, child in enumerate(node.children) if (
-        node.field_name_for_child(i) in {"operator", "operators"}
-        or not child.is_named
-        or child.type in {"assignment_operator"}
-    )]
-
-
-def _operator_kind(operator: str, language: str, expression_type: str) -> MutationKind | None:
-    if operator == "*" and language in {"rust", "go"} and expression_type == "unary_expression":
-        return None  # Pointer dereference is not arithmetic multiplication.
-    return _kind(operator)
-
-
-def _operators(node: Node, source: SourceFile) -> list[tuple[MutationKind, Node]]:
     result: list[tuple[MutationKind, Node]] = []
-    for token in _operator_tokens(node, source):
-        operator = " ".join(_text(token, source.source).split())
-        kind = _operator_kind(operator, source.language, node.type)
+    for i, token in enumerate(node.children):
+        # Named operators may contain tokens; select only direct children.
+        if token.is_named and token.type != "assignment_operator" and node.field_name_for_child(i) not in {"operator", "operators"}:
+            continue
+        operator = " ".join(text(token).split())
+        if operator == "*" and language in {"rust", "go"} and node.type == "unary_expression":
+            continue  # Pointer dereference is not arithmetic multiplication.
+        kind = _kind(operator)
         if kind is not None:
             result.append((kind, token))
     return result
 
 
-def _condition(node: Node, source: SourceFile) -> Node | None:
-    language = source.language
+def _condition(node: Node, language: str) -> Node | None:
     if language == "elixir":
-        return _elixir_condition(node, source.source)
+        return _elixir_condition(node)
     if node.type not in _CONDITIONS[language]:
         return None
     condition = node.child_by_field_name("condition")
@@ -162,9 +147,8 @@ def _unfielded_condition(node: Node, language: str) -> Node | None:
     return next((child for child in children if child.type not in excluded), None)
 
 
-def _elixir_guard(node: Node, data: bytes) -> bool:
-    operator = node.child_by_field_name("operator")
-    return operator is not None and _text(operator, data) == "when"
+def _elixir_guard(node: Node) -> bool:
+    return text(node.child_by_field_name("operator")) == "when"
 
 
 def _first_argument(node: Node) -> Node | None:
@@ -174,20 +158,19 @@ def _first_argument(node: Node) -> Node | None:
     return arguments.named_children[0] if arguments.named_children else None
 
 
-def _elixir_condition(node: Node, data: bytes) -> Node | None:
-    if node.type == "binary_operator" and _elixir_guard(node, data):
+def _elixir_condition(node: Node) -> Node | None:
+    if node.type == "binary_operator" and _elixir_guard(node):
         return node.child_by_field_name("right")
     if node.type != "call":
         return None
     target = node.child_by_field_name("target")
     if target is None or target.type != "identifier":
         return None
-    return _first_argument(node) if _text(target, data) in {"if", "unless"} else None
+    return _first_argument(node) if text(target) in {"if", "unless"} else None
 
 
-def _elixir_target(node: Node, source: SourceFile) -> str:
-    target = node.child_by_field_name("target")
-    return _text(target, source.source) if node.type == "call" and target is not None else ""
+def _elixir_target(node: Node) -> str:
+    return text(node.child_by_field_name("target")) if node.type == "call" else ""
 
 
 def _elixir_name(node: Node) -> Node | None:
@@ -206,21 +189,21 @@ def _assigned_name(node: Node) -> Node | None:
     return parent.child_by_field_name("name") or parent.child_by_field_name("left")
 
 
-def _callable_name(node: Node, source: SourceFile, is_definition: bool) -> Node | None:
+def _callable_name(node: Node, language: str, is_definition: bool) -> Node | None:
     name = node.child_by_field_name("name")
-    if name is None and source.language == "kotlin":
+    if name is None and language == "kotlin":
         name = next((child for child in node.named_children if child.type == "simple_identifier"), None)
     if is_definition:
         name = _elixir_name(node)
     return name if name is not None else _assigned_name(node)
 
 
-def _callable(node: Node, source: SourceFile) -> MutationCallable | None:
-    is_definition = source.language == "elixir" and _elixir_target(node, source) in {"def", "defp"}
-    if node.type not in _CALLABLES[source.language] and not is_definition:
+def _callable(node: Node, language: str) -> MutationCallable | None:
+    is_definition = language == "elixir" and _elixir_target(node) in {"def", "defp"}
+    if node.type not in _CALLABLES[language] and not is_definition:
         return None
-    name = _callable_name(node, source, is_definition)
-    return MutationCallable(name=_text(name, source.source) if name is not None else "<anonymous>", span=_span(node), originalText=_text(node, source.source))
+    name = _callable_name(node, language, is_definition)
+    return MutationCallable(name=text(name) if name is not None else "<anonymous>", span=_span(node), originalText=text(node))
 
 
 def extract_candidates(source: SourceFile) -> MutationCandidateAnalysis:
@@ -238,28 +221,29 @@ def extract_candidates(source: SourceFile) -> MutationCandidateAnalysis:
         return analysis
     if root.has_error:
         return analysis
-    _extract_tree(root, source, analysis)
+    _Extraction(source, analysis).run(root)
     analysis.candidates.sort(key=lambda item: (item.span.startByte, item.span.endByte, item.kind, item.id))
     return analysis
 
 
-def _elixir_pattern(node: Node, source: SourceFile) -> bool:
+def _elixir_pattern(node: Node) -> bool:
     parent = node.parent
     if parent is None:
         return False
     if parent.type == "stab_clause":
         return parent.child_by_field_name("left") == node
     if parent.type == "binary_operator":
-        return _elixir_guard(parent, source.source) and parent.child_by_field_name("left") == node
+        return _elixir_guard(parent) and parent.child_by_field_name("left") == node
     if node.type != "call" or parent.type != "arguments" or parent.parent is None:
         return False
-    return _elixir_target(parent.parent, source) in {"def", "defp"}
+    return _elixir_target(parent.parent) in {"def", "defp"}
 
 
-def _elixir_excluded(node: Node, source: SourceFile) -> bool:
-    return source.language == "elixir" and (
-        _elixir_target(node, source) in {"quote", "defmacro", "defmacrop"}
-        or (node.type == "unary_operator" and _text(node, source.source).startswith("@"))
+def _elixir_excluded(node: Node) -> bool:
+    return (
+        _elixir_target(node) in {"quote", "defmacro", "defmacrop"}
+        or (node.type == "unary_operator" and text(node).startswith("@"))
+        or _elixir_pattern(node)
     )
 
 
@@ -285,24 +269,22 @@ class _Extraction:
         return MutationCandidate(
             id=hashlib.sha256(identity.encode("utf-8")).hexdigest(), path=source.path,
             language=source.language, sourceHash=self.source_hash, kind=kind,
-            operator=None if kind == "condition" else " ".join(_text(token, source.source).split()),
-            span=span, expressionSpan=_span(expression), originalText=_text(token, source.source),
-            expressionText=_text(expression, source.source), callable=owner,
+            operator=None if kind == "condition" else " ".join(text(token).split()),
+            span=span, expressionSpan=_span(expression), originalText=text(token),
+            expressionText=text(expression), callable=owner,
         )
 
     def skip(self, node: Node) -> bool:
-        if self.source.language == "elixir" and _elixir_pattern(node, self.source):
-            return True
-        if _elixir_excluded(node, self.source):
+        if self.source.language == "elixir" and _elixir_excluded(node):
             return True
         return node.type in _EXCLUDED or "comment" in node.type
 
     def sites(self, node: Node) -> list[tuple[MutationKind, Node, Node]]:
-        condition = _condition(node, self.source)
+        condition = _condition(node, self.source.language)
         sites: list[tuple[MutationKind, Node, Node]] = []
         if condition is not None and condition.type not in {"let_condition", "let_chain"}:
             sites.append(("condition", condition, condition))
-        sites.extend((kind, token, node) for kind, token in _operators(node, self.source))
+        sites.extend((kind, token, node) for kind, token in _operators(node, self.source.language))
         return sites
 
     def record(self, node: Node, owner: MutationCallable | None) -> None:
@@ -312,18 +294,13 @@ class _Extraction:
                 self.analysis.candidates.append(candidate)
                 self.seen.add(candidate.id)
 
-    def visit(self, node: Node, owner: MutationCallable | None) -> list[tuple[Node, MutationCallable | None]]:
-        if not node.named_child_count or self.skip(node):
-            return []
-        owner = _callable(node, self.source) or owner
-        if node.type in self.site_types:
-            self.record(node, owner)
-        return [(child, owner) for child in reversed(node.named_children)]
-
-
-def _extract_tree(root: Node, source: SourceFile, analysis: MutationCandidateAnalysis) -> None:
-    extraction = _Extraction(source, analysis)
-    pending: list[tuple[Node, MutationCallable | None]] = [(root, None)]
-    while pending:
-        node, owner = pending.pop()
-        pending.extend(extraction.visit(node, owner))
+    def run(self, root: Node) -> None:
+        pending: list[tuple[Node, MutationCallable | None]] = [(root, None)]
+        while pending:
+            node, owner = pending.pop()
+            if not node.named_child_count or self.skip(node):
+                continue
+            owner = _callable(node, self.source.language) or owner
+            if node.type in self.site_types:
+                self.record(node, owner)
+            pending.extend((child, owner) for child in reversed(node.named_children))

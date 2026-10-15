@@ -12,6 +12,7 @@ from tree_sitter_language_pack import get_parser
 from atlas.domain.models import SourceFile
 from atlas.domain.mutation_candidates import MutationCandidate, MutationSpan
 from atlas.parsing.mutation_candidates import extract_candidates
+from atlas.syntax import walk
 
 from .rules import REGISTRY, MutationRule, validate_rules
 
@@ -46,14 +47,8 @@ _BINARY_ARITHMETIC = {
 
 def _binary_spans(source: SourceFile) -> set[tuple[int, int]]:
     allowed = _BINARY_ARITHMETIC.get(source.language, {"binary_expression"})
-    pending = [get_parser(source.language).parse(source.source).root_node]
-    spans: set[tuple[int, int]] = set()
-    while pending:
-        node = pending.pop()
-        if node.type in allowed:
-            spans.add((node.start_byte, node.end_byte))
-        pending.extend(node.named_children)
-    return spans
+    root = get_parser(source.language).parse(source.source).root_node
+    return {(node.start_byte, node.end_byte) for node in walk(root) if node.type in allowed}
 
 
 def _read_source(root: Path, candidate: MutationCandidate) -> SourceFile:
