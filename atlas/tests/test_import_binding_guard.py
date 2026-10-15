@@ -65,16 +65,6 @@ def test_selective_imports_never_bind_module_namespace(case):
             "supplier.reserve(names)", "brewing/delivery.rs", "delivery_label",
             "delivery_label(names, customer)", "supplier.delivery_label(names, customer)",
         ),
-        (
-            "csharp", "orders/Reservations.cs", "Reservations.Reserve", "Reserve(customer, drink, units)",
-            "supplier.Reserve(drink, units)", "inventory/Delivery.cs", "Delivery.DeliveryLabel",
-            "DeliveryLabel(customer, drink.Key, drink.Value)", "supplier.DeliveryLabel(customer, drink, units)",
-        ),
-        (
-            "ruby", "orders/reservations.rb", "reserve", "reserve(customer, drink, units)",
-            "supplier.reserve(drink, units)", "inventory/delivery.rb", "delivery_label",
-            "delivery_label(customer, drink, units)", "supplier.delivery_label(customer, drink, units)",
-        ),
     ],
 )
 def test_member_calls_do_not_borrow_local_or_project_declarations(case):
@@ -117,7 +107,7 @@ def test_member_collision_keeps_real_inventory_binding(case):
 
 
 def test_project_repository_uses_each_files_grammar_and_skips_manifests():
-    languages = ("python", "typescript", "java", "kotlin", "go", "rust", "csharp", "ruby", "tsx")
+    languages = ("python", "typescript", "java", "kotlin", "go", "rust", "tsx")
     sources = {
         f"{language}/{path}": text
         for language in languages

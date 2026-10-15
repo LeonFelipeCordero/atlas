@@ -46,7 +46,7 @@ uv run --project atlas atlas report -f /path/to/project
 
 Reports show measurements, not pass/fail judgments. Unavailable values are `N/A` (or `null` in JSON), not zero. Lines include comments and blanks; parameters count declared inputs. Dependency metrics include tests and type-only dependencies.
 
-Atlas supports grammars recognized by its pinned Tree-sitter language pack, **except C and C++**. Python, JavaScript/JSX, TypeScript/TSX, Java, Kotlin, Go, Rust, and Elixir have specialized adapters; other supported grammars use generic extraction. Resolution is static and conservative, not compiler/type inference. Unresolved imports cannot establish cycles, and passing checks does not prove the code is problem-free.
+Atlas supports grammars recognized by its pinned Tree-sitter language pack, **except C, C++, C#, PHP (including PHPDoc), and Ruby (including RBS)**. Python, JavaScript/JSX, TypeScript/TSX, Java, Kotlin, Go, Rust, and Elixir have specialized adapters; other supported grammars use generic extraction. Resolution is static and conservative, not compiler/type inference. Unresolved imports cannot establish cycles, and passing checks does not prove the code is problem-free.
 
 ### Project checks
 

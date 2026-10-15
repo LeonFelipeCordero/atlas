@@ -13,7 +13,7 @@ from atlas.metrics.resolver import _import_connections
 from atlas.metrics.resolution_contract import ImportRequest
 from atlas.parsing.parser import parse_files
 from tree_sitter_language_pack import get_parser
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, coffee_sources
+from tests.coffee_fixture import LANGUAGES, coffee_sources
 from tests.variant_snapshot_support import VARIANT_ROOT
 
 
@@ -22,7 +22,7 @@ def application(language):
     return parse_files(coffee_sources(language))
 
 
-@pytest.mark.parametrize("language", [language for language in LANGUAGES if language not in {"ruby", "csharp"}])
+@pytest.mark.parametrize("language", LANGUAGES)
 def test_primary_import_paths_do_not_use_polyglot_fallback(language):
     repo = application(language)
     imports = [(file, item) for file in repo.files for item in file.imports]
@@ -89,7 +89,7 @@ def assert_legacy_import_fallbacks(file):
         assert namespace_binding(source, path) == _namespace_binding(source, path)
 
 
-@pytest.mark.parametrize("language", [language for language in LANGUAGES if language not in {"ruby", "csharp"}])
+@pytest.mark.parametrize("language", LANGUAGES)
 def test_legacy_import_path_fallback_and_reexport(language):
     for file in application(language).files:
         assert_legacy_import_fallbacks(file)
@@ -119,16 +119,12 @@ def test_jsx_alias_import_policy_uses_owned_hook():
 
 
 @pytest.mark.parametrize("language,path,expected", [
-    ("ruby", FIXTURE_ROOT / "ruby/scheduling.rb", "date"),
     ("c", VARIANT_ROOT / "c/legacy-scheduling-include/scheduling.h", "time.h"),
 ])
-def test_legacy_require_and_include_paths(language, path, expected):
+def test_legacy_include_paths(language, path, expected):
     source = path.read_text()
     root = get_parser(language).parse(source.encode()).root_node
     assert not root.has_error
-    if language == "ruby":
-        directive, = [node for node in root.named_children if node.type == "call"]
-        source = source.encode()[directive.start_byte:directive.end_byte].decode()
     assert import_path(source) == _import_path(source) == expected
     assert ResolutionAdapter().import_path(source) == expected
 

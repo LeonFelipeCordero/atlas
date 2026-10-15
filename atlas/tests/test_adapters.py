@@ -25,15 +25,14 @@ class AdapterContractTest(unittest.TestCase):
         self.assertEqual(
             SUPPORTED_LANGUAGES,
             (frozenset(get_args(SupportedLanguage)) | frozenset(available_languages()))
-            - {"c", "cpp"},
+            - {"c", "cpp", "php", "phpdoc", "csharp", "ruby", "rbs"},
         )
-        self.assertEqual(EXCLUDED_LANGUAGES, {"c", "cpp"})
-        for language in ["ruby", "csharp", "json", "html", "agda"]:
+        self.assertEqual(EXCLUDED_LANGUAGES, {"c", "cpp", "php", "phpdoc", "csharp", "ruby", "rbs"})
+        for language in ["json", "html", "agda"]:
             with self.subTest(language=language):
                 self.assertIn(language, SUPPORTED_LANGUAGES)
                 self.assertIs(get_adapter(language), DEFAULT_ADAPTER)
-        self.assertNotIn("c", ADAPTERS)
-        self.assertNotIn("cpp", ADAPTERS)
+        self.assertFalse(EXCLUDED_LANGUAGES & ADAPTERS.keys())
 
     def test_hooks_return_common_carriers_and_call_site_contracts(self):
         for language, path in [
@@ -137,19 +136,19 @@ class LanguageSupportTest(unittest.TestCase):
             ):
                 discover_files(root)
 
-    def test_discovery_excludes_c_and_cpp_without_narrowing_other_grammars(self):
+    def test_discovery_excludes_retired_languages_without_narrowing_other_grammars(self):
         # Detection is an extension boundary, independent of source validity.
         application = coffee_source("java", "reporting/Dispatch.java").source
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for extension in ("c", "h", "cpp", "hpp", "cc", "cxx"):
+            for extension in ("c", "h", "cpp", "hpp", "cc", "cxx", "php", "cs", "rb"):
                 path = root / f"Dispatch.{extension}"
                 path.write_bytes(application)
                 self.assertIsNone(detect_language(path), extension)
             expected = {
                 "py": "python", "kt": "kotlin", "go": "go", "java": "java",
                 "rs": "rust", "js": "javascript", "ts": "typescript", "ex": "elixir",
-                "rb": "ruby", "agda": "agda", "json": "json",
+                "agda": "agda", "json": "json",
             }
             for extension, language in expected.items():
                 path = root / f"Dispatch.{extension}"
@@ -159,7 +158,7 @@ class LanguageSupportTest(unittest.TestCase):
             self.assertEqual({file.path: file.language for file in files}, {
                 f"Dispatch.{extension}": language for extension, language in expected.items()
             })
-            self.assertFalse({"c", "cpp"} & {file.language for file in files})
+            self.assertFalse(EXCLUDED_LANGUAGES & {file.language for file in files})
 
     def test_call_parser_failure_propagates(self):
         source = coffee_source("python", "src/coffee/orders/service.py")
@@ -173,9 +172,9 @@ class LanguageSupportTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "unavailable"):
                 parse_file(source)
 
-    def test_direct_extraction_rejects_c_cpp_before_parsing_or_queries(self):
+    def test_direct_extraction_rejects_excluded_languages_before_parsing_or_queries(self):
         source = coffee_source("java", "reporting/Dispatch.java")
-        for language in ["c", "cpp"]:
+        for language in sorted(EXCLUDED_LANGUAGES):
             with self.subTest(language=language):
                 self.assert_unsupported_extraction(replace(source, language=language))
 

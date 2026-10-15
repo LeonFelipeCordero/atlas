@@ -107,7 +107,6 @@ def test_each_physical_project_has_analysis_seams():
     standalone = {
         "script_members": {"python", "javascript", "typescript", "tsx"},
         "safety_review": {"java", "kotlin", "python", "javascript", "typescript"},
-        "generic_receivers": {"csharp", "ruby", "php"},
     }
     assert {path.name for path in FIXTURE_ROOT.iterdir() if path.is_dir()} == set(LANGUAGES) | set(standalone)
     for group, languages in standalone.items():

@@ -211,7 +211,6 @@ def assert_project_calls(test, graph):
         "kotlin": [("orders/TrackingRates.kt", "total", "order.total()")] * 2,
         "rust": [("main.rs", "portions", "scheduled.portions()")],
         "typescript": [("ordering/Dispatch.ts", "render", "this.render(order)")],
-        "ruby": [("reporting/Dispatch.rb", "total", "order.total")],
         "javascript": [
             ("ordering/OrderService.js", "brew", "this.brewer.brew(names)"),
             ("ordering/OrderService.js", "render", "this.receipt.render(order)"),

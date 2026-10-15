@@ -1,7 +1,7 @@
 """Resolution policies dispatch by language, not shared resolver conditionals."""
 
 import unittest
-from atlas.metrics.adapters import get_resolution_adapter
+from atlas.metrics.adapters import SUPPORTED_LANGUAGES, get_resolution_adapter, receiver_coverage
 from atlas.metrics.resolver import resolve_connections
 from atlas.parsing.parser import parse_files
 from tests.coffee_fixture import coffee_sources
@@ -26,6 +26,14 @@ class ResolutionAdapterDispatchTest(unittest.TestCase):
                 adapter = get_resolution_adapter(language)
                 self.assertEqual(type(adapter).__name__, class_name)
                 self.assertIs(adapter, get_resolution_adapter(language))
+
+    def test_catalog_inventory_preserves_conservative_generic_fallback(self):
+        coverage = receiver_coverage()
+        self.assertEqual(set(coverage), SUPPORTED_LANGUAGES)
+        self.assertTrue(all(not entry["hooks"] for entry in coverage.values()))
+        self.assertEqual(coverage["json"]["status"], "generic")
+        self.assertEqual(coverage["python"]["status"], "dedicated")
+        self.assertFalse(get_resolution_adapter("json").receiver_class_nodes)
 
     def test_python_comprehension_and_javascript_hoisting_are_separate_policies(self):
         python = get_resolution_adapter("python")
