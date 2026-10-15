@@ -291,10 +291,14 @@ class _Extraction:
     source: SourceFile
     analysis: MutationCandidateAnalysis
     source_hash: str = field(init=False)
+    site_types: set[str] = field(init=False)
     seen: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.source_hash = hashlib.sha256(self.source.source).hexdigest()
+        self.site_types = _EXPRESSIONS[self.source.language] | _CONDITIONS[self.source.language]
+        if self.source.language == "elixir":
+            self.site_types.add("call")
 
     def candidate(self, site: tuple[MutationKind, Node, Node], owner: MutationCallable | None) -> MutationCandidate:
         kind, token, expression = site
@@ -336,12 +340,13 @@ class _Extraction:
                 self.seen.add(candidate.id)
 
     def visit(self, node: Node, owner: MutationCallable | None) -> list[tuple[Node, MutationCallable | None]]:
-        if self.skip(node):
+        if not node.named_child_count or self.skip(node):
             return []
         owner = _callable(node, self.source) or owner
         if node.type in _UNSUPPORTED:
             self.analysis.diagnostics.append(_diagnostic(self.source, ("unsupported-construct", f"{node.type} is not modeled as a boolean condition."), node))
-        self.record(node, owner)
+        if node.type in self.site_types:
+            self.record(node, owner)
         return [(child, owner) for child in reversed(node.named_children)]
 
 
