@@ -51,18 +51,26 @@ def test_legacy_c_include_has_actual_grammar_and_native_spans():
     assert not scenario["extraction"]  # C remains excluded by the production importer.
 
 
+@pytest.mark.parametrize("name", ["legacy.php", "Legacy.cs", "legacy.rb"])
+def test_excluded_language_files_are_not_detected(name):
+    path = VARIANT_ROOT / "operational/excluded-languages" / name
+    assert path.is_file()
+    assert detect_language(path) is None
+
+
 def test_excluded_languages_never_reach_pipeline_or_production_graph():
     root = VARIANT_ROOT / "operational/excluded-languages"
-    for name in ("legacy.php", "Legacy.cs", "legacy.rb"):
-        assert (root / name).is_file()
-        assert detect_language(root / name) is None
     assert {source.path for source in discover_files(root)} == {"dispatch.lua"}
     scenario = variant_snapshot("operational")["excluded-languages"]
     assert set(scenario["inputs"]) == {"legacy.php", "Legacy.cs", "legacy.rb", "dispatch.lua"}
     assert {file["source"]["path"] for file in scenario["extraction"]} == {"dispatch.lua"}
-    for nodes in (scenario["graph"]["nodes"], analyze_repository(root).nodes):
-        assert {node["path"] for node in nodes if node["level"] == "file"} == {"dispatch.lua"}
-        assert {node["language"] for node in nodes if node["level"] == "callable"} == {"lua"}
+    assert_only_supported_nodes(scenario["graph"]["nodes"])
+    assert_only_supported_nodes(analyze_repository(root).nodes)
+
+
+def assert_only_supported_nodes(nodes):
+    assert {node["path"] for node in nodes if node["level"] == "file"} == {"dispatch.lua"}
+    assert {node["language"] for node in nodes if node["level"] == "callable"} == {"lua"}
 
 
 def test_each_variant_group_has_a_snapshot():
