@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from shutil import copytree
+from typing import Any
 
 import pytest
 from click.testing import CliRunner
@@ -16,6 +17,18 @@ from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
 
 RULES = [rule.id for rule in REGISTRY]
 LANGUAGES = tuple(dict.fromkeys(mapping.language for rule in REGISTRY for mapping in rule.mappings))
+
+
+def assert_operator_mappings(root: Path, language: str, mutations: list[dict[str, Any]]) -> None:
+    expected = sorted(
+        (rule.id, mapping.original, mapping.replacement)
+        for rule in REGISTRY for mapping in rule.mappings if mapping.language == language
+    )
+    assert sorted((item["ruleId"], item["originalText"], item["replacement"])
+                  for item in mutations) == expected
+    for item in mutations:
+        lines = (root / item["path"]).read_text().splitlines()
+        assert "unary" not in lines[item["span"]["startLine"] - 1]
 
 
 @pytest.mark.parametrize("sample", ("", "operators"))
@@ -36,15 +49,7 @@ def test_manifest_pipeline_snapshot(language: str, sample: str, tmp_path: Path) 
     expected = json.loads((SNAPSHOT_ROOT / "mutations" / snapshot).read_text())
     assert result == expected
     if sample:
-        expected_mappings = sorted(
-            (rule.id, mapping.original, mapping.replacement)
-            for rule in REGISTRY for mapping in rule.mappings if mapping.language == language
-        )
-        assert sorted((item["ruleId"], item["originalText"], item["replacement"])
-                      for item in result["mutations"]) == expected_mappings
-        for item in result["mutations"]:
-            lines = (root / item["path"]).read_text().splitlines()
-            assert "unary" not in lines[item["span"]["startLine"] - 1]
+        assert_operator_mappings(root, language, result["mutations"])
     assert runner.invoke(main, ["mutations", "-f", str(root)]).output == fresh.output
     migrate_database(database)
     indexed = runner.invoke(main, ["index", "-f", str(root)])

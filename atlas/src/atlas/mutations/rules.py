@@ -44,7 +44,8 @@ def _rule(id: str, edit: tuple[MutationKind, str, str], languages: tuple[str, ..
     ))
 
 
-def _logical_rule(id: str, original: str, replacement: str, python_edit: tuple[str, str]) -> MutationRule:
+def _logical_rule(id: str, edit: tuple[str, str], python_edit: tuple[str, str]) -> MutationRule:
+    original, replacement = edit
     return MutationRule(id=id, kind="logical", mappings=tuple(
         RuleMapping(language=language, original=python_edit[0] if language == "python" else original,
                     replacement=python_edit[1] if language == "python" else replacement)
@@ -67,8 +68,8 @@ REGISTRY: tuple[MutationRule, ...] = (
     _rule("comparison.greater-to-less", ("comparison", ">", "<")),
     _rule("comparison.strict-equal-to-strict-not-equal", ("comparison", "===", "!=="), _STRICT_EQUALITY),
     _rule("comparison.strict-not-equal-to-strict-equal", ("comparison", "!==", "==="), _STRICT_EQUALITY),
-    _logical_rule("logical.and-to-or", "&&", "||", ("and", "or")),
-    _logical_rule("logical.or-to-and", "||", "&&", ("or", "and")),
+    _logical_rule("logical.and-to-or", ("&&", "||"), ("and", "or")),
+    _logical_rule("logical.or-to-and", ("||", "&&"), ("or", "and")),
     _rule("logical.strict-and-to-or", ("logical", "and", "or"), ("elixir",)),
     _rule("logical.strict-or-to-and", ("logical", "or", "and"), ("elixir",)),
     _rule("logical.truthy-and-to-or", ("logical", "&&", "||"), ("elixir",)),
