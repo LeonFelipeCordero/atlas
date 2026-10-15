@@ -31,7 +31,7 @@ class MutationRule(BaseModel):
     limitations: str = "Syntactic only; no type or runtime validity guarantee."
 
 
-_LANGUAGES = ("python", "javascript", "typescript", "tsx", "java", "kotlin", "rust", "go", "elixir", "php")
+_LANGUAGES = ("python", "javascript", "typescript", "tsx", "java", "kotlin", "rust", "go", "elixir")
 
 
 def _rule(id: str, kind: MutationKind, original: str, replacement: str, languages: tuple[str, ...] = _LANGUAGES) -> MutationRule:
@@ -46,7 +46,7 @@ REGISTRY: tuple[MutationRule, ...] = (
     _rule("arithmetic.multiply-to-divide", "arithmetic", "*", "/"),
     _rule("comparison.equal-to-not-equal", "comparison", "==", "!="),
     _rule("comparison.less-to-less-equal", "comparison", "<", "<="),
-    _rule("comparison.strict-equal-to-strict-not-equal", "comparison", "===", "!==", ("javascript", "typescript", "tsx", "php", "elixir")),
+    _rule("comparison.strict-equal-to-strict-not-equal", "comparison", "===", "!==", ("javascript", "typescript", "tsx", "elixir")),
     MutationRule(id="logical.and-to-or", kind="logical", mappings=tuple(
         RuleMapping(language=language, original="and" if language == "python" else "&&", replacement="or" if language == "python" else "||")
         for language in _LANGUAGES if language != "elixir"

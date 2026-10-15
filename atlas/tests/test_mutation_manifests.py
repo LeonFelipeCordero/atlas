@@ -74,7 +74,6 @@ def test_unicode_crlf_and_chain_are_token_local(tmp_path: Path) -> None:
     ("rust", "fn f(){let x = a + (b * c);}"),
     ("go", "package p\nfunc f(){x := +a + (b * c)}"),
     ("elixir", "x = +a + (b * c)"),
-    ("php", "<?php $x = +$a + ($b * $c);"),
 ])
 def test_binary_only_all_languages(tmp_path: Path, language: str, text: str) -> None:
     extracted = candidates(tmp_path, text, language)
@@ -111,7 +110,6 @@ def test_strict_loose_logical_assignment_are_separate(tmp_path: Path) -> None:
     ("python", "for x in values:\n if x is not None and x not in other:\n  pass\n"),
     ("rust", "fn f(){ custom!(a + b); if let Some(x) = a {} }"),
     ("kotlin", "fun f(){ if (a === b) {} }"),
-    ("php", "<?php if ($a <> $b) {}"),
 ])
 def test_unlisted_constructs_have_no_replacements(tmp_path: Path, language: str, text: str) -> None:
     extracted = candidates(tmp_path, text, language)

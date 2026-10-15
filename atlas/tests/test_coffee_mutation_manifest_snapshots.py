@@ -12,16 +12,15 @@ from atlas.cli import main
 from atlas.mutations.config import MutationConfig
 from atlas.mutations.report import build_mutation_report
 from atlas.mutations.rules import REGISTRY
-from tests.coffee_fixture import SNAPSHOT_ROOT
-from tests.test_coffee_mutation_candidate_snapshots import LANGUAGES, source_root
+from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT
 
 RULES = {rule.id: sorted({mapping.replacement for mapping in rule.mappings}) for rule in REGISTRY}
 
 
-@pytest.mark.parametrize("language", (*LANGUAGES, "php"))
+@pytest.mark.parametrize("language", LANGUAGES)
 def test_manifest_pipeline_snapshot(language: str, tmp_path: Path) -> None:
     root = tmp_path / language
-    copytree(source_root(language), root)
+    copytree(FIXTURE_ROOT / language, root)
     config = MutationConfig(rules=RULES)
     (root / "atlas.json").write_text(json.dumps({"mutations": config.model_dump()}))
     database = tmp_path / "atlas.sqlite"
@@ -56,7 +55,7 @@ def test_manifest_pipeline_snapshot(language: str, tmp_path: Path) -> None:
 
 def test_saved_sources_are_verified_even_when_disabled(tmp_path: Path) -> None:
     root = tmp_path / "python"
-    copytree(source_root("python"), root)
+    copytree(FIXTURE_ROOT / "python", root)
     database = tmp_path / "atlas.sqlite"
     migrate_database(database)
     runner = CliRunner(env={"DATABASE_PATH": str(database)})

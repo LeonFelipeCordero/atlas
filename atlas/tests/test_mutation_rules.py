@@ -33,7 +33,7 @@ def test_invalid_selections(rules: dict[str, list[str]]) -> None:
 def test_coverage_is_deliberate() -> None:
     catalog = {rule.id: rule for rule in REGISTRY}
     assert {mapping.language for mapping in catalog["arithmetic.add-to-subtract"].mappings} == {
-        "python", "javascript", "typescript", "tsx", "java", "kotlin", "rust", "go", "elixir", "php",
+        "python", "javascript", "typescript", "tsx", "java", "kotlin", "rust", "go", "elixir",
     }
     assert "python" not in {mapping.language for mapping in catalog["comparison.strict-equal-to-strict-not-equal"].mappings}
     assert all(mapping.language == "elixir" for mapping in catalog["logical.strict-and-to-or"].mappings)

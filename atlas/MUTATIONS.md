@@ -42,20 +42,20 @@ Replacement lists select catalog tokens, never arbitrary generated source.
 ## Version-one coverage
 
 Binary `+` → `-`, `*` → `/`, comparison `==` → `!=`, and `<` → `<=` cover
-JavaScript/JSX, TypeScript, TSX, Java, Kotlin, Python, Rust, Go and PHP, plus Elixir.
+JavaScript/JSX, TypeScript, TSX, Java, Kotlin, Python, Rust, Go and Elixir.
 JSX uses the JavaScript adapter. Unary signs and pointer dereferences are excluded.
 Compound assignment `+=` → `-=` covers the same languages except Elixir (whose
 assignment/match semantics are not compound arithmetic assignment).
 
-`===` → `!==` is a separate rule for JavaScript, TypeScript, TSX, PHP and Elixir;
+`===` → `!==` is a separate rule for JavaScript, TypeScript, TSX and Elixir;
 it does not turn strict equality into loose equality. Kotlin referential equality
 is deliberately not selected. Python `and` → `or` and the other non-Elixir
 languages' `&&` → `||` use `logical.and-to-or`. Elixir has separate rules for
 strict `and` → `or` and truthy `&&` → `||`; neither crosses those families.
 
 Python chained comparisons change exactly one operator per independent manifest.
-Multiword comparisons (`is not`, `not in`), aliases (`<>`), PHP keyword logical
-operators, membership, identity, null-coalescing and all other unlisted operators
+Multiword comparisons (`is not`, `not in`), membership, identity,
+null-coalescing and all other unlisted operators
 are excluded, not silently normalized. Condition candidates remain inspectable but
 have no replacement rule: no whole-expression true/false literals, no iterable-for
 conversion, and no language-agnostic boolean substitution. Phase-one conservative
