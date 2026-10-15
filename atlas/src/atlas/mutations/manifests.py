@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -12,7 +13,7 @@ from atlas.domain.models import SourceFile
 from atlas.domain.mutation_candidates import MutationCandidate, MutationSpan
 from atlas.parsing.mutation_candidates import extract_candidates
 
-from .rules import REGISTRY, validate_rules
+from .rules import REGISTRY, MutationRule, validate_rules
 
 
 class MutationManifest(BaseModel):
@@ -69,10 +70,10 @@ def _read_source(root: Path, candidate: MutationCandidate) -> SourceFile:
     return SourceFile(path=candidate.path, absolute_path=absolute, language=candidate.language, source=data)
 
 
-def _manifest(candidate: MutationCandidate, rule_id: str, version: int, replacement: str) -> MutationManifest:
+def _manifest(candidate: MutationCandidate, rule: MutationRule, replacement: str) -> MutationManifest:
     payload = dict(
         candidateId=candidate.id, sourceHash=candidate.sourceHash,
-        ruleId=rule_id, ruleVersion=version, language=candidate.language,
+        ruleId=rule.id, ruleVersion=rule.version, language=candidate.language,
         path=candidate.path, span=candidate.span.model_dump(),
         originalText=candidate.originalText,
         originalBytes=base64.b64encode(candidate.originalText.encode("utf-8")).decode("ascii"),
@@ -83,17 +84,23 @@ def _manifest(candidate: MutationCandidate, rule_id: str, version: int, replacem
     return MutationManifest.model_validate({"id": hashlib.sha256(identity.encode("utf-8")).hexdigest(), **payload})
 
 
+def _rule_edits(candidate: MutationCandidate, rule: MutationRule, selected: list[str]) -> list[MutationManifest]:
+    return [
+        _manifest(candidate, rule, mapping.replacement)
+        for mapping in rule.mappings
+        if mapping.language == candidate.language
+        and mapping.original == candidate.operator
+        and mapping.replacement in selected
+        and mapping.replacement != candidate.originalText
+    ]
+
+
 def _edits(candidate: MutationCandidate, rules: dict[str, list[str]], binary_spans: set[tuple[int, int]]) -> list[MutationManifest]:
     if candidate.kind == "arithmetic" and (candidate.expressionSpan.startByte, candidate.expressionSpan.endByte) not in binary_spans:
         return []
     return [
-        _manifest(candidate, rule.id, rule.version, mapping.replacement)
-        for rule in REGISTRY if rule.kind == candidate.kind
-        for mapping in rule.mappings
-        if mapping.language == candidate.language
-        and mapping.original == candidate.operator
-        and mapping.replacement in rules.get(rule.id, [])
-        and mapping.replacement != candidate.originalText
+        manifest for rule in REGISTRY if rule.kind == candidate.kind
+        for manifest in _rule_edits(candidate, rule, rules.get(rule.id, []))
     ]
 
 
@@ -112,6 +119,34 @@ def _verify_replacement(source: SourceFile, manifest: MutationManifest, kind: st
         raise ValueError(f"Unsafe mutation replacement: {manifest.path}:{start}:{manifest.ruleId}")
 
 
+_VerifiedSource = tuple[SourceFile, dict[str, MutationCandidate], set[tuple[int, int]]]
+
+
+def _candidate_edits(candidate: MutationCandidate, verified: _VerifiedSource, rules: dict[str, list[str]]) -> list[MutationManifest]:
+    source, extracted, binary_spans = verified
+    if extracted.get(candidate.id) != candidate:
+        raise ValueError(f"Stale or invalid mutation candidate: {candidate.path}:{candidate.id}")
+    manifests = _edits(candidate, rules, binary_spans)
+    for manifest in manifests:
+        _verify_replacement(source, manifest, candidate.kind)
+    return manifests
+
+
+def _source_inventory(root: Path, candidate: MutationCandidate) -> _VerifiedSource:
+    source = _read_source(root, candidate)
+    extracted = {item.id: item for item in extract_candidates(source).candidates}
+    return source, extracted, _binary_spans(source) if extracted else set()
+
+
+def _verified_edits(root: Path, candidates: list[MutationCandidate], rules: dict[str, list[str]]) -> Iterator[MutationManifest]:
+    verified: dict[tuple[str, str], _VerifiedSource] = {}
+    for candidate in sorted(candidates, key=lambda item: (item.path, item.language, item.id)):
+        key = (candidate.path, candidate.language)
+        if key not in verified:
+            verified[key] = _source_inventory(root, candidate)
+        yield from _candidate_edits(candidate, verified[key], rules)
+
+
 def generate_manifests(root: Path, candidates: list[MutationCandidate], rules: dict[str, list[str]]) -> list[MutationManifest]:
     """Validate every candidate, even unselected ones; return sorted unique edits.
 
@@ -122,20 +157,8 @@ def generate_manifests(root: Path, candidates: list[MutationCandidate], rules: d
     candidate expressions overlap. No mutation is applied here.
     """
     validate_rules(rules)
-    root = root.resolve()
-    verified: dict[tuple[str, str], tuple[SourceFile, dict[str, MutationCandidate], set[tuple[int, int]]]] = {}
     edits: dict[tuple[str, str, int, int, str], MutationManifest] = {}
-    for candidate in sorted(candidates, key=lambda item: (item.path, item.language, item.id)):
-        key = (candidate.path, candidate.language)
-        if key not in verified:
-            source = _read_source(root, candidate)
-            extracted = {item.id: item for item in extract_candidates(source).candidates}
-            verified[key] = (source, extracted, _binary_spans(source) if extracted else set())
-        source, extracted, binary_spans = verified[key]
-        if extracted.get(candidate.id) != candidate:
-            raise ValueError(f"Stale or invalid mutation candidate: {candidate.path}:{candidate.id}")
-        for manifest in _edits(candidate, rules, binary_spans):
-            _verify_replacement(source, manifest, candidate.kind)
-            edit_key = (manifest.path, manifest.sourceHash, manifest.span.startByte, manifest.span.endByte, manifest.replacement)
-            edits.setdefault(edit_key, manifest)
+    for manifest in _verified_edits(root.resolve(), candidates, rules):
+        edit_key = (manifest.path, manifest.sourceHash, manifest.span.startByte, manifest.span.endByte, manifest.replacement)
+        edits.setdefault(edit_key, manifest)
     return sorted(edits.values(), key=lambda item: (item.path, item.span.startByte, item.span.endByte, item.ruleId, item.replacement, item.id))

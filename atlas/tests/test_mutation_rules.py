@@ -3,15 +3,19 @@
 import pytest
 
 from atlas.mutations import REGISTRY, validate_rules
+from atlas.mutations.rules import MutationRule
 
 
-def test_registry_contract() -> None:
+@pytest.mark.parametrize("rule", REGISTRY, ids=lambda rule: rule.id)
+def test_registry_contract(rule: MutationRule) -> None:
+    assert rule.version == 1
+    assert rule.limitations
+    assert all(mapping.original != mapping.replacement for mapping in rule.mappings)
+    validate_rules({rule.id: sorted({mapping.replacement for mapping in rule.mappings})})
+
+
+def test_registry_selections() -> None:
     assert len({rule.id for rule in REGISTRY}) == len(REGISTRY)
-    for rule in REGISTRY:
-        assert rule.version == 1
-        assert rule.limitations
-        assert all(mapping.original != mapping.replacement for mapping in rule.mappings)
-        validate_rules({rule.id: sorted({mapping.replacement for mapping in rule.mappings})})
     validate_rules({})
     validate_rules({"arithmetic.add-to-subtract": []})
     validate_rules({"arithmetic.add-to-subtract": ["-", "-"]})
