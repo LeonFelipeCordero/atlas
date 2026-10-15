@@ -19,10 +19,6 @@ COLLISIONS = [
      "reporting/delivery.go", "DeliveryLabel(order)", "supplier.DeliveryLabel(order)"),
     ("rust", "brewing/reservations.rs", "reserve(names, customer)", "supplier.reserve(names)",
      "brewing/delivery.rs", "delivery_label(names, customer)", "supplier.delivery_label(names, customer)"),
-    ("csharp", "orders/Reservations.cs", "Reserve(customer, drink, units)", "supplier.Reserve(drink, units)",
-     "inventory/Delivery.cs", "DeliveryLabel(customer, drink.Key, drink.Value)", "supplier.DeliveryLabel(customer, drink, units)"),
-    ("ruby", "orders/reservations.rb", "reserve(customer, drink, units)", "supplier.reserve(drink, units)",
-     "inventory/delivery.rb", "delivery_label(customer, drink, units)", "supplier.delivery_label(customer, drink, units)"),
 ]
 
 

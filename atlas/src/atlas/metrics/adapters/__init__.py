@@ -58,7 +58,7 @@ _RESOLUTIONS = {
 
 
 def receiver_coverage() -> dict[str, dict[str, object]]:
-    """Inventory dedicated and verified generic receiver policies across the catalog."""
+    """Inventory dedicated receiver policies and generic fallbacks across the catalog."""
     return _receiver_coverage(SUPPORTED_LANGUAGES, _RESOLUTIONS)
 
 

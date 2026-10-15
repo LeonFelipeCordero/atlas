@@ -12,7 +12,8 @@ from atlas.domain.models import SourceFile, file_key
 from atlas.parsing.parser import parse_file, parse_files
 from atlas.parsing.structure import _declaration_query, extract_structure
 from atlas.parsing.syntax import ParsedSyntax
-from tests.coffee_fixture import FIXTURE_ROOT, LANGUAGES, coffee_sources
+from tests.coffee_fixture import LANGUAGES, coffee_sources
+from tests.variant_snapshot_support import scenario_sources, VARIANT_ROOT
 from tests.project_snapshot_support import structure_value
 
 
@@ -29,8 +30,6 @@ PRIMARY_SYMBOLS = {
     "elixir": ("brewing/order.ex", "Coffee.Brewing.Order.new"),
     "python": ("src/coffee/orders/models.py", "Order.transition"),
     "tsx": ("App.tsx", "Menu"),
-    "ruby": ("reporting/Dispatch.rb", "Coffee.Reporting.Dispatch.deliver"),
-    "csharp": ("reporting/Dispatch.cs", "Dispatch.Deliver"),
 }
 
 
@@ -85,7 +84,7 @@ def assert_repository_records(repo, language):
     path, name = PRIMARY_SYMBOLS[language]
     assert any(symbol.qualified_name == f"{path}::{name}" for symbol in repo.symbols)
     assert repo.calls
-    assert repo.imports or language in {"ruby", "csharp"}
+    assert repo.imports
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -221,16 +220,11 @@ def test_malformed_and_invalid_utf8_records_preserve_original_bytes(variant):
         assert parsed.parse_error and parsed.parse_error.startswith("Syntax error at line ")
 
 
-@pytest.mark.parametrize("language,relative_path,name", [
-    ("ruby", "scheduling.rb", "Scheduling"),
-    ("csharp", "reporting/Dispatch.cs", "Dispatch"),
-])
-def test_missing_tags_preserve_native_list_and_metadata(language, relative_path, name):
-    path = FIXTURE_ROOT / language / relative_path
-    source = SourceFile(relative_path, path, language, path.read_bytes())
+def test_missing_tags_preserve_native_list_and_metadata():
+    source, = scenario_sources(VARIANT_ROOT / "lua/generic-fallback")
     syntax = ParsedSyntax(source)
-    native = process(source.source.decode(), ProcessConfig(language=language)).structure
-    assert any(item.name == name for item in items_tree(native))
+    native = process(source.source.decode(), ProcessConfig(language="lua")).structure
+    assert any(item.name == "dispatch" for item in items_tree(native))
     before = structure_value(native)
     _declaration_query.cache_clear()
     try:

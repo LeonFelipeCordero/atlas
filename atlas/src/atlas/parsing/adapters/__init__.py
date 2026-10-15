@@ -1,6 +1,6 @@
 """Extraction registry with generic fallback for supported language-pack grammars."""
 
-from . import elixir, go, java, javascript, kotlin, php, python, rust, typescript
+from . import elixir, go, java, javascript, kotlin, python, rust, typescript
 from .base import LanguageAdapter
 from ..discovery import require_supported_language
 
@@ -16,7 +16,6 @@ ADAPTERS = {
     "rust": rust.ADAPTER,
     "elixir": elixir.ADAPTER,
     "python": python.ADAPTER,
-    "php": php.ADAPTER,
 }
 
 
