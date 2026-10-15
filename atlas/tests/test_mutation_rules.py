@@ -11,25 +11,23 @@ def test_registry_contract(rule: MutationRule) -> None:
     assert rule.version == 1
     assert rule.limitations
     assert all(mapping.original != mapping.replacement for mapping in rule.mappings)
-    validate_rules({rule.id: sorted({mapping.replacement for mapping in rule.mappings})})
+    validate_rules([rule.id])
 
 
 def test_registry_selections() -> None:
     assert len({rule.id for rule in REGISTRY}) == len(REGISTRY)
-    validate_rules({})
-    validate_rules({"arithmetic.add-to-subtract": []})
-    validate_rules({"arithmetic.add-to-subtract": ["-", "-"]})
+    assert len(REGISTRY) == 24
+    validate_rules([])
+    validate_rules(["arithmetic.add-to-subtract"])
+    validate_rules(["arithmetic.add-to-subtract", "arithmetic.add-to-subtract"])
 
 
 @pytest.mark.parametrize("rules", [
-    {"unknown": ["-"]},
-    {"arithmetic.add-to-subtract": ["+"]},
-    {"arithmetic.add-to-subtract": ["; execute()"]},
-    {"comparison.equal-to-not-equal": ["!=="]},
-    {"logical.strict-and-to-or": ["||"]},
-    {"logical.truthy-and-to-or": ["or"]},
+    ["unknown"], ["+"], ["; execute()"],
+    {"arithmetic.add-to-subtract": ["-"]},
+    "arithmetic.add-to-subtract", [False],
 ])
-def test_invalid_selections(rules: dict[str, list[str]]) -> None:
+def test_invalid_selections(rules: list[str]) -> None:
     with pytest.raises(ValueError):
         validate_rules(rules)
 

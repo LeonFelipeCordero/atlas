@@ -14,14 +14,16 @@ from atlas.mutations.report import build_mutation_report
 from atlas.mutations.rules import REGISTRY
 from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
 
-RULES = {rule.id: sorted({mapping.replacement for mapping in rule.mappings}) for rule in REGISTRY}
+RULES = [rule.id for rule in REGISTRY]
 LANGUAGES = tuple(dict.fromkeys(mapping.language for rule in REGISTRY for mapping in rule.mappings))
 
 
+@pytest.mark.parametrize("sample", ("", "operators"))
 @pytest.mark.parametrize("language", LANGUAGES)
-def test_manifest_pipeline_snapshot(language: str, tmp_path: Path) -> None:
+def test_manifest_pipeline_snapshot(language: str, sample: str, tmp_path: Path) -> None:
     root = tmp_path / language
-    copytree(FIXTURE_ROOT / language, root)
+    fixture = FIXTURE_ROOT / "mutations" / language if sample else FIXTURE_ROOT / language
+    copytree(fixture, root)
     config = MutationConfig(rules=RULES)
     (root / "atlas.json").write_text(json.dumps({"mutations": config.model_dump()}))
     database = tmp_path / "atlas.sqlite"
@@ -30,8 +32,19 @@ def test_manifest_pipeline_snapshot(language: str, tmp_path: Path) -> None:
     assert fresh.exit_code == 0, fresh.output
     assert not database.exists()
     result = json.loads(fresh.output)
-    expected = json.loads((SNAPSHOT_ROOT / "mutations" / f"{language}.json").read_text())
+    snapshot = f"{language}-{sample}.json" if sample else f"{language}.json"
+    expected = json.loads((SNAPSHOT_ROOT / "mutations" / snapshot).read_text())
     assert result == expected
+    if sample:
+        expected_mappings = sorted(
+            (rule.id, mapping.original, mapping.replacement)
+            for rule in REGISTRY for mapping in rule.mappings if mapping.language == language
+        )
+        assert sorted((item["ruleId"], item["originalText"], item["replacement"])
+                      for item in result["mutations"]) == expected_mappings
+        for item in result["mutations"]:
+            lines = (root / item["path"]).read_text().splitlines()
+            assert "unary" not in lines[item["span"]["startLine"] - 1]
     assert runner.invoke(main, ["mutations", "-f", str(root)]).output == fresh.output
     migrate_database(database)
     indexed = runner.invoke(main, ["index", "-f", str(root)])
@@ -44,7 +57,7 @@ def test_manifest_pipeline_snapshot(language: str, tmp_path: Path) -> None:
         report = service.report(project.name)
     assert build_mutation_report(root, report, config) == result
     original_candidates = report["mutationCandidates"]
-    (root / "atlas.json").write_text('{"mutations":{"rules":{}}}')
+    (root / "atlas.json").write_text('{"mutations":{"rules":[]}}')
     disabled = runner.invoke(main, ["mutations", "-f", str(root), "--saved"])
     assert disabled.exit_code == 0, disabled.output
     assert json.loads(disabled.output)["mutations"] == []
@@ -71,6 +84,12 @@ def test_saved_sources_are_verified_even_when_disabled(tmp_path: Path) -> None:
     missing = runner.invoke(main, ["mutations", "-f", str(root), "--saved"])
     assert missing.exit_code == 1
     assert "Cannot read mutation source" in missing.output
+
+
+def test_help_describes_rule_id_list() -> None:
+    result = CliRunner().invoke(main, ["mutations", "--help"])
+    assert result.exit_code == 0
+    assert "mutations.rules is a list of rule IDs" in " ".join(result.output.split())
 
 
 def test_rule_catalog_does_not_open_database_or_analyze(tmp_path: Path) -> None:

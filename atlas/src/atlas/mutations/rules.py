@@ -2,8 +2,8 @@
 
 Python comparisons mutate one token in a chain, not the whole comparison.
 Conditions, unary operators, coercion/type semantics and custom operators are
-not rewritten. Empty selections select nothing; replacements are allowlists,
-not source templates. Elixir strict and truthy logical operators stay separate.
+not rewritten. Rule IDs select fixed edits, never arbitrary source templates.
+Elixir strict and truthy logical operators stay separate.
 """
 
 from pydantic import BaseModel, ConfigDict
@@ -32,6 +32,8 @@ class MutationRule(BaseModel):
 
 
 _LANGUAGES = ("python", "javascript", "typescript", "tsx", "java", "kotlin", "rust", "go", "elixir")
+_NON_ELIXIR = tuple(language for language in _LANGUAGES if language != "elixir")
+_STRICT_EQUALITY = ("javascript", "typescript", "tsx", "elixir")
 
 
 def _rule(id: str, edit: tuple[MutationKind, str, str], languages: tuple[str, ...] = _LANGUAGES) -> MutationRule:
@@ -42,32 +44,47 @@ def _rule(id: str, edit: tuple[MutationKind, str, str], languages: tuple[str, ..
     ))
 
 
+def _logical_rule(id: str, original: str, replacement: str, python_edit: tuple[str, str]) -> MutationRule:
+    return MutationRule(id=id, kind="logical", mappings=tuple(
+        RuleMapping(language=language, original=python_edit[0] if language == "python" else original,
+                    replacement=python_edit[1] if language == "python" else replacement)
+        for language in _NON_ELIXIR
+    ))
+
+
 REGISTRY: tuple[MutationRule, ...] = (
     _rule("arithmetic.add-to-subtract", ("arithmetic", "+", "-")),
+    _rule("arithmetic.subtract-to-add", ("arithmetic", "-", "+")),
     _rule("arithmetic.multiply-to-divide", ("arithmetic", "*", "/")),
+    _rule("arithmetic.divide-to-multiply", ("arithmetic", "/", "*")),
     _rule("comparison.equal-to-not-equal", ("comparison", "==", "!=")),
+    _rule("comparison.not-equal-to-equal", ("comparison", "!=", "==")),
     _rule("comparison.less-to-less-equal", ("comparison", "<", "<=")),
-    _rule("comparison.strict-equal-to-strict-not-equal", ("comparison", "===", "!=="), ("javascript", "typescript", "tsx", "elixir")),
-    MutationRule(id="logical.and-to-or", kind="logical", mappings=tuple(
-        RuleMapping(language=language, original="and" if language == "python" else "&&", replacement="or" if language == "python" else "||")
-        for language in _LANGUAGES if language != "elixir"
-    )),
+    _rule("comparison.less-equal-to-less", ("comparison", "<=", "<")),
+    _rule("comparison.greater-to-greater-equal", ("comparison", ">", ">=")),
+    _rule("comparison.greater-equal-to-greater", ("comparison", ">=", ">")),
+    _rule("comparison.less-to-greater", ("comparison", "<", ">")),
+    _rule("comparison.greater-to-less", ("comparison", ">", "<")),
+    _rule("comparison.strict-equal-to-strict-not-equal", ("comparison", "===", "!=="), _STRICT_EQUALITY),
+    _rule("comparison.strict-not-equal-to-strict-equal", ("comparison", "!==", "==="), _STRICT_EQUALITY),
+    _logical_rule("logical.and-to-or", "&&", "||", ("and", "or")),
+    _logical_rule("logical.or-to-and", "||", "&&", ("or", "and")),
     _rule("logical.strict-and-to-or", ("logical", "and", "or"), ("elixir",)),
+    _rule("logical.strict-or-to-and", ("logical", "or", "and"), ("elixir",)),
     _rule("logical.truthy-and-to-or", ("logical", "&&", "||"), ("elixir",)),
-    _rule("assignment.add-to-subtract", ("assignment", "+=", "-="), tuple(language for language in _LANGUAGES if language != "elixir")),
+    _rule("logical.truthy-or-to-and", ("logical", "||", "&&"), ("elixir",)),
+    _rule("assignment.add-to-subtract", ("assignment", "+=", "-="), _NON_ELIXIR),
+    _rule("assignment.subtract-to-add", ("assignment", "-=", "+="), _NON_ELIXIR),
+    _rule("assignment.multiply-to-divide", ("assignment", "*=", "/="), _NON_ELIXIR),
+    _rule("assignment.divide-to-multiply", ("assignment", "/=", "*="), _NON_ELIXIR),
 )
 
 
-def _validate_replacements(rule: MutationRule, replacements: list[str]) -> None:
-    allowed = {mapping.replacement for mapping in rule.mappings}
-    if not isinstance(replacements, list) or any(not isinstance(token, str) or token not in allowed for token in replacements):
-        raise ValueError(f"Invalid replacements for {rule.id}; allowed: {sorted(allowed)}")
-
-
-def validate_rules(rules: dict[str, list[str]]) -> None:
-    """Raise ValueError for unknown IDs or replacements outside their catalog."""
-    catalog = {rule.id: rule for rule in REGISTRY}
-    for id, replacements in rules.items():
-        if id not in catalog:
+def validate_rules(rules: list[str]) -> None:
+    """Raise ValueError unless selections are a list of known rule IDs."""
+    if not isinstance(rules, list):
+        raise ValueError("Mutation rules must be a list of rule IDs")
+    catalog = {rule.id for rule in REGISTRY}
+    for id in rules:
+        if not isinstance(id, str) or id not in catalog:
             raise ValueError(f"Unknown mutation rule: {id}")
-        _validate_replacements(catalog[id], replacements)

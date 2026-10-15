@@ -108,7 +108,9 @@ def test_each_physical_project_has_analysis_seams():
         "script_members": {"python", "javascript", "typescript", "tsx"},
         "safety_review": {"java", "kotlin", "python", "javascript", "typescript"},
     }
-    assert {path.name for path in FIXTURE_ROOT.iterdir() if path.is_dir()} == set(LANGUAGES) | set(standalone)
+    assert {path.name for path in FIXTURE_ROOT.iterdir() if path.is_dir()} == set(LANGUAGES) | set(standalone) | {"mutations"}
+    # Mutation projects have fresh/saved CLI and report seams in their dedicated snapshot suite.
+    assert {path.name for path in (FIXTURE_ROOT / "mutations").iterdir() if path.is_dir()} == set(LANGUAGES)
     for group, languages in standalone.items():
         assert_standalone_group(group, languages)
 

@@ -26,7 +26,7 @@ class ProjectConfig(CheckConfig):
 
 
 def load_config(root: Path) -> CheckConfig:
-    """Keep quantitative checks independent of replacement configuration."""
+    """Keep quantitative checks independent of mutation rule selections."""
     return CheckConfig.model_validate(load_project_config(root).model_dump(exclude={"mutations"}))
 
 

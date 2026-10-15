@@ -6,6 +6,25 @@ For features and regressions in these areas, extend the relevant samples and sna
 
 Logic outside indexing, `check`, `report`, and graph navigation must have unit tests. Do not require separate unit tests for logic covered by the code-sample snapshots in those four areas.
 
+# Mutation manifests
+
+Mutation generation is opt-in in the target root's `atlas.json`:
+
+```json
+{"mutations": {"rules": ["arithmetic.add-to-subtract", "logical.or-to-and"]}}
+```
+
+`mutations.rules` is a list of rule IDs, not the old rule-to-replacement dictionary (which is rejected). Omitted rules or `[]` disable generation; duplicates are harmless. Selecting an ID enables every applicable language mapping. See `atlas/MUTATIONS.md` for the complete catalog.
+
+```sh
+uv run --project atlas atlas mutations --rules # Inspect rules and language mappings
+uv run --project atlas atlas mutations -f . # Analyze fresh sources without saving
+uv run --project atlas atlas index -f . # Save candidates after migrations
+uv run --project atlas atlas mutations -f . --saved # Verify saved candidates against source
+```
+
+Saved mode never refreshes the index; missing or stale source fails the entire request, so reindex after changes. Output contains independent single-edit alternatives against original source, never sequential patches. These commands only generate manifests: do not apply mutations or execute them.
+
 # Checks
 
 Always run these commands from the repository root to validate your changes.

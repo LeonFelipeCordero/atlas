@@ -25,7 +25,7 @@ def _saved_report(root: Path) -> dict[str, Any]:
 
 @click.command("mutations", help=(
     "Derive independent JSON byte-edit manifests, never change source or save results. "
-    "Opt in via atlas.json: mutations.rules maps rule IDs to allowed replacement token lists. "
+    "Opt in via atlas.json: mutations.rules is a list of rule IDs. "
     "Default/empty lists generate nothing. --rules lists exact language coverage. "
     "Conditions, unary operators and unlisted aliases are excluded. Syntactic support is not type validity."
 ))

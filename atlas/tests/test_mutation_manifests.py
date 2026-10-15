@@ -12,7 +12,7 @@ from atlas.domain.mutation_candidates import MutationCandidate
 from atlas.mutations import REGISTRY, generate_manifests
 from atlas.parsing.mutation_candidates import extract_candidates
 
-ADD = {"arithmetic.add-to-subtract": ["-"]}
+ADD = ["arithmetic.add-to-subtract"]
 
 
 def candidates(file: Path, text: str, language: str = "python") -> list[MutationCandidate]:
@@ -27,9 +27,9 @@ def test_identity_order_dedup_and_no_writes(tmp_path: Path) -> None:
     other.parent.mkdir()
     other.write_text("x = a + b\n")
     second = extract_candidates(SourceFile(path="nested/other.py", absolute_path=other, language="python", source=other.read_bytes())).candidates
-    selected = {**ADD, "arithmetic.multiply-to-divide": ["/"]}
+    selected = [*ADD, "arithmetic.multiply-to-divide"]
     result = generate_manifests(tmp_path, first + second, selected)
-    assert result == generate_manifests(tmp_path, list(reversed(first + second)) * 2, dict(reversed(list(selected.items()))))
+    assert result == generate_manifests(tmp_path, list(reversed(first + second)) * 2, list(reversed(selected)) * 2)
     assert len(result) == 3
     assert len({item.id for item in result}) == 3
     for item in result:
@@ -39,9 +39,20 @@ def test_identity_order_dedup_and_no_writes(tmp_path: Path) -> None:
         assert base64.b64decode(item.originalBytes) == item.originalText.encode()
         assert base64.b64decode(item.replacementBytes) == item.replacement.encode()
     assert (tmp_path / "sample.py").read_bytes() == b"x = a + b * c\n"
-    assert generate_manifests(tmp_path, first, {}) == []
-    assert generate_manifests(tmp_path, first, {"arithmetic.add-to-subtract": []}) == []
+    assert generate_manifests(tmp_path, first, []) == []
     assert generate_manifests(tmp_path, [], ADD) == []
+
+
+def test_same_site_rules_are_independent_alternatives(tmp_path: Path) -> None:
+    extracted = candidates(tmp_path / "sample.py", "x = a < b\n")
+    rules = ["comparison.less-to-less-equal", "comparison.less-to-greater"]
+    result = generate_manifests(tmp_path, extracted, rules)
+    assert {item.replacement for item in result} == {"<=", ">"}
+    assert result[0].candidateId == result[1].candidateId
+    assert result[0].span == result[1].span
+    assert result[0].id != result[1].id
+    assert result == generate_manifests(tmp_path, extracted, list(reversed(rules)))
+    assert (tmp_path / "sample.py").read_text() == "x = a < b\n"
 
 
 def test_identity_captures_source_not_only_edit(tmp_path: Path) -> None:
@@ -57,7 +68,7 @@ def test_identity_captures_source_not_only_edit(tmp_path: Path) -> None:
 
 def test_unicode_crlf_and_chain_are_token_local(tmp_path: Path) -> None:
     extracted = candidates(tmp_path / "sample.py", "# café\r\nif 0 < é < 3:\r\n x = é + 1\r\n")
-    result = generate_manifests(tmp_path, extracted, {**ADD, "comparison.less-to-less-equal": ["<="]})
+    result = generate_manifests(tmp_path, extracted, [*ADD, "comparison.less-to-less-equal"])
     assert [item.originalText for item in result] == ["<", "<", "+"]
     assert [item.span.startLine for item in result] == [2, 2, 3]
     assert result[1].span.startColumn == 11  # one-based UTF-8 byte column
@@ -79,33 +90,34 @@ def test_unicode_crlf_and_chain_are_token_local(tmp_path: Path) -> None:
 ])
 def test_binary_only_all_languages(tmp_path: Path, language: str, text: str) -> None:
     extracted = candidates(tmp_path / "sample.py", text, language)
-    result = generate_manifests(tmp_path, extracted, {**ADD, "arithmetic.multiply-to-divide": ["/"]})
+    result = generate_manifests(tmp_path, extracted, [*ADD, "arithmetic.multiply-to-divide"])
     assert [item.originalText for item in result] == ["+", "*"]
     # Nested expression spans overlap, but each manifest is a standalone edit.
     assert len({item.id for item in result}) == 2
 
 
-def test_unary_with_comments_not_text_heuristics(tmp_path: Path) -> None:
-    extracted = candidates(tmp_path / "sample.py", "x = ( # binary? a + b\n +a)\ny = a + +b\n")
-    result = generate_manifests(tmp_path, extracted, ADD)
+@pytest.mark.parametrize(("operator", "rule"), [("+", "arithmetic.add-to-subtract"), ("-", "arithmetic.subtract-to-add")])
+def test_unary_with_comments_not_text_heuristics(tmp_path: Path, operator: str, rule: str) -> None:
+    extracted = candidates(tmp_path / "sample.py", f"x = ( # binary? a {operator} b\n {operator}a)\ny = a {operator} {operator}b\n")
+    result = generate_manifests(tmp_path, extracted, [rule])
     assert len(result) == 1
     assert result[0].span.startLine == 3
 
 
 def test_strict_loose_logical_assignment_are_separate(tmp_path: Path) -> None:
     extracted = candidates(tmp_path / "sample.py", "if (a == b && a === b) { x += 1; }", "javascript")
-    result = generate_manifests(tmp_path, extracted, {
-        "comparison.equal-to-not-equal": ["!="],
-        "comparison.strict-equal-to-strict-not-equal": ["!=="],
-        "logical.and-to-or": ["||"],
-        "assignment.add-to-subtract": ["-="],
-    })
+    result = generate_manifests(tmp_path, extracted, [
+        "comparison.equal-to-not-equal",
+        "comparison.strict-equal-to-strict-not-equal",
+        "logical.and-to-or",
+        "assignment.add-to-subtract",
+    ])
     assert [(item.originalText, item.replacement) for item in result] == [("==", "!="), ("&&", "||"), ("===", "!=="), ("+=", "-=")]
     assert generate_manifests(tmp_path, extracted, ADD) == []
     extracted = candidates(tmp_path / "sample.py", "x = a and b\ny = a && b", "elixir")
-    result = generate_manifests(tmp_path, extracted, {"logical.strict-and-to-or": ["or"], "logical.truthy-and-to-or": ["||"]})
+    result = generate_manifests(tmp_path, extracted, ["logical.strict-and-to-or", "logical.truthy-and-to-or"])
     assert [(item.originalText, item.replacement) for item in result] == [("and", "or"), ("&&", "||")]
-    assert generate_manifests(tmp_path, extracted, {"logical.and-to-or": ["||"]}) == []
+    assert generate_manifests(tmp_path, extracted, ["logical.and-to-or"]) == []
 
 
 @pytest.mark.parametrize(("language", "text"), [
@@ -115,9 +127,7 @@ def test_strict_loose_logical_assignment_are_separate(tmp_path: Path) -> None:
 ])
 def test_unlisted_constructs_have_no_replacements(tmp_path: Path, language: str, text: str) -> None:
     extracted = candidates(tmp_path / "sample.py", text, language)
-    rules = {rule.id: sorted({mapping.replacement for mapping in rule.mappings})
-             for rule in REGISTRY
-             if rule.kind != "logical"}
+    rules = [rule.id for rule in REGISTRY if rule.kind != "logical"]
     assert generate_manifests(tmp_path, extracted, rules) == []
 
 
@@ -133,7 +143,7 @@ def test_reject_forged_candidates(tmp_path: Path, field: str) -> None:
     }
     forged = item.model_copy(update={field: changes[field]})
     with pytest.raises(ValueError, match="Stale or invalid"):
-        generate_manifests(tmp_path, [forged], {})
+        generate_manifests(tmp_path, [forged], [])
 
 
 @pytest.mark.parametrize("data", [b"x = a + 2\n", b"\xff", b"x = ("])
@@ -141,7 +151,7 @@ def test_reject_stale_even_without_selected_rules(tmp_path: Path, data: bytes) -
     extracted = candidates(tmp_path / "sample.py", "x = a + 1\n")
     (tmp_path / "sample.py").write_bytes(data)
     with pytest.raises(ValueError):
-        generate_manifests(tmp_path, extracted, {})
+        generate_manifests(tmp_path, extracted, [])
 
 
 @pytest.mark.parametrize("path", ["../outside.py", "/tmp/outside.py", "nested/../../outside.py", "./sample.py", "missing.py"])
@@ -153,10 +163,11 @@ def test_reject_unsafe_paths(tmp_path: Path, path: str) -> None:
 
 @pytest.mark.parametrize("case", [
     ("javascript", "let x = a+--b;", ADD),
-    ("javascript", "let x = a*/b/.test(c);", {"arithmetic.multiply-to-divide": ["/"]}),
-    ("rust", "fn f(){let x = a**b;}", {"arithmetic.multiply-to-divide": ["/"]}),
+    ("javascript", "let x = a-++b;", ["arithmetic.subtract-to-add"]),
+    ("javascript", "let x = a*/b/.test(c);", ["arithmetic.multiply-to-divide"]),
+    ("rust", "fn f(){let x = a**b;}", ["arithmetic.multiply-to-divide"]),
 ])
-def test_reject_retokenized_replacements(tmp_path: Path, case: tuple[str, str, dict[str, list[str]]]) -> None:
+def test_reject_retokenized_replacements(tmp_path: Path, case: tuple[str, str, list[str]]) -> None:
     language, text, rules = case
     extracted = candidates(tmp_path / "sample.py", text, language)
     assert extracted

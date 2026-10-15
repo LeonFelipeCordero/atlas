@@ -16,42 +16,76 @@ Disabling a rule does not remove candidates. The report API is
 
 The analyzed folder's existing `atlas.json` accepts an optional `mutations` section
 alongside the flat quantitative check limits. No parent-folder search. Missing
-configuration, omitted rules, and empty replacement lists select no mutations.
-Unknown rule IDs, unsupported replacements and unknown configuration keys fail.
-Replacement lists select catalog tokens, never arbitrary generated source.
+configuration, omitted `mutations.rules`, and `[]` select no mutations.
+`mutations.rules` is a list of rule IDs; duplicates are harmless. Selecting an ID
+activates all its applicable language mappings. Unknown IDs and unknown
+configuration keys fail. The old rule-to-replacement dictionary is rejected;
+replacement tokens are defined by the catalog, not supplied in configuration.
 
 ```json
 {
   "maxFunctionLines": 100,
   "mutations": {
-    "rules": {
-      "arithmetic.add-to-subtract": ["-"],
-      "arithmetic.multiply-to-divide": ["/"],
-      "comparison.equal-to-not-equal": ["!="],
-      "comparison.less-to-less-equal": ["<="],
-      "comparison.strict-equal-to-strict-not-equal": ["!=="],
-      "logical.and-to-or": ["or", "||"],
-      "logical.strict-and-to-or": ["or"],
-      "logical.truthy-and-to-or": ["||"],
-      "assignment.add-to-subtract": ["-="]
-    }
+    "rules": [
+      "arithmetic.add-to-subtract",
+      "comparison.equal-to-not-equal",
+      "logical.and-to-or"
+    ]
   }
 }
 ```
 
-## Version-one coverage
+Inspect coverage or generate manifests from the project root:
 
-Binary `+` → `-`, `*` → `/`, comparison `==` → `!=`, and `<` → `<=` cover
-JavaScript/JSX, TypeScript, TSX, Java, Kotlin, Python, Rust, Go and Elixir.
-JSX uses the JavaScript adapter. Unary signs and pointer dereferences are excluded.
-Compound assignment `+=` → `-=` covers the same languages except Elixir (whose
-assignment/match semantics are not compound arithmetic assignment).
+```sh
+atlas mutations --rules      # List versioned language/token mappings; no database needed
+atlas mutations -f .         # Analyze current sources without saving
+atlas index -f .             # Save candidates (run atlas-migrate first)
+atlas mutations -f . --saved # Use saved candidates, verifying current source
+```
 
-`===` → `!==` is a separate rule for JavaScript, TypeScript, TSX and Elixir;
-it does not turn strict equality into loose equality. Kotlin referential equality
-is deliberately not selected. Python `and` → `or` and the other non-Elixir
-languages' `&&` → `||` use `logical.and-to-or`. Elixir has separate rules for
-strict `and` → `or` and truthy `&&` → `||`; neither crosses those families.
+Saved mode never refreshes the index. Reindex after source changes; stale or
+missing source fails the entire request rather than producing partial output.
+
+## Version-one catalog
+
+In the table, **common** means JavaScript/JSX, TypeScript, TSX, Java, Kotlin,
+Python, Rust, Go and Elixir. JSX uses the JavaScript adapter. **Assignment** means
+the common languages except Elixir; **strict equality** means JavaScript/JSX,
+TypeScript, TSX and Elixir.
+
+| Rule ID | Token change | Languages |
+| --- | --- | --- |
+| `arithmetic.add-to-subtract` | `+` → `-` | Common |
+| `arithmetic.subtract-to-add` | `-` → `+` | Common |
+| `arithmetic.multiply-to-divide` | `*` → `/` | Common |
+| `arithmetic.divide-to-multiply` | `/` → `*` | Common |
+| `comparison.equal-to-not-equal` | `==` → `!=` | Common |
+| `comparison.not-equal-to-equal` | `!=` → `==` | Common |
+| `comparison.less-to-less-equal` | `<` → `<=` | Common |
+| `comparison.less-equal-to-less` | `<=` → `<` | Common |
+| `comparison.greater-to-greater-equal` | `>` → `>=` | Common |
+| `comparison.greater-equal-to-greater` | `>=` → `>` | Common |
+| `comparison.less-to-greater` | `<` → `>` | Common |
+| `comparison.greater-to-less` | `>` → `<` | Common |
+| `comparison.strict-equal-to-strict-not-equal` | `===` → `!==` | Strict equality |
+| `comparison.strict-not-equal-to-strict-equal` | `!==` → `===` | Strict equality |
+| `logical.and-to-or` | Python `and` → `or`; others `&&` → `\|\|` | Common except Elixir |
+| `logical.or-to-and` | Python `or` → `and`; others `\|\|` → `&&` | Common except Elixir |
+| `logical.strict-and-to-or` | `and` → `or` | Elixir |
+| `logical.strict-or-to-and` | `or` → `and` | Elixir |
+| `logical.truthy-and-to-or` | `&&` → `\|\|` | Elixir |
+| `logical.truthy-or-to-and` | `\|\|` → `&&` | Elixir |
+| `assignment.add-to-subtract` | `+=` → `-=` | Assignment |
+| `assignment.subtract-to-add` | `-=` → `+=` | Assignment |
+| `assignment.multiply-to-divide` | `*=` → `/=` | Assignment |
+| `assignment.divide-to-multiply` | `/=` → `*=` | Assignment |
+
+Arithmetic rules apply only to binary operators: unary signs and pointer
+dereferences are excluded. Elixir assignment/match semantics are not compound
+arithmetic assignment. Strict equality rules never convert to loose equality;
+Kotlin referential equality is deliberately not selected. Elixir logical rules
+keep strict and truthy operator families separate.
 
 Python chained comparisons change exactly one operator per independent manifest.
 Multiword comparisons (`is not`, `not in`), membership, identity,

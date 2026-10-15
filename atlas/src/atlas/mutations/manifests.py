@@ -84,23 +84,22 @@ def _manifest(candidate: MutationCandidate, rule: MutationRule, replacement: str
     return MutationManifest.model_validate({"id": hashlib.sha256(identity.encode("utf-8")).hexdigest(), **payload})
 
 
-def _rule_edits(candidate: MutationCandidate, rule: MutationRule, selected: list[str]) -> list[MutationManifest]:
+def _rule_edits(candidate: MutationCandidate, rule: MutationRule) -> list[MutationManifest]:
     return [
         _manifest(candidate, rule, mapping.replacement)
         for mapping in rule.mappings
         if mapping.language == candidate.language
         and mapping.original == candidate.operator
-        and mapping.replacement in selected
         and mapping.replacement != candidate.originalText
     ]
 
 
-def _edits(candidate: MutationCandidate, rules: dict[str, list[str]], binary_spans: set[tuple[int, int]]) -> list[MutationManifest]:
+def _edits(candidate: MutationCandidate, rules: list[str], binary_spans: set[tuple[int, int]]) -> list[MutationManifest]:
     if candidate.kind == "arithmetic" and (candidate.expressionSpan.startByte, candidate.expressionSpan.endByte) not in binary_spans:
         return []
     return [
-        manifest for rule in REGISTRY if rule.kind == candidate.kind
-        for manifest in _rule_edits(candidate, rule, rules.get(rule.id, []))
+        manifest for rule in REGISTRY if rule.kind == candidate.kind and rule.id in rules
+        for manifest in _rule_edits(candidate, rule)
     ]
 
 
@@ -122,7 +121,7 @@ def _verify_replacement(source: SourceFile, manifest: MutationManifest, kind: st
 _VerifiedSource = tuple[SourceFile, dict[str, MutationCandidate], set[tuple[int, int]]]
 
 
-def _candidate_edits(candidate: MutationCandidate, verified: _VerifiedSource, rules: dict[str, list[str]]) -> list[MutationManifest]:
+def _candidate_edits(candidate: MutationCandidate, verified: _VerifiedSource, rules: list[str]) -> list[MutationManifest]:
     source, extracted, binary_spans = verified
     if extracted.get(candidate.id) != candidate:
         raise ValueError(f"Stale or invalid mutation candidate: {candidate.path}:{candidate.id}")
@@ -138,7 +137,7 @@ def _source_inventory(root: Path, candidate: MutationCandidate) -> _VerifiedSour
     return source, extracted, _binary_spans(source) if extracted else set()
 
 
-def _verified_edits(root: Path, candidates: list[MutationCandidate], rules: dict[str, list[str]]) -> Iterator[MutationManifest]:
+def _verified_edits(root: Path, candidates: list[MutationCandidate], rules: list[str]) -> Iterator[MutationManifest]:
     verified: dict[tuple[str, str], _VerifiedSource] = {}
     for candidate in sorted(candidates, key=lambda item: (item.path, item.language, item.id)):
         key = (candidate.path, candidate.language)
@@ -147,7 +146,7 @@ def _verified_edits(root: Path, candidates: list[MutationCandidate], rules: dict
         yield from _candidate_edits(candidate, verified[key], rules)
 
 
-def generate_manifests(root: Path, candidates: list[MutationCandidate], rules: dict[str, list[str]]) -> list[MutationManifest]:
+def generate_manifests(root: Path, candidates: list[MutationCandidate], rules: list[str]) -> list[MutationManifest]:
     """Validate every candidate, even unselected ones; return sorted unique edits.
 
     Exact re-extraction verifies phase-1 identity, hash, UTF-8 byte coordinates,

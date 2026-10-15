@@ -66,6 +66,29 @@ Atlas supports grammars recognized by its pinned Tree-sitter language pack, **ex
 
 Checks fail when limits are exceeded or analysis is incomplete.
 
+### Mutation manifests
+
+`atlas mutations` generates JSON manifests for independent single-operator edits; it does not modify source or execute mutations. Opt in with rule IDs in the analyzed folder's root `atlas.json`:
+
+```json
+{
+  "mutations": {
+    "rules": ["arithmetic.add-to-subtract", "comparison.equal-to-not-equal"]
+  }
+}
+```
+
+Omitting `mutations.rules` or using `[]` disables generation. Duplicate IDs are harmless; each selected ID enables all its applicable language mappings. The old rule-to-replacement dictionary is rejected.
+
+```sh
+atlas mutations --rules          # List versioned rules and language/token mappings
+atlas mutations -f .             # Analyze current sources without saving
+atlas index -f .                 # Save current candidates (requires migrations)
+atlas mutations -f . --saved     # Use saved candidates; verify current source
+```
+
+Saved mode never refreshes the index: missing or stale source fails the whole request; reindex after source changes. Each manifest is an alternative against the original file, not a patch to apply sequentially. See [the full catalog and manifest contract](atlas/MUTATIONS.md).
+
 ### Exclude files
 
 Atlas honors `.gitignore`. Add `.atlasignore` for analysis-only exclusions:
