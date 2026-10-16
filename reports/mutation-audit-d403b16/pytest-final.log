@@ -137,4 +137,4 @@ tests/test_autogenerate.py::test_autogenerate_detects_changed_foreign_key_action
     util.warn(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================= 1971 passed, 9 warnings in 166.22s (0:02:46) =================
+================= 1971 passed, 9 warnings in 166.49s (0:02:46) =================
