@@ -323,6 +323,10 @@ test('normalized-only DTOs preserve partial metrics, symbol details, ordered dia
     'other-repository'
   const otherId = save(other, 'other')
   const view = ready(id, { kind: 'file', key: 'a.py' })
+  expect(Object.keys(view.details.fileComplexities)).toEqual(['a.py', 'b.py'])
+  expect(
+    view.graph.nodes.find((node) => node.id === 'run')?.properties,
+  ).toMatchObject({ lineCount: 2, visibility: 'public' })
   expect(view.relations).toEqual(expectedRelations)
   expect(view.graph.nodes.map((node) => node.id)).toEqual([
     'run',
@@ -422,8 +426,10 @@ test('type-only imports do not create cycles; hidden membership removes an entir
   artifact.edges = [edge('a.py', 'b.py'), edge('b.py', 'a.py', true)]
   expect(ready(save(artifact)).cycles).toEqual([])
   artifact.edges[1].typeOnly = false
+  artifact.nodes.find((node) => node.stableKey === 'a.py')!.name = 'Alpha file'
   const id = save(artifact, 'runtime-imports')
   expect(ready(id).cycles[0].group.nodeStableKeys).toEqual(['a.py', 'b.py'])
+  expect(ready(id).cycles[0].labels).toEqual({ 'a.py': 'a.py', 'b.py': 'b.py' })
   artifact.edges.push(edge('a.py', 'test_a.py'), edge('test_a.py', 'a.py'))
   expect(ready(save(artifact, 'hidden-member')).cycles).toEqual([])
 })

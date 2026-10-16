@@ -1,0 +1,306 @@
+bun test v1.4.3 (c6da4a4d3)
+
+src/branding.test.ts:
+(pass) installable app uses Atlas branding and existing icons [0.40ms]
+
+tests/database-architecture.test.ts:
+(pass) all dashboard production follows service -> repository -> ORM, including bootstrap/config [107.52ms]
+(pass) service exports only operations, DTOs and lifecycle, never persistence handles [877.12ms]
+(pass) rejects consumer bypass: import { GraphStore as Renamed } from '@/lib/persistence/repositories/graph-store'; new Renamed(db) [0.27ms]
+(pass) rejects consumer bypass: import type { AppDatabase as Handle } from '../lib/persistence/repositories/connection' [0.05ms]
+(pass) rejects consumer bypass: export * from '@/lib/persistence/repositories/schema' [0.03ms]
+(pass) rejects consumer bypass: import { createRepositoryContext as bypass } from '@/lib/persistence/repositories/factory'; bypass() [0.05ms]
+(pass) rejects consumer bypass: export * from '@/lib/persistence/repositories' [0.02ms]
+(pass) rejects consumer bypass: import { GraphStore } from '@/lib/persistence/repositories/../repositories/graph-store' [0.04ms]
+(pass) rejects consumer bypass: import { createRepositoryContext } from '/absolute/src/lib/persistence/repositories/factory' [0.06ms]
+(pass) rejects consumer bypass: export { RepositoryStore as Safe } from '../lib/persistence/repositories/repository-store' [0.04ms]
+(pass) rejects consumer bypass: const load = () => import('@/lib/persistence/repositories/connection') [0.06ms]
+(pass) rejects consumer bypass: type Handle = import('@/lib/persistence/repositories/connection').AppDatabase [0.09ms]
+(pass) rejects consumer bypass: import Store = require('@/lib/persistence/repositories/repository-store') [0.09ms]
+(pass) rejects consumer bypass: import { drizzle as mapped } from 'drizzle-orm/bun-sqlite'; mapped(db) [0.06ms]
+(pass) rejects consumer bypass: import type { BunSQLiteDatabase as DTO } from 'drizzle-orm/bun-sqlite' [0.03ms]
+(pass) rejects consumer bypass: export * from 'bun:sqlite' [0.02ms]
+(pass) rejects consumer bypass: const driver = await import('node:sqlite') [0.07ms]
+(pass) rejects consumer bypass: import fixture from './data.sqlite' with { type: 'sqlite' } [0.22ms]
+(pass) rejects consumer bypass: import { SQL as Renamed } from 'bun'; new Renamed() [0.07ms]
+(pass) rejects consumer bypass: new Bun.SQL('sqlite://test.db') [0.04ms]
+(pass) rejects consumer bypass: new Bun['SQL']('sqlite://test.db') [0.05ms]
+(pass) rejects consumer bypass: new Bun[driver]() [0.03ms]
+(pass) rejects consumer bypass: new Bun['SQ' + 'L']() [0.06ms]
+(pass) rejects consumer bypass: const runtime = Bun; const ctor = runtime[driver]; new ctor() [0.06ms]
+(pass) rejects consumer bypass: process.getBuiltinModule('node:sqlite') [0.03ms]
+(pass) rejects consumer bypass: const builtin = process.getBuiltinModule; builtin('node:sqlite') [0.03ms]
+(pass) rejects consumer bypass: const method = db[computed]; method(query) [0.04ms]
+(pass) rejects consumer bypass: const alias = db; const method = alias[computed]; method(query) [0.06ms]
+(pass) rejects consumer bypass: Reflect.get(Bun, 'SQL') [0.04ms]
+(pass) rejects consumer bypass: Reflect.construct(Database, []) [0.06ms]
+(pass) rejects consumer bypass: Reflect.apply(db.query, db, [query]) [0.05ms]
+(pass) rejects consumer bypass: const reflection = Reflect; reflection.get(Bun, 'SQL') [0.05ms]
+(pass) rejects consumer bypass: const { get: lookup } = Reflect; lookup(db, 'query') [0.06ms]
+(pass) rejects consumer bypass: Object.getOwnPropertyDescriptor(db, 'query') [0.03ms]
+(pass) rejects consumer bypass: const lookup = Object.getOwnPropertyDescriptors; lookup(db) [0.04ms]
+(pass) rejects consumer bypass: const reflection = Object; reflection[computed](db) [0.09ms]
+(pass) rejects consumer bypass: new Database() [0.02ms]
+(pass) rejects consumer bypass: new DatabaseSync() [0.02ms]
+(pass) rejects consumer bypass: const Driver = DatabaseSync; new Driver() [0.03ms]
+(pass) rejects consumer bypass: db.update(table).set(values) [0.03ms]
+(pass) rejects consumer bypass: db.delete(table) [0.02ms]
+(pass) rejects consumer bypass: const alias = db; alias['delete'](table) [0.05ms]
+(pass) rejects consumer bypass: const { update: change } = db; change(table) [0.06ms]
+(pass) rejects consumer bypass: const { 'delete': remove } = db; remove(table) [0.05ms]
+(pass) rejects consumer bypass: const { [computed]: method } = db; method(query) [0.14ms]
+(pass) rejects consumer bypass: Object.getPrototypeOf(db) [0.07ms]
+(pass) rejects consumer bypass: const arbitrary = require; arbitrary('bun:sqlite') [0.05ms]
+(pass) rejects consumer bypass: import { createRequire as arbitrary } from 'node:module'; arbitrary(import.meta.url)('bun:sqlite') [0.08ms]
+(pass) rejects consumer bypass: const load = import(location) [0.04ms]
+(pass) rejects consumer bypass: db.query('SELECT id FROM repositories') [0.03ms]
+(pass) rejects consumer bypass: db['prepare']('SELECT id FROM repositories') [0.03ms]
+(pass) rejects consumer bypass: const { query: renamed } = db; renamed('SELECT id FROM repositories') [0.04ms]
+(pass) rejects consumer bypass: db[method](query) [0.03ms]
+(pass) rejects consumer bypass: const statement = `SELECT id FROM ${table}` [0.06ms]
+(pass) rejects consumer bypass: const statement = 'INSERT INTO repositories (id) VALUES (?)' [0.03ms]
+(pass) rejects consumer bypass: const statement = 'PRAGMA foreign_keys = OFF' [0.02ms]
+(pass) rejects consumer bypass: sql`SELECT id FROM repositories` [0.21ms]
+(pass) rejects consumer bypass: db.select().from(table) [0.04ms]
+(pass) rejects consumer bypass: db.transaction(() => {}) [0.04ms]
+(pass) rejects consumer bypass: new GraphStore(db).view(id, scope) [0.06ms]
+(pass) rejects consumer bypass: createRepositoryContext() [0.02ms]
+(pass) rejects consumer bypass: const alias = repository; alias.view(id, scope) [0.04ms]
+(pass) rejects consumer bypass: repository.list() [0.02ms]
+(pass) rejects consumer bypass: db.sql(statement) [0.03ms]
+(pass) rejects consumer bypass: new Function('return database')() [0.03ms]
+(pass) bundler exclusion strings and domain-only service/DTO imports are permitted [0.12ms]
+(pass) local forwarding imports fail at the bridge even when route uses an innocuous alias [0.17ms]
+(pass) raw SQL is forbidden inside repositories too; infrastructure exception is exact [0.47ms]
+(pass) inferred service handle aliases and opaque exports are rejected [1307.90ms]
+
+tests/database-boundary-regressions.test.ts:
+(pass) rejects Drizzle raw chunk/wrapper escape: import { eq, StringChunk } from 'drizzle-orm'; const condition = eq(repositories.id, id); condition.queryChunks.push(new StringChunk(' OR 1=1')) [0.54ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: import { StringChunk as Fragment } from 'drizzle-orm'; const Chunk = Fragment; new Chunk(fragment) [0.10ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: import type { SQLWrapper as Wrapper } from 'drizzle-orm' [0.05ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: type Wrapper = import('drizzle-orm').SQLWrapper [0.08ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: export { StringChunk as Fragment } from 'drizzle-orm/sql/sql' [0.05ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: export * from 'drizzle-orm/sql/sql' [0.03ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: import { SQL as Query } from 'drizzle-orm/sql/sql'; new Query(chunks) [0.05ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: condition.queryChunks[0] = fragment [0.09ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: const { queryChunks: chunks } = condition; chunks.push(fragment) [0.09ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: condition['queryChunks'].push(fragment) [0.05ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: condition.append(fragment) [0.02ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: condition.inlineParams() [0.04ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: const wrapper = { getSQL() { return fragment } } [0.12ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: const wrapper = { ['getSQL']() { return fragment } } [0.21ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: const wrapper = { getSQL: () => fragment } [0.07ms]
+(pass) rejects Drizzle raw chunk/wrapper escape: class Wrapper { getSQL() { return fragment } } [0.06ms]
+(pass) connection infrastructure cannot run mapped domain queries [0.21ms]
+(pass) rejects repository-port import/forwarding outside owners: import type { RepositoryPort as Port } from './lib/repository-ports'; export function outside(r: Port) { return r.list() } [0.19ms]
+(pass) rejects repository-port import/forwarding outside owners: export type { RepositoryPort as PublicPort } from './lib/repository-ports' [0.07ms]
+(pass) rejects repository-port import/forwarding outside owners: type Alias = import('./lib/repository-ports').RepositoryPort [0.09ms]
+(pass) rejects repository-port import/forwarding outside owners: import * as ports from './lib/repository-ports'; export type Alias = ports.RepositoryPort [0.08ms]
+(pass) typed port receivers, aliases and constructor fields are guarded regardless of their names [1993.88ms]
+(pass) structural port aliases cannot evade dependency enforcement [372.97ms]
+(pass) service cannot delegate inferred port dependencies to nonservice helpers or constructors [2055.03ms]
+(pass) DTO-returning helpers cannot receive ports, including erased aliases [2497.48ms]
+(pass) service-private helpers and domain DTO handoff remain permitted [492.28ms]
+(pass) all production sources enforce typed repository dependency ownership [2735.67ms]
+
+tests/database-factory-boundary.test.ts:
+(pass) service cannot import connection, stores, schema or ORM, even with aliases/types/dynamic loading [1.48ms]
+(pass) inferred service exports cannot forward factory, context, class, ORM or connection handles [499.22ms]
+
+tests/graph-canvas-mutations.test.ts:
+(pass) canvas preserves selection, cycle edges, labels and node actions [138.15ms]
+
+tests/graph-cycle-presentation.test.tsx:
+(pass) cycle list distinguishes missing data, selection, labels and outside boundaries [10.88ms]
+
+tests/graph-sidebar-presentation.test.tsx:
+(pass) sidebar renders local and boundary destinations without inventing navigation [4.09ms]
+(pass) sidebar selects the exact item and shows incoming and outgoing connections only [4.01ms]
+(pass) callable titles include source lines only when the original node supplies one [0.89ms]
+
+tests/graph-layout-grid.test.ts:
+(pass) isolated nodes occupy positive grid columns and rows without overlap [2.55ms]
+(pass) isolated grid starts below connected node rectangles [4.04ms]
+
+tests/graph-navigation-boundaries.test.tsx:
+(pass) breadcrumbs separate ancestors and mark only the current scope [0.69ms]
+
+tests/graph-key-order.test.ts:
+(pass) stable keys use code-point order with equal and prefix boundaries [0.13ms]
+
+tests/repository-form-validation.test.ts:
+(pass) repository form requires both trimmed values and blocks repeated pending submits [97.00ms]
+
+tests/graph-explorer-boundaries.test.ts:
+(pass) explorer query scopes and empty-state parent boundaries retain their contracts [100.13ms]
+
+tests/graph-cycle-boundaries.test.ts:
+(pass) common cycle scope rejects synthetic paths and nonfolder ancestors [0.27ms]
+(pass) folders contain cycles only through actual member descendants [0.07ms]
+(pass) cycle projection excludes missing edge endpoints and scopes with no member [0.76ms]
+
+tests/repository-page-states.test.ts:
+(pass) repository page distinguishes loading, error, empty and registration states [91.21ms]
+
+tests/import-cycle-contract.test.ts:
+(pass) import ownership stops at external nodes rather than leaking to an ancestor file [3.16ms]
+(pass) example cycles retain breadth-first parent links and ignore the starting self edge [0.78ms]
+(pass) import cycles retain deterministic evidence order across source directions [0.57ms]
+
+tests/graph-route-states.test.ts:
+(pass) graph route separates pending, errors, ready data and active refresh states [91.18ms]
+
+tests/graph-query-batches.test.ts:
+(pass) selected rows skip empty reads and bound complete key batches at 500 parameters [0.92ms]
+
+tests/graph-external-boundary.test.ts:
+(pass) external type and external level independently exclude dependency boundaries [0.28ms]
+
+tests/graph-projection-labels.test.ts:
+(pass) graph labels fall back from name to qualified name and stable key [0.56ms]
+(pass) callable details retain missing, single-line and multiline source ranges [0.18ms]
+(pass) compacted folder labels use path segments rather than display names [0.10ms]
+(pass) external level and external type independently prevent root navigation [0.04ms]
+
+tests/repository-service-boundaries.test.ts:
+(pass) repository validation accepts exact maximum lengths and rejects nonobject inputs [6.74ms]
+
+src/lib/database.servers.test.ts:
+(pass) shared default database lives in user data with explicit overrides [0.09ms]
+
+src/lib/graph-analysis.test.ts:
+(pass) dependency counts deduplicate peers and diamond reachability while counting cyclic dependents [0.64ms]
+(pass) instability uses distinct internal peers at each level, including hidden tests and type-only relations [0.65ms]
+(pass) internal nodes exclude subtrees marked external by either type or level without hiding tests [0.21ms]
+(pass) SCC traversal is iterative for deep graphs [15.44ms]
+(pass) file self-imports are cycles but intra-file symbol imports and type-only imports are not [0.26ms]
+
+src/lib/graph-cycles.test.ts:
+(pass) projects exported member files into collapsed folders and actual directed imports [0.36ms]
+(pass) partial views include boundaries but count members outside the current scope [0.25ms]
+(pass) function selection links its owning file without projecting imports onto functions [0.15ms]
+(pass) nearest shared folder contains the full group, even for self imports [0.03ms]
+(pass) hidden test members remove the whole group without inventing a smaller cycle [0.09ms]
+(pass) collapsed internal imports do not invent folder self edges; direct self imports remain [0.21ms]
+(pass) selection edges come from the export, not unrelated relationships among members [0.11ms]
+(pass) legacy unavailable differs from analyzed zero and no TS detection occurs [0.10ms]
+
+src/lib/graph-visibility.test.ts:
+(pass) detects src/widget.test.tsx [0.02ms]
+(pass) detects packages/web/widget.spec.ts
+(pass) detects test/widget_test.exs
+(pass) detects apps/api/test/support/helper.ex
+(pass) detects module/src/test/java/App.java
+(pass) detects module/src/integrationTest/kotlin/App.kt
+(pass) detects src/__tests__/helper.ts
+(pass) detects tests/helpers.py
+(pass) detects src/test_widget.py
+(pass) detects src/widget_test.py
+(pass) detects pkg/widget_test.go
+(pass) detects spec/widget_spec.rb
+(pass) detects src/AppTest.java
+(pass) detects module/src/androidTest/App.kt
+(pass) detects .\packages\web\widget.test.ts
+(pass) retains src/contest.ts [0.01ms]
+(pass) retains src/testimonials.ts
+(pass) retains src/spec.tsx
+(pass) retains src/Test.java
+(pass) retains src/test.ts
+(pass) retains src/widget.ts
+(pass) detects test directories without confusing directory names with filenames [0.02ms]
+(pass) hides tests, descendants, and their edges without changing the imported artifact [0.35ms]
+(pass) prunes newly empty test folders but preserves unrelated empty folders [0.12ms]
+
+src/lib/normalized-graph.servers.test.ts:
+(pass) normalized-only DTOs preserve partial metrics, symbol details, ordered diagnostics and duplicate evidence [1392.83ms]
+(pass) Python analyzer and normalized Bun reads agree on all navigable views, dependency metrics and cycles [1030.07ms]
+(pass) type-only imports do not create cycles; hidden membership removes an entire cyclic group [1809.26ms]
+(pass) cycle IDs, members and evidence ordering match Python for Unicode stable keys [990.27ms]
+(pass) ORM key batches preserve large scoped details, decorators, edge order and file sums [1015.15ms]
+(pass) valid normalized empty graphs differ from unindexed rows and invalid scopes return 400 [943.59ms]
+
+src/lib/project-graph-boundary.test.ts:
+(pass) folder boundaries group below the LCA, compact, deduplicate and aggregate [1.70ms]
+(pass) file boundaries use nearest callable or file, keep folders and expose callable destinations [0.44ms]
+(pass) outside-scope test targets are excluded even with an unfiltered artifact [0.51ms]
+(pass) outside-repository dependencies never appear at any scope [0.46ms]
+
+src/lib/project-graph-real.test.ts:
+(pass) CLI-imported Kotlin class methods render in file scope [0.50ms]
+(pass) imported package scopes expose immediate folders; language modules never become folder nodes [0.50ms]
+
+src/lib/project-graph.test.ts:
+(pass) adaptive graph scopes > root folders and files, with directed cross-module aggregation [0.54ms]
+(pass) adaptive graph scopes > immediate packages alongside module direct files [0.23ms]
+(pass) adaptive graph scopes: compacted folders and files > compacts deep folder chains without flattening files [0.29ms]
+(pass) adaptive graph scopes: compacted folders and files > flattens class methods and nested callables; local symbols project to their callable [0.23ms]
+(pass) handles empty scopes and rejects unknown or mismatched scopes [0.27ms]
+(pass) structural edges alone never create relationships; precomputed views are irrelevant [0.23ms]
+(pass) supports roots without synthetic wrappers and unsorted imports without mutation [0.95ms]
+(pass) does not cap large graphs; aggregates prototype-like relationship names safely [3.08ms]
+(pass) CLI language samples: every file and callable is reachable with exact direct-edge counts [1.50ms]
+(pass) large nested fixture: every file and callable is reachable with exact direct-edge counts [614.37ms]
+(pass) root chains compact, preserve wrapper relations and disconnected folders [0.61ms]
+(pass) folders with null paths are not synthetic transparent wrappers [0.11ms]
+(pass) compaction stops at files, branches, and other indexed children [0.16ms]
+(pass) trails retain actual compacted ancestors without repository or dot duplicates [1.05ms]
+(pass) empty files are valid; external descendants and unknown kinds are invalid scopes [0.17ms]
+(pass) deep branching folders remain navigable without a fixed level limit [0.97ms]
+
+src/lib/repositories.servers.test.ts:
+(pass) UI opens a Python-migrated database without owning migrations [517.28ms]
+(pass) missing or unmigrated databases fail without creating a schema [511.44ms]
+(pass) name uniqueness and validation retain existing API behavior [515.98ms]
+(pass) Python indexes repositories registered by the UI, and the UI sees reindex writes [2119.06ms]
+(pass) folder reports register and update graphs visible to the UI [1580.28ms]
+(pass) Python src imports become dashboard arrows even when the report has no findings [1070.09ms]
+(pass) indexed metrics survive Python/Bun storage and keep hidden test dependents [1058.18ms]
+(pass) legacy rows require reindex and never look like valid empty graphs [513.77ms]
+(pass) one read transaction keeps metadata and nodes on one WAL snapshot [1589.52ms]
+(pass) error responses remain JSON with the expected status [517.38ms]
+
+src/routes/graph-project-name.test.ts:
+(pass) registered graph has an empty state without terminal instructions [87.71ms]
+(pass) graph empty state waits for registered metadata [86.65ms]
+(pass) legacy graphs show reindex state, not a valid empty explorer [84.91ms]
+
+src/components/graph/graph-size-metrics.test.tsx:
+(pass) selected callables display line and parameter counts, including zero parameters [1.42ms]
+(pass) selected files and single-file summaries display lines only [1.44ms]
+(pass) missing and partial metrics are not presented as zero [1.05ms]
+(pass) folders do not display size metrics [0.13ms]
+
+src/components/graph/graph-complexity.test.tsx:
+(pass) imported complexity survives graph projection and displays its breakdown [0.82ms]
+(pass) zero penalties display, missing metrics never become zero [1.14ms]
+(pass) containers and constructors do not show complexity [0.75ms]
+
+src/components/graph/graph-dependency-metrics.test.tsx:
+(pass) sidebar shows indexed dependency metrics for folders, files, and callables [1.75ms]
+(pass) missing metrics require reindexing; indexed zeros and partial values remain distinct [0.96ms]
+(pass) internal instability formats ratios, including zero, separately from isolated and missing values [2.79ms]
+(pass) single-file contents summary includes dependency metrics without selecting it [0.69ms]
+
+src/components/graph/graph-explorer.test.tsx:
+(pass) selection, cycles, boundary destinations and breadcrumbs retain focus behavior [62.99ms]
+
+src/components/graph/graph-file-complexity.test.tsx:
+(pass) sums owned functions and methods once, not classes, constructors, or dependencies [0.27ms]
+(pass) selected file and inside-file summary show the same sum [1.65ms]
+(pass) unselected inside-file sidebar shows the current file sum [0.86ms]
+(pass) single local file preview ignores boundary nodes, multiple files have no implicit sum [1.22ms]
+(pass) outside-scope file inspector uses the target file sum [0.55ms]
+(pass) partial and legacy data are not presented as a complete sum or zero [0.20ms]
+
+src/components/graph/graph-layout.test.ts:
+(pass) layout retains cyclic and disconnected nodes with finite non-overlapping positions [2.75ms]
+(pass) empty and wholly disconnected graphs need no edges to render [0.41ms]
+
+src/components/ui/primitives.test.tsx:
+(pass) button keeps native props, handlers, variants and focus/disabled styling [0.52ms]
+(pass) badge keeps native attributes, children and variant styling [0.29ms]
+
+ 226 pass
+ 0 fail
+ 15275 expect() calls
+Ran 226 tests across 37 files. [32.27s]

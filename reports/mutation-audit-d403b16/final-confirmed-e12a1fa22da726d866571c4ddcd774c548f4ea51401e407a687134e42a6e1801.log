@@ -1,0 +1,29 @@
+.....................................F
+=================================== FAILURES ===================================
+_______________ test_reject_unsafe_aliases_to_valid_source[dot] ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-leon/pytest-298/test_reject_unsafe_aliases_to_0')
+path_kind = 'dot'
+
+    @pytest.mark.parametrize("path_kind", ["dot", "parent", "absolute"])
+    def test_reject_unsafe_aliases_to_valid_source(tmp_path: Path, path_kind: str) -> None:
+        file = tmp_path / "sample.py"
+        file.write_bytes(b"x = a + 1\n")
+        (tmp_path / "nested").mkdir()
+        path = {
+            "dot": "./sample.py",
+            "parent": "nested/../sample.py",
+            "absolute": str(file),
+        }[path_kind]
+        extracted = extract_candidates(SourceFile(
+            path=path, absolute_path=file, language="python", source=file.read_bytes(),
+        )).candidates
+        assert extracted
+>       with pytest.raises(ValueError, match="Unsafe mutation path"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_mutation_manifests.py:178: Failed
+=========================== short test summary info ============================
+FAILED tests/test_mutation_manifests.py::test_reject_unsafe_aliases_to_valid_source[dot]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 37 passed in 0.38s

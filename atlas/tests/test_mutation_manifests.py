@@ -161,6 +161,24 @@ def test_reject_unsafe_paths(tmp_path: Path, path: str) -> None:
         generate_manifests(tmp_path, [item], ADD)
 
 
+@pytest.mark.parametrize("path_kind", ["dot", "parent", "absolute"])
+def test_reject_unsafe_aliases_to_valid_source(tmp_path: Path, path_kind: str) -> None:
+    file = tmp_path / "sample.py"
+    file.write_bytes(b"x = a + 1\n")
+    (tmp_path / "nested").mkdir()
+    path = {
+        "dot": "./sample.py",
+        "parent": "nested/../sample.py",
+        "absolute": str(file),
+    }[path_kind]
+    extracted = extract_candidates(SourceFile(
+        path=path, absolute_path=file, language="python", source=file.read_bytes(),
+    )).candidates
+    assert extracted
+    with pytest.raises(ValueError, match="Unsafe mutation path"):
+        generate_manifests(tmp_path, extracted, ADD)
+
+
 @pytest.mark.parametrize("case", [
     ("javascript", "let x = a+--b;", ADD),
     ("javascript", "let x = a-++b;", ["arithmetic.subtract-to-add"]),

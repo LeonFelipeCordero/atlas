@@ -1,0 +1,35 @@
+bun test v1.4.3 (c6da4a4d3)
+
+tests/graph-explorer-boundaries.test.ts:
+39 |       output.push({html:renderToStaticMarkup(GraphExplorer({initial}))})
+40 |     }
+41 |     console.log(JSON.stringify(output))
+42 |   `
+43 |   const result = Bun.spawnSync(['bun', '--eval', script])
+44 |   expect(result.exitCode, result.stderr.toString()).toBe(0)
+                                                         ^
+error: 183 |     setScope(nextScope)
+184 |     setCycleId(null)
+185 |     setSelected(destination?.focusId ?? null)
+186 |   }
+187 |   const navigate = (index: number) => {
+188 |     setScope(data.trail[index].scope)
+                              ^
+TypeError: undefined is not an object (evaluating 'data.trail[index].scope')
+      at navigate (/tmp/atlas-dashboard-mutations/worktree/dashboard/src/components/graph/graph-explorer.tsx:188:25)
+      at /tmp/atlas-dashboard-mutations/worktree/dashboard/[eval]:31:22
+
+Bun v1.4.3 (Linux x64)
+
+
+Expected: 0
+Received: 1
+
+      at explorerBoundaries (/tmp/atlas-dashboard-mutations/worktree/dashboard/tests/graph-explorer-boundaries.test.ts:44:53)
+      at <anonymous> (/tmp/atlas-dashboard-mutations/worktree/dashboard/tests/graph-explorer-boundaries.test.ts:54:18)
+(fail) explorer query scopes and empty-state parent boundaries retain their contracts [89.42ms]
+
+ 0 pass
+ 1 fail
+ 1 expect() calls
+Ran 1 test across 1 file. [95.00ms]
