@@ -29,6 +29,7 @@ packages = ["src/atlas"]
 [dependency-groups]
 dev = [
     "pytest>=8,<10",
+    "pytest-xdist>=3.8,<4",
     "pyright>=1.1.414",
     "ruff>=0.16.9",
 ]

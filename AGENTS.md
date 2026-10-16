@@ -32,10 +32,12 @@ Always run these commands from the repository root to validate your changes.
 ## Importer
 
 ```sh
-(cd atlas && uv run pytest) # Run importer tests
+(cd atlas && uv run pytest -n auto) # Run importer tests in parallel
 (cd atlas && uv run pyright) # Check Python types
 (cd atlas && uv run ruff check .) # Lint importer code
 ```
+
+`pytest-xdist` selects the worker count with `-n auto`; use `-n 4` to limit it to four workers. Omit `-n` for a serial run. Keep files, databases, and ports isolated between tests. Session-scoped fixtures run once per worker.
 
 ## Dashboard
 

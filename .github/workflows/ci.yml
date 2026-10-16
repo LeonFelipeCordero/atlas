@@ -34,6 +34,6 @@ jobs:
           cache-dependency-glob: atlas/pyproject.toml
           python-version: "3.14"
       - run: uv sync --group dev
-      - run: uv run pytest
+      - run: uv run pytest -n auto
       - run: uv run pyright
       - run: uv run ruff check .

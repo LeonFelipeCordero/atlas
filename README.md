@@ -161,7 +161,7 @@ From the repository root:
 uv sync --project atlas --group dev
 (cd dashboard && bun install)
 
-(cd atlas && uv run pytest)
+(cd atlas && uv run pytest -n auto)
 (cd atlas && uv run pyright)
 (cd atlas && uv run ruff check .)
 (cd dashboard && bun run build)
@@ -171,6 +171,8 @@ uv sync --project atlas --group dev
 uv run --project atlas atlas report -f .
 uv run --project atlas atlas check -f .
 ```
+
+Python tests use `pytest-xdist` to run in parallel. `-n auto` selects the worker count from the available CPU cores; use `-n 4` for four workers or omit `-n` for a serial run. Tests must isolate files, databases, and ports. Session-scoped fixtures run once per worker.
 
 CI runs Python checks only for `atlas/` changes and dashboard checks only for `dashboard/` changes. Either folder, `.atlasignore`, or `.gitignore` changes trigger a full-project `atlas check --f . --format json`, whose exit status enforces the configured limits. Each workflow also runs when its own file changes; docs-only changes skip CI. Production Python modules are limited to 600 lines, with architecture boundaries enforced by tests.
 
