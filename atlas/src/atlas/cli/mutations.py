@@ -33,6 +33,11 @@ def _saved_report(root: Path) -> dict[str, Any]:
 @click.option("--saved", is_flag=True, help="Read persisted candidates for this folder; reject stale sources instead of refreshing")
 @click.option("--rules", "show_rules", is_flag=True, help="Show the versioned rule catalog and limitations instead of generating")
 def mutations_command(folder: Path, saved: bool, show_rules: bool) -> None:
+    """Print the rule catalog or configured independent mutation manifests as JSON.
+
+    Read fresh sources by default; saved mode verifies persisted candidates
+    against current sources. Never apply edits, run mutants, or save a graph.
+    """
     from atlas.metrics.report import build_artifact_report
     from atlas.services.repositories import analyze_folder
 

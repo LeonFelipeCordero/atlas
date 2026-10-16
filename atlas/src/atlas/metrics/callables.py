@@ -10,7 +10,9 @@ from .complexity import calculate_complexity
 def callable_metrics(file: ParsedFile) -> None:
     """Populate callable metrics from retained source, without filesystem reads.
 
-    Syntax offsets use the same replacement-decoded UTF-8 as extraction.
+    Mutate function and method symbols in place; return None. Syntax offsets
+    use the same replacement-decoded UTF-8 as extraction. Missing syntax nodes
+    leave complexity and parameter counts unchanged; parser errors propagate.
     """
     callables = [
         symbol for symbol in file.symbols if symbol.kind in {"function", "method"}
@@ -31,6 +33,9 @@ def callable_metrics(file: ParsedFile) -> None:
 
 
 def add_callable_metrics(repository: ParsedRepository) -> None:
-    """Enrich each parsed file's callable records before graph construction."""
+    """Mutate each file's function/method metrics before graph construction.
+
+    Return None; parser failures propagate and can leave earlier files enriched.
+    """
     for file in repository.files:
         callable_metrics(file)

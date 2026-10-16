@@ -31,7 +31,10 @@ IDENTIFIERS = {
 
 
 def names(node: Node | None) -> set[str]:
-    """Collect binding patterns, never member accesses or type annotations."""
+    """Return declared names from binding patterns, excluding members and types.
+
+    Missing nodes and unsupported patterns produce an empty set.
+    """
     if node is None:
         return set()
     if node.type in IDENTIFIERS:
@@ -112,6 +115,7 @@ class Syntax:
 
     @cached_property
     def root(self) -> Node | None:
+        """Cache the replacement-decoded source tree; return None on parser failure."""
         try:
             return (
                 get_parser(self.file.source.language)
@@ -125,27 +129,33 @@ class Syntax:
 
     @cached_property
     def nodes(self) -> list[Node]:
+        """Cache root-first named-node traversal, or [] when parsing failed."""
         return list(walk(self.root)) if self.root else []
 
     @cached_property
     def spans(self) -> dict[tuple[int, int], Node]:
+        """Cache nodes by half-open UTF-8 byte span; later duplicate spans win."""
         return {(n.start_byte, n.end_byte): n for n in self.nodes}
 
     @cached_property
     def imports(self) -> list[tuple[str, Node]]:
+        """Cache adapter-provided pairs of imported binding names and scope nodes."""
         return self.adapter.lexical_imports(self)
 
     @cached_property
     def bindings(self) -> list[tuple[str, Node, Node]]:
+        """Cache lexical bindings as (name, scope node, declaration node) tuples."""
         bindings: list[tuple[str, Node, Node]] = []
         for node in self.nodes:
             self._bindings(node, bindings)
         return bindings
 
     def node(self, start: int, end: int) -> Node | None:
+        """Find a node with this exact half-open UTF-8 byte span, or return None."""
         return self.spans.get((start, end))
 
     def scope(self, node: Node) -> Node:
+        """Find the nearest enclosing adapter scope, falling back to root or node."""
         parent = node.parent
         while parent and parent.type not in self.scopes:
             parent = parent.parent
@@ -181,6 +191,11 @@ class Syntax:
     def shadowed(
         self, name: str, position: int, allowed: list[Symbol] | None = None
     ) -> bool:
+        """Check for a visible conflicting binding at a UTF-8 byte position.
+
+        Declarations containing allowed symbols are exempt; adapter import and
+        visibility rules also apply. Rebinding checks are conservative.
+        """
         allowed = allowed or []
         if self.adapter.import_shadowed(self, name, position):
             return True
@@ -193,6 +208,7 @@ class Syntax:
 
     @cached_property
     def import_nodes_by_line(self) -> dict[int, list[Node]]:
+        """Cache adapter-recognized import nodes by one-based starting line."""
         imports: dict[int, list[Node]] = {}
         for node in self.nodes:
             if self.adapter.is_import_node(node):
@@ -200,6 +216,11 @@ class Syntax:
         return imports
 
     def import_node(self, line: int, source: str | None = None) -> Node | None:
+        """Return an unambiguous import starting on a one-based line, or None.
+
+        Source text narrows candidates when it matches, ignoring outer whitespace
+        and trailing semicolons; otherwise all imports on the line remain eligible.
+        """
         candidates = self.import_nodes_by_line.get(line, [])
         if source is not None:
             exact = [node for node in candidates if _same_import(node, source)]
@@ -208,10 +229,15 @@ class Syntax:
         return candidates[0] if len(candidates) == 1 else None
 
     def import_scope(self, line: int, source: str | None = None) -> Node | None:
+        """Return the selected import's enclosing scope, or the possibly absent root."""
         node = self.import_node(line, source)
         return self.scope(node) if node else self.root
 
     def class_rebound(self, symbol: Symbol, name: str) -> bool:
+        """Detect a binding directly inside symbol's class/function span.
+
+        Adapter-approved declaration kinds do not count as rebinding.
+        """
         for binding, _, node in self.bindings:
             if binding != name or node.type in self.adapter.rebound_declarations:
                 continue
@@ -226,13 +252,16 @@ class Syntax:
 
     @cached_property
     def written_members(self) -> set[str]:
+        """Cache member-write target spellings with literal spaces removed."""
         return {
             text(self.adapter.write_target(node)).replace(" ", "")
             for node in self.nodes if node.type in self.adapter.member_writes
         }
 
     def member_rebound(self, qualifier: str, name: str) -> bool:
+        """Check whether qualifier.name occurs among cached member-write targets."""
         return qualifier + "." + name in self.written_members
 
     def static(self, symbol: Symbol) -> bool:
+        """Return whether the adapter recognizes symbol as a static declaration."""
         return self.adapter.static(self, symbol)

@@ -15,7 +15,10 @@ METRIC_LABELS = {
 
 
 def code(value: str) -> str:
-    """Keep source names literal, including Markdown delimiters and table pipes."""
+    """Return a Markdown code span preserving source delimiters and table pipes.
+
+    Flatten newlines, escape pipes, and choose a backtick fence absent from value.
+    """
     value = value.replace("\n", " ").replace("\r", " ").replace("|", "\\|")
     fence = "`"
     while fence in value:
@@ -25,11 +28,13 @@ def code(value: str) -> str:
 
 
 def location(node: dict[str, Any]) -> str:
+    """Format path with an optional line suffix; missing paths become Unknown file."""
     path = node.get("path") or "Unknown file"
     return f"{path}:{node['line']}" if node.get("line") is not None else path
 
 
 def value_text(value: Any) -> str:
+    """Format None as N/A, floats to two decimals, and other values with str."""
     if value is None:
         return "N/A"
     return f"{value:.2f}" if isinstance(value, float) else str(value)
@@ -112,6 +117,11 @@ def _mutation_candidates(report: dict[str, Any]) -> str:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
+    """Return a metrics report as Markdown without writing output.
+
+    Include size and dependency tables plus nonempty cycle, diagnostic, and
+    mutation-site sections. Missing measurements display as N/A.
+    """
     summary = report["summary"]
     parts = ["# Metrics", "\n".join(f"- {name}: {value}" for name, value in summary.items())]
     parts.extend(_size_tables(report["nodes"]))

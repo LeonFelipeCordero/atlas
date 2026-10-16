@@ -82,7 +82,10 @@ REGISTRY: tuple[MutationRule, ...] = (
 
 
 def validate_rules(rules: list[str]) -> None:
-    """Raise ValueError unless selections are a list of known rule IDs."""
+    """Raise ValueError unless selections are a list of known string rule IDs.
+
+    Accept an empty list and duplicates without changing the input.
+    """
     if not isinstance(rules, list):
         raise ValueError("Mutation rules must be a list of rule IDs")
     catalog = {rule.id for rule in REGISTRY}

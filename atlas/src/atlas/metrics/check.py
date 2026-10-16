@@ -96,7 +96,11 @@ def _cycle_finding(report, limit):
 
 
 def build_check(report: dict[str, Any], config: CheckConfig) -> dict[str, Any]:
-    """Null limits are disabled; incomplete enabled measurements cannot pass."""
+    """Return findings for exceeded limits, missing enabled metrics, and diagnostics.
+
+    Consume a metrics report without modifying it. Null limits are disabled;
+    isolated nodes skip undefined instability. An empty findings list means pass.
+    """
     findings = [finding for node in report["nodes"] for finding in _node_findings(node, config)]
     findings.extend(_cycle_finding(report, config.maxCircularImportGroups))
     findings.extend({
@@ -117,6 +121,7 @@ def _finding_section(finding) -> str:
 
 
 def render_check(check: dict[str, Any]) -> str:
+    """Format findings as Markdown, or return 'All checks passed.' when empty."""
     if not check["findings"]:
         return "All checks passed."
     return "\n\n".join(_finding_section(finding) for finding in check["findings"])

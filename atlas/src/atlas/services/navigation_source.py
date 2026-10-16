@@ -13,6 +13,11 @@ MAX_EXCERPT_BYTES = 16 * 1024
 
 
 def source_excerpt(reader: NavigationReader, node: Record, options: SourceOptions) -> Record:
+    """Return a bounded excerpt only after matching the indexed file's SHA-256.
+
+    Return a status without source for external/pathless nodes, ambiguous or
+    unhashed files, changed content, or local read/encoding/span limits.
+    """
     path = node["path"]
     if not path or node["level"] == "external":
         return {"status": "unavailable"}
@@ -28,6 +33,11 @@ def source_excerpt(reader: NavigationReader, node: Record, options: SourceOption
 
 
 def verified_excerpt(node: Record, data: bytes, options: SourceOptions) -> Record:
+    """Format already hash-verified bytes as a bounded UTF-8 source excerpt.
+
+    Return a status for invalid encoding, missing symbol spans, or excerpts
+    over MAX_EXCERPT_BYTES; this function does not verify the hash itself.
+    """
     path = node["path"]
     try:
         lines = source_lines(data)
@@ -42,7 +52,10 @@ def verified_excerpt(node: Record, data: bytes, options: SourceOptions) -> Recor
 
 
 def source_lines(data: bytes) -> list[str]:
-    """Match parser coordinates: only LF advances a row; strip CRLF endings."""
+    """Return UTF-8 lines matching parser coordinates; invalid UTF-8 raises.
+
+    Only LF advances a row; strip CRLF endings and omit a trailing empty row.
+    """
     lines = data.decode("utf-8").split("\n")
     if lines[-1] == "":
         lines.pop()
@@ -50,6 +63,7 @@ def source_lines(data: bytes) -> list[str]:
 
 
 def source_status(status: str, path: str) -> Record:
+    """Return a source status/path record, including byte caps for too_large."""
     result: Record = {"status": status, "path": path}
     if status == "too_large":
         result.update(maxFileBytes=MAX_FILE_BYTES, maxExcerptBytes=MAX_EXCERPT_BYTES)
@@ -57,6 +71,11 @@ def source_status(status: str, path: str) -> Record:
 
 
 def local_bytes(root_path: str, relative_path: str) -> tuple[str, bytes]:
+    """Read a bounded regular file contained by the canonical repository root.
+
+    Reject absolute paths, parent components, and escapes. Return status/bytes;
+    unsafe, missing, unreadable, and oversized files return empty bytes.
+    """
     relative = Path(relative_path)
     if relative.is_absolute() or ".." in relative.parts:
         return "unsafe", b""
@@ -75,7 +94,12 @@ def local_bytes(root_path: str, relative_path: str) -> tuple[str, bytes]:
 
 
 def contained_bytes(root: Path, target: Path) -> tuple[str, bytes]:
-    """Pin directory descriptors; reject symlink swaps after canonical containment."""
+    """Read target after the caller verifies canonical containment within root.
+
+    Pin directory descriptors and reject symlink swaps. Return status/bytes
+    for regular files within MAX_FILE_BYTES, or empty bytes for size/type
+    failures. Propagate OS/path errors for local_bytes to classify.
+    """
     with ExitStack() as stack:
         descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         stack.callback(os.close, descriptor)
@@ -95,6 +119,11 @@ def contained_bytes(root: Path, target: Path) -> tuple[str, bytes]:
 
 
 def excerpt_lines(node: Record, lines: list[str], options: SourceOptions) -> Record:
+    """Return a one-based, span-bounded line page and continuation metadata.
+
+    File nodes use the full file span. Clamp the requested start to the span's
+    first line and limit output to max_lines; do not enforce byte limits here.
+    """
     first = node["startLine"] or 1
     last = node["endLine"] or len(lines)
     if node["level"] == "file":

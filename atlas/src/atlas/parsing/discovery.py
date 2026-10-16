@@ -30,10 +30,12 @@ SUPPORTED_LANGUAGES = (
 
 
 def is_supported_language(language: str | None) -> bool:
+    """Check the importer grammar catalog; None and excluded languages fail."""
     return language in SUPPORTED_LANGUAGES
 
 
 def require_supported_language(language: str) -> None:
+    """Raise ValueError when the importer does not support the language ID."""
     if not is_supported_language(language):
         raise ValueError(f"Unsupported Python importer language: {language}")
 

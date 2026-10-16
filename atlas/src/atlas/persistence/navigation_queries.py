@@ -25,6 +25,10 @@ EDGE_COLUMNS = (
 
 
 def nodes(repository_id: str) -> Select:
+    """Build a repository-scoped node projection with optional symbol fields.
+
+    Return an unexecuted select; callers add filtering, ordering, and limits.
+    """
     node, symbol = GraphNodeRow, GraphSymbolRow
     return select(
         node.node_key.label("stableKey"), node.parent_key.label("parentStableKey"),
@@ -37,6 +41,7 @@ def nodes(repository_id: str) -> Select:
 
 
 def metrics(repository_id: str, key: str) -> Select:
+    """Build an unexecuted metric projection for a repository-local stable key."""
     metric = GraphNodeMetricRow
     return select(*METRIC_COLUMNS).where(metric.repository_id == repository_id, metric.node_key == key)
 
@@ -51,6 +56,11 @@ class AdjacencyRequest:
 
 
 def adjacency(request: AdjacencyRequest) -> Select:
+    """Build an ordinal-ordered, limited edge select for one endpoint/relation.
+
+    Use the source index for outgoing edges and the target index otherwise;
+    the navigation SQLite compiler renders the index hint at execution.
+    """
     edge = GraphEdgeRow
     endpoint = edge.source_key if request.outgoing else edge.target_key
     index = "graph_edges_source" if request.outgoing else "graph_edges_target"

@@ -37,6 +37,7 @@ INHERITANCE = InheritancePolicy(
 
 
 def declaration(node: Node) -> DeclarationCarrier:
+    """Mark constructors and lambda callbacks; keep other declaration names."""
     if node.type in {"constructor_declaration", "compact_constructor_declaration"}:
         return DeclarationCarrier(node, kind="constructor")
     if node.type == "lambda_expression":
@@ -45,10 +46,12 @@ def declaration(node: Node) -> DeclarationCarrier:
 
 
 def call_sites(root: Node):
+    """Iterate method calls, object creation, and method references."""
     return shared_call_sites(root, CALL_TYPES)
 
 
 def metadata(node: Node) -> tuple[str | None, list[str]]:
+    """Return explicit Java visibility and annotations; do not infer defaults."""
     return modifier_metadata(node, frozenset({"public", "private", "protected"}))
 
 

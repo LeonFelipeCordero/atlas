@@ -148,7 +148,9 @@ def generate_manifests(root: Path, candidates: list[MutationCandidate], rules: l
     expression/callable spans and text, and grammar provenance together. Any
     stale or forged input fails the whole call, never a partial result. Each
     manifest applies independently against its sourceHash, including when
-    candidate expressions overlap. No mutation is applied here.
+    candidate expressions overlap. Read sources under the resolved root; reject
+    unsafe paths, unreadable/stale sources, and unsafe replacements with ValueError.
+    Validate rule IDs even for empty input. No mutation is applied or saved here.
     """
     validate_rules(rules)
     edits: dict[tuple[str, str, int, int, str], MutationManifest] = {}

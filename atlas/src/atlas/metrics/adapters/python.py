@@ -34,6 +34,7 @@ from ...syntax import field, text
 
 
 def irrefutable_pattern(pattern: Node) -> bool:
+    """Recognize supported wildcard/capture patterns; unknown shapes remain refutable."""
     handler = _PATTERN_CHECKS.get(pattern.type)
     return handler(pattern) if handler is not None else False
 
@@ -81,6 +82,7 @@ _PATTERN_CHECKS = {
 
 
 def case_decision(node: Node) -> bool:
+    """Count a match case unless its pattern is proven irrefutable."""
     pattern = next(
         (child for child in node.named_children if child.type == "case_pattern"), None
     )
@@ -88,6 +90,10 @@ def case_decision(node: Node) -> bool:
 
 
 def parameter_count(node: Node) -> int | None:
+    """Count inputs without separators or the first non-static method receiver.
+
+    A parameterless lambda has zero inputs; missing/error headers yield None.
+    """
     parameters = parameter_node(node)
     if parameters is None:
         return 0 if node.type == "lambda" else None
@@ -294,6 +300,7 @@ def _import_node(ctx, file, position):
 class PythonResolution(ResolutionAdapter):
     receiver_bindings = staticmethod(python_bindings)
     def import_path(self, source: str) -> str:
+        """Extract the from/import module, preferring quoted text when present."""
         match = re.search(r"\bfrom\s+([\w.]+)|\bimport\s+([\w.]+)", source)
         path = (
             next((part for part in match.groups() if part), "")
@@ -317,9 +324,14 @@ class PythonResolution(ResolutionAdapter):
     rebound_declarations = {"function_definition", "class_definition"}
 
     def instance_members(self, resolver, parent, name):
+        """Find members through one proven base, rejecting writes and masked members."""
         return inherited_members(resolver, parent, name)
 
     def select(self, identity, request, matches):
+        """Select a runtime declaration, excluding typing overloads and unsafe self calls.
+
+        Multiple declarations must form one group of overloads ending in a body.
+        """
         if request.qualifier and request.qualifier.split(".")[0] == "self":
             syntax = identity.syntax[request.file.source.path]
             node = syntax.node(request.call.start_byte, request.call.end_byte)
@@ -334,6 +346,7 @@ class PythonResolution(ResolutionAdapter):
         return overload_implementation(syntax, ordered)
 
     def module_index(self, repository, syntax) -> dict[str, list[ParsedFile]]:
+        """Index .py modules under repository, package and src roots, retaining duplicates."""
         files = [
             file
             for file in repository.files
@@ -346,6 +359,10 @@ class PythonResolution(ResolutionAdapter):
         return index
 
     def import_files(self, ctx, request: ImportRequest):
+        """Resolve relative paths or unique indexed absolute modules.
+
+        Reject absolute child paths whose parent resolves to a non-package module.
+        """
         file, path = request.file, request.path
         if path.startswith("."):
             return ctx.path_files(file, path)
@@ -357,6 +374,7 @@ class PythonResolution(ResolutionAdapter):
     def paths(
         self, source: ParsedFile, name: str, files: list[ParsedFile]
     ) -> list[ParsedFile]:
+        """Match .py or package __init__.py paths, with leading dots setting parent depth."""
         dots = len(name) - len(name.lstrip("."))
         module = name[dots:].replace(".", "/")
         if dots:
@@ -370,6 +388,7 @@ class PythonResolution(ResolutionAdapter):
         return [f for f in files if f.source.path in paths]
 
     def lexical_imports(self, syntax) -> list[tuple[str, Node]]:
+        """Return imported aliases/root names paired with their lexical scopes."""
         result = []
         for node in syntax.nodes:
             if node.type not in self.import_nodes:
@@ -389,6 +408,7 @@ class PythonResolution(ResolutionAdapter):
         ]
 
     def binding(self, syntax, node: Node, scope: Node):
+        """Find Python binding targets; move walrus bindings outside comprehension scopes."""
         if node.type in {"function_definition", "class_definition"}:
             return field(node, "name"), scope
         if node.type in {"except_clause", "as_pattern"}:
@@ -400,6 +420,10 @@ class PythonResolution(ResolutionAdapter):
         return target, scope
 
     def visible(self, syntax, scope: Node, position: int) -> bool:
+        """Restrict visibility in comprehension iterables and nested class-body scopes.
+
+        The caller separately checks that position lies within the scope's byte range.
+        """
         if scope.type in COMPREHENSIONS:
             if _in_comprehension_iterable(scope, position):
                 return False
@@ -419,12 +443,14 @@ class PythonResolution(ResolutionAdapter):
         return True
 
     def declaration_allowed(self, syntax, lookup: DeclarationLookup) -> bool:
+        """Exempt class declarations from shadowing unless a visible import shares the name."""
         return lookup.node.type == "class_definition" and not any(
             alias == lookup.name and syntax._visible(scope, lookup.position)
             for alias, scope in syntax.imports
         )
 
     def import_shadowed(self, syntax, name: str, position: int) -> bool:
+        """Block class-body import names where nested scopes cannot see that import."""
         return any(
             alias == name
             and scope.type == "class_definition"
@@ -435,6 +461,7 @@ class PythonResolution(ResolutionAdapter):
         )
 
     def static(self, syntax, symbol: Symbol) -> bool:
+        """Recognize exact staticmethod/classmethod decorators; absent decorators use shared checks."""
         node = syntax.node(symbol.start_byte, symbol.end_byte)
         if node and node.parent and node.parent.type == "decorated_definition":
             return any(
@@ -445,6 +472,11 @@ class PythonResolution(ResolutionAdapter):
         return super().static(syntax, symbol)
 
     def import_targets(self, ctx, request: ImportRequest):
+        """Expand import dependencies, preferring existing members over child modules.
+
+        Bare relative from-imports may target a symbol; unavailable syntax uses
+        the shared path/key fallback. Unresolved dependencies retain None keys.
+        """
         file, position = request.file, request.position
         node = _import_node(ctx, file, position)
         if node is None:
@@ -474,6 +506,10 @@ class PythonResolution(ResolutionAdapter):
         return request.path, self.import_key(ctx, request)
 
     def import_item(self, ctx, request: ImportRequest):
+        """Build alias/symbol/namespace entries from import syntax, or [] if absent.
+
+        From-imports prefer declared members, then unmasked package child modules.
+        """
         file = request.file
         node = _import_node(ctx, file, request.position)
         if node is None:
@@ -507,6 +543,7 @@ class PythonResolution(ResolutionAdapter):
         return symbols
 
     def implicit_receiver(self, resolver, request: ResolutionRequest, method):
+        """Allow self only with an exact first self parameter and no competing binding."""
         if request.qualifier != "self":
             return True
         call = request.call

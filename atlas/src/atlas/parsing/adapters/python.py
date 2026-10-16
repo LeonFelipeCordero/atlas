@@ -30,6 +30,10 @@ INHERITANCE = InheritancePolicy(frozenset(), superclass_field="superclasses")
 
 
 def declaration(node: Node) -> DeclarationCarrier:
+    """Unwrap decorated definitions and retain decorator text on their carriers.
+
+    Mark lambdas as function carriers, using a supported binding when available.
+    """
     if node.type == "decorated_definition":
         node = node.child_by_field_name("definition") or node
     if node.type == "lambda":
@@ -46,6 +50,7 @@ def declaration(node: Node) -> DeclarationCarrier:
 
 
 def call_sites(root: Node):
+    """Iterate Python call nodes with original-source coordinates."""
     return shared_call_sites(root, CALL_TYPES)
 
 

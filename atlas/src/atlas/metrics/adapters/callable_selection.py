@@ -49,6 +49,10 @@ class Assignment:
     position: int = 0
 
     def index(self, argument: Argument) -> int | None:
+        """Locate a named or positional parameter; advance past non-variadic positions.
+
+        Return None for an unknown/duplicate name or excess positional input.
+        """
         if argument.name is not None:
             indexes = [i for i, p in enumerate(self.parameters) if p.name == argument.name]
             return indexes[0] if len(indexes) == 1 else None
@@ -60,12 +64,14 @@ class Assignment:
         return index
 
     def assign(self, index: int) -> bool:
+        """Record a parameter assignment; reject repeats except for variadic inputs."""
         if index in self.assigned and not self.parameters[index].variadic:
             return False
         self.assigned.add(index)
         return True
 
     def complete(self) -> bool:
+        """Test whether every required, non-variadic parameter has an assignment."""
         return all(i in self.assigned or p.default or p.variadic for i, p in enumerate(self.parameters))
 
 
@@ -81,6 +87,11 @@ def _type_names(identity):
 
 
 def select_callable(identity, request, matches):
+    """Return only a sole viable JVM callable, retaining candidates with unknown types.
+
+    If invocation arguments are unavailable, accept only an already unique match.
+    Cache repository type names on identity for conservative shadowing checks.
+    """
     syntax = identity.syntax[request.file.source.path]
     call = syntax.node(request.call.start_byte, request.call.end_byte)
     arguments = call_arguments(call)
@@ -101,6 +112,10 @@ def _viable(identity, invocation, symbol):
 
 
 def call_arguments(node: Node | None) -> list[Argument] | None:
+    """Read Java/Kotlin invocation arguments, or None for unsupported/error syntax.
+
+    Kotlin names and spreads are retained; trailing lambdas remain unknown.
+    """
     if node is None or node.has_error:
         return None
     if node.type in {"method_invocation", "object_creation_expression"}:
@@ -146,6 +161,10 @@ def _parameter_container(node: Node | None) -> Node | None:
 
 
 def callable_parameters(node: Node | None) -> list[Parameter] | None:
+    """Read JVM parameter names, types, defaults and variadic flags.
+
+    Return None for missing/error headers or explicit receiver parameters.
+    """
     container = _parameter_container(node)
     if container is None:
         return None
@@ -176,6 +195,11 @@ def _parameter(children, index, entry):
 
 
 def accepts(context: CallContext, parameters: list[Parameter], arguments: list[Argument]) -> bool:
+    """Test argument assignment and proven type compatibility, not compiler validity.
+
+    Spreads remain viable without checks. Otherwise reject missing required
+    inputs and proven type conflicts, but retain unknown types.
+    """
     # A spread's length/type and named vararg array semantics need a compiler.
     if any(a.spread for a in arguments):
         return True
@@ -199,6 +223,7 @@ def _accept_argument(context: CallContext, assignment: Assignment, argument: Arg
 
 
 def expression_type(context: TypeContext, node: Node) -> str | None:
+    """Infer a supported literal or explicit lexical binding type; otherwise return None."""
     kind = node.type
     if kind in {"string_literal", "multiline_string_literal"}:
         return "String"
@@ -278,7 +303,11 @@ def _uncertain_type(context: TypeContext, annotation: str, node: Node) -> bool:
 
 
 def proven_type(context: TypeContext, annotation: str | None, node: Node | None) -> str | None:
-    """Receiver names erase nullable/generic syntax; they are not type proofs."""
+    """Return a usable annotation, or None when syntax or name resolution is uncertain.
+
+    Java primitives remain proven; imports, colliding names and lossy
+    nullable/generic annotations prevent other type proofs.
+    """
     if annotation is None or node is None:
         return None
     # Primitive Java names cannot be shadowed. Reference/Kotlin names can.

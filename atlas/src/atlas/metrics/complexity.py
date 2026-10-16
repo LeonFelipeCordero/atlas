@@ -49,7 +49,9 @@ def calculate_complexity(
 
     Pass an adapter's policy when the language is known. The default retains the
     node-only API across language-pack grammars. Nested callable/type bodies are
-    excluded; alternatives share their preceding decision's depth.
+    excluded; alternatives share their preceding decision's depth. Return base
+    complexity (entry, decisions, logical operators), nested-decision penalties,
+    nested-loop count, their weighted sum, and maximum decision depth.
     """
     root = policy.body(root)
     base, nested, loops, maximum = 1, 0, 0, 0

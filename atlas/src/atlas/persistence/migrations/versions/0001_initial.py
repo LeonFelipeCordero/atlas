@@ -14,6 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create registrations with unique case-insensitive names and JSON graphs.
+
+    Execute DDL in Alembic's transaction; do not commit independently.
+    """
     op.create_table(
         "repositories",
         Column("id", Text, primary_key=True, nullable=False),
@@ -32,6 +36,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop graph and registration tables, permanently discarding their data.
+
+    Leave transaction control to Alembic.
+    """
     op.drop_table("repository_graphs")
     op.drop_index("repositories_name_unique", table_name="repositories")
     op.drop_table("repositories")

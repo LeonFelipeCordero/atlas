@@ -211,7 +211,11 @@ def _callable(node: Node, language: str) -> MutationCallable | None:
 
 
 def extract_candidates(source: SourceFile) -> MutationCandidateAnalysis:
-    """Extract from exact source bytes; reject invalid encoding or syntax wholesale."""
+    """Extract stable, source-sorted mutation sites from exact UTF-8 bytes.
+
+    Return an empty analysis for unsupported languages, invalid UTF-8, syntax
+    errors, or parser LookupError/ValueError. Do not execute or rewrite source.
+    """
     analysis = MutationCandidateAnalysis(candidates=[])
     try:
         source.source.decode("utf-8")
@@ -266,6 +270,7 @@ class _Extraction:
             self.site_types.add("call")
 
     def candidate(self, site: tuple[MutationKind, Node, Node], owner: MutationCallable | None) -> MutationCandidate:
+        """Build a hashed site record with exact text, byte spans, and its owner."""
         kind, token, expression = site
         source = self.source
         span = _span(token)
@@ -279,11 +284,13 @@ class _Extraction:
         )
 
     def skip(self, node: Node) -> bool:
+        """Test whether a subtree is excluded syntax, a comment, or an Elixir form."""
         if self.source.language == "elixir" and _elixir_excluded(node):
             return True
         return node.type in _EXCLUDED or "comment" in node.type
 
     def sites(self, node: Node) -> list[tuple[MutationKind, Node, Node]]:
+        """Collect condition and operator sites directly represented by this node."""
         condition = _condition(node, self.source.language)
         sites: list[tuple[MutationKind, Node, Node]] = []
         if condition is not None and condition.type not in {"let_condition", "let_chain"}:
@@ -292,6 +299,7 @@ class _Extraction:
         return sites
 
     def record(self, node: Node, owner: MutationCallable | None) -> None:
+        """Append unseen sites to the analysis and remember their candidate IDs."""
         for site in self.sites(node):
             candidate = self.candidate(site, owner)
             if candidate.id not in self.seen:
@@ -299,6 +307,10 @@ class _Extraction:
                 self.seen.add(candidate.id)
 
     def visit(self, node: Node, owner: MutationCallable | None) -> list[tuple[Node, MutationCallable | None]]:
+        """Record eligible sites and return reversed children with the nearest owner.
+
+        Return [] for leaves and excluded subtrees.
+        """
         if not node.named_child_count or self.skip(node):
             return []
         owner = _callable(node, self.source.language) or owner
@@ -307,6 +319,7 @@ class _Extraction:
         return [(child, owner) for child in reversed(node.named_children)]
 
     def run(self, root: Node) -> None:
+        """Fill the analysis by depth-first traversal without recursive calls."""
         pending: list[tuple[Node, MutationCallable | None]] = [(root, None)]
         while pending:
             pending.extend(self.visit(*pending.pop()))

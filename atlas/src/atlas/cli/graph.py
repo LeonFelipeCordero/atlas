@@ -17,6 +17,7 @@ from atlas.domain.navigation import NavigationError, PathRequest, Record, Traver
 @click.option("--revision", help="Expected graphRevision; reject a stale graph.")
 @click.pass_context
 def graph(ctx: click.Context, project: str | None, revision: str | None) -> None:
+    """Store project selection and an optional expected revision for subcommands."""
     ctx.obj = (project, revision)
 
 
@@ -24,10 +25,16 @@ class GraphError(click.ClickException):
     """Navigation failures are machine-readable JSON on stderr."""
 
     def show(self, file: Any = None) -> None:
+        """Write the navigation error as JSON to file, or stderr by default."""
         click.echo(json.dumps({"error": self.message}), file=file, err=True)
 
 
 def emit(ctx: click.Context, command: str, **options: Any) -> None:
+    """Run a navigation service command and print its projected JSON or source text.
+
+    Open a managed read snapshot using the context's project and revision.
+    Translate navigation, filesystem, and value failures to JSON CLI errors.
+    """
     output_format = options.pop("output_format", "json")
     project, revision = ctx.obj
     try:
@@ -45,6 +52,7 @@ def emit(ctx: click.Context, command: str, **options: Any) -> None:
 
 
 def command_options(command: str, options: Record) -> Record:
+    """Adapt CLI options to traversal requests; path conversion consumes three keys."""
     if command == "context":
         return {"request": TraversalRequest(**options)}
     if command == "path":
@@ -56,6 +64,7 @@ def command_options(command: str, options: Record) -> Record:
 @graph.command("overview")
 @click.pass_context
 def overview(ctx: click.Context) -> None:
+    """Print graph counts and bounded root nodes for the selected project."""
     emit(ctx, "overview")
 
 
@@ -64,6 +73,7 @@ def overview(ctx: click.Context) -> None:
 @click.option("--limit", default=10, show_default=True, type=click.IntRange(1, 100))
 @click.pass_context
 def find(ctx: click.Context, query: str, limit: int) -> None:
+    """Print ranked node matches for a name, path, or stable key, up to limit."""
     emit(ctx, "find", query=query, limit=limit)
 
 
@@ -71,6 +81,7 @@ def find(ctx: click.Context, query: str, limit: int) -> None:
 @click.argument("key")
 @click.pass_context
 def show(ctx: click.Context, key: str) -> None:
+    """Print node details and bounded ancestors for an indexed stable key."""
     emit(ctx, "show", key=key)
 
 
@@ -80,10 +91,12 @@ def show(ctx: click.Context, key: str) -> None:
 @click.option("--offset", default=0, show_default=True, type=click.IntRange(0))
 @click.pass_context
 def children(ctx: click.Context, **options: Any) -> None:
+    """Print a page of direct children using key, limit, and offset options."""
     emit(ctx, "children", **options)
 
 
 def relation_list(_ctx: click.Context, _param: click.Parameter, value: str) -> list[str]:
+    """Normalize comma-separated relations to sorted unique names or reject input."""
     relations = sorted({part.strip().upper() for part in value.split(",") if part.strip()})
     allowed = get_args(Relationship)
     if not relations or any(relation not in allowed for relation in relations):
@@ -92,6 +105,7 @@ def relation_list(_ctx: click.Context, _param: click.Parameter, value: str) -> l
 
 
 def traversal_options(function: Any) -> Any:
+    """Decorate a command with shared direction, relation, and traversal-size options."""
     function = click.option("--direction", type=click.Choice(["out", "in", "both"]), default="out", show_default=True)(function)
     function = click.option("--relations", default="CALLS,REFERENCES", show_default=True, callback=relation_list)(function)
     function = click.option("--max-nodes", default=30, show_default=True, type=click.IntRange(1, 300))(function)
@@ -104,6 +118,7 @@ def traversal_options(function: Any) -> Any:
 @traversal_options
 @click.pass_context
 def context(ctx: click.Context, **options: Any) -> None:
+    """Print bounded breadth-first graph context around a stable key."""
     emit(ctx, "context", **options)
 
 
@@ -114,6 +129,7 @@ def context(ctx: click.Context, **options: Any) -> None:
 @click.option("--format", "output_format", type=click.Choice(["json", "text"]), default="json", show_default=True)
 @click.pass_context
 def source(ctx: click.Context, keys: tuple[str, ...], **options: Any) -> None:
+    """Print verified source excerpts for one or more keys, with per-excerpt limits."""
     if len(keys) == 1:
         emit(ctx, "source", key=keys[0], **options)
     else:
@@ -127,4 +143,5 @@ def source(ctx: click.Context, keys: tuple[str, ...], **options: Any) -> None:
 @traversal_options
 @click.pass_context
 def path(ctx: click.Context, **options: Any) -> None:
+    """Print a shortest discovered route, or its bounded-search failure status."""
     emit(ctx, "path", **options)

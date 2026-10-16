@@ -7,6 +7,7 @@ from ...syntax import field, text
 
 
 def import_names(node: Node) -> list[tuple[str, str]]:
+    """Return imported names and aliases in syntax order; absent aliases are empty strings."""
     return [
         (text(field(child, "name") or child), text(field(child, "alias")))
         for child in node.children_by_field_name("name")
@@ -46,12 +47,14 @@ class _OverloadProviders:
         self.position = position
 
     def matches(self, local, targets) -> bool:
+        """Match one decorator provider only if its local name and overload member are stable."""
         return (len(targets) == 1 and targets[0] in self.decorators
                 and not self.syntax.shadowed(local, self.position)
                 and not self.syntax.member_rebound(local, "overload"))
 
 
 def typing_overload(syntax, symbol: Symbol) -> bool:
+    """Recognize overload decorators from a prior visible, unambiguous typing import."""
     node = syntax.node(symbol.start_byte, symbol.end_byte)
     if node is None or node.parent is None or node.parent.type != "decorated_definition":
         return False
@@ -65,6 +68,10 @@ def typing_overload(syntax, symbol: Symbol) -> bool:
 
 
 def overload_implementation(syntax, ordered: list[Symbol]) -> list[Symbol]:
+    """Return the last of a nonempty source-ordered overload group, or [] if invalid.
+
+    All earlier symbols must be typing overloads and the last must not be one.
+    """
     if all(typing_overload(syntax, s) for s in ordered[:-1]) and not typing_overload(syntax, ordered[-1]):
         return [ordered[-1]]
     return []
@@ -108,6 +115,10 @@ def _instance_owner(syntax, node: Node) -> bool:
 
 
 def bound_self(syntax, node: Node | None) -> bool:
+    """Prove the nearest function has an instance self parameter without reassignment.
+
+    Static/class descriptors and functions outside a class body are rejected.
+    """
     while node is not None and node.type != "function_definition":
         node = node.parent
     if node is None or not _first_self(node):

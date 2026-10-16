@@ -15,10 +15,16 @@ class ReceiverTypes:
 
     @cached_property
     def bindings(self):
+        """Cache adapter-extracted receiver bindings keyed by repository file path."""
         return {path: [b for n in syntax.nodes for b in syntax.adapter.receiver_bindings(syntax, n)]
                 for path, syntax in self.resolver.syntax.items()}
 
     def resolve(self, request):
+        """Resolve instance members from conservatively established receiver types.
+
+        Return None when no receiver type applies, allowing other lookup paths.
+        Return [] when a type path is unsafe, ambiguous, or has no matching member.
+        """
         types = self._receiver_types(request)
         return None if types is None else self.resolver.members(types, request.name, False)
 

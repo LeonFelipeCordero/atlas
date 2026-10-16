@@ -34,6 +34,7 @@ from ...syntax import field, text
 
 
 def match_decision(node: Node) -> bool:
+    """Count a match arm unless its pattern text is exactly the wildcard _."""
     pattern = node.child_by_field_name("pattern")
     return pattern is None or (pattern.text or b"").strip() != b"_"
 
@@ -212,6 +213,10 @@ class RustModules(ModuleIndex):
     def rust_key(
         self, source: ParsedFile, name: str, position: int | None = None
     ) -> str | None:
+        """Return a unique module's file/declaration key, or None if unresolved.
+
+        A byte position selects the context for inline-relative paths.
+        """
         return self.scope_key(self._rust_target(source, name, position))
 
     def rust_import(
@@ -228,10 +233,14 @@ class RustModules(ModuleIndex):
     def rust_symbols(
         self, source: ParsedFile, name: str, position: int | None = None
     ) -> list[Symbol]:
-        """Direct declarations of exactly one module, including inline namespaces."""
+        """Return direct declarations of one inline/external module, or [] if unresolved.
+
+        position is a byte offset for resolving inline-relative module paths.
+        """
         return self.scope_symbols(self._rust_target(source, name, position))
 
     def rust_files(self, name: str) -> list[ParsedFile]:
+        """Return the file for one absolute module identity; inline/ambiguous scopes yield []."""
         return self.scope_files(name)
 
 
@@ -239,6 +248,7 @@ class RustResolution(ResolutionAdapter):
     receiver_bindings = staticmethod(rust_bindings)
 
     def instance_members(self, resolver, parent, name):
+        """Collect direct members and methods from uniquely resolved inherent impls, not traits."""
         implementations = {s.key for s in resolver.symbols.values()
                            if s.language == "rust" and self._inherent_impl(resolver, s, parent)}
         return resolver._member_declarations(parent, name) + [
@@ -246,6 +256,7 @@ class RustResolution(ResolutionAdapter):
         ]
 
     def import_path(self, source: str) -> str:
+        """Extract a use/mod path, preferring quoted text and falling back to source."""
         match = re.search(r"\b(?:use|mod)\s+([\w:]+)", source)
         return quoted_path(source) or (match[1] if match else source.strip())
 
@@ -270,6 +281,7 @@ class RustResolution(ResolutionAdapter):
         return [s for s in matches if s.kind in {"struct", "enum", "type"}]
 
     def qualify_class(self, resolver, request, matches):
+        """Let a non-namespace use binding replace matches consisting only of impl blocks."""
         # An impl declaration is not a new type and must not mask its use import.
         local = resolver.lexical(request.file, request.name, request.owner)
         binding = resolver.imports.get(request.file, request.name, request.call.start_byte)
@@ -278,6 +290,7 @@ class RustResolution(ResolutionAdapter):
         return matches
 
     def receiver_owner(self, resolver, request):
+        """Resolve the enclosing impl type for a self-taking function; otherwise return []."""
         ancestors = resolver.ancestors(request.owner)
         method = self._ancestor(ancestors, "function")
         owner = self._ancestor(ancestors, "impl")
@@ -298,6 +311,7 @@ class RustResolution(ResolutionAdapter):
         return bool(node and self._has_self_node(node))
 
     def static(self, syntax, symbol):
+        """Treat impl functions without self as static; use shared checks for other symbols."""
         node = syntax.node(symbol.start_byte, symbol.end_byte)
         if node and node.type == "function_item" and node.parent and node.parent.type == "declaration_list":
             owner = node.parent.parent
@@ -313,6 +327,7 @@ class RustResolution(ResolutionAdapter):
         ))
 
     def call_target(self, node):
+        """Extract a struct literal's type name, otherwise use shared call fields."""
         if node and node.type == "struct_expression":
             return field(node, "name"), None
         return super().call_target(node)
@@ -331,15 +346,19 @@ class RustResolution(ResolutionAdapter):
     static_containers = {"storage_class_specifier", "modifiers"}
 
     def module_index(self, repository, syntax) -> RustModules:
+        """Build the explicit inline/external Rust module index for this repository."""
         return RustModules(repository, syntax)
 
     def index(self, ctx) -> RustModules:
+        """Return the Rust module index already installed on the resolution context."""
         return ctx.modules.indexes[self.family]
 
     def import_files(self, ctx, request: ImportRequest):
+        """Resolve one external module file at the import's optional byte position."""
         return self.index(ctx).rust_import(request.file, request.path, request.position)
 
     def import_key(self, ctx, request: ImportRequest):
+        """Prefer a unique module key, then a unique member key for :: paths; else None."""
         file, path, position = request.file, request.path, request.position
         key = self.index(ctx).rust_key(file, path, position)
         if not key and "::" in path:
@@ -349,6 +368,7 @@ class RustResolution(ResolutionAdapter):
         return key
 
     def members(self, ctx, request: ImportRequest, name):
+        """Find named direct declarations in one resolved inline or external module."""
         return [
             s
             for s in self.index(ctx).rust_symbols(request.file, request.path, request.position)
@@ -356,6 +376,10 @@ class RustResolution(ResolutionAdapter):
         ]
 
     def import_item(self, ctx, request: ImportRequest):
+        """Build a simple use binding as a module namespace or imported member.
+
+        Honor as aliases; directives without a matching use path yield [].
+        """
         file, position = request.file, request.position
         match = re.search(r"\buse\s+([\w:]+)(?:\s+as\s+(\w+))?", request.source)
         if not match:
@@ -373,6 +397,7 @@ class RustResolution(ResolutionAdapter):
         return [(alias or name, ctx._members(replace(request, path=module), name), False)]
 
     def module_bindings(self, ctx, file, source_length):
+        """Create namespace bindings for mod declarations within their parent byte ranges."""
         syntax = ctx.syntax[file.source.path]
         result = []
         for node in syntax.nodes:
@@ -391,6 +416,7 @@ class RustResolution(ResolutionAdapter):
         return result
 
     def local_namespace(self, resolver, local):
+        """Allow namespace lookup only for a nonempty set of mod declarations."""
         return bool(local) and all(
             (n := resolver.syntax[s.file_path].node(s.start_byte, s.end_byte))
             is not None
@@ -399,6 +425,7 @@ class RustResolution(ResolutionAdapter):
         )
 
     def qualified(self, resolver, request):
+        """Find named symbols in the qualifier's module at the call's byte position."""
         return [
             s
             for s in self.index(resolver).rust_symbols(
@@ -408,6 +435,7 @@ class RustResolution(ResolutionAdapter):
         ]
 
     def receiver_rejected(self, receiver, qualifier):
+        """Reject explicit simple/path-like receivers other than this before fallback lookup."""
         return (
             receiver is not None
             and qualifier != "this"
@@ -416,6 +444,7 @@ class RustResolution(ResolutionAdapter):
 
 
 def parameter_count(node: Node) -> int | None:
+    """Count inputs except self and attributes; missing/error headers yield None."""
     parameters = parameter_node(node)
     if parameters is None or parameters.has_error:
         return None

@@ -6,6 +6,7 @@ from atlas.domain.navigation import Record
 
 
 def source_text(payload: Record) -> str:
+    """Render a single/batch source response as metadata and numbered excerpts."""
     metadata = {key: value for key, value in payload.items() if key not in {"source", "sources"}}
     sections = [json.dumps(metadata, ensure_ascii=False)]
     excerpts = payload.get("sources")
@@ -16,6 +17,7 @@ def source_text(payload: Record) -> str:
 
 
 def excerpt_text(excerpt: Record) -> str:
+    """Render excerpt metadata and lines with absolute one-based line numbers."""
     details = {key: value for key, value in excerpt.items() if key != "lines"}
     numbered = [f"{number}: {line}" for number, line in enumerate(excerpt.get("lines", []), excerpt.get("startLine", 1))]
     return "\n".join([f"### {excerpt.get('path', excerpt['stableKey'])}",

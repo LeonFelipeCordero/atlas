@@ -8,7 +8,11 @@ from ..resolution_contract import ResolutionRequest
 
 
 def inherited_members(resolver, parent: Symbol, name: str):
-    """Follow only one proven base; unknown bases and cycles remain unresolved."""
+    """Return direct or inherited methods through one proven base, else [].
+
+    Reject masked/written members, unknown bases and cycles. Receiver-scope
+    scans are cached on the resolver's syntax objects.
+    """
     return _InheritedMember(resolver, name).members(parent, set())
 
 
@@ -18,6 +22,7 @@ class _InheritedMember:
         self.name = name
 
     def members(self, parent, seen):
+        """Find an unmasked method through one base chain, tracking visited symbol keys."""
         if parent.key in seen:
             return []
         seen = seen | {parent.key}
@@ -42,6 +47,7 @@ class _InheritedMember:
         return self.members(base, seen) if base is not None else []
 
     def base_instance_write(self, parent, seen):
+        """Test proven ancestors for fields, writes or decorated classes that mask a method."""
         target = _base_class(self.resolver, parent)
         if target is None or target.key in seen:
             return False
@@ -170,6 +176,7 @@ def _first_receiver(node):
 
 
 def member_mutation(node, receivers: set[str]) -> bool:
+    """Detect known Python/JavaScript mutator calls whose first argument is a receiver."""
     if node.type not in {"call_expression", "call"}:
         return False
     function = text(field(node, "function"))
@@ -182,6 +189,7 @@ def member_mutation(node, receivers: set[str]) -> bool:
 
 
 def member_write(target: str, receivers: set[str], name: str) -> bool:
+    """Detect named writes, any indexed write or whole-receiver replacement."""
     target = re.sub(r"\s+", "", target)
     return any(target == receiver + "." + name or target.startswith(receiver + "[")
                or target == receiver for receiver in receivers)
@@ -206,11 +214,16 @@ def _single_base(node):
 
 
 def same_declaration_group(matches: list[Symbol]) -> bool:
+    """Test whether candidates share exactly one file/parent/name group; [] is false."""
     return len({(s.file_path, s.parent_key, s.name) for s in matches}) == 1
 
 
 def executable_implementation(identity, matches: list[Symbol], signature_types: set[str]):
-    """Signatures describe one implementation, never arity-specific bodies."""
+    """Return one body in a declaration group, or [] for missing/ambiguous syntax.
+
+    Other declarations must have signature_types and precede that body;
+    signatures never select separate arity-specific implementations.
+    """
     if not matches or not same_declaration_group(matches):
         return []
     nodes = [identity.syntax[s.file_path].node(s.start_byte, s.end_byte) for s in matches]

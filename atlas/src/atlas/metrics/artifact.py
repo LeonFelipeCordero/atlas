@@ -264,7 +264,12 @@ def _level_view(
 def build_dependency_views(
     nodes: list[dict[str, object]], edges: list[dict[str, object]]
 ) -> dict[str, dict[str, Any]]:
-    """Project non-containment relationships to distinct internal peers at each level."""
+    """Return module, file, type, and callable dependency views without mutation.
+
+    Project endpoints to their nearest ancestor at each level. Omit containment,
+    same-peer, and unprojectable relationships; aggregate directed peer pairs
+    with relationship and confidence counts. Include isolated level nodes.
+    """
     nodes_by_key = {str(node["stableKey"]): node for node in nodes}
     return {
         level: _level_view(edges, level, nodes_by_key)
@@ -429,8 +434,8 @@ def build_artifact(
     """Assemble a validated graph from parsed sources and resolved relationships.
 
     Use after resolution; this adds hierarchy, dependency views, diagnostics,
-    dependency metrics, import-cycle groups, and a UTC indexing timestamp without
-    reading files.
+    dependency metrics, import-cycle groups, mutation candidates, and a UTC
+    indexing timestamp from retained sources, without reading files.
 
     Args:
         root: Repository path used for names and metadata, without normalization.

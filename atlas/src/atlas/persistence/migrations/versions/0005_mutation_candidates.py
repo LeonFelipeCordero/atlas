@@ -14,6 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create file-owned mutation storage/index without generating candidates.
+
+    Leave transaction control to Alembic; reindex to populate saved candidates.
+    """
     op.create_table(
         "graph_mutation_candidates",
         Column("repository_id", Text, primary_key=True, nullable=False),
@@ -32,4 +36,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Discard saved mutation candidates while retaining graph files.
+
+    Leave transaction control to Alembic.
+    """
     op.drop_table("graph_mutation_candidates")

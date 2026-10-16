@@ -24,6 +24,7 @@ class ModuleIndex:
         self._file_scopes: dict[str, list[ModuleScope]] = {}
 
     def add_scopes(self, scopes: Iterable[ModuleScope]) -> None:
+        """Append scopes to identity and file indexes without removing duplicates."""
         for scope in scopes:
             self._scopes.setdefault(scope.identity, []).append(scope)
             self._file_scopes.setdefault(scope.file.source.path, []).append(scope)
@@ -32,6 +33,7 @@ class ModuleIndex:
     def walk_scopes(
         root: ModuleScope, children: Callable[[ModuleScope], Iterable[ModuleScope]]
     ) -> Iterator[ModuleScope]:
+        """Yield root and descendants depth-first, avoiding file-root cycles per path."""
         pending = [(root, {root.file.source.path})]
         while pending:
             scope, seen = pending.pop()
@@ -39,6 +41,7 @@ class ModuleIndex:
             pending.extend(_pending_scopes(scope, seen, children))
 
     def scopes_at(self, source: ParsedFile, position: int | None) -> list[ModuleScope]:
+        """Return narrowest scopes containing a byte position, or file roots for None."""
         scopes = self._file_scopes.get(source.source.path, [])
         if position is None:
             return [scope for scope in scopes if scope.body.parent is None]
@@ -50,6 +53,7 @@ class ModuleIndex:
         return _narrowest_scopes(scopes)
 
     def unique_scope(self, identities: list[str]) -> ModuleScope | None:
+        """Resolve exactly one identity with exactly one indexed scope; else return None."""
         if len(identities) != 1:
             return None
         scopes = self._scopes.get(identities[0], [])
@@ -57,6 +61,7 @@ class ModuleIndex:
 
     @staticmethod
     def scope_key(scope: ModuleScope | None) -> str | None:
+        """Return the file or enclosing declaration key, or None if unavailable."""
         if scope is None:
             return None
         if scope.body.parent is None:
@@ -74,6 +79,7 @@ class ModuleIndex:
 
     @staticmethod
     def scope_symbols(scope: ModuleScope | None) -> list[Symbol]:
+        """Return direct declarations of a file/inline scope; return [] for None."""
         if scope is None:
             return []
         if scope.body.parent is None:
@@ -82,6 +88,7 @@ class ModuleIndex:
         return [s for s in scope.file.symbols if (s.start_byte, s.end_byte) in spans]
 
     def scope_files(self, identity: str) -> list[ParsedFile]:
+        """Return the unique module file; inline or ambiguous scopes yield []."""
         scope = self.unique_scope([identity])
         return [scope.file] if scope and scope.body.parent is None else []
 

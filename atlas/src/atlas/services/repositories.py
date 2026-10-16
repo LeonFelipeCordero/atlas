@@ -25,7 +25,10 @@ def _required_text(value: Any, field: str, maximum: int) -> str:
 
 
 def analyze_folder(root: Path) -> dict[str, Any]:
-    """Analyze entirely in memory, without opening or creating a database."""
+    """Return a graph artifact dict from local analysis without opening a database.
+
+    Propagate analysis failures; no saved graph is changed.
+    """
     return asdict(analyze_repository(root))
 
 
@@ -36,6 +39,11 @@ class RepositoryService:
         self._repository = repository
 
     def register(self, input: Any) -> RepositoryDTO:
+        """Validate/trim name and location, then persist and return a registration.
+
+        Raise RepositoryError (400) for malformed input or excessive lengths;
+        the store reports duplicate names as 409. Do not index the location.
+        """
         if not isinstance(input, dict):
             raise RepositoryError("Expected an object with name and location", 400)
         name = _required_text(input.get("name"), "name", 200)
@@ -43,22 +51,37 @@ class RepositoryService:
         return self._repository.register(name, location)
 
     def list(self) -> list[RepositoryDTO]:
+        """Return registered repositories and their latest normalized import times."""
         return self._repository.list()
 
     def get_architecture(self, identifier: str) -> GraphDTO | None:
+        """Return a graph summary, or None for a registration not yet indexed.
+
+        Validate/trim the repository ID; raise RepositoryError (400) for invalid
+        IDs and 404 for missing registrations.
+        """
         identifier = _required_text(identifier, "repositoryId", 200)
         if not self._repository.exists(identifier):
             raise RepositoryError("Repository not found", 404)
         return self._repository.graph(identifier)
 
     def get_report_facts(self, identifier: str) -> ReportFactsDTO | None:
-        """Return normalized report DTOs without exposing the repository port."""
+        """Return normalized report facts, or None if not yet indexed.
+
+        Validate/trim the repository ID; raise RepositoryError (400) for invalid
+        IDs and 404 for missing registrations. Never expose the repository port.
+        """
         identifier = _required_text(identifier, "repositoryId", 200)
         if not self._repository.exists(identifier):
             raise RepositoryError("Repository not found", 404)
         return self._repository.report_facts(identifier)
 
     def report(self, project_name: str) -> dict[str, Any]:
+        """Build a report from saved facts for a case-insensitive project name.
+
+        Raise RepositoryError for invalid names (400), missing registrations
+        (404), or missing indexed graphs (409). Do not analyze local sources.
+        """
         name = _required_text(project_name, "project name", 200)
         identifier = self._repository.resolve(name)
         if identifier is None:
@@ -69,7 +92,12 @@ class RepositoryService:
         return build_report(graph)
 
     def save_folder(self, root: Path, artifact: dict[str, Any]) -> GraphDTO:
-        """Update by canonical location; otherwise register and save atomically."""
+        """Save an artifact by canonical local location and return its summary.
+
+        Update an existing registration, or choose an unused folder-based name
+        and register/save atomically. Ignore URL registrations; never analyze
+        sources here. Store failures leave the previous saved graph intact.
+        """
         root = root.expanduser().resolve()
         for project in self._repository.list():
             if "://" in project.location:
@@ -85,6 +113,12 @@ class RepositoryService:
         return self._repository.save_new(name, str(root), artifact)
 
     def index(self, project_name: str, root: Path) -> GraphDTO:
+        """Analyze root, then replace the named project's graph and return a summary.
+
+        Resolve the case-insensitive name, not the root location. Invalid names
+        raise RepositoryError (400), missing projects 404. Analysis failures
+        propagate before any save; the store commits the replacement atomically.
+        """
         name = _required_text(project_name, "project name", 200)
         identifier = self._repository.resolve(name)
         if identifier is None:

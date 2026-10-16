@@ -20,6 +20,9 @@ ADAPTERS = {
 
 
 def get_adapter(language: str) -> LanguageAdapter:
-    """Select extraction hooks, rejecting unsupported importer languages."""
+    """Select language hooks, using shared defaults for unregistered grammars.
+
+    Raise ValueError for unsupported importer languages.
+    """
     require_supported_language(language)
     return ADAPTERS.get(language, DEFAULT_ADAPTER)

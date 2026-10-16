@@ -174,6 +174,8 @@ def strongly_connected_components(adjacency: dict[str, list[str]]) -> list[list[
 
     Adjacency must include every target as a key. Traversal takes O(V + E),
     excluding sorting members within each component. No recursion is used.
+    Return sorted members in each component, including isolated vertices.
+    Missing target keys raise KeyError; the adjacency is not modified.
     """
     reverse = _reverse_adjacency(adjacency)
     visited: set[str] = set()
@@ -213,6 +215,10 @@ class _CycleSearch:
     pending: deque[str]
 
     def visit_neighbors(self, node: str) -> bool:
+        """Record unseen in-group neighbors and queue those not closing the cycle.
+
+        Return True as soon as a neighbor reaches start; update parents in place.
+        """
         for target in self.adjacency[node]:
             if target not in self.members or target in self.parents:
                 continue

@@ -61,6 +61,7 @@ def _component(node: Node) -> bool:
 
 
 def is_jsx_site(node: Node) -> bool:
+    """Test whether the node names an opening or self-closing JSX tag."""
     parent = node.parent
     return bool(
         parent is not None
@@ -70,12 +71,14 @@ def is_jsx_site(node: Node) -> bool:
 
 
 def call_sites(root: Node) -> Iterator[CallSite]:
+    """Yield calls, constructors, and component JSX tags, excluding native tags."""
     for node in walk(root):
         if node.type in CALL_TYPES or is_jsx_site(node) and _component(node):
             yield node, 0, False, ()
 
 
 def normalize_call(site: CallSite) -> CallTarget:
+    """Split JSX names into member/qualifier; use shared extraction for calls."""
     node = site[0]
     if is_jsx_site(node):
         name = text(node)
@@ -85,10 +88,12 @@ def normalize_call(site: CallSite) -> CallTarget:
 
 
 def call_relationship(site: CallSite) -> Literal["CALLS", "REFERENCES"]:
+    """Classify JSX component usage as a reference and other sites as calls."""
     return "REFERENCES" if is_jsx_site(site[0]) else "CALLS"
 
 
 def metadata(node: Node) -> tuple[str | None, list[str]]:
+    """Return explicit visibility and annotations without inferring defaults."""
     return modifier_metadata(node, frozenset({"public", "private", "protected"}))
 
 
@@ -107,6 +112,10 @@ def _expressions(node: Node) -> list[Node]:
 
 
 def script_declaration(node: Node) -> DeclarationCarrier:
+    """Use callback values as carriers, naming them from supported bindings.
+
+    Unwrap single-expression parentheses; keep other declarations as named nodes.
+    """
     expression = unparenthesized(node)
     if expression.type in SCRIPT_CALLBACKS:
         node = expression

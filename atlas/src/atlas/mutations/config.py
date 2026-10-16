@@ -13,5 +13,6 @@ class MutationConfig(BaseModel):
     @field_validator("rules")
     @classmethod
     def supported_rules(cls, value: list[str]) -> list[str]:
+        """Reject unknown rule IDs with ValueError; retain order and duplicates."""
         validate_rules(value)
         return value

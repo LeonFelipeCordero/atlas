@@ -21,6 +21,10 @@ from ..receiver_syntax import go_bindings, type_name
 
 
 def parameter_count(node: Node) -> int | None:
+    """Expand grouped Go parameter names; each unnamed/variadic entry counts once.
+
+    Missing, erroneous or unsupported parameter containers yield None.
+    """
     parameters = parameter_node(node)
     if parameters is None or parameters.has_error:
         return None
@@ -37,6 +41,7 @@ class GoResolution(ResolutionAdapter):
     receiver_bindings = staticmethod(go_bindings)
 
     def instance_members(self, resolver, parent, name):
+        """Find methods with parent's receiver type name across files in the same package."""
         symbols = self._package_symbols(resolver, resolver.files[parent.file_path])
         return [s for s in symbols if s.name == name and self._receiver_method(resolver, s, parent)]
 
@@ -61,12 +66,15 @@ class GoResolution(ResolutionAdapter):
         return (file.source.path.rpartition("/")[0], next((text(n) for n in syntax.nodes if n.type == "package_clause"), ""))
 
     def same_package(self, modules, source, name):
+        """Find types sharing source's directory and package clause, preserving duplicates."""
         return [s for file in self._package_files(modules, source)
                 for s in file.symbols if s.name == name and s.kind == "type"]
     def import_path(self, source: str) -> str:
+        """Return the quoted Go package path, or stripped source when absent."""
         return quoted_path(source) or source.strip()
 
     def import_item(self, ctx, request):
+        """Build a namespace binding from an alias or final path name; skip dot imports."""
         source, path = request.source, request.path
         if re.match(r"\s*\.\s+['\"]", source):
             return []
@@ -90,6 +98,7 @@ class GoResolution(ResolutionAdapter):
     receiver_class_nodes = {"composite_literal", "unary_expression"}
 
     def binding(self, syntax, node, scope):
+        """Extract range targets, using the enclosing scope for assignment without :=."""
         if node.type == "range_clause":
             if not any(c.type == ":=" for c in node.children) and node.parent:
                 scope = syntax.scope(node.parent)
@@ -97,6 +106,7 @@ class GoResolution(ResolutionAdapter):
         return super().binding(syntax, node, scope)
 
     def call_target(self, node):
+        """Extract composite-literal types, including & literals; reject other unary targets."""
         if node and node.type == "unary_expression":
             operand = field(node, "operand")
             if text(field(node, "operator")) == "&" and operand and operand.type == "composite_literal":
