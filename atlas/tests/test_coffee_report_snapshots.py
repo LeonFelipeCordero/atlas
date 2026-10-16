@@ -1,6 +1,7 @@
 """CLI quantitative reports must match the saved coffee sample output."""
 
 import json
+import re
 
 import pytest
 from click.testing import CliRunner
@@ -21,7 +22,8 @@ def test_coffee_report_matches_snapshot(language: str) -> None:
     assert "Internal instability" in result.output and "Change impact" in result.output
     assert ("## Circular imports" in result.output) == bool(coffee_snapshot(coffee_graph(language))["circularDependencies"]["groups"])
     metrics = result.output.split("## Mutation candidates", 1)[0]
-    assert "limit" not in metrics and "finding" not in metrics.lower()
+    prose = "\n".join(line for line in metrics.splitlines() if not line.startswith("|"))
+    assert re.search(r"\b(limits?|findings?)\b", prose, re.IGNORECASE) is None
     expected = json.loads((SNAPSHOT_ROOT / "coffee" / language / "cli.json").read_text())["report-markdown"]["output"]
     assert result.output == expected
 
@@ -34,11 +36,16 @@ def test_coffee_size_measurements_include_every_source_and_callable(language: st
     ])
     assert result.exit_code == 0, result.output
     measurements = {node["stableKey"]: node for node in json.loads(result.output)["nodes"]}
-    calibration = next(node for node in graph.nodes if node["name"] == "calibrate")
+    calibration = core_callable(graph, "calibrate")
     assert_calibration_size(language, calibration, measurements)
-    ready = next(node for node in graph.nodes if node["name"] == "ready")
+    ready = core_callable(graph, "ready")
     assert measurements[ready["stableKey"]]["metrics"]["parameterCount"] == 4
     assert set(measurements) >= {node["stableKey"] for node in graph.nodes if node["level"] in {"file", "callable"}}
+
+
+def core_callable(graph, name):
+    return next(node for node in graph.nodes if node["name"] == name
+                and not (node.get("path") or "").startswith("edge_cases/"))
 
 
 def assert_calibration_size(language, calibration, measurements):

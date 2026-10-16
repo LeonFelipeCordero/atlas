@@ -11,7 +11,7 @@ from click.testing import CliRunner
 from atlas.bootstrap import migrate_database, repository_service
 from atlas.cli import main
 from atlas.services.repositories import analyze_folder
-from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT
+from tests.coffee_fixture import FIXTURE_ROOT, PARSE_ERROR_PATHS, SNAPSHOT_ROOT
 
 LANGUAGES = ("java", "kotlin", "go", "rust", "javascript", "typescript", "elixir", "python", "tsx")
 
@@ -45,7 +45,7 @@ def test_candidate_pipeline_snapshot(language: str, tmp_path: Path, monkeypatch:
     assert not database.parent.exists()
     artifact = analyze_folder(FIXTURE_ROOT / language)
     assert artifact["mutationCandidates"] == expected["candidates"]
-    assert artifact["stats"]["parseErrors"] == 0
+    assert artifact["stats"]["parseErrors"] == len(PARSE_ERROR_PATHS.get(language, set()))
     assert_candidate_bytes(language, expected["candidates"])
 
 
@@ -80,7 +80,7 @@ def test_saved_candidate_report_matches_fresh_report(language: str, tmp_path: Pa
         project, = service.list()
         stored = service.report(project.name)
         assert stored["mutationCandidates"] == report["mutationCandidates"]
-        assert stored["summary"]["parseErrors"] == 0
+        assert stored["summary"]["parseErrors"] == len(PARSE_ERROR_PATHS.get(language, set()))
     again = runner.invoke(main, [*args, "--save"])
     assert again.output == fresh.output
 

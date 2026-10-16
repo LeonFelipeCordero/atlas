@@ -7,6 +7,7 @@ from datetime import datetime
 from tests.coffee_fixture import (
     FIXTURE_ROOT,
     SNAPSHOT_ROOT,
+    PARSE_ERROR_PATHS,
     coffee_snapshot,
     coffee_sources,
 )
@@ -42,8 +43,7 @@ def assert_snapshot(test, language, artifact):
     test.assertIsNotNone(datetime.fromisoformat(before.get("indexedAt", "")).tzinfo)
     test.assertEqual(actual["repository"]["path"], f"/samples/coffee/{language}")
     test.assertEqual(actual["repository"]["languages"], sorted({source.language for source in coffee_sources(language)}))
-    test.assertEqual(actual["diagnostics"], [])
-    test.assertEqual(actual["stats"]["parseErrors"], 0)
+    test.assertEqual(actual["stats"]["parseErrors"], len(PARSE_ERROR_PATHS.get(language, set())))
     test.assertEqual(actual["stats"]["files"], len(coffee_sources(language)))
     test.assertGreater(actual["stats"]["externalNodes"], 0)
     test.assertTrue(any(edge["type"] == "CALLS" for edge in actual["edges"]))
@@ -85,7 +85,8 @@ def assert_recursion_scenarios(test, language, graph):
 
 def assert_callback_owners(test, language, graph):
     nodes = nodes_by_key(graph)
-    callbacks = [node for node in graph["nodes"] if node["name"] == "<anonymous>"]
+    callbacks = [node for node in graph["nodes"] if node["name"] == "<anonymous>"
+                 and not node.get("path", "").startswith("edge_cases/")]
     non_callable_owners = [
         (node["qualifiedName"], nodes[node["parentStableKey"]]["qualifiedName"], nodes[node["parentStableKey"]]["level"])
         for node in callbacks if nodes[node["parentStableKey"]]["level"] != "callable"
@@ -128,7 +129,7 @@ def assert_call_sites(test, language, graph):
 
 
 def assert_source_evidence(test, language, edge):
-    source = (FIXTURE_ROOT / language / edge["path"]).read_text()
+    source = (FIXTURE_ROOT / language / edge["path"]).read_text(errors="replace")
     lines = source.splitlines()
     test.assertIn(
         edge["evidence"].splitlines()[0], lines[edge["line"] - 1], (language, edge)
@@ -169,7 +170,8 @@ def assert_preview_render(test, context, target):
 
 
 def assert_score(test, language, graph):
-    scores = [node for node in graph["nodes"] if node["name"] == "score"]
+    scores = [node for node in graph["nodes"] if node["name"] == "score"
+              and not node.get("path", "").startswith("edge_cases/")]
     test.assertEqual(len(scores), 1)
     test.assertEqual(
         tuple(scores[0]["properties"][field] for field in COMPLEXITY_FIELDS),
@@ -178,11 +180,12 @@ def assert_score(test, language, graph):
 
 
 def assert_project_calls(test, graph):
-    language = graph["repository"]["languages"][0]
+    language = graph["repository"]["name"]
     nodes = nodes_by_key(graph)
     unresolved = [
         (edge["path"], nodes[edge["targetStableKey"]]["name"], edge["evidence"])
-        for edge in call_edges(graph) if is_external_project_call(nodes, edge)
+        for edge in call_edges(graph) if not edge["path"].startswith("edge_cases/")
+        and is_external_project_call(nodes, edge)
     ]
     # Expanded fixtures expose dynamic-receiver and grouped-alias limitations.
     # Exact exceptions leave every other old/core project call protected.

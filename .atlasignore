@@ -1,4 +1,4 @@
 # Application samples and generated baselines are inputs, not implementation.
 # Analyzing a sample project directly still includes all of its files.
-/atlas/tests/fixtures/
+/atlas/tests/code_samples/
 /atlas/tests/snapshots/
