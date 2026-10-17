@@ -78,7 +78,7 @@ def test_rule_edits_filter_language_operator_and_noop(candidate):
     assert result == [module._manifest(candidate(), rule(mappings=mappings), token) for token in ("-", "*")]
 
 
-@pytest.mark.parametrize("kind,selected,spans,expected", [
+@pytest.mark.parametrize("case", [
     ("arithmetic", ["arithmetic.add-to-subtract"], {(0, 6)}, ["-"]),
     ("arithmetic", [], {(0, 6)}, []),
     ("arithmetic", ["arithmetic.add-to-subtract"], {(0, 7)}, []),
@@ -87,7 +87,8 @@ def test_rule_edits_filter_language_operator_and_noop(candidate):
     ("comparison", ["comparison.less-to-greater"], set(), [">"]),
     ("condition", ["arithmetic.add-to-subtract"], {(0, 6)}, []),
 ])
-def test_edits_require_selected_kind_and_binary_expression(candidate, kind, selected, spans, expected):
+def test_edits_require_selected_kind_and_binary_expression(candidate, case):
+    kind, selected, spans, expected = case
     site = candidate(kind=kind, operator="<" if kind == "comparison" else "+",
                      originalText="<" if kind == "comparison" else "+")
     assert [item.replacement for item in module._edits(site, selected, spans)] == expected

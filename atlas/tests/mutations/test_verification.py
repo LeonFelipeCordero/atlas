@@ -30,7 +30,9 @@ def span(start: int, end: int) -> MutationSpan:
 
 @pytest.fixture
 def records():
-    def make(data="é + b\r\n".encode(), original="+", language="python", path="src/café.py"):
+    def make(data="é + b\r\n".encode(), original="+", **metadata):
+        language = metadata.get("language", "python")
+        path = metadata.get("path", "src/café.py")
         start = data.index(original.encode())
         source = SourceFile(path=path, absolute_path=ROOT / path, language=language, source=data)
         candidate = MutationCandidate(
@@ -87,9 +89,13 @@ def test_read_source_rejects_resolved_escape_before_read(records, monkeypatch, r
     read.assert_not_called()
 
 
-@pytest.mark.parametrize("operation", ["resolve", "read_bytes"])
-@pytest.mark.parametrize("error_type", [FileNotFoundError, PermissionError, IsADirectoryError, OSError, RuntimeError])
-def test_read_source_wraps_filesystem_errors_with_cause(records, monkeypatch, operation, error_type):
+@pytest.mark.parametrize("case", [
+    (operation, error_type)
+    for operation in ("resolve", "read_bytes")
+    for error_type in (FileNotFoundError, PermissionError, IsADirectoryError, OSError, RuntimeError)
+])
+def test_read_source_wraps_filesystem_errors_with_cause(records, monkeypatch, case):
+    operation, error_type = case
     _, candidate = records()
     error = error_type("filesystem failure")
     resolve = Mock(return_value=ROOT / candidate.path)
@@ -133,14 +139,15 @@ def test_read_source_preserves_requested_metadata_and_raw_bytes(records, monkeyp
     assert reads == [absolute]
 
 
-@pytest.mark.parametrize(("language", "allowed"), [
+@pytest.mark.parametrize("case", [
     ("python", {"binary_operator"}), ("elixir", {"binary_operator"}),
     ("kotlin", {"additive_expression", "multiplicative_expression"}),
     ("javascript", {"binary_expression"}), ("typescript", {"binary_expression"}),
     ("tsx", {"binary_expression"}), ("java", {"binary_expression"}),
     ("rust", {"binary_expression"}), ("go", {"binary_expression"}),
 ])
-def test_binary_spans_uses_language_grammar_nodes_not_operator_text(records, monkeypatch, language, allowed):
+def test_binary_spans_uses_language_grammar_nodes_not_operator_text(records, monkeypatch, case):
+    language, allowed = case
     source, _ = records(language=language)
     kinds = [
         "binary_operator", "binary_expression", "additive_expression",
@@ -294,13 +301,14 @@ def test_candidate_edits_with_no_matching_rule_returns_no_edits(records, monkeyp
     verify.assert_not_called()
 
 
-@pytest.mark.parametrize(("data", "original", "replacement"), [
+@pytest.mark.parametrize("case", [
     ("é + b\r\n".encode(), "+", "≤"),
     ("é <= b\r\n".encode(), "<=", "<"),
     ("é < b\r\n".encode(), "<", "<="),
     (b"+ b", "+", "-"), ("é +".encode(), "+", "-"),
 ])
-def test_verify_replacement_splices_utf8_bytes_and_preserves_source(records, monkeypatch, data, original, replacement):
+def test_verify_replacement_splices_utf8_bytes_and_preserves_source(records, monkeypatch, case):
+    data, original, replacement = case
     source, candidate = records(data=data, original=original)
     manifest = manifest_for(candidate, replacement)
     start = candidate.span.startByte
@@ -345,11 +353,12 @@ def test_verify_replacement_requires_one_site_matching_every_guard(records, monk
     assert source.source == "é + b\r\n".encode()
 
 
-@pytest.mark.parametrize(("data", "original", "replacement", "modified", "sites_kind", "sites_operator"), [
+@pytest.mark.parametrize("case", [
     (b"a+--b", "+", "-", b"a---b", "arithmetic", "--"),
     (b"a*/re/", "*", "/", b"a//re/", "condition", None),
 ])
-def test_verify_replacement_rejects_lexical_collisions(records, monkeypatch, data, original, replacement, modified, sites_kind, sites_operator):
+def test_verify_replacement_rejects_lexical_collisions(records, monkeypatch, case):
+    data, original, replacement, modified, sites_kind, sites_operator = case
     source, candidate = records(data=data, original=original, language="javascript")
     manifest = manifest_for(candidate, replacement)
     collided_site = candidate.model_copy(update={"kind": sites_kind, "operator": sites_operator})
