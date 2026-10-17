@@ -5,11 +5,11 @@ import json
 import pytest
 
 from atlas.indexer import analyze_repository
-from atlas.parsing.discovery import discover_files
+from atlas.parsing.discovery import detect_language, discover_files
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
 from tests.coffee_fixture import (
-    FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT, coffee_graph, coffee_snapshot, coffee_sources,
+    FIXTURE_ROOT, LANGUAGES, PARSE_ERROR_PATHS, SNAPSHOT_ROOT, coffee_graph, coffee_snapshot, coffee_sources,
 )
 from tests.coffee_pipeline import GRAMMAR_VARIANTS, PIPELINE_ROOT, SEAMS, coffee_pipeline, project_cli
 from tests.project_snapshot_support import structure_value
@@ -33,19 +33,23 @@ def test_every_physical_source_reaches_every_analysis_seam(language):
     assert graph_files == set(sources)
     measurements = bundle["cli"]["report-json"]["output"]["nodes"]
     assert {node["path"] for node in measurements if node["level"] == "file"} == set(sources)
+    assert_expected_parse_errors(language, files)
     assert_extraction_bytes(files, sources)
     assert_analysis_symbols(bundle, files)
+
+
+def assert_expected_parse_errors(language, files):
+    assert {path for path, file in files.items() if file["parse_error"]} == PARSE_ERROR_PATHS.get(language, set())
 
 
 def physical_source_paths(language):
     root = FIXTURE_ROOT / language
     return {path.relative_to(root).as_posix() for path in root.rglob("*")
-            if path.is_file() and "__pycache__" not in path.parts}
+            if path.is_file() and "__pycache__" not in path.parts and detect_language(path) is not None}
 
 
 def assert_extraction_bytes(files, sources):
     for path, file in files.items():
-        assert file["parse_error"] is None, path
         assert file["source"]["bytes"] == {"hex": sources[path].source.hex()}
 
 
@@ -72,7 +76,8 @@ def test_projects_are_not_artificial_threshold_padding(language):
     bundle = coffee_pipeline(language)
     for source in coffee_sources(language):
         assert len(source.source.splitlines()) <= 600, source.path
-    assert all((symbol["line_count"] or 0) <= 100 for symbol in bundle["analysis"]["symbols"])
+    assert all((symbol["line_count"] or 0) <= 100 for symbol in bundle["analysis"]["symbols"]
+               if not symbol["file_path"].startswith("edge_cases/"))
 
 
 @pytest.mark.parametrize("language", LANGUAGES)

@@ -29,6 +29,7 @@ packages = ["src/atlas"]
 [dependency-groups]
 dev = [
     "pytest>=8,<10",
+    "pytest-xdist>=3.8,<4",
     "pyright>=1.1.414",
     "ruff>=0.16.9",
 ]
@@ -36,14 +37,14 @@ dev = [
 [tool.ruff]
 target-version = "py310"
 src = ["src"]
-extend-exclude = ["tests/fixtures"]
+extend-exclude = ["tests/code_samples"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]
 
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["tests/fixtures"]
+exclude = ["tests/code_samples"]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"
 venvPath = "."

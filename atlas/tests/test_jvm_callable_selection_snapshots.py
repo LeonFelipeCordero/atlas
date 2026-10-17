@@ -13,7 +13,7 @@ ROOT = Path(__file__).parent
 
 
 def selection_snapshot(language: str):
-    graph = asdict(analyze_repository(ROOT / "fixtures/coffee" / language / "callable_selection"))
+    graph = asdict(analyze_repository(ROOT / "code_samples" / language / "callable_selection"))
     nodes = {node["stableKey"]: node for node in graph["nodes"]}
     return [
         {

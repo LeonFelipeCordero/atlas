@@ -1,2 +1,2 @@
-# Source fixtures are byte-exact inputs, including CRLF and invalid UTF-8.
-atlas/tests/fixtures/** -text
+# Code samples are byte-exact inputs, including CRLF and invalid UTF-8.
+atlas/tests/code_samples/** -text

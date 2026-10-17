@@ -5,10 +5,13 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tests.coffee_fixture import BREWING_LANGUAGES, LANGUAGES
+from atlas.mutations.config import MutationConfig
+from atlas.mutations.report import build_mutation_report
+from atlas.mutations.rules import REGISTRY
+from tests.coffee_fixture import BREWING_LANGUAGES, FIXTURE_ROOT, LANGUAGES, SNAPSHOT_ROOT
+from tests.coffee_pipeline import coffee_pipeline
 from tests.coffee_navigation import NAVIGATION_SNAPSHOT_ROOT, navigation_responses
 from tests.coffee_pipeline import write_pipeline
-from tests.variant_snapshot_support import write_variants
 
 
 def main() -> None:
@@ -17,10 +20,18 @@ def main() -> None:
     options = parser.parse_args()
     for language in LANGUAGES:
         write_pipeline(language)
+        write_manifest(language)
         print(language)
         if options.navigation and language in BREWING_LANGUAGES:
             write_navigation(language)
-    write_variants()
+
+
+def write_manifest(language):
+    config = MutationConfig(rules=[rule.id for rule in REGISTRY])
+    manifest = build_mutation_report(FIXTURE_ROOT / language, coffee_pipeline(language)["graph"], config)
+    (SNAPSHOT_ROOT / "mutations" / f"{language}.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8",
+    )
 
 
 def write_navigation(language):

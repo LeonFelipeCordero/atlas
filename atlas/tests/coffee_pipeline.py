@@ -6,12 +6,13 @@ from functools import cache
 from itertools import product
 
 from click.testing import CliRunner
-from tree_sitter_language_pack import ProcessConfig, process
+from tree_sitter_language_pack import ProcessConfig, get_parser, process
 
 from atlas.cli import main
 from atlas.metrics.artifact import build_artifact
 from atlas.metrics.callables import add_callable_metrics
 from atlas.metrics.resolver import resolve_connections
+from atlas.parsing.discovery import detect_language
 from atlas.parsing.parser import parse_files
 from atlas.parsing.structure import extract_structure
 from atlas.parsing.syntax import ParsedSyntax
@@ -40,14 +41,33 @@ def project_analysis(language):
     artifact = build_artifact(FIXTURE_ROOT / language, repository, resolved)
     return {
         "extraction": {"files": extraction, "structures": structures,
+                       "excluded_sources": excluded_sources(language),
                        "grammar_variants": shared_grammar_variants(language, sources)},
         "analysis": analysis,
         "graph": coffee_snapshot(artifact),
     }
 
 
+def excluded_sources(language):
+    root = FIXTURE_ROOT / language
+    records = {}
+    for path in sorted((root / "edge_cases").rglob("*")):
+        if not path.is_file() or "__pycache__" in path.parts or detect_language(path) is not None:
+            continue
+        content = path.read_bytes()
+        record = {"bytes": snapshot_value(content)}
+        if path.suffix == ".h":
+            syntax = get_parser("c").parse(content).root_node
+            native = process(content.decode(), ProcessConfig(language="c")).structure
+            record["native_only"] = {"language": "c", "syntax": str(syntax),
+                                     "has_error": syntax.has_error, "native": structure_value(native)}
+        records[path.relative_to(root).as_posix()] = record
+    return records
+
+
 def shared_grammar_variants(language, sources):
-    variants = GRAMMAR_VARIANTS.get(language, {})
+    variants = dict(GRAMMAR_VARIANTS.get(language, {}))
+    variants.update({source.path: ("tsx",) for source in sources if source.path.endswith(".jsx")})
     by_path = {source.path: source for source in sources}
     return {path: {grammar: grammar_variant(by_path[path], sources, grammar)
                    for grammar in grammars} for path, grammars in variants.items()}

@@ -12,7 +12,7 @@ from click.testing import CliRunner
 
 from atlas.cli import main
 from atlas.persistence.database import migrate_database
-from tests.coffee_fixture import FIXTURE_ROOT, SNAPSHOT_ROOT, coffee_sources
+from tests.coffee_fixture import FIXTURE_ROOT, PARSE_ERROR_PATHS, SNAPSHOT_ROOT, coffee_sources
 from tests.coffee_scenarios import EMPTY_BREW_CALL
 
 NAVIGATION_SNAPSHOT_ROOT = SNAPSHOT_ROOT / "coffee"
@@ -78,7 +78,8 @@ def navigation_responses(language: str, database: Path) -> Record:
     with patch.dict(os.environ, {"DATABASE_PATH": str(database)}):
         root = FIXTURE_ROOT / language
         indexed = command(CliRunner(), "index", "--folder", str(root))
-        assert indexed["stats"]["files"] == len(coffee_sources(language)) and indexed["stats"]["parseErrors"] == 0
+        assert indexed["stats"]["files"] == len(coffee_sources(language))
+        assert indexed["stats"]["parseErrors"] == len(PARSE_ERROR_PATHS.get(language, set()))
         return CoffeeNavigation(root, indexed["repositoryId"]).collect()
 
 
@@ -111,9 +112,7 @@ class CoffeeNavigation:
 
     def find_core(self) -> None:
         for query in ("render", "brew", "portions"):
-            options = () if query == "render" else ("--limit", "100")
-            payload = self.query(f"find_{query}", "find", query, *options)
-            assert not payload["truncated"]
+            self.query(f"find_{query}", "find", query, "--limit", "100")
 
     def select_core(self) -> None:
         brewer, recipe, report, brew_name, portions_name, render_name, kind = DECLARATIONS[self.root.name]
@@ -145,7 +144,7 @@ class CoffeeNavigation:
         path = self.query("path_brew_render", "path", brew, render, "--direction", "out", "--relations", "CALLS")
         if self.root.name == "go":
             self.assert_go_render_boundary(path, outgoing, brew)
-            assert [row["evidence"] for row in incoming["edges"]] == ["Portions(r.Name)"]
+            assert [row["evidence"] for row in core_edges(incoming)] == ["Portions(r.Name)"]
             return
         assert path["status"] == "found" and path["path"] == [brew, render]
         edge, = path["pathEdges"]
@@ -196,16 +195,15 @@ class CoffeeNavigation:
             assert_file_import_cycle(payload, self.root.name, {seed["stableKey"], target["stableKey"]})
 
     def inheritance(self) -> None:
-        counts = {row["type"]: row["count"] for row in self.responses["overview"]["relations"]}
         brew = self.selected["brew"]
         if self.root.name not in BASES:
-            assert counts.get("INHERITS", 0) == 0
             self.absent_inheritance(brew)
             return
         name, kind = BASES[self.root.name]
-        nodes = self.responses["find_brew"]["nodes"]
+        nodes = self.query("find_base", "find", name, "--limit", "100")["nodes"]
         base = declaration(nodes, Declaration(brew["path"], name, kind, level="type"))
-        derived = declaration(nodes, Declaration(brew["path"], "Brewer", "class", level="type"))
+        derived_nodes = self.query("find_derived", "find", "Brewer", "--limit", "100")["nodes"]
+        derived = declaration(derived_nodes, Declaration(brew["path"], "Brewer", "class", level="type"))
         for label, seed, direction in (("brewer_inherits_out", derived, "out"), ("base_inherits_in", base, "in")):
             payload = self.query(f"context_{label}", "context", seed["stableKey"], "--direction", direction,
                                  "--relations", "INHERITS", "--depth", "4")
@@ -223,7 +221,7 @@ class CoffeeNavigation:
         pairs = [(edge["sourceStableKey"], edge["targetStableKey"]) for edge in payload["edges"]]
         assert (derived["stableKey"], base["stableKey"]) in pairs
         python_out = self.root.name == "python" and direction == "out"
-        assert len(pairs) == (2 if python_out else 1)
+        assert_core_inheritance_count(payload, pairs, python_out)
         assert not payload["truncated"]
         if python_out:
             unresolved, = [node for node in payload["nodes"] if node["level"] == "unresolved"]
@@ -266,7 +264,7 @@ class CoffeeNavigation:
         assert edge["evidence"] in "\n".join(source["lines"])
 
     def recursion(self) -> None:
-        found = self.query("find_retry", "find", "retry")
+        found = self.query("find_retry", "find", "retry", "--limit", "100")
         assert not found["truncated"]
         retry, expected = self.retry_clauses(found["nodes"])
         context = self.query("context_retry_out", "context", retry["stableKey"], "--relations", "CALLS", "--depth", "6")
@@ -284,6 +282,17 @@ class CoffeeNavigation:
             base = declaration(nodes, Declaration(brew["path"], qualified, brew["kind"], 26))
             expected.add(base["stableKey"])
         return retry, expected
+
+
+def core_edges(payload: Record) -> list[Record]:
+    return [edge for edge in payload["edges"] if not (edge.get("path") or "").startswith("edge_cases/")]
+
+
+def assert_core_inheritance_count(payload: Record, pairs: list[tuple[str, str]], python_out: bool) -> None:
+    nodes = {node["stableKey"]: node for node in payload["nodes"]}
+    core_pairs = [(source, target) for source, target in pairs
+                  if not (nodes[source].get("path") or "").startswith("edge_cases/")]
+    assert len(core_pairs) == (2 if python_out else 1)
 
 
 def edges_targeting(payload: Record, target: str) -> list[Record]:

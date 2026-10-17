@@ -7,7 +7,7 @@ from atlas.metrics.artifact import GraphArtifact
 from atlas.parsing.discovery import discover_files
 from atlas.indexer import analyze_repository
 
-FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures/coffee"
+FIXTURE_ROOT = Path(__file__).resolve().parent / "code_samples"
 SNAPSHOT_ROOT = Path(__file__).resolve().parent / "snapshots"
 LANGUAGES = (
     "java",
@@ -21,6 +21,17 @@ LANGUAGES = (
     "tsx",
 )
 BREWING_LANGUAGES = tuple(language for language in LANGUAGES if language != "tsx")
+# These physical samples intentionally contain syntax errors.
+PARSE_ERROR_PATHS = {
+    "javascript": {"edge_cases/cli/syntax-javascript/brewing/Brewer.js"},
+    "typescript": {"edge_cases/ambiguous-roast-namespace/inventory/dark.ts"},
+    "python": {
+        "edge_cases/cli/syntax-python/examples/coffee/brewing/recipe.py",
+        "edge_cases/metrics/tracking_malformed.py",
+        "edge_cases/parsing/missing-condition-colon/scheduling.py",
+        "edge_cases/parsing/missing-parameter-delimiter/scheduling.py",
+    },
+}
 
 
 def coffee_sources(language: str):

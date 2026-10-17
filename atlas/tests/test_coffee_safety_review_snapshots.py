@@ -12,7 +12,7 @@ LANGUAGES = ("java", "kotlin", "python", "javascript", "typescript")
 
 
 def safety_snapshot(language):
-    artifact = analyze_repository(ROOT / "fixtures/coffee/safety_review" / language)
+    artifact = analyze_repository(ROOT / "code_samples/safety_review" / language)
     nodes = {node["stableKey"]: node for node in artifact.nodes}
     return [
         {
