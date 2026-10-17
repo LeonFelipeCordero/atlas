@@ -1,0 +1,31 @@
+{
+  "scope": "Four targeted regressions added after independent test-quality review; not an exhaustive mutation score.",
+  "baseline": "942 passed: (cd atlas && uv run pytest tests/metrics -q)",
+  "reproduction": "Use the isolated-copy procedure in core_mutations.json, but copy the complete tests/metrics directory and tests/__init__.py. Run all tests/metrics tests with python -m pytest -q -x --tb=short. Apply each exact replacement separately in the isolated src/atlas/metrics/resolver.py, restore afterward, and count only exit 1 with a FAILED test as killed.",
+  "results": [
+    {
+      "before": "return self.identity.select(\n            file,\n            call,\n            [s for s in matches if s.kind in CALLABLES or s.kind == \"module\"],\n        )",
+      "after": "return [s for s in matches if s.kind in CALLABLES or s.kind == \"module\"]",
+      "outcome": "killed",
+      "failingTest": "test_scoped_call_spelling_normalizes_context_and_filters_non_callables"
+    },
+    {
+      "before": "return self.qualified(request)\n        if _is_bare_target",
+      "after": "return self._bare(request, node)\n        if _is_bare_target",
+      "outcome": "killed",
+      "failingTest": "test_call_target_dispatch_preserves_missing_and_rejected_results[qualified]"
+    },
+    {
+      "before": "source_key = source.key if source else file_key(call.file_path)",
+      "after": "source_key = file_key(call.file_path)",
+      "outcome": "killed",
+      "failingTest": "test_resolved_call_connects_enclosing_callable_to_internal_target"
+    },
+    {
+      "before": "targets = [s.key for s in matches] or [",
+      "after": "targets = [] or [",
+      "outcome": "killed",
+      "failingTest": "test_resolved_call_connects_enclosing_callable_to_internal_target"
+    }
+  ]
+}
