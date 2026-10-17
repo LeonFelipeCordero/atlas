@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from pathlib import Path
+from time import time
 from typing import Any
 
 import pytest
@@ -13,11 +14,12 @@ from tests.cli.command_scenarios import make_artifact
 
 
 def test_registration_commits_trimmed_values_and_duplicate_recovery(database: Path) -> None:
+    started = int(time() * 1000)
     with repository_service(database) as service:
         assert service.list() == []
         first = service.register({"name": "  Coffee  ", "location": "  /coffee  "})
         assert (first.name, first.location, first.importedAt) == ("Coffee", "/coffee", None)
-        assert first.createdAt > 0
+        assert started <= first.createdAt <= int(time() * 1000)
         with pytest.raises(RepositoryError, match="already exists") as error:
             service.register({"name": "cOFFEE", "location": "/another"})
         assert error.value.status == 409
@@ -57,8 +59,9 @@ def test_registration_accepts_exact_limits(database: Path) -> None:
 
 
 @pytest.mark.parametrize("method", ["get_architecture", "get_report_facts", "report", "index"])
-@pytest.mark.parametrize("identifier,status", [(" ", 400), ("x" * 201, 400), ("missing", 404)])
-def test_read_and_index_errors_do_not_write(database: Path, method: str, identifier: str, status: int) -> None:
+@pytest.mark.parametrize("scenario", [(" ", 400), ("x" * 201, 400), ("missing", 404)])
+def test_read_and_index_errors_do_not_write(database: Path, method: str, scenario: tuple[str, int]) -> None:
+    identifier, status = scenario
     with repository_service(database) as service:
         with pytest.raises(RepositoryError) as error:
             if method == "index":
@@ -71,8 +74,11 @@ def test_read_and_index_errors_do_not_write(database: Path, method: str, identif
 
 def test_save_reuses_canonical_location_and_replaces_graph(database: Path, tmp_path: Path) -> None:
     artifact = make_artifact(tmp_path, circular_imports=True)
+    started = int(time() * 1000)
     with repository_service(database) as service:
         first = service.save_folder(tmp_path, artifact)
+        assert started <= first.importedAt <= int(time() * 1000)
+        assert started <= service.list()[0].createdAt <= int(time() * 1000)
     with repository_service(database) as service:
         assert service.get_architecture(first.repositoryId) == first
         facts = service.get_report_facts(first.repositoryId)
@@ -83,6 +89,7 @@ def test_save_reuses_canonical_location_and_replaces_graph(database: Path, tmp_p
     with repository_service(database) as service:
         assert replacement.repositoryId == first.repositoryId
         assert replacement.graphRevision != first.graphRevision
+        assert started <= replacement.importedAt <= int(time() * 1000)
         assert replacement.stats.nodes == replacement.stats.edges == 0
         assert len(service.list()) == 1
         assert service.list()[0].importedAt == replacement.importedAt

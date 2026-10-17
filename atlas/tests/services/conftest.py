@@ -17,7 +17,7 @@ from atlas.services.factories import migrate_database
 @pytest.fixture(scope="session")
 def _database_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     # A private file per worker also isolates concurrent pytest invocations.
-    return tmp_path_factory.mktemp("service-database") / "atlas.sqlite"
+    return tmp_path_factory.mktemp("service-database") / "atlas" / "atlas.sqlite"
 
 
 def clean_database(path: Path) -> None:

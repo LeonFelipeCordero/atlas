@@ -129,14 +129,15 @@ def test_children_pagination_preserves_import_order(database: Path, indexed: Gra
         assert page["nextOffset"] is None
 
 
-@pytest.mark.parametrize(("query", "expected"), [
+@pytest.mark.parametrize("scenario", [
     ("BREW", [BREW]), ("CAFé.PY", [FILE, BREW, GRIND, ISOLATED, SERVE]),
     ("%", [SERVE]), ("_", [SERVE]), ("serve_%", [SERVE]),
     ("function:brew", [BREW]), ("FUNCTION:BREW", []), ("' OR 1=1 --", []),
 ])
 def test_find_literal_and_case_handling(
-    database: Path, indexed: GraphDTO, query: str, expected: list[str],
+    database: Path, indexed: GraphDTO, scenario: tuple[str, list[str]],
 ) -> None:
+    query, expected = scenario
     with navigation_service(indexed.repositoryId, indexed.graphRevision, path=database) as navigation:
         result = navigation.find(query, limit=20)
     assert keys(result["nodes"]) == expected
@@ -154,13 +155,14 @@ def test_find_limit_reports_more_results(database: Path, indexed: GraphDTO) -> N
     assert complete["truncated"] is False
 
 
-@pytest.mark.parametrize(("direction", "expected_nodes", "expected_edges"), [
+@pytest.mark.parametrize("scenario", [
     ("out", [BREW, GRIND], [0]), ("in", [BREW, SERVE], [2]),
     ("both", [BREW, GRIND, SERVE], [0, 2]),
 ])
 def test_context_directions_and_relation_filter(
-    database: Path, indexed: GraphDTO, direction: str, expected_nodes: list[str], expected_edges: list[int],
+    database: Path, indexed: GraphDTO, scenario: tuple[Any, ...],
 ) -> None:
+    direction, expected_nodes, expected_edges = scenario
     with navigation_service(indexed.repositoryId, indexed.graphRevision, path=database) as navigation:
         result = navigation.context(TraversalRequest(BREW, direction, ["CALLS"], 1, 20, 20))
     assert keys(result["nodes"]) == expected_nodes
@@ -183,16 +185,16 @@ def test_context_cycles_and_external_boundaries(database: Path, indexed: GraphDT
     assert next(node for node in result["nodes"] if node["stableKey"] == EXTERNAL)["external"] is True
 
 
-@pytest.mark.parametrize(("depth", "max_nodes", "max_edges", "reason", "expected_nodes", "ordinals"), [
+@pytest.mark.parametrize("scenario", [
     (0, 20, 20, "depth", [BREW], []),
     (10, 1, 20, "maxNodes", [BREW], []),
     (10, 20, 0, "maxEdges", [BREW], []),
     (10, 20, 1, "maxEdges", [BREW, GRIND], [0]),
 ])
 def test_context_budgets(
-    database: Path, indexed: GraphDTO, depth: int, max_nodes: int, max_edges: int,
-    reason: str, expected_nodes: list[str], ordinals: list[int],
+    database: Path, indexed: GraphDTO, scenario: tuple[Any, ...],
 ) -> None:
+    depth, max_nodes, max_edges, reason, expected_nodes, ordinals = scenario
     with navigation_service(indexed.repositoryId, indexed.graphRevision, path=database) as navigation:
         result = navigation.context(TraversalRequest(BREW, "out", ["CALLS"], depth, max_nodes, max_edges))
     assert keys(result["nodes"]) == expected_nodes
@@ -203,7 +205,7 @@ def test_context_budgets(
     assert len(result["edges"]) <= max_edges
 
 
-@pytest.mark.parametrize(("target", "direction", "depth", "status", "path", "ordinals"), [
+@pytest.mark.parametrize("scenario", [
     (SERVE, "out", 10, "found", [BREW, GRIND, SERVE], [0, 1]),
     (SERVE, "in", 10, "found", [BREW, SERVE], [2]),
     (BREW, "out", 0, "found", [BREW], []),
@@ -211,9 +213,9 @@ def test_context_budgets(
     (ISOLATED, "out", 10, "not_found", [], []),
 ])
 def test_path_status_and_edge_order(
-    database: Path, indexed: GraphDTO, target: str, direction: str, depth: int,
-    status: str, path: list[str], ordinals: list[int],
+    database: Path, indexed: GraphDTO, scenario: tuple[Any, ...],
 ) -> None:
+    target, direction, depth, status, path, ordinals = scenario
     request = PathRequest(target, TraversalRequest(BREW, direction, ["CALLS"], depth, 20, 20))
     with navigation_service(indexed.repositoryId, indexed.graphRevision, path=database) as navigation:
         result = navigation.path(request)
@@ -243,9 +245,9 @@ def test_source_verified_spans_and_pagination(database: Path, indexed: GraphDTO)
 
 @pytest.mark.parametrize("state", ["changed", "missing"])
 def test_source_does_not_return_unverified_local_text(
-    database: Path, indexed: GraphDTO, tmp_path: Path, state: str,
+    database: Path, indexed: GraphDTO, state: str,
 ) -> None:
-    source = tmp_path / "café.py"
+    source = Path(indexed.rootPath or "") / "café.py"
     if state == "changed":
         source.write_text("not indexed\n")
     else:
