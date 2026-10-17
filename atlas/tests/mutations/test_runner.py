@@ -222,13 +222,67 @@ def test_exception_restores_source_and_keeps_completed_results(project, exceptio
     assert not any(message.startswith("Completed") for message in messages)
 
 
-def test_existing_results_are_never_overwritten(project):
+def test_rerun_replaces_results_and_reused_command_logs(project):
     root, path, original, manifests = project
     output = root / "results.jsonl"
-    output.write_text("existing")
+    assert MutationRunner(root, config("print('old' * 1000)")).run(manifests, output) == {"survived": 2}
+
+    counts = MutationRunner(root, config("print('new'); raise SystemExit(1)")).run(manifests[:1], output)
+
+    assert counts == {"killed": 1}
+    records = results(root)
+    assert len(records) == 1
+    assert records[0]["outcome"] == "killed"
+    assert Path(records[0]["targets"][0]["log"]).read_bytes() == b"new\n"
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("destination", ["source.py", "atlas.json"])
+def test_output_cannot_overwrite_source_or_config(project, destination):
+    root, path, original, manifests = project
+    (root / "atlas.json").write_text("{}")
+    with pytest.raises(ValueError, match="cannot overwrite"):
+        MutationRunner(root, config("pass")).run(manifests, root / destination)
+    assert path.read_bytes() == original
+    assert (root / "atlas.json").read_text() == "{}"
+
+
+def test_invalid_log_directory_preserves_previous_results(project):
+    root, path, original, manifests = project
+    output = root / "results.jsonl"
+    output.write_text("previous results")
+    (root / "results.jsonl.logs").write_text("not a directory")
     with pytest.raises(FileExistsError):
         MutationRunner(root, config("pass")).run(manifests, output)
-    assert output.read_text() == "existing"
+    assert output.read_text() == "previous results"
+    assert path.read_bytes() == original
+
+
+def test_symlinked_log_directory_cannot_overwrite_other_files(project):
+    root, path, original, manifests = project
+    external = root / "other-logs"
+    external.mkdir()
+    (external / "0-0.log").write_text("unrelated")
+    (root / "results.jsonl.logs").symlink_to(external, target_is_directory=True)
+    with pytest.raises(ValueError, match="must not be a symlink"):
+        MutationRunner(root, config("pass")).run(manifests, root / "results.jsonl")
+    assert (external / "0-0.log").read_text() == "unrelated"
+    assert path.read_bytes() == original
+
+
+def test_symlinked_command_log_does_not_overwrite_its_target(project):
+    root, path, original, manifests = project
+    logs = root / "results.jsonl.logs"
+    logs.mkdir()
+    protected = root / "unrelated.txt"
+    protected.write_text("keep this")
+    (logs / "0-0.log").symlink_to(protected)
+
+    counts = MutationRunner(root, config("pass")).run(manifests[:1], root / "results.jsonl")
+
+    assert counts == {"error": 1}
+    assert "symlinked command log" in results(root)[0]["targets"][0]["error"]
+    assert protected.read_text() == "keep this"
     assert path.read_bytes() == original
 
 

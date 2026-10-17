@@ -70,8 +70,12 @@ uv run --project atlas atlas mutations run --folder . --target all --output resu
 
 `--output` resolves from the project root. Each result is written immediately as
 one JSON object per line. Command output goes to separate files in
-`<output>.logs/`. Choose a new output path for each run. Existing result files
-are never overwritten. Parent output directories must already exist.
+`<output>.logs/`. Each run replaces the existing JSONL result file and overwrites
+command logs with matching names. Logs not referenced by the new result file
+remain in the directory. Use a different output path to keep previous results.
+Parent output directories must already exist. Atlas rejects result paths that
+would overwrite a mutation source or `atlas.json`, and rejects symlinked command
+logs and log directories.
 
 Each record includes the manifest ID, source path, rule ID, outcome, and command
 results. Command results include target name, command, exit code, duration, and

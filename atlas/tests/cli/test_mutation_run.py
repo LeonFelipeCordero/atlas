@@ -222,14 +222,21 @@ def test_run_requires_targets_before_analysis(tmp_path):
     assert not (tmp_path / "mutation-results.jsonl").exists()
 
 
-def test_custom_output_and_existing_results_are_protected(project):
+def test_custom_output_and_command_logs_are_replaced_on_rerun(project):
     args = ["mutations", "run", "-f", str(project), "--target", "unit", "--output", "custom.jsonl"]
     assert CliRunner().invoke(main, args).exit_code == 0
-    original = (project / "custom.jsonl").read_bytes()
+    settings = json.loads((project / "atlas.json").read_text())
+    settings["mutations"]["targets"]["unit"]["command"] = [sys.executable, "-c", "print('rerun'); raise SystemExit(1)"]
+    (project / "atlas.json").write_text(json.dumps(settings))
+
     result = CliRunner().invoke(main, args)
-    assert result.exit_code == 1
-    assert (project / "custom.jsonl").read_bytes() == original
-    assert "Completed" not in result.stderr
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["counts"] == {"killed": 1}
+    record = json.loads((project / "custom.jsonl").read_text())
+    assert record["outcome"] == "killed"
+    assert Path(record["targets"][0]["log"]).read_text() == "rerun\n"
+    assert (project / "src/example.py").read_text() == "value = 1 < 2\n"
 
 
 def test_rules_cannot_be_combined_with_run(project):

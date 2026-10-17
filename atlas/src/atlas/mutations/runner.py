@@ -59,7 +59,9 @@ def _run_command(target: MutationTarget, cwd: Path, log: Path) -> dict:
     started = time.monotonic()
     result: dict = {"command": target.command, "log": str(log), "exitCode": None}
     try:
-        with log.open("xb") as stream, TemporaryDirectory(prefix="atlas-pycache-") as cache:
+        if log.is_symlink():
+            raise OSError(f"Refusing to overwrite a symlinked command log: {log}")
+        with log.open("wb") as stream, TemporaryDirectory(prefix="atlas-pycache-") as cache:
             # Same-size edits in one second can otherwise reuse stale Python bytecode.
             environment = {**os.environ, "PYTHONPYCACHEPREFIX": cache, "PYTHONDONTWRITEBYTECODE": "1"}
             process = subprocess.Popen(target.command, cwd=cwd, stdout=stream, stderr=subprocess.STDOUT,
@@ -148,21 +150,31 @@ class MutationRunner:
         result["outcome"] = next(outcome for outcome in ("killed", "error", "timeout", "survived") if outcome in outcomes)
         return result
 
+    def _prepare_output(self, manifests: list[MutationManifest], output: Path) -> Path:
+        protected = {(self.root / manifest.path).resolve() for manifest in manifests}
+        protected.add((self.root / "atlas.json").resolve())
+        if output in protected:
+            raise ValueError("Mutation results cannot overwrite source files or atlas.json")
+        logs = output.with_name(output.name + ".logs")
+        if logs.is_symlink():
+            raise ValueError("Mutation log directory must not be a symlink")
+        logs.mkdir(exist_ok=True)
+        return logs
+
     def run(self, manifests: list[MutationManifest], output: Path) -> dict[str, int]:
-        """Flush each JSONL result; refuse to overwrite existing results.
+        """Flush each JSONL result; replace previous results and reused command logs.
 
         SIGINT/SIGTERM restore source; SIGKILL and machine failure cannot.
         Commands are trusted and may modify other project files.
         """
         started = time.monotonic()
         output = output.resolve()
-        logs = output.with_name(output.name + ".logs")
+        logs = self._prepare_output(manifests, output)
         mapped = sum(bool(matching_targets(item.path, self.config)) for item in manifests)
         self.progress(f"Planned {len(manifests)} mutations: {mapped} mapped, {len(manifests) - mapped} unmapped")
         self.progress(f"Results: {output}; command logs: {logs}")
         counts: dict[str, int] = {}
-        with _interrupt_on_termination(), output.open("x", encoding="utf-8") as stream:
-            logs.mkdir()
+        with _interrupt_on_termination(), output.open("w", encoding="utf-8") as stream:
             for ordinal, manifest in enumerate(manifests):
                 label = f"[{ordinal + 1}/{len(manifests)}] {manifest.path}:{manifest.span.startLine} {manifest.ruleId}"
                 self.progress(f"{label}: {manifest.originalText!r} -> {manifest.replacement!r}")

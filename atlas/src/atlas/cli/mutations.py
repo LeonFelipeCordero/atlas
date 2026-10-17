@@ -80,12 +80,12 @@ def _execution_report(root: Path, config: MutationConfig, saved: bool) -> dict[s
 @mutations_command.command("run", help=(
     "Apply independent mutations and run trusted configured test commands in this workspace. "
     "No baseline or isolation is provided. Nonzero command exits count as killed. "
-    "Results are incremental JSONL with separate command logs. Existing results are never overwritten. "
+    "Results are incremental JSONL with separate command logs. Each run overwrites previous results. "
     "Progress is printed to stderr; stdout remains JSON."
 ))
 @click.option("-f", "--folder", type=click.Path(path_type=Path), help="Override the parent project folder")
 @click.option("--output", default="mutation-results.jsonl", show_default=True, type=click.Path(path_type=Path),
-              help="New results file, relative to the project root")
+              help="Results file, relative to the project root; overwritten on each run")
 @click.option("--target", help="Comma-separated target names, or 'all'. Prompt when omitted on a terminal.")
 def run_command(folder: Path | None, output: Path, target: str | None) -> None:
     from atlas.cli.mutation_targets import select_targets
