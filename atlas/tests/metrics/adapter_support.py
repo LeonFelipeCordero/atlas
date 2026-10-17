@@ -1,8 +1,11 @@
 """Small overridable records and syntax stubs; no parser is started."""
 
+from itertools import chain
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, TypedDict
+
+from typing_extensions import Unpack
 
 from atlas.domain.models import Call, ParsedFile, SourceFile, Symbol, file_key
 from atlas.metrics.resolution_contract import ResolutionRequest
@@ -18,19 +21,19 @@ class SyntaxNode:
 def node(
     kind: str = "identifier",
     value: str = "",
-    *,
-    children=(),
-    named=None,
-    start: int = 0,
-    end: int = 100,
-    error: bool = False,
-    **fields,
+    **fields: Any,
 ) -> Any:
-    entries = list(children)
-    for entry in fields.values():
-        for child in entry if isinstance(entry, list) else [entry]:
-            if child is not None and child not in entries:
-                entries.append(child)
+    entries = list(fields.pop("children", ()))
+    named = fields.pop("named", None)
+    start = fields.pop("start", 0)
+    end = fields.pop("end", 100)
+    error = fields.pop("error", False)
+    field_children = chain.from_iterable(
+        entry if isinstance(entry, list) else [entry] for entry in fields.values()
+    )
+    for child in field_children:
+        if child is not None and child not in entries:
+            entries.append(child)
     result: Any = SyntaxNode(
         type=kind,
         text=value.encode(),
@@ -54,38 +57,34 @@ def node(
 
 
 def parsed(
-    path: str = "src/main.py", language: str = "python", *, symbols=(), **overrides
+    path: str = "src/main.py", language: str = "python", **overrides: Any
 ) -> ParsedFile:
     return ParsedFile(
         SourceFile(path, Path("/adapter-project") / path, language, b" " * 200),
         "digest",
         None,
-        symbols=list(symbols),
+        symbols=list(overrides.pop("symbols", ())),
         **overrides,
     )
 
 
 def symbol(
     name: str = "run",
-    *,
-    path: str = "src/main.py",
-    language: str = "python",
-    start: int = 10,
-    end: int = 20,
-    kind: str = "function",
-    parent: str | None = None,
-    **overrides,
+    **overrides: Any,
 ) -> Symbol:
+    path = overrides.pop("path", "src/main.py")
+    start = overrides.pop("start", 10)
+    parent = overrides.pop("parent", None)
     values: dict[str, Any] = dict(
         key=f"{path}:{name}:{start}",
         file_path=path,
-        language=language,
+        language="python",
         name=name,
         qualified_name=name,
-        kind=kind,
+        kind="function",
         parent_key=parent or file_key(path),
         start_byte=start,
-        end_byte=end,
+        end_byte=overrides.pop("end", 20),
         start_line=1,
         start_column=1,
         end_line=1,
@@ -98,15 +97,21 @@ def symbol(
     return Symbol(**values)
 
 
+class RequestOptions(TypedDict, total=False):
+    name: str
+    qualifier: str | None
+    start: int
+    end: int
+
+
 def request(
-    file: ParsedFile | None = None,
-    *,
-    name: str = "run",
-    qualifier: str | None = None,
-    start: int = 50,
-    end: int = 60,
+    file: ParsedFile | None = None, **options: Unpack[RequestOptions]
 ) -> ResolutionRequest:
     file = file or parsed()
+    name = options.get("name", "run")
+    qualifier = options.get("qualifier")
+    start = options.get("start", 50)
+    end = options.get("end", 60)
     return ResolutionRequest(
         file,
         Call(file.source.path, name, start, end, 1, "", qualifier=qualifier),
@@ -116,13 +121,13 @@ def request(
     )
 
 
-def syntax(*, nodes=(), declarations=None, adapter=None, file=None, **overrides) -> Any:
-    spans = declarations or {}
+def syntax(**overrides: Any) -> Any:
+    spans = overrides.pop("declarations", None) or {}
     values = dict(
-        nodes=list(nodes),
+        nodes=list(overrides.pop("nodes", ())),
         node=lambda start, end: spans.get((start, end)),
-        adapter=adapter,
-        file=file or parsed(),
+        adapter=overrides.pop("adapter", None),
+        file=overrides.pop("file", None) or parsed(),
         imports=[],
         bindings=[],
         static=lambda symbol: False,

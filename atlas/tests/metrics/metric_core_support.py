@@ -47,11 +47,11 @@ def as_node(node: SyntaxNode) -> Node:
     return cast(Node, node)
 
 
-def graph_node(key: str, level: str, parent: str | None = None, **overrides) -> dict[str, object]:
+def graph_node(key: str, level: str, **overrides) -> dict[str, object]:
     return {"stableKey": key, "type": level, "kind": level, "level": level,
-            "parentStableKey": parent, **overrides}
+            "parentStableKey": overrides.pop("parent", None), **overrides}
 
 
-def edge(source: str, target: str, kind: str = "IMPORTS", **overrides) -> dict[str, object]:
-    return {"sourceStableKey": source, "targetStableKey": target, "type": kind,
+def edge(source: str, target: str, **overrides) -> dict[str, object]:
+    return {"sourceStableKey": source, "targetStableKey": target, "type": overrides.pop("kind", "IMPORTS"),
             "confidence": "EXTRACTED", **overrides}

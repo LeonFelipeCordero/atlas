@@ -55,23 +55,8 @@ def test_python_absolute_import_uses_unique_index_identity(package_context, path
     )
 
 
-@pytest.mark.parametrize(
-    "kind",
-    [
-        "member",
-        "assignment",
-        "annotation",
-        "import",
-        "nested_import",
-        "excluded_import",
-        "none",
-        "module_file",
-    ],
-)
-def test_python_from_import_child_yields_to_runtime_package_attributes(
-    package_context, kind
-):
-    adapter, ctx, caller, package, child, state, members = package_context
+def package_attribute(package_context, kind):
+    _, _, caller, package, _, state, members = package_context
     imported = symbol("tools", path=package.source.path)
     if kind == "member":
         members["tools"] = [imported]
@@ -92,6 +77,27 @@ def test_python_from_import_child_yields_to_runtime_package_attributes(
             caller = package
     elif kind == "module_file":
         package.source.path = "pkg.py"
+    return caller, imported
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "member",
+        "assignment",
+        "annotation",
+        "import",
+        "nested_import",
+        "excluded_import",
+        "none",
+        "module_file",
+    ],
+)
+def test_python_from_import_child_yields_to_runtime_package_attributes(
+    package_context, kind
+):
+    adapter, ctx, _, _, child, _, _ = package_context
+    caller, imported = package_attribute(package_context, kind)
     position = 40 if kind == "excluded_import" else 10
     result = adapter._from_import_item(
         ctx, ImportRequest(caller, "pkg", position), ("tools", "local")
@@ -117,25 +123,21 @@ def test_python_relative_from_target_prefers_unique_member_key(
     # A bare relative path resolves against the same package in this isolated context.
     original_files = ctx.files
     ctx.files = lambda file, name: original_files(
-        file, "pkg" if name == "." else "pkg.tools" if name == ".tools" else name
+        file, {".": "pkg", ".tools": "pkg.tools"}.get(name, name)
     )
     result = adapter._from_import_target(
         ctx, ImportRequest(caller, path, source=source), "tools"
     )
-    assert result == (
-        (
-            ".tools",
-            targets[0].key
-            if member_count == 1
-            else "file:pkg/tools.py"
+    if bare:
+        key = targets[0].key if member_count == 1 else None
+        expected = (".tools", "file:pkg/tools.py" if member_count == 0 else key)
+    else:
+        expected = (
+            ("pkg.tools", "file:pkg/tools.py")
             if member_count == 0
-            else None,
+            else ("pkg", "file:pkg/__init__.py")
         )
-        if bare
-        else ("pkg.tools", "file:pkg/tools.py")
-        if member_count == 0
-        else ("pkg", "file:pkg/__init__.py")
-    )
+    assert result == expected
 
 
 @pytest.mark.parametrize("from_import", [True, False])

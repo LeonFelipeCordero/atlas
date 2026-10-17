@@ -1,8 +1,10 @@
 """Executable selection uses call shape without guessing ambiguous targets."""
 
 from types import SimpleNamespace
+from typing import Any, TypedDict
 
 import pytest
+from typing_extensions import Unpack
 
 from atlas.metrics.adapters import elixir, java, javascript, kotlin, python, typescript
 from atlas.metrics.adapters.callable_selection import (
@@ -17,10 +19,18 @@ from atlas.metrics.adapters.callable_selection import (
 from tests.metrics.adapter_support import node, parsed, request, symbol, syntax
 
 
+class SelectionOptions(TypedDict, total=False):
+    adapter: Any
+    bodies: list[bool]
+    statics: dict[int, bool]
+
+
 @pytest.fixture
 def selection_case():
-    def build(kinds, *, adapter=None, bodies=None, statics=None):
-        adapter = adapter or typescript.TypeScriptResolution()
+    def build(kinds, **options: Unpack[SelectionOptions]):
+        adapter = options.get("adapter") or typescript.TypeScriptResolution()
+        bodies = options.get("bodies")
+        statics = options.get("statics")
         file = parsed()
         symbols = [
             symbol(start=10 + i * 10, kind="method", parent="class:Owner")
@@ -56,7 +66,7 @@ def test_typescript_selects_only_body_after_signatures(selection_case):
 
 
 @pytest.mark.parametrize(
-    ("kinds", "bodies", "statics", "expected"),
+    "case",
     [
         (["method_signature"], [False], {}, []),
         (["method_definition"], [True], {}, [0]),
@@ -68,8 +78,9 @@ def test_typescript_selects_only_body_after_signatures(selection_case):
     ],
 )
 def test_typescript_rejects_non_executable_or_inconsistent_groups(
-    selection_case, kinds, bodies, statics, expected
+    selection_case, case
 ):
+    kinds, bodies, statics, expected = case
     identity, call, symbols = selection_case(kinds, bodies=bodies, statics=statics)
     result = typescript.TypeScriptResolution().select(identity, call, symbols)
     assert result == [symbols[i] for i in expected]
@@ -155,7 +166,7 @@ def test_jvm_spread_preserves_unknown_arity_instead_of_rejecting_candidate():
 
 
 @pytest.mark.parametrize(
-    ("family", "actual", "expected_type", "rejected"),
+    "case",
     [
         ("java", "String", "int", True),
         ("java", "int", "long", False),
@@ -170,13 +181,14 @@ def test_jvm_spread_preserves_unknown_arity_instead_of_rejecting_candidate():
     ],
 )
 def test_jvm_type_filter_rejects_only_proven_closed_domain_mismatches(
-    family, actual, expected_type, rejected
+    case,
 ):
+    family, actual, expected_type, rejected = case
     assert incompatible(actual, expected_type, family) is rejected
 
 
 @pytest.mark.parametrize(
-    ("family", "annotation", "ambiguous", "imports", "raw", "expected"),
+    "case",
     [
         ("java", "int", {"int"}, ["external"], "?", "int"),
         ("java", "String", {"String"}, [], "", None),
@@ -187,8 +199,9 @@ def test_jvm_type_filter_rejects_only_proven_closed_domain_mismatches(
     ],
 )
 def test_jvm_type_proof_preserves_shadowing_and_lossy_annotation_uncertainty(
-    family, annotation, ambiguous, imports, raw, expected
+    case,
 ):
+    family, annotation, ambiguous, imports, raw, expected = case
     cache = syntax(
         adapter=SimpleNamespace(family=family),
         imports=imports,
@@ -197,6 +210,32 @@ def test_jvm_type_proof_preserves_shadowing_and_lossy_annotation_uncertainty(
     assert (
         proven_type(TypeContext(cache, ambiguous), annotation, node(start=0, end=10))
         == expected
+    )
+
+
+def jvm_parameter(family, annotation, index):
+    if family == "java":
+        return node(
+            "formal_parameter",
+            name=node(value=f"p{index}"),
+            type=node("type_identifier", annotation),
+        )
+    return node(
+        "parameter",
+        children=[node("simple_identifier", f"p{index}"), node("user_type", annotation)],
+    )
+
+
+def jvm_declaration(family, annotation, count):
+    parameters = [jvm_parameter(family, annotation, i) for i in range(count)]
+    if family == "java":
+        return node(
+            "method_declaration",
+            parameters=node("formal_parameters", children=parameters),
+        )
+    return node(
+        "function_declaration",
+        children=[node("function_value_parameters", children=parameters)],
     )
 
 
@@ -209,35 +248,9 @@ def test_jvm_select_uses_arity_and_literal_types_without_parser(adapter):
     for candidate, annotation, count in zip(
         symbols, ["String", integer, integer], [1, 1, 2]
     ):
-        if adapter.family == "java":
-            parameters = [
-                node(
-                    "formal_parameter",
-                    name=node(value=f"p{i}"),
-                    type=node("type_identifier", annotation),
-                )
-                for i in range(count)
-            ]
-            declaration = node(
-                "method_declaration",
-                parameters=node("formal_parameters", children=parameters),
-            )
-        else:
-            parameters = [
-                node(
-                    "parameter",
-                    children=[
-                        node("simple_identifier", f"p{i}"),
-                        node("user_type", annotation),
-                    ],
-                )
-                for i in range(count)
-            ]
-            declaration = node(
-                "function_declaration",
-                children=[node("function_value_parameters", children=parameters)],
-            )
-        declarations[(candidate.start_byte, candidate.end_byte)] = declaration
+        declarations[(candidate.start_byte, candidate.end_byte)] = jvm_declaration(
+            adapter.family, annotation, count
+        )
     argument = node("string_literal", '"hello"')
     if adapter.family == "java":
         call = node(
@@ -277,7 +290,7 @@ def test_jvm_reference_has_no_arity_and_requires_sole_candidate(adapter):
 
 
 @pytest.mark.parametrize(
-    ("count", "qualifier", "foreign", "expected"),
+    "case",
     [
         (0, None, False, []),
         (1, None, False, [0, 1]),
@@ -288,8 +301,9 @@ def test_jvm_reference_has_no_arity_and_requires_sole_candidate(adapter):
     ],
 )
 def test_elixir_default_arity_and_private_visibility(
-    count, qualifier, foreign, expected
+    case,
 ):
+    count, qualifier, foreign, expected = case
     file = parsed(language="elixir")
     candidates = [
         symbol(start=10),

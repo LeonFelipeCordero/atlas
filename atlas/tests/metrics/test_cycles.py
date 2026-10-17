@@ -43,7 +43,7 @@ def test_scc_long_chain_does_not_need_recursion() -> None:
 
 
 def test_projection_retains_metadata_and_duplicates_and_ignores_cross_group_edges(nodes) -> None:
-    nodes.extend([graph_node("a.fn", "callable", "a"), graph_node("b.type", "type", "b")])
+    nodes.extend([graph_node("a.fn", "callable", parent="a"), graph_node("b.type", "type", parent="b")])
     forward = edge("a.fn", "b.type", path="a.py", line=3, evidence="import b", ignored="drop")
     reverse = edge("b", "a", path="b.py", line=2)
     edges = [edge("c", "d"), reverse, forward, forward, edge("b", "c")]
@@ -63,12 +63,12 @@ def test_projection_retains_metadata_and_duplicates_and_ignores_cross_group_edge
 
 
 @pytest.mark.parametrize(("forward", "extra_nodes"), [
-    (edge("a", "b", "CALLS"), []),
+    (edge("a", "b", kind="CALLS"), []),
     (edge("a", "b", typeOnly=True), []),
     (edge("a", "external"), [graph_node("external", "external")]),
     (edge("missing", "b"), []),
-    (edge("orphan", "b"), [graph_node("orphan", "symbol", "missing")]),
-    (edge("x", "b"), [graph_node("x", "symbol", "y"), graph_node("y", "symbol", "x")]),
+    (edge("orphan", "b"), [graph_node("orphan", "symbol", parent="missing")]),
+    (edge("x", "b"), [graph_node("x", "symbol", parent="y"), graph_node("y", "symbol", parent="x")]),
 ])
 def test_excluded_imports_cannot_close_a_cycle(nodes, forward, extra_nodes) -> None:
     result = circular_dependencies(nodes + extra_nodes, [forward, edge("b", "a")])
@@ -78,7 +78,7 @@ def test_excluded_imports_cannot_close_a_cycle(nodes, forward, extra_nodes) -> N
 
 @pytest.mark.parametrize("endpoints", [("fn", "fn"), ("a", "fn"), ("fn", "a")])
 def test_symbol_imports_within_the_same_file_are_not_self_cycles(nodes, endpoints) -> None:
-    nodes.append(graph_node("fn", "callable", "a"))
+    nodes.append(graph_node("fn", "callable", parent="a"))
 
     result = circular_dependencies(nodes, [edge(*endpoints)])
 

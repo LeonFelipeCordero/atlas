@@ -26,7 +26,7 @@ def import_context():
 
 
 @pytest.mark.parametrize(
-    ("source", "expected", "lookups"),
+    "case",
     [
         (
             "import {run as execute, missing} from './tools'",
@@ -49,8 +49,9 @@ def import_context():
     ],
 )
 def test_script_import_aliases_resolve_runtime_members_only(
-    import_context, source, expected, lookups
+    import_context, case
 ):
+    source, expected, lookups = case
     result = javascript.JavaScriptResolution().import_item(
         import_context, ImportRequest(parsed(), "./tools", source=source)
     )
@@ -121,7 +122,7 @@ def test_script_exports_use_aliases_default_and_deduplicate_symbols():
 
 
 @pytest.mark.parametrize(
-    ("adapter", "source", "path", "alias"),
+    "case",
     [
         (java.JavaResolution(), "import pkg.Type;", "pkg.Type", "Type"),
         (kotlin.KotlinResolution(), "import pkg.Type as Local", "pkg.Type", "Local"),
@@ -129,8 +130,9 @@ def test_script_exports_use_aliases_default_and_deduplicate_symbols():
     ],
 )
 def test_declared_imports_keep_alias_and_non_namespace_semantics(
-    adapter, source, path, alias
+    case,
 ):
+    adapter, source, path, alias = case
     target = symbol("Type", kind="class")
     calls = []
 

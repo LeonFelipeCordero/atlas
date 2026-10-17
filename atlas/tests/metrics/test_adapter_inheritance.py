@@ -1,8 +1,10 @@
 """Inheritance rejects masks, receiver aliases, and unproven base expressions."""
 
 from types import SimpleNamespace
+from typing import TypedDict
 
 import pytest
+from typing_extensions import Unpack
 
 from atlas.domain.models import Inheritance
 from atlas.metrics.adapters import javascript, python
@@ -53,39 +55,69 @@ def base_syntax(language, mutation, field_kind):
         start=10,
         end=40,
     )
-    fields = []
-    if field_kind:
-        target = (
-            node("computed_property_name", "[dynamic]")
-            if field_kind == "computed"
-            else node(value="run")
-        )
-        fields = [
-            node(
-                "field_definition",
-                name=target,
-                children=[node("static")] if field_kind == "static" else [],
-            )
-        ]
     declaration = node(
         "class_definition" if language == "python" else "class_declaration",
         start=0,
         end=80,
-        body=node("block", children=[constructor, *fields], start=1, end=79),
+        body=node(
+            "block", children=[constructor, *base_fields(field_kind)], start=1, end=79
+        ),
     )
     return statements, declaration
 
 
+def base_fields(field_kind):
+    if not field_kind:
+        return []
+    target = (
+        node("computed_property_name", "[dynamic]")
+        if field_kind == "computed"
+        else node(value="run")
+    )
+    return [
+        node(
+            "field_definition",
+            name=target,
+            children=[node("static")] if field_kind == "static" else [],
+        )
+    ]
+
+
+def child_declaration(language, base_shape):
+    base_value = node(value="makeBase()" if base_shape == "dynamic" else "Base")
+    declaration = node(
+        "class_definition" if language == "python" else "class_declaration",
+        start=100,
+        end=190,
+        body=node("block"),
+        **(
+            {"superclasses": node("argument_list", children=[base_value])}
+            if base_shape != "heritage"
+            else {}
+        ),
+    )
+    if base_shape == "heritage":
+        clause = node("extends_clause", children=[base_value])
+        clause.child_by_field_name = lambda name: base_value if name == "value" else None
+        declaration.named_children.append(node("class_heritage", children=[clause]))
+    return declaration
+
+
+class HierarchyOptions(TypedDict, total=False):
+    language: str
+    mutation: str
+    own: bool
+    field_kind: str | None
+    base_shape: str
+
+
 @pytest.fixture
 def hierarchy():
-    def build(
-        *,
-        language="javascript",
-        mutation="none",
-        own=False,
-        field_kind=None,
-        base_shape="plain",
-    ):
+    def build(**options: Unpack[HierarchyOptions]):
+        language = options.get("language", "javascript")
+        mutation = options.get("mutation", "none")
+        own = options.get("own", False)
+        base_shape = options.get("base_shape", "plain")
         adapter = (
             python.PythonResolution()
             if language == "python"
@@ -93,38 +125,21 @@ def hierarchy():
         )
         base = symbol("Base", kind="class", start=0, end=80)
         child = symbol("Child", kind="class", start=100, end=190)
-        method = symbol(
-            "run",
-            parent=child.key if own else base.key,
-            kind="method",
-            start=150 if own else 50,
-            end=160 if own else 60,
-        )
+        parent, start, end = (child.key, 150, 160) if own else (base.key, 50, 60)
+        method = symbol("run", parent=parent, kind="method", start=start, end=end)
         file = parsed(language=language, symbols=[base, child, method])
         file.inheritances = [
-            Inheritance(child.key, file.source.path, language, "Base", 1, "")
-        ]
-        statements, base_node = base_syntax(language, mutation, field_kind)
-        base_value = node(value="makeBase()" if base_shape == "dynamic" else "Base")
-        if base_shape == "dynamic":
-            file.inheritances[0].target_name = "makeBase()"
-        child_node = node(
-            "class_definition" if language == "python" else "class_declaration",
-            start=100,
-            end=190,
-            body=node("block"),
-            **(
-                {"superclasses": node("argument_list", children=[base_value])}
-                if base_shape != "heritage"
-                else {}
-            ),
-        )
-        if base_shape == "heritage":
-            clause = node("extends_clause", children=[base_value])
-            clause.child_by_field_name = lambda name: (
-                base_value if name == "value" else None
+            Inheritance(
+                child.key,
+                file.source.path,
+                language,
+                "makeBase()" if base_shape == "dynamic" else "Base",
+                1,
+                "",
             )
-            child_node.named_children.append(node("class_heritage", children=[clause]))
+        ]
+        statements, base_node = base_syntax(language, mutation, options.get("field_kind"))
+        child_node = child_declaration(language, base_shape)
         if mutation == "decorated":
             node("decorated_definition", children=[base_node])
         if mutation == "noncallable":
@@ -151,7 +166,9 @@ def hierarchy():
     return build
 
 
-@pytest.mark.parametrize("language", ["python", "javascript"])
+@pytest.mark.parametrize(
+    "case", [("python", True), ("python", False), ("javascript", True), ("javascript", False)]
+)
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -164,10 +181,10 @@ def hierarchy():
         "noncallable",
     ],
 )
-@pytest.mark.parametrize("own", [True, False])
 def test_inherited_method_masks_respect_instance_aliases_and_base_writes(
-    hierarchy, language, mutation, own
+    hierarchy, case, mutation
 ):
+    language, own = case
     resolver, child, method, _ = hierarchy(
         language=language, mutation=mutation, own=own
     )

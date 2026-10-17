@@ -92,8 +92,9 @@ def test_scope_uses_nearest_ancestor_not_node_itself(syntax):
     assert (syntax.scope(leaf), syntax.scope(block), syntax.scope(outer)) == (block, outer, syntax.root)
 
 
-@pytest.mark.parametrize(("position", "visible", "expected"), [(10, True, True), (19, True, True), (20, True, False), (9, True, False), (15, False, False)])
-def test_visible_uses_half_open_scope_and_adapter_policy(syntax, position, visible, expected):
+@pytest.mark.parametrize("case", [(10, True, True), (19, True, True), (20, True, False), (9, True, False), (15, False, False)])
+def test_visible_uses_half_open_scope_and_adapter_policy(syntax, case):
+    position, visible, expected = case
     syntax.adapter.visible.return_value = visible
 
     assert syntax._visible(node("block", start=10, end=20), position) is expected
@@ -110,8 +111,9 @@ def test_parameter_and_single_parameter_bindings_use_function_scope(syntax):
     assert syntax.bindings == [("arg", function, parameters), ("single", arrow, single)]
 
 
-@pytest.mark.parametrize(("position", "allowed", "expected"), [(10, False, True), (20, False, False), (10, True, False)])
-def test_shadowed_respects_visibility_and_allowed_declaration(syntax, position, allowed, expected):
+@pytest.mark.parametrize("case", [(10, False, True), (20, False, False), (10, True, False)])
+def test_shadowed_respects_visibility_and_allowed_declaration(syntax, case):
+    position, allowed, expected = case
     declaration = node("assignment", start=2, end=5)
     syntax.bindings = [("run", node("block", start=0, end=20), declaration)]
     declarations = [symbol(start=2, end=5)] if allowed else []
@@ -161,15 +163,19 @@ def test_import_cache_and_scope_use_adapter_imports_and_enclosing_scope(syntax):
     assert (syntax.imports, syntax.import_scope(1, "import pkg")) == ([("pkg", directive)], owner)
 
 
-@pytest.mark.parametrize("case", ["same_class", "other_class", "start_mismatch", "nested_function", "declaration", "other_name", "orphan"])
-def test_class_rebinding_only_counts_writes_directly_in_matching_class(syntax, case):
+@pytest.mark.parametrize("scenario", [
+    ("same_class", 0, 100), ("other_class", 100, 200), ("start_mismatch", 1, 100),
+    ("nested_function", 0, 100), ("declaration", 0, 100), ("other_name", 0, 100), ("orphan", 0, 100),
+])
+def test_class_rebinding_only_counts_writes_directly_in_matching_class(syntax, scenario):
+    case, start, end = scenario
     write = node("class_definition" if case == "declaration" else "assignment", start=10, end=15)
     if case == "nested_function":
         child = node("function_definition", start=5, end=20, children=[write])
     else:
         child = write
     if case != "orphan":
-        node("class_definition", start=100 if case == "other_class" else 1 if case == "start_mismatch" else 0, end=200 if case == "other_class" else 100, children=[child])
+        node("class_definition", start=start, end=end, children=[child])
     syntax.bindings = [("other" if case == "other_name" else "run", syntax.root, write)]
 
     assert syntax.class_rebound(symbol(kind="class"), "run") is (case == "same_class")

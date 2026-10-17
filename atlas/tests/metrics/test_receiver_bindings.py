@@ -43,8 +43,12 @@ def test_receiver_index_collects_all_bindings_once_per_file(context):
     assert syntax.adapter.receiver_bindings.call_count == 2
 
 
-@pytest.mark.parametrize("case", ["known", "missing", "ambiguous", "future", "shadowed", "reassigned", "member_write", "unrelated"])
-def test_lexical_receiver_resolution_rejects_unsafe_or_ambiguous_bindings(indexed, case):
+@pytest.mark.parametrize("scenario", [
+    ("known", [symbol()]), ("missing", None), ("ambiguous", []), ("future", []),
+    ("shadowed", []), ("reassigned", []), ("member_write", []), ("unrelated", [symbol()]),
+])
+def test_lexical_receiver_resolution_rejects_unsafe_or_ambiguous_bindings(indexed, scenario):
+    case, expected = scenario
     receivers, syntax, request, scope = indexed
     declaration = node("declaration", start=21 if case == "future" else 2, end=8)
     binding = ReceiverBinding("service", "Service", scope, declaration)
@@ -61,18 +65,24 @@ def test_lexical_receiver_resolution_rejects_unsafe_or_ambiguous_bindings(indexe
 
     result = receivers.resolve(request)
 
-    assert result == (None if case == "missing" else [symbol()] if case in {"known", "unrelated"} else [])
+    assert result == expected
 
 
-@pytest.mark.parametrize("case", ["self", "field", "written", "unknown", "no_instance", "static", "bare_field"])
-def test_implicit_and_member_receiver_resolution_respects_owner_and_static_context(indexed, case):
+@pytest.mark.parametrize("scenario", [
+    ("self", "self", [symbol(key="owner", kind="class")]),
+    ("field", "self.service", [symbol(kind="class")]),
+    ("written", "self", []), ("unknown", "self", None),
+    ("no_instance", "self.service", []), ("static", "self.service", []),
+    ("bare_field", "service", None),
+])
+def test_implicit_and_member_receiver_resolution_respects_owner_and_static_context(indexed, scenario):
+    case, qualifier, expected = scenario
     receivers, syntax, request, scope = indexed
     owner = symbol(key="owner", kind="class")
     declaration = node("declaration", start=2, end=8)
     scope.type = "class_definition"
     binding = ReceiverBinding("service", "Service", scope, declaration, member=True)
     receivers.bindings["a.py"] = [binding]
-    qualifier = "self" if case in {"self", "unknown", "written"} else "service" if case == "bare_field" else "self.service"
     request = replace(request, qualifier=qualifier)
     if case not in {"no_instance", "static", "bare_field"}:
         syntax.adapter.receiver_owner.return_value = None if case == "unknown" else [owner]
@@ -86,7 +96,7 @@ def test_implicit_and_member_receiver_resolution_respects_owner_and_static_conte
 
     result = receivers._receiver_types(request)
 
-    assert result == ([owner] if case == "self" else [symbol(kind="class")] if case == "field" else None if case in {"unknown", "bare_field"} else [])
+    assert result == expected
 
 
 @pytest.mark.parametrize("case", ["known", "missing", "duplicate", "other_class", "conditional", "reassigned"])

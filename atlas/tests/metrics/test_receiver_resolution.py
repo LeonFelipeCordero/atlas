@@ -31,8 +31,9 @@ def context():
     return receivers, syntax, request
 
 
-@pytest.mark.parametrize(("types", "expected"), [(None, None), ([], []), ([symbol(kind="class")], ["target"])])
-def test_resolve_distinguishes_unknown_from_known_receiver(context, monkeypatch, types, expected):
+@pytest.mark.parametrize("case", [(None, None), ([], []), ([symbol(kind="class")], ["target"])])
+def test_resolve_distinguishes_unknown_from_known_receiver(context, monkeypatch, case):
+    types, expected = case
     receivers, _, request = context
     monkeypatch.setattr(receivers, "_receiver_types", Mock(return_value=types))
 
@@ -55,24 +56,27 @@ def test_nearest_binding_prefers_declared_type_only_within_smallest_scope(contex
     assert receivers._nearest([distant, inferred, declared]) == [declared]
 
 
-@pytest.mark.parametrize(("position", "member", "expected"), [(0, False, True), (99, False, True), (100, False, False), (20, True, False)])
-def test_candidate_visibility_has_half_open_bounds_and_rejects_bare_fields(context, position, member, expected):
+@pytest.mark.parametrize("case", [(0, False, True), (99, False, True), (100, False, False), (20, True, False)])
+def test_candidate_visibility_has_half_open_bounds_and_rejects_bare_fields(context, case):
+    position, member, expected = case
     receivers, syntax, request = context
     binding = ReceiverBinding("service", "Service", node("block"), node(), member=member)
 
     assert receivers._visible(syntax, binding, replace(request, call=call(start=position))) is expected
 
 
-@pytest.mark.parametrize(("start", "annotation", "expected"), [(19, "Service", False), (20, "Service", True), (21, "Service", True), (19, None, True)])
-def test_unsafe_rejects_use_before_declaration_and_missing_annotation(context, start, annotation, expected):
+@pytest.mark.parametrize("case", [(19, "Service", False), (20, "Service", True), (21, "Service", True), (19, None, True)])
+def test_unsafe_rejects_use_before_declaration_and_missing_annotation(context, case):
+    start, annotation, expected = case
     receivers, syntax, request = context
     binding = ReceiverBinding("service", annotation, node("block"), node(start=start))
 
     assert receivers._unsafe(syntax, binding, request) is expected
 
 
-@pytest.mark.parametrize(("inferred", "trusted", "expected"), [(False, True, False), (True, True, True), (False, False, True)])
-def test_conditional_declarations_require_trusted_explicit_annotation(context, inferred, trusted, expected):
+@pytest.mark.parametrize("case", [(False, True, False), (True, True, True), (False, False, True)])
+def test_conditional_declarations_require_trusted_explicit_annotation(context, case):
+    inferred, trusted, expected = case
     receivers, syntax, _ = context
     declaration = node("declaration")
     branch = node("if_statement", children=[declaration])
@@ -92,11 +96,12 @@ def test_type_symbols_rejects_non_type_identity_and_discards_impl(context, kinds
     assert (None if result is None else [s.key for s in result]) == expected
 
 
-@pytest.mark.parametrize(("left", "right", "expected"), [
+@pytest.mark.parametrize("case", [
     ([symbol()], [symbol()], False), ([symbol()], [symbol(key="other")], True),
     ([], [], True), ([symbol(), symbol(key="other")], [symbol()], True),
 ])
-def test_initializer_requires_single_matching_identity(context, left, right, expected):
+def test_initializer_requires_single_matching_identity(context, case):
+    left, right, expected = case
     receivers, _, _ = context
 
     assert receivers._conflicting_types(left, right) is expected
@@ -138,12 +143,13 @@ def test_binding_types_rejects_ambiguity_without_guessing(context):
     receivers.resolver.named.assert_not_called()
 
 
-@pytest.mark.parametrize(("paths", "left", "right", "expected"), [
+@pytest.mark.parametrize("case", [
     ({"service.client"}, "alias", "service", {"alias.client"}),
     ({"alias.client"}, "alias", "service", {"service.client"}),
     ({"services.client"}, "alias", "service", set()),
 ])
-def test_aliases_preserve_suffix_and_require_path_component_boundary(context, paths, left, right, expected):
+def test_aliases_preserve_suffix_and_require_path_component_boundary(context, case):
+    paths, left, right, expected = case
     receivers, _, _ = context
 
     assert receivers._alias_paths(paths, left, right) == expected
@@ -165,11 +171,12 @@ def test_missing_call_node_is_unsafe_for_receiver_writes(context):
     assert receivers._path_written(request) is True
 
 
-@pytest.mark.parametrize(("receiver", "target", "expected"), [
+@pytest.mark.parametrize("case", [
     (True, "service", True), (False, "service", False), (False, "service.run", True),
     (True, "service.runner", False),
 ])
-def test_path_writes_distinguishes_receiver_from_called_member(context, receiver, target, expected):
+def test_path_writes_distinguishes_receiver_from_called_member(context, case):
+    receiver, target, expected = case
     receivers, syntax, request = context
     site = node("call", start=20, end=25)
     write = node("assignment", left=node("attribute", target), start=30, end=40)

@@ -80,8 +80,9 @@ def test_type_scope_can_be_skipped_by_language_policy(context):
     assert resolver.lexical(file, "run", owner) == [symbol(key="global")]
 
 
-@pytest.mark.parametrize(("start", "namespace", "expected"), [(0, False, []), (1, False, ["local"]), (0, True, [])])
-def test_module_import_masks_top_level_local_only_at_zero_position(context, start, namespace, expected):
+@pytest.mark.parametrize("case", [(0, False, []), (1, False, ["local"]), (0, True, [])])
+def test_module_import_masks_top_level_local_only_at_zero_position(context, case):
+    start, namespace, expected = case
     resolver, file, _, _ = context
     file.symbols = [symbol(key="local")]
     resolver.imports.get.return_value = SimpleNamespace(start=start, namespace=namespace, targets=[symbol(key="imported")])
@@ -200,11 +201,12 @@ def test_scoped_call_spelling_normalizes_context_and_filters_non_callables(conte
     resolver.identity.select.assert_called_once_with(file, site, [selected, module_target])
 
 
-@pytest.mark.parametrize(("directive", "required", "expected_target", "confidence"), [
+@pytest.mark.parametrize("case", [
     (None, False, "file:pkg.py", "INFERRED"), (None, True, "external:pkg", "EXTRACTED"),
     (node(start=0), True, "file:pkg.py", "INFERRED"),
 ])
-def test_import_connection_keeps_evidence_type_only_and_required_node_policy(context, directive, required, expected_target, confidence):
+def test_import_connection_keeps_evidence_type_only_and_required_node_policy(context, case):
+    directive, required, expected_target, confidence = case
     resolver, _, syntax, adapter = context
     syntax.import_node.return_value = directive
     adapter.require_import_node = required
@@ -233,8 +235,9 @@ def test_call_connections_preserves_reference_relationship_and_file_fallback(con
     external.assert_called_once_with(file.source.language, "callable", "run")
 
 
-@pytest.mark.parametrize(("count", "expected"), [(0, "external"), (1, "base0"), (2, "external")])
-def test_inheritance_requires_unique_target(context, monkeypatch, count, expected):
+@pytest.mark.parametrize("case", [(0, "external"), (1, "base0"), (2, "external")])
+def test_inheritance_requires_unique_target(context, monkeypatch, case):
+    count, expected = case
     resolver, file, _, _ = context
     file.inheritances = [Inheritance("derived", "a.py", "python", "Base", 4, "class Derived(Base)")]
     monkeypatch.setattr(module, "_inheritance_targets", Mock(return_value=[symbol(key=f"base{i}") for i in range(count)]))

@@ -21,10 +21,11 @@ def boundaries(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock]:
     return parser, adapter, complexity
 
 
-@pytest.mark.parametrize(("kind", "end_line", "end_column", "expected_lines"), [
+@pytest.mark.parametrize("case", [
     ("function", 5, 1, 3), ("method", 5, 2, 4), ("function", 1, 1, 0),
 ])
-def test_callable_span_bytes_and_adapter_metrics(boundaries, kind, end_line, end_column, expected_lines) -> None:
+def test_callable_span_bytes_and_adapter_metrics(boundaries, case) -> None:
+    kind, end_line, end_column, expected_lines = case
     parser, adapter, calculate = boundaries
     record = symbol(kind=kind, end_line=end_line, end_column=end_column)
     file = parsed_file(source=b"x\xffy", symbols=[record])

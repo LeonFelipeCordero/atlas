@@ -23,7 +23,7 @@ def node(kind: str = "function", level: str = "callable", **metrics) -> dict[str
             "line": 3, "metrics": metrics}
 
 
-@pytest.mark.parametrize(("rule", "metric", "label", "kind", "level"), [
+@pytest.mark.parametrize("case", [
     ("maxFileLines", "lineCount", "Lines", "file", "file"),
     ("maxFunctionLines", "lineCount", "Lines", "function", "callable"),
     ("maxParameters", "parameterCount", "Parameters", "method", "callable"),
@@ -34,7 +34,8 @@ def node(kind: str = "function", level: str = "callable", **metrics) -> dict[str
     ("maxInstability", "instability", "Internal instability", "file", "file"),
 ])
 @pytest.mark.parametrize("offset", [None, -1, 0, 1])
-def test_enabled_limit_exact_boundary_and_missing_measurement(disabled, rule, metric, label, kind, level, offset) -> None:
+def test_enabled_limit_exact_boundary_and_missing_measurement(disabled, case, offset) -> None:
+    rule, metric, label, kind, level = case
     maximum = 0.5 if metric == "instability" else 1
     actual = None if offset is None else maximum + offset * maximum
     config = CheckConfig.model_validate({**disabled.model_dump(), rule: maximum})

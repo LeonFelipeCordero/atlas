@@ -41,16 +41,19 @@ def test_generic_directive_bindings_keep_scope_and_top_level_members(scoped, nam
     }
     repository = ParsedRepository([file, target])
     index = ImportBindings(repository, cache, Modules(repository, cache))
-    binding = index.get(file, "tools" if namespace else "run", 50)
+    name = "tools" if namespace else "run"
+    start, end = (20, 80) if scoped else (0, 200)
+    binding = index.get(file, name, 50)
     assert binding == Binding(
-        "tools" if namespace else "run",
+        name,
         [member],
         namespace,
-        20 if scoped else 0,
-        80 if scoped else 200,
+        start,
+        end,
         scope=scope,
     )
-    assert binding is not None and binding.member("hidden") == []
+    assert binding is not None
+    assert binding.member("hidden") == []
 
 
 @pytest.mark.parametrize("directive", [True, False])

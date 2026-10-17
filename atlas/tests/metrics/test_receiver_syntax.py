@@ -119,13 +119,14 @@ def test_kotlin_constructor_parameter_requires_property_keyword(syntax):
     assert module.kotlin_bindings(syntax, parameter) == []
 
 
-@pytest.mark.parametrize(("language", "kind", "name_field"), [
+@pytest.mark.parametrize("case", [
     ("java", "formal_parameter", "name"), ("kotlin", "parameter", "children"),
     ("python", "typed_parameter", "children"), ("script", "required_parameter", "name"),
     ("script", "optional_parameter", "pattern"), ("go", "parameter_declaration", "name"),
     ("rust", "parameter", "pattern"), ("rust", "let_declaration", "pattern"),
 ])
-def test_typed_parameters_and_locals_keep_nominal_type_and_lexical_scope(syntax, language, kind, name_field):
+def test_typed_parameters_and_locals_keep_nominal_type_and_lexical_scope(syntax, case):
+    language, kind, name_field = case
     name, annotation = node("simple_identifier" if language == "kotlin" else "identifier", "service"), node("user_type" if language == "kotlin" else "type_identifier", "Service")
     fields = {"type": annotation}
     if name_field == "children":
@@ -139,7 +140,14 @@ def test_typed_parameters_and_locals_keep_nominal_type_and_lexical_scope(syntax,
     assert bindings == [ReceiverBinding("service", "Service", syntax.scope.return_value, declaration)]
 
 
-@pytest.mark.parametrize(("language", "kind", "owner_kind"), [
+def field_owner(language, declaration, owner_kind):
+    if language == "kotlin" and declaration.type == "variable_declaration":
+        prop = node("property_declaration", children=[declaration])
+        return node(owner_kind, children=[node("class_body", children=[prop])])
+    return node(owner_kind, children=[declaration])
+
+
+@pytest.mark.parametrize("case", [
     ("kotlin", "class_parameter", "class_declaration"),
     ("kotlin", "variable_declaration", "class_declaration"),
     ("python", "assignment", "class_definition"),
@@ -148,7 +156,8 @@ def test_typed_parameters_and_locals_keep_nominal_type_and_lexical_scope(syntax,
     ("go", "field_declaration", "type_spec"),
     ("rust", "field_declaration", "struct_item"),
 ])
-def test_class_fields_use_class_scope_instead_of_method_scope(syntax, language, kind, owner_kind):
+def test_class_fields_use_class_scope_instead_of_method_scope(syntax, case):
+    language, kind, owner_kind = case
     name = node("simple_identifier" if language == "kotlin" else "identifier", "service")
     annotation = node("user_type" if language == "kotlin" else "type_identifier", "Service")
     declaration = node(kind, name=name, type=annotation, left=name)
@@ -156,12 +165,7 @@ def test_class_fields_use_class_scope_instead_of_method_scope(syntax, language, 
         declaration.children = declaration.named_children = [name, annotation, node("val")]
     if language == "script" and kind == "required_parameter":
         declaration.named_children.append(node("accessibility_modifier", "public"))
-    if language == "kotlin" and kind == "variable_declaration":
-        prop = node("property_declaration", children=[declaration])
-        body = node("class_body", children=[prop])
-        owner = node(owner_kind, children=[body])
-    else:
-        owner = node(owner_kind, children=[declaration])
+    owner = field_owner(language, declaration, owner_kind)
     if language == "python":
         syntax.scope.return_value = owner
 

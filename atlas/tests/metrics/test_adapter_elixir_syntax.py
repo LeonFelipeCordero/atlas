@@ -10,7 +10,7 @@ from tests.metrics.adapter_support import node, parsed, request, symbol, syntax
 
 
 @pytest.mark.parametrize(
-    ("owner", "patterns", "guarded", "expected"),
+    "case",
     [
         ("case", ["_"], False, False),
         ("case", ["value"], False, True),
@@ -24,8 +24,9 @@ from tests.metrics.adapter_support import node, parsed, request, symbol, syntax
     ],
 )
 def test_elixir_clause_decisions_preserve_guard_and_cond_semantics(
-    owner, patterns, guarded, expected
+    case,
 ):
+    owner, patterns, guarded, expected = case
     inputs = node("arguments", children=[node(value=value) for value in patterns])
     left = node("binary_operator", left=inputs) if guarded else inputs
     clause = node("stab_clause", left=left)

@@ -164,12 +164,12 @@ def test_resolved_edges_external_nodes_diagnostics_and_mutation_candidates(extra
 
 
 def test_projection_aggregates_ancestors_counts_and_sorted_relationships_without_mutation() -> None:
-    nodes = [graph_node("m", "module"), graph_node("b", "file", "m"), graph_node("a", "file", "m"),
-             graph_node("class", "type", "a"), graph_node("fn", "callable", "class"),
-             graph_node("fn2", "callable", "class"), graph_node("external", "external")]
-    edges = [edge("fn", "b", "CALLS", confidence="INFERRED"), edge("a", "b", typeOnly=True),
-             edge("fn", "fn2", "CALLS"), edge("b", "a", "REFERENCES"),
-             edge("a", "b", "CONTAINS"), edge("fn", "external"), edge("missing", "a")]
+    nodes = [graph_node("m", "module"), graph_node("b", "file", parent="m"), graph_node("a", "file", parent="m"),
+             graph_node("class", "type", parent="a"), graph_node("fn", "callable", parent="class"),
+             graph_node("fn2", "callable", parent="class"), graph_node("external", "external")]
+    edges = [edge("fn", "b", kind="CALLS", confidence="INFERRED"), edge("a", "b", typeOnly=True),
+             edge("fn", "fn2", kind="CALLS"), edge("b", "a", kind="REFERENCES"),
+             edge("a", "b", kind="CONTAINS"), edge("fn", "external"), edge("missing", "a")]
     before = deepcopy((nodes, edges))
 
     result = artifact.build_dependency_views(nodes, edges)
@@ -208,7 +208,7 @@ def test_repository_languages_are_unique_and_sorted(extraction) -> None:
 @pytest.mark.parametrize("level", ["module", "file", "type", "callable"])
 def test_projection_keeps_cross_ancestor_relationships_at_each_level(level: str) -> None:
     nodes = [graph_node("right", level), graph_node("left", level),
-             graph_node("child", "symbol", "left")]
+             graph_node("child", "symbol", parent="left")]
 
     result = artifact.build_dependency_views(nodes, [edge("child", "right")])
 

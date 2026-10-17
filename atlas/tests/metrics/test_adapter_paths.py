@@ -50,7 +50,7 @@ def test_relative_directory_policy_can_include_all_files(path_files):
 
 
 @pytest.mark.parametrize(
-    ("name", "paths", "expected"),
+    "case",
     [
         ("pkg.util", ["pkg/util.py", "other/pkg/util/x.py"], ["pkg/util.py"]),
         ("pkg::util", ["pkg/util.rs", "pkg/util.py"], []),
@@ -64,8 +64,9 @@ def test_relative_directory_policy_can_include_all_files(path_files):
     ],
 )
 def test_package_lookup_requires_one_logical_directory(
-    path_files, name, paths, expected
+    path_files, case
 ):
+    name, paths, expected = case
     result = package_targets(name, path_files(*paths))
     assert [file.source.path for file in result] == expected
 

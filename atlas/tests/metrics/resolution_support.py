@@ -7,8 +7,9 @@ from typing import Any
 from atlas.domain.models import Call, ParsedFile, SourceFile, Symbol
 
 
-def node(kind: str = "identifier", value: str = "", start: int = 0, end: int = 100,
-         children: list[Any] | None = None, **fields: Any) -> Any:
+def node(kind: str = "identifier", value: str = "", **fields: Any) -> Any:
+    start, end = fields.pop("start", 0), fields.pop("end", 100)
+    children = fields.pop("children", None)
     children = children if children is not None else list(fields.values())
     result = SimpleNamespace(type=kind, text=value.encode(), start_byte=start, end_byte=end,
                              parent=None, children=children, named_children=children,
@@ -25,9 +26,9 @@ def parsed_file(symbols: list[Symbol] | None = None) -> ParsedFile:
                       "digest", None, symbols or [])
 
 
-def symbol(key: str = "target", name: str = "run", kind: str = "function",
-           parent: str = "file:a.py", start: int = 0, end: int = 100) -> Symbol:
-    return Symbol(key, "a.py", "python", name, name, kind, parent, start, end,
+def symbol(key: str = "target", name: str = "run", **overrides: Any) -> Symbol:
+    return Symbol(key, "a.py", "python", name, name, overrides.get("kind", "function"),
+                  overrides.get("parent", "file:a.py"), overrides.get("start", 0), overrides.get("end", 100),
                   1, 1, 2, 1, None, None, [])
 
 

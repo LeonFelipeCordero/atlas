@@ -11,7 +11,7 @@ from tests.metrics.adapter_support import node, request, symbol, syntax
 
 
 @pytest.mark.parametrize(
-    ("adapter", "kind", "fields", "expected"),
+    "case",
     [
         (ResolutionAdapter(), "call", {"function": "run"}, ("run", None)),
         (
@@ -59,7 +59,8 @@ from tests.metrics.adapter_support import node, request, symbol, syntax
         ),
     ],
 )
-def test_call_target_extracts_language_fields(adapter, kind, fields, expected):
+def test_call_target_extracts_language_fields(case):
+    adapter, kind, fields, expected = case
     # Given a syntax node with language-specific fields, when normalized, then names survive.
     expression = node(kind, **{key: node(value=value) for key, value in fields.items()})
     callee, receiver = adapter.call_target(expression)
@@ -93,7 +94,7 @@ def test_method_reference_and_kotlin_navigation_extract_receiver():
 
 
 @pytest.mark.parametrize(
-    ("adapter", "kind", "field_name", "own_scope"),
+    "case",
     [
         (python.PythonResolution(), "function_definition", "name", False),
         (python.PythonResolution(), "class_definition", "name", False),
@@ -108,7 +109,8 @@ def test_method_reference_and_kotlin_navigation_extract_receiver():
         (ResolutionAdapter(), "loop", "left", False),
     ],
 )
-def test_bindings_keep_target_and_correct_scope(adapter, kind, field_name, own_scope):
+def test_bindings_keep_target_and_correct_scope(case):
+    adapter, kind, field_name, own_scope = case
     adapter.assignments = adapter.assignments | {"assignment"}
     adapter.declarations = adapter.declarations | {"declaration"}
     adapter.loop_bindings = adapter.loop_bindings | {"loop"}
