@@ -151,7 +151,9 @@ def test_nested_symbols_have_stable_identity_coordinates_and_inheritance(monkeyp
     monkeypatch.setattr(parser, "extract_structure", lambda *args: [
         StructureItem(name="spanless", children=[child]), parent,
     ])
-    boundary.adapter.inheritance = lambda header: ["Base"] if header.kind == "class" else []
+    boundary.adapter.inheritance = lambda header: ["Base"] if (
+        header.kind == "class" and header.signature == "class Brew(Base)"
+    ) else []
 
     result = parser.parse_file(source())
 
@@ -243,6 +245,29 @@ def test_standalone_calls_use_selected_adapter_and_parse_source(monkeypatch):
 
     assert [(call.name, call.evidence, call.bare_target, call.qualifier) for call in calls] == [
         ("brew", "\ufffd()", True, None),
+    ]
+
+
+@pytest.mark.parametrize("fallback", [True, False])
+def test_call_capability_guard_preserves_fallback_and_custom_calls(monkeypatch, fallback):
+    # Fallback calls need grammar support; custom adapters can use other carriers.
+    site = (node(start_byte=0, end_byte=5), 0, False, ())
+
+    def fallback_sites(root):
+        return [site]
+
+    monkeypatch.setattr(parser, "call_sites", fallback_sites)
+    monkeypatch.setattr(parser, "_has_call_nodes", lambda language: fallback)
+    adapter = Mock(
+        call_sites=fallback_sites if fallback else lambda root: [site],
+        normalize_call=lambda candidate: ("run", True, None),
+        call_relationship=lambda candidate: "CALLS",
+    )
+
+    calls = parser._extract_calls(source(), root=node(), adapter=adapter)
+
+    assert [(call.name, call.evidence, call.relationship) for call in calls] == [
+        ("run", "run()", "CALLS"),
     ]
 
 

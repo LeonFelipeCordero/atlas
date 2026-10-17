@@ -232,6 +232,8 @@ def test_named_capture_overrides_unnamed_capture_but_not_the_reverse(monkeypatch
 
     # When an unnamed capture is enriched and then encountered unnamed again.
     structure._add_captured_match({"definition.function": [node]}, "test", declarations)
+    assert declarations[node.id][1].name is None
+    assert declarations[node.id][1].kind == "function"
     structure._add_captured_match(
         {"definition.method": [node], "name": [name]}, "test", declarations
     )
