@@ -85,8 +85,8 @@ def test_config_defaults_are_independent() -> None:
     first.rules.append("arithmetic.add-to-subtract")
 
     # Then
-    assert first.model_dump() == {"rules": ["arithmetic.add-to-subtract"]}
-    assert second.model_dump() == {"rules": []}
+    assert first.model_dump() == {"rules": ["arithmetic.add-to-subtract"], "targets": {}}
+    assert second.model_dump() == {"rules": [], "targets": {}}
 
 
 def test_config_preserves_selection_order_and_duplicates() -> None:
@@ -97,7 +97,7 @@ def test_config_preserves_selection_order_and_duplicates() -> None:
     config = MutationConfig(rules=selected)
 
     # Then
-    assert config.model_dump() == {"rules": selected}
+    assert config.model_dump() == {"rules": selected, "targets": {}}
 
 
 @pytest.mark.parametrize("payload,error_type", [
