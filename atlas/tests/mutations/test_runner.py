@@ -58,6 +58,29 @@ def test_each_mutation_is_independent_and_captures_logs(project, exit_code, outc
     assert len(results(root)) == 2
 
 
+def test_progress_is_live_and_reports_restoration(project):
+    root, path, original, manifests = project
+    marker = root / "executed"
+    observations = []
+
+    def progress(message):
+        observations.append((message, path.read_bytes(), marker.exists()))
+
+    script = "from pathlib import Path; Path('executed').touch(); raise SystemExit(1)"
+    counts = MutationRunner(root, config(script), progress=progress).run(manifests[:1], root / "results.jsonl")
+
+    started = next(item for item in observations if item[0].startswith("Running target unit:"))
+    finished = next(item for item in observations if item[0].startswith("Target unit: killed"))
+    restored = next(item for item in observations if item[0] == "Source restored: source.py")
+    assert started[1] != original
+    assert started[2] is False
+    assert finished[2] is True
+    assert restored[1] == original
+    assert f"log={root / 'results.jsonl.logs/0-0.log'}" in started[0]
+    assert "Completed 1 mutations" in observations[-1][0]
+    assert counts == {"killed": 1}
+
+
 def test_results_are_flushed_before_the_next_command(project):
     root, path, original, manifests = project
     script = dedent("""
@@ -123,8 +146,12 @@ def test_mixed_target_outcomes(project, case):
 
 def test_unmapped_source_is_not_modified(project):
     root, path, original, manifests = project
-    counts = MutationRunner(root, MutationConfig()).run(manifests, root / "results.jsonl")
+    messages = []
+    counts = MutationRunner(root, MutationConfig(), progress=messages.append).run(manifests, root / "results.jsonl")
     assert counts == {"unmapped": 2}
+    assert "Planned 2 mutations: 0 mapped, 2 unmapped" in messages
+    assert not any(message.startswith("Running target") for message in messages)
+    assert sum(": unmapped" in message for message in messages) == 2
     assert path.read_bytes() == original
     assert all(not item["targets"] for item in results(root))
 
@@ -142,8 +169,12 @@ def test_all_matching_targets_run_and_any_kill_wins(project):
 
 def test_timeout_restores_source(project):
     root, path, original, manifests = project
-    counts = MutationRunner(root, config("import time; time.sleep(60)", timeoutSeconds=1)).run(manifests[:1], root / "results.jsonl")
+    messages = []
+    runner = MutationRunner(root, config("import time; time.sleep(60)", timeoutSeconds=1), progress=messages.append)
+    counts = runner.run(manifests[:1], root / "results.jsonl")
     assert counts == {"timeout": 1}
+    assert any("Target unit: timeout (exit=None," in message for message in messages)
+    assert "Source restored: source.py" in messages
     assert path.read_bytes() == original
 
 
@@ -151,7 +182,9 @@ def test_missing_executable_is_error(project):
     root, path, original, manifests = project
     settings = config("pass")
     settings.targets["unit"].command = [str(root / "missing-command")]
-    assert MutationRunner(root, settings).run(manifests[:1], root / "results.jsonl") == {"error": 1}
+    messages = []
+    assert MutationRunner(root, settings, progress=messages.append).run(manifests[:1], root / "results.jsonl") == {"error": 1}
+    assert any("Target unit: error" in message and "missing-command" in message for message in messages)
     assert "error" in results(root)[0]["targets"][0]
     assert path.read_bytes() == original
 
@@ -159,7 +192,9 @@ def test_missing_executable_is_error(project):
 def test_stale_source_is_not_overwritten(project):
     root, path, _, manifests = project
     path.write_bytes(b"user edit")
-    assert MutationRunner(root, config("pass")).run(manifests, root / "results.jsonl") == {"error": 2}
+    messages = []
+    assert MutationRunner(root, config("pass"), progress=messages.append).run(manifests, root / "results.jsonl") == {"error": 2}
+    assert sum(": error; Stale mutation source: source.py" in message for message in messages) == 2
     assert path.read_bytes() == b"user edit"
 
 
@@ -178,10 +213,13 @@ def test_exception_restores_source_and_keeps_completed_results(project, exceptio
             raise exception
         return real_command(*args)
 
+    messages = []
     with patch.object(runner, "_run_command", side_effect=interrupt), pytest.raises(type(exception) if isinstance(exception, Exception) else exception):
-        MutationRunner(root, config("pass")).run(manifests, root / "results.jsonl")
+        MutationRunner(root, config("pass"), progress=messages.append).run(manifests, root / "results.jsonl")
     assert path.read_bytes() == original
     assert len(results(root)) == 1
+    assert messages.count("Source restored: source.py") == 2
+    assert not any(message.startswith("Completed") for message in messages)
 
 
 def test_existing_results_are_never_overwritten(project):
@@ -291,10 +329,13 @@ def test_restoration_failure_aborts_before_the_next_mutation(project):
                 raise OSError("restore failed")
         return write_bytes(destination, data)
 
+    messages = []
     with (patch.object(Path, "write_bytes", autospec=True, side_effect=fail_second_restore),
           patch.object(runner, "_run_command", wraps=runner._run_command) as command):
         with pytest.raises(OSError, match="restore failed"):
-            MutationRunner(root, config("pass")).run(manifests * 2, root / "results.jsonl")
+            MutationRunner(root, config("pass"), progress=messages.append).run(manifests * 2, root / "results.jsonl")
+    assert messages.count("Source restored: source.py") == 1
+    assert not any(message.startswith("Completed") for message in messages)
     assert command.call_count == 2
     assert len(results(root)) == 1
     assert path.read_bytes() != original

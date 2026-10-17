@@ -48,6 +48,12 @@ def test_run_accepts_project_folder_and_writes_results(project, args):
     assert result.exit_code == 0, result.output
     summary = json.loads(result.stdout)
     assert summary["counts"] == {"survived": 1}
+    assert f"[mutations] Analyzing source files in {project}" in result.stderr
+    assert "Planned 1 mutations: 1 mapped, 0 unmapped" in result.stderr
+    assert "[1/1] src/example.py:1 comparison.less-to-less-equal: '<' -> '<='" in result.stderr
+    assert result.stderr.index("Running target unit:") < result.stderr.index("Target unit: survived")
+    assert "Source restored: src/example.py" in result.stderr
+    assert 'Completed 1 mutations' in result.stderr
     record = json.loads(Path(summary["output"]).read_text())
     assert record["path"] == "src/example.py"
     assert Path(record["targets"][0]["log"]).read_text() == "tested\n"
@@ -93,6 +99,9 @@ def test_run_kills_mutation_with_real_tests(project_factory, monkeypatch, saved)
     assert "FAILED tests/test_example.py::test_comparison" in log
     assert "assert False is True" in log
     assert source.read_bytes() == original
+    phase = "Reading saved candidates" if saved else "Analyzing source files"
+    assert phase in result.stderr
+    assert "Target unit: killed (exit=1," in result.stderr
 
 
 def test_run_requires_targets_before_analysis(tmp_path):
@@ -109,6 +118,7 @@ def test_custom_output_and_existing_results_are_protected(project):
     result = CliRunner().invoke(main, args)
     assert result.exit_code == 1
     assert (project / "custom.jsonl").read_bytes() == original
+    assert "Completed" not in result.stderr
 
 
 def test_rules_cannot_be_combined_with_run(project):

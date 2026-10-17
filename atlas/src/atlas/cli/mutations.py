@@ -60,10 +60,15 @@ def mutations_command(folder: Path, saved: bool, show_rules: bool) -> None:
     click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
+def _progress(message: str) -> None:
+    click.echo(f"[mutations] {message}", err=True)
+
+
 @mutations_command.command("run", help=(
     "Apply independent mutations and run trusted configured test commands in this workspace. "
     "No baseline or isolation is provided. Nonzero command exits count as killed. "
-    "Results are incremental JSONL with separate command logs. Existing results are never overwritten."
+    "Results are incremental JSONL with separate command logs. Existing results are never overwritten. "
+    "Progress is printed to stderr; stdout remains JSON."
 ))
 @click.option("-f", "--folder", type=click.Path(path_type=Path), help="Override the parent project folder")
 @click.option("--output", default="mutation-results.jsonl", show_default=True, type=click.Path(path_type=Path),
@@ -77,14 +82,17 @@ def run_command(ctx: click.Context, folder: Path | None, output: Path) -> None:
 
     try:
         root = (folder or ctx.obj["folder"]).expanduser().resolve()
+        _progress(f"Loading configuration: {root / 'atlas.json'}")
         config = load_project_config(root).mutations
         if not config.targets:
             raise ValueError("Configure mutations.targets in atlas.json before running mutations")
+        _progress(f"Reading saved candidates for {root}" if ctx.obj["saved"] else f"Analyzing source files in {root}")
         report = _saved_report(root) if ctx.obj["saved"] else build_artifact_report(analyze_folder(root))
+        _progress(f"Found {len(report['mutationCandidates'])} candidate sites; generating configured replacements")
         planned = build_mutation_report(root, report, config)
         manifests = [MutationManifest.model_validate(item) for item in planned["mutations"]]
         destination = root / output
-        counts = MutationRunner(root, config).run(manifests, destination)
+        counts = MutationRunner(root, config, progress=_progress).run(manifests, destination)
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps({"output": str(destination.resolve()), "counts": counts}, indent=2))

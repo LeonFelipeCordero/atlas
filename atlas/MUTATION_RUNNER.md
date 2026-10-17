@@ -44,6 +44,15 @@ Run the configured commands for each independent mutation:
 uv run --project atlas atlas mutations run --folder . --output mutation-results.jsonl
 ```
 
+Progress logs stream to stderr during planning and execution. They show the
+mapped/unmapped counts, mutation position and edit, target command, working
+directory, timeout, command-log path, outcome, duration, and confirmed source
+restoration. The final JSON summary stays on stdout. To save progress separately:
+
+```sh
+uv run --project atlas atlas mutations run --folder . --output results.jsonl 2>progress.log
+```
+
 `--output` resolves from the project root. Each result is written immediately as
 one JSON object per line. Command output goes to separate files in
 `<output>.logs/`. Choose a new output path for each run. Existing result files

@@ -10,9 +10,11 @@ import os
 import signal
 import subprocess
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
 from fnmatch import fnmatchcase
 from pathlib import Path
+from shlex import join
 from tempfile import TemporaryDirectory
 from typing import Iterator
 
@@ -106,10 +108,20 @@ def _interrupt_on_termination() -> Iterator[None]:
 class MutationRunner:
     """Execute explicit targets in the caller's workspace, without a baseline."""
 
-    def __init__(self, root: Path, config: MutationConfig):
+    def __init__(self, root: Path, config: MutationConfig, progress: Callable[[str], None] = lambda _: None):
         self.root = root.resolve()
         self.config = config
         self.directories = _working_directories(self.root, config)
+        self.progress = progress
+
+    def _run_target(self, name: str, target: MutationTarget, log: Path) -> dict:
+        self.progress(f"Running target {name}: {join(target.command)} "
+                      f"(cwd={self.directories[name]}, timeout={target.timeoutSeconds}s, log={log})")
+        execution = _run_command(target, self.directories[name], log)
+        self.progress(f"Target {name}: {execution['outcome']} "
+                      f"(exit={execution['exitCode']}, {execution['durationSeconds']:.2f}s)"
+                      + (f"; {execution['error']}" if "error" in execution else ""))
+        return execution
 
     def _execute(self, manifest: MutationManifest, logs: Path, ordinal: int) -> dict:
         result: dict = {"manifestId": manifest.id, "path": manifest.path, "ruleId": manifest.ruleId,
@@ -124,13 +136,14 @@ class MutationRunner:
         try:
             path.write_bytes(modified)
             for index, (name, target) in enumerate(targets.items()):
-                execution = _run_command(target, self.directories[name], logs / f"{ordinal}-{index}.log")
+                execution = self._run_target(name, target, logs / f"{ordinal}-{index}.log")
                 result["targets"].append({"name": name, **execution})
         except OSError as error:
             return {**result, "outcome": "error", "error": str(error)}
         finally:
             # Restoration failures must abort, not continue with corrupted source.
             path.write_bytes(original)
+            self.progress(f"Source restored: {manifest.path}")
         outcomes = {execution["outcome"] for execution in result["targets"]}
         result["outcome"] = next(outcome for outcome in ("killed", "error", "timeout", "survived") if outcome in outcomes)
         return result
@@ -141,15 +154,23 @@ class MutationRunner:
         SIGINT/SIGTERM restore source; SIGKILL and machine failure cannot.
         Commands are trusted and may modify other project files.
         """
+        started = time.monotonic()
         output = output.resolve()
         logs = output.with_name(output.name + ".logs")
+        mapped = sum(bool(matching_targets(item.path, self.config)) for item in manifests)
+        self.progress(f"Planned {len(manifests)} mutations: {mapped} mapped, {len(manifests) - mapped} unmapped")
+        self.progress(f"Results: {output}; command logs: {logs}")
         counts: dict[str, int] = {}
         with _interrupt_on_termination(), output.open("x", encoding="utf-8") as stream:
             logs.mkdir()
             for ordinal, manifest in enumerate(manifests):
+                label = f"[{ordinal + 1}/{len(manifests)}] {manifest.path}:{manifest.span.startLine} {manifest.ruleId}"
+                self.progress(f"{label}: {manifest.originalText!r} -> {manifest.replacement!r}")
                 result = self._execute(manifest, logs, ordinal)
                 stream.write(json.dumps(result, ensure_ascii=False) + "\n")
                 stream.flush()
                 outcome = result["outcome"]
                 counts[outcome] = counts.get(outcome, 0) + 1
+                self.progress(f"{label}: {outcome}" + (f"; {result['error']}" if "error" in result else ""))
+        self.progress(f"Completed {len(manifests)} mutations in {time.monotonic() - started:.2f}s: {json.dumps(counts)}")
         return counts
