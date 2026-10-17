@@ -107,7 +107,12 @@ def _cycle_measurements(groups: list[CircularGroup], nodes: list[dict[str, Any]]
 
 
 def build_artifact_report(artifact: dict[str, Any]) -> dict[str, Any]:
-    """Report raw values, including zeros and unavailable metrics, without policy."""
+    """Return policy-free measurements from an artifact mapping without modifying it.
+
+    Preserve zeros and represent unavailable metrics as None. Recompute dependency
+    views; reuse supplied cycle groups or detect them if absent. Include sorted
+    node measurements, summaries, cycle details, diagnostics, and mutation sites.
+    """
     nodes = artifact.get("nodes", [])
     edges = artifact.get("edges", [])
     cycles = artifact.get("circularDependencies") or circular_dependencies(nodes, edges)
@@ -139,7 +144,11 @@ def _record_node(record: ReportNodeDTO) -> dict[str, Any]:
 
 
 def build_report(graph: ReportFactsDTO) -> dict[str, Any]:
-    """Use the same projection and metric calculations on normalized saved facts."""
+    """Build the artifact-style metrics report from normalized saved graph facts.
+
+    Use graph edges when present, otherwise legacy imports. Recompute dependency
+    and cycle measurements without reading sources or applying check limits.
+    """
     return build_artifact_report({
         "nodes": [_record_node(record) for record in graph.nodes],
         "edges": [edge.model_dump() for edge in graph.edges or graph.imports],

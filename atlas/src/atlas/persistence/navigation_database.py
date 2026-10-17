@@ -23,6 +23,7 @@ class IndexedSQLiteCompiler(SQLiteCompiler):
     """Render SQLite's endpoint index hint on an ORM table, never a query string."""
 
     def get_from_hint_text(self, table, text: str | None) -> str:
+        """Render an adjacency INDEXED BY hint; reject other tables/hints with ValueError."""
         if table is not GraphEdgeRow.__table__ or text not in EDGE_INDEXES:
             raise ValueError("Only the two graph adjacency indexes may be hinted")
         return f"INDEXED BY {text}"
@@ -40,7 +41,12 @@ def _check_schema(connection: Connection) -> None:
 
 @contextmanager
 def readonly_session(path: str | Path | None = None) -> Generator[Session, None, None]:
-    """Open an existing SQLite file without creating directories or migrating."""
+    """Yield a query-only session on an existing database after schema checks.
+
+    Open the supplied/default path without creating directories or migrating.
+    Keep one read transaction until exit, then close without committing.
+    Raise NavigationError for missing schema/indexes or SQLAlchemy failures.
+    """
     target = (Path(path).expanduser() if path is not None else default_database_path()).resolve()
     url = URL.create("sqlite+pysqlite", database=target.as_uri() + "?mode=ro", query={"uri": "true"})
     engine = create_engine(url)

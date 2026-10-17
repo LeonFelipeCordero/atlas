@@ -10,6 +10,7 @@ from .script_resolution import executable_implementation
 
 
 def parameter_count(node: Node) -> int | None:
+    """Count script inputs, unwrapping callable properties; unknown shapes yield None."""
     callable_node = (
         _property_callable(node) if node.type == "property_signature" else node
     )
@@ -18,6 +19,10 @@ def parameter_count(node: Node) -> int | None:
 
 class TypeScriptResolution(script.JavaScriptResolution):
     def select(self, identity, request, matches):
+        """Exclude signature-only targets and select one body after compatible signatures.
+
+        Multiple candidates must share static status and one declaration group.
+        """
         if len(matches) <= 1:
             return [s for s in matches if (node := identity.syntax[s.file_path].node(s.start_byte, s.end_byte))
                     is not None and node.type not in {"method_signature", "function_signature", "abstract_method_signature", "property_signature"}]

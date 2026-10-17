@@ -26,12 +26,20 @@ class ProjectConfig(CheckConfig):
 
 
 def load_config(root: Path) -> CheckConfig:
-    """Keep quantitative checks independent of mutation rule selections."""
+    """Load project settings and return only quantitative check limits.
+
+    Mutation settings are validated but excluded. Use defaults if atlas.json is
+    absent; propagate project configuration and file-reading errors.
+    """
     return CheckConfig.model_validate(load_project_config(root).model_dump(exclude={"mutations"}))
 
 
 def load_project_config(root: Path) -> ProjectConfig:
-    """Read only the analyzed folder's atlas.json; absence means defaults."""
+    """Read root/atlas.json into validated project settings; absence means defaults.
+
+    Do not search parent folders. Raise ValueError for invalid JSON or settings;
+    other read and decoding errors propagate.
+    """
     path = root / "atlas.json"
     try:
         source = path.read_text(encoding="utf-8")

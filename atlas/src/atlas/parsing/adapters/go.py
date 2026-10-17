@@ -54,12 +54,14 @@ def _assigned_name(owner: Node, index: int) -> str | None:
 
 
 def declaration(node: Node) -> DeclarationCarrier:
+    """Name function literals by assignment position when an identifier exists."""
     if node.type == "func_literal":
         return callback_carrier(node, _binding(node))
     return named_carrier(node)
 
 
 def call_sites(root: Node):
+    """Iterate Go call expressions with original-source coordinates."""
     return shared_call_sites(root, CALL_TYPES)
 
 

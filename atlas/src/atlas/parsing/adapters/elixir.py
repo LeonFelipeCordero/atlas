@@ -34,6 +34,7 @@ INHERITANCE = InheritancePolicy(frozenset())
 
 
 def declaration(node: Node) -> DeclarationCarrier:
+    """Mark anonymous functions as callbacks; keep other declaration names."""
     if node.type == "anonymous_function":
         return callback_carrier(node, callback_binding(node))
     return named_carrier(node)
@@ -90,6 +91,7 @@ def _pipeline_target(node: Node) -> bool:
 
 
 def elixir_call_target(site: CallSite) -> CallTarget:
+    """Treat pipeline RHS identifiers as bare calls; otherwise use shared syntax."""
     node = site[0]
     if node.type == "identifier":
         return text(node), True, None  # Zero-explicit-argument pipeline RHS.
@@ -97,6 +99,7 @@ def elixir_call_target(site: CallSite) -> CallTarget:
 
 
 def elixir_call_sites(root: Node) -> Iterator[CallSite]:
+    """Yield calls and pipeline RHS identifiers, excluding forms and def heads."""
     for node in walk(root):
         if node.type == "identifier":
             if _pipeline_target(node):

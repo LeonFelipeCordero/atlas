@@ -22,6 +22,10 @@ QUERY = (
 
 
 def declaration(node: Node) -> DeclarationCarrier | None:
+    """Mark callable property signatures as methods; skip non-callable properties.
+
+    Delegate other nodes to JavaScript declaration normalization.
+    """
     if node.type != "property_signature":
         return script.script_declaration(node)
     if _property_callable(node) is None:

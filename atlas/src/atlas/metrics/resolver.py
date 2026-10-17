@@ -285,6 +285,10 @@ class CallResolver:
         self.receivers = ReceiverTypes(self)
 
     def owner(self, call: Call) -> Symbol | None:
+        """Return the smallest symbol enclosing the call's full byte span, or None.
+
+        Raise KeyError if the call's file is absent from the repository.
+        """
         enclosing = [
             s
             for s in self.files[call.file_path].symbols
@@ -297,6 +301,7 @@ class CallResolver:
         )
 
     def ancestors(self, owner: Symbol | None) -> list[Symbol]:
+        """Return owner then its parents, stopping at a missing parent or a cycle."""
         result = []
         while owner and owner not in result:
             result.append(owner)
@@ -306,7 +311,11 @@ class CallResolver:
     def lexical(
         self, file: ParsedFile, name: str, owner: Symbol | None
     ) -> list[Symbol]:
-        """Nearest visible declaration wins; unrelated nested declarations aren't globals."""
+        """Return same-name declarations from the nearest eligible lexical scope.
+
+        Search owner and its ancestors before file scope. Unrelated nested
+        declarations are not globals; no match returns an empty list.
+        """
         ancestors = self.ancestors(owner)
         scopes = [s.key for s in ancestors] + [file_key(file.source.path)]
         for scope in scopes:
@@ -328,6 +337,12 @@ class CallResolver:
         return [s for s in file.symbols if s.name == name and s.parent_key == scope]
 
     def named(self, request: ResolutionRequest, fallback: bool = False) -> list[Symbol]:
+        """Find visible local, imported, or same-package declarations in that order.
+
+        Shadowed or masked names return []. With fallback enabled, otherwise
+        unresolved names can match same-language-family repository callables;
+        the returned candidates are not necessarily unique.
+        """
         file, name, call = request.file, request.name, request.call
         binding = self.imports.get(file, name, call.start_byte)
         local = self.lexical(file, name, request.owner)
@@ -356,6 +371,10 @@ class CallResolver:
         ]
 
     def class_named(self, request: ResolutionRequest) -> list[Symbol]:
+        """Return adapter-qualified named targets restricted to supported type kinds.
+
+        No visible supported type returns an empty list.
+        """
         matches = self.named(request)
         matches = get_resolution_adapter(request.file.source.language).qualify_class(
             self, request, matches
@@ -392,6 +411,11 @@ class CallResolver:
         return [parent]
 
     def members(self, types: list[Symbol], name: str, static: bool) -> list[Symbol]:
+        """Find named callable members of exactly one type using adapter rules.
+
+        Ambiguous types or overwritten members return []; static=True further
+        restricts candidates to declarations usable as static members.
+        """
         if len(types) != 1:
             return []
         parent = types[0]
@@ -435,6 +459,11 @@ class CallResolver:
         return binding.member(name)
 
     def qualified(self, request: ResolutionRequest) -> list[Symbol]:
+        """Find self, namespace, or static-type members for a qualified request.
+
+        Rebound members and shadowed qualifier roots return an empty list.
+        Remaining qualification rules are language-specific.
+        """
         file, name, qualifier = request.file, request.name, request.qualifier or ""
         call = request.call
         if self.syntax[file.source.path].member_rebound(qualifier, name):
@@ -506,6 +535,12 @@ class CallResolver:
         )
 
     def resolve(self, call: Call, owner: Symbol | None) -> list[Symbol]:
+        """Select callable identities in the supplied enclosing owner's context.
+
+        Normalize syntax through the language adapter, then apply binding and
+        identity checks. Macros and unsafe or unresolved calls return [].
+        Raise KeyError if the call's file is absent from the repository.
+        """
         file = self.files[call.file_path]
         node = self.syntax[call.file_path].node(call.start_byte, call.end_byte)
         adapter = get_resolution_adapter(file.source.language)

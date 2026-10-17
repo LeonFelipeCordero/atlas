@@ -36,23 +36,31 @@ SCOPES = frozenset(
 
 
 def target(node: Node) -> str:
+    """Return an unqualified call target identifier, or an empty string for other syntax."""
     value = field(node, "target") if node.type == "call" else None
     return text(value) if value is not None and value.type == "identifier" else ""
 
 
 def scope(node: Node) -> bool:
+    """Recognize declaration calls that introduce an Elixir metric scope."""
     return target(node) in SCOPES
 
 
 def call_decision(node: Node) -> bool:
+    """Count unqualified if/unless calls as decisions."""
     return target(node) in {"if", "unless"}
 
 
 def guard_decision(node: Node) -> bool:
+    """Identify a when token in a guard expression's direct children."""
     return any(child.type == "when" for child in node.children)
 
 
 def clause_decision(node: Node) -> bool:
+    """Count refutable clauses, excluding anonymous-function clauses and plain fallbacks.
+
+    Bare _ and cond's true fallback do not count; guarded wildcards still count.
+    """
     parent = node.parent
     if parent is None or parent.type == "anonymous_function":
         return False
@@ -73,6 +81,7 @@ def _cond_fallback(fallback: str, owner: Node | None) -> bool:
 
 
 def arguments(node):
+    """Find an argument field or supported argument-list child, or None if absent."""
     if node is None:
         return None
     return field(node, "arguments") or next(
@@ -86,6 +95,10 @@ def arguments(node):
 
 
 def parameter_count(node: Node) -> int | None:
+    """Count declaration inputs or a shared anonymous-clause arity.
+
+    Unsupported/error heads and differing anonymous-clause counts yield None.
+    """
     if node.type == "anonymous_function":
         return _elixir_anonymous_count(node)
     if node.type != "call" or target(node) not in DECLARATIONS:
@@ -133,6 +146,7 @@ METRICS = replace(
 
 
 def arity(node) -> int | None:
+    """Count direct call arguments without pipeline input; unsupported syntax yields None."""
     args = arguments(node)
     return (
         len(args.named_children)
@@ -206,6 +220,7 @@ def _clause_matches(
 
 class ElixirResolution(ResolutionAdapter):
     def import_path(self, source: str) -> str:
+        """Extract an import/alias/require/use path, preferring quoted text if present."""
         match = re.search(r"\b(?:import|alias|require|use)\s+([\w.:/]+)", source)
         return quoted_path(source) or (match[1] if match else source.strip())
 
@@ -214,12 +229,14 @@ class ElixirResolution(ResolutionAdapter):
     receiver_names = {"alias"}
 
     def is_import_node(self, node):
+        """Recognize alias and import calls, but not require/use calls."""
         return node.type == "call" and text(field(node, "target")) in {
             "alias",
             "import",
         }
 
     def module_identity(self, file, symbol, syntax):
+        """Use module names directly and the final ::-separated name for other declarations."""
         return (
             symbol.name
             if symbol.kind == "module"
@@ -227,10 +244,12 @@ class ElixirResolution(ResolutionAdapter):
         )
 
     def import_key(self, ctx, request):
+        """Return a unique declared module/name key, or None for missing/duplicate matches."""
         targets = ctx.modules.declared(request.file, request.path)
         return targets[0].key if len(targets) == 1 else None
 
     def import_item(self, ctx, request):
+        """Bind an explicit alias or final dotted name to matching declarations."""
         file, source, path = request.file, request.source, request.path
         alias = re.search(r"\bas\s*:?\s*([\w]+)", source)
         return [
@@ -242,11 +261,13 @@ class ElixirResolution(ResolutionAdapter):
         ]
 
     def qualified(self, resolver, request):
+        """Find static members of declarations identified by the module qualifier."""
         return resolver.members(
             resolver.modules.declared(request.file, request.qualifier or ""), request.name, True
         )
 
     def clauses(self, repository, syntax):
+        """Index function/method keys to minimum arity, maximum arity and private status."""
         clauses = {}
         for symbol in repository.symbols:
             if symbol.language != self.family or symbol.kind not in {
@@ -259,6 +280,11 @@ class ElixirResolution(ResolutionAdapter):
         return clauses
 
     def select(self, identity, request, matches):
+        """Filter clauses by arity, defaults and private visibility, including pipeline input.
+
+        Keep all viable clauses only for one parent/name identity. Unknown arity
+        accepts only an already unique candidate.
+        """
         file, call = request.file, request.call
         node = identity.syntax[file.source.path].node(call.start_byte, call.end_byte)
         count = _call_arity(node)

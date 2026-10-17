@@ -21,12 +21,22 @@ class GraphReadRepository:
         self._session = session
 
     def graph(self, identifier: str) -> GraphDTO | None:
+        """Return a normalized graph summary, or None without a saved revision.
+
+        Roll back pending session work, then read in a fresh transaction that
+        ends on return. The identifier is a repository ID.
+        """
         self._session.rollback()
         with self._session.begin():
             row = self._session.get(RepositoryGraphRow, identifier)
             return self._graph_summary(row) if row and row.graph_revision else None
 
     def report_facts(self, identifier: str) -> ReportFactsDTO | None:
+        """Return report facts from one revision, or None without a saved graph.
+
+        Roll back pending session work and use a fresh transaction. Include
+        ordered nodes, non-containment edges, diagnostics, and saved mutations.
+        """
         self._session.rollback()
         with self._session.begin():
             row = self._session.get(RepositoryGraphRow, identifier)

@@ -14,6 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Add graph metadata and indexed node/file/symbol tables without backfilling.
+
+    Existing graphs need reindexing; leave transaction control to Alembic.
+    """
     op.add_column("repository_graphs", Column("graph_revision", Text, nullable=True))
     op.add_column("repository_graphs", Column("schema_version", Integer, nullable=True))
     op.add_column("repository_graphs", Column("indexed_at", Text, nullable=True))
@@ -62,6 +66,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Discard normalized nodes, files, symbols, and metadata; retain JSON graphs.
+
+    Leave transaction control to Alembic.
+    """
     op.drop_table("graph_symbols")
     op.drop_table("graph_files")
     op.drop_table("graph_nodes")

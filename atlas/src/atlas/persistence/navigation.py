@@ -19,7 +19,12 @@ from .navigation_queries import AdjacencyRequest, adjacency, metrics, nodes
 
 @contextmanager
 def navigation_reader(project: str | Path, revision: str | None, path: str | Path | None = None) -> Generator["GraphReader", None, None]:
-    """Construct a repository privately for the service-owned factory."""
+    """Yield a graph reader within one managed read-only database snapshot.
+
+    A string selects an ID or case-insensitive name; a Path selects the nearest
+    containing project. Reject missing/ambiguous projects, absent graphs, and
+    mismatched revisions with NavigationError. Never migrate or commit writes.
+    """
     with readonly_session(path) as session:
         yield GraphReader(session, project, revision)
 
@@ -65,6 +70,7 @@ class GraphReader:
         return [dict(row) for row in self._session.execute(statement).mappings()]
 
     def overview(self) -> Record:
+        """Return level/relation counts and up to 30 roots with a truncation flag."""
         node, edge = GraphNodeRow, GraphEdgeRow
         identifier = self.snapshot.repository_id
         counts = self._rows(select(node.level, func.count().label("count")).where(
@@ -77,6 +83,11 @@ class GraphReader:
         return {"levels": counts, "relations": relations, "roots": roots[:30], "truncated": len(roots) > 30}
 
     def find(self, query: str, limit: int) -> list[Record]:
+        """Return ranked matches up to limit, preferring exact keys and paths.
+
+        Match names/paths case-insensitively as literal substrings, not LIKE
+        patterns; stable keys also match exactly.
+        """
         node = GraphNodeRow
         # instr treats input literally rather than interpreting LIKE wildcards.
         match = or_(
@@ -96,6 +107,11 @@ class GraphReader:
         ).limit(limit))
 
     def node(self, key: str) -> Record:
+        """Return node details by stable key, or raise NavigationError if absent.
+
+        Include metrics, file hash, and up to 100 ordered decorators with a
+        truncation flag; mark external nodes explicitly.
+        """
         identifier = self.snapshot.repository_id
         rows = self._rows(nodes(identifier).where(GraphNodeRow.node_key == key).limit(1))
         if not rows:
@@ -118,12 +134,18 @@ class GraphReader:
         return node
 
     def children(self, key: str, limit: int, offset: int) -> list[Record]:
+        """Return direct children of a stable key in artifact order, using paging."""
         node = GraphNodeRow
         return self._rows(nodes(self.snapshot.repository_id).where(node.parent_key == key).order_by(
             node.ordinal, node.node_key,
         ).limit(limit).offset(offset))
 
     def edges(self, request: EdgeRequest) -> list[Record]:
+        """Return bounded adjacency for the requested direction and relation types.
+
+        Deduplicate incoming/outgoing overlap by ordinal and return artifact
+        order. An empty relation list returns no edges.
+        """
         directions = [True, False] if request.direction == "both" else [request.direction == "out"]
         batches = (self._rows(adjacency(AdjacencyRequest(
             self.snapshot.repository_id, request.key, outgoing, relation, request.limit,
@@ -132,12 +154,14 @@ class GraphReader:
         return [selected[ordinal] for ordinal in sorted(selected)[:request.limit]]
 
     def diagnostics(self, paths: list[str], limit: int) -> list[Record]:
+        """Return diagnostics for exact indexed paths in artifact order, up to limit."""
         diagnostic = GraphDiagnosticRow
         return self._rows(select(diagnostic.severity, diagnostic.path, diagnostic.language, diagnostic.message).where(
             diagnostic.repository_id == self.snapshot.repository_id, diagnostic.path.in_(paths),
         ).order_by(diagnostic.ordinal).limit(limit))
 
     def file(self, path: str) -> list[Record]:
+        """Return up to two file keys/hashes for an exact path to detect ambiguity."""
         node, file = GraphNodeRow, GraphFileRow
         return self._rows(select(node.node_key.label("stableKey"), file.sha256).join(
             file, (file.repository_id == node.repository_id) & (file.node_key == node.node_key),

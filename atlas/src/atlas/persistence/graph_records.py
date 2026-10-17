@@ -20,6 +20,7 @@ def _decorators(node: dict[str, Any]) -> list[str]:
 
 
 def validate_collections(artifact: dict[str, Any]) -> None:
+    """Raise ValueError for non-list collections or non-list, non-null decorators."""
     for name in ("nodes", "edges", "diagnostics", "mutationCandidates"):
         if name in artifact and not isinstance(artifact[name], list):
             raise ValueError("Graph artifact collections must be arrays")
@@ -30,7 +31,10 @@ def validate_collections(artifact: dict[str, Any]) -> None:
 
 
 def validate_parentage(artifact: dict[str, Any]) -> None:
-    """Reject ambiguous occurrence containers and cycles; foreign keys check references."""
+    """Validate collection shapes and raise ValueError for parent cycles.
+
+    Leave missing parent references to database foreign-key validation.
+    """
     validate_collections(artifact)
     parents = {node["stableKey"]: node.get("parentStableKey") for node in artifact.get("nodes", [])}
     complete: set[str] = set()
@@ -50,6 +54,7 @@ def _validate_ancestry(key: str, parents: dict[str, str | None], complete: set[s
 
 
 def graph_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
+    """Return graph-row metadata, using None for absent artifact/repository fields."""
     repository = artifact.get("repository") or {}
     return {
         "schema_version": artifact.get("schemaVersion"),
@@ -60,6 +65,7 @@ def graph_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
 
 
 def node_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return repository-scoped node rows with ordinals in artifact order."""
     return [
         {
             "repository_id": repository_id,
@@ -79,6 +85,7 @@ def node_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str,
 
 
 def file_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return file-level rows with optional byte counts and source hashes."""
     return [
         {
             "repository_id": repository_id,
@@ -91,6 +98,7 @@ def file_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str,
 
 
 def is_symbol(node: dict[str, Any]) -> bool:
+    """Identify symbol-bearing nodes by level, source span, or symbol properties."""
     properties = _properties(node)
     return (
         node["level"] in {"type", "callable", "symbol"}
@@ -101,6 +109,7 @@ def is_symbol(node: dict[str, Any]) -> bool:
 
 
 def symbol_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return symbol rows with optional source spans, signatures, and visibility."""
     return [
         {
             "repository_id": repository_id,
@@ -117,6 +126,7 @@ def symbol_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[st
 
 
 def decorator_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return symbol decorators with per-node ordinals preserving source order."""
     return [
         {"repository_id": repository_id, "node_key": node["stableKey"], "ordinal": ordinal, "decorator": decorator}
         for node in artifact.get("nodes", []) if is_symbol(node)
@@ -140,6 +150,7 @@ def _metric_record(repository_id: str, node: dict[str, Any]) -> dict[str, Any]:
 
 
 def metric_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return metric rows only for nodes with at least one recognized metric."""
     return [
         _metric_record(repository_id, node)
         for node in artifact.get("nodes", [])
@@ -148,6 +159,7 @@ def metric_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[st
 
 
 def edge_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return ordered edge rows; type_only is true only for literal True."""
     return [
         {
             "repository_id": repository_id,
@@ -166,6 +178,10 @@ def edge_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str,
 
 
 def mutation_candidate_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return ordered candidates with JSON payloads linked to artifact file keys.
+
+    Raise KeyError if a candidate path has no matching file-level node.
+    """
     files = {node["path"]: node["stableKey"] for node in artifact.get("nodes", []) if node["level"] == "file"}
     return [
         {
@@ -185,6 +201,7 @@ def mutation_candidate_records(repository_id: str, artifact: dict[str, Any]) -> 
 
 
 def diagnostic_records(repository_id: str, artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return repository-scoped diagnostic rows in artifact order."""
     return [
         {
             "repository_id": repository_id,

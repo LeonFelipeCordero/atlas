@@ -8,15 +8,21 @@ from ..resolution_contract import ImportRequest
 
 
 def top_symbols(file: ParsedFile) -> list[Symbol]:
+    """Return declarations directly parented by the file, in symbol order."""
     return [s for s in file.symbols if s.parent_key == file_key(file.source.path)]
 
 
 def quoted_path(source: str) -> str | None:
+    """Return the last nonempty quoted substring, or None when absent."""
     quoted = re.findall(r"['\"]([^'\"]+)['\"]", source)
     return quoted[-1] if quoted else None
 
 
 def import_path(source: str) -> str:
+    """Extract an include path, last quoted path or import name, in that order.
+
+    Fall back to stripped source when no supported directive pattern matches.
+    """
     include = re.search(r'#\s*include\s*[<"]([^>"]+)[>"]', source)
     if include:
         return include[1]
@@ -40,6 +46,11 @@ def _relative_match(file: ParsedFile, base) -> bool:
 def relative_targets(
     request: ImportRequest, files: list[ParsedFile], index_only: bool = False
 ) -> list[ParsedFile]:
+    """Match paths relative to the importing file, with optional suffix omission.
+
+    Reject multiple direct matches. Otherwise return directory files, limited
+    to stems named index when index_only is true.
+    """
     base = (request.file.source.absolute_path.parent / request.path).resolve()
     matches = [file for file in files if _relative_match(file, base)]
     if matches:
@@ -84,6 +95,10 @@ def _package_path(name: str) -> str:
 
 
 def package_targets(name: str, files: list[ParsedFile]) -> list[ParsedFile]:
+    """Match one exact file, then one package directory; reject ambiguous matches.
+
+    Normalize :: and dotted names to paths and allow directory suffix matches.
+    """
     path = _package_path(name)
     exact = [file for file in files if _package_match(file, path)]
     if exact:
@@ -95,6 +110,7 @@ def package_targets(name: str, files: list[ParsedFile]) -> list[ParsedFile]:
 
 
 def path_target_key(files: list[ParsedFile]) -> str | None:
+    """Return a sole file key or shared-directory module key; otherwise return None."""
     if len(files) == 1:
         return file_key(files[0].source.path)
     parents = {_package_directory(file) for file in files}
@@ -102,6 +118,10 @@ def path_target_key(files: list[ParsedFile]) -> str | None:
 
 
 def namespace_binding(source: str, path: str) -> str | None:
+    """Infer a namespace alias or final path component from import text.
+
+    Reject member/default imports, brace syntax and Go blank/dot imports.
+    """
     if "{" in source or re.match(r"\s*from\b", source):
         return None
     alias = re.search(r"\bas\s+([A-Za-z_$][\w$]*)", source)

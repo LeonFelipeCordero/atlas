@@ -79,10 +79,12 @@ BOOLEANS = frozenset(
 
 
 def never(node: Node) -> bool:
+    """Disable an optional metric predicate for every node."""
     return False
 
 
 def alternative(node: Node) -> bool:
+    """Identify elif clauses and if nodes used as another if's alternative."""
     if node.type == "elif_clause":
         return True
     if node.type not in {"if_statement", "if_expression"}:
@@ -116,6 +118,7 @@ class MetricPolicy:
     body_node: str | None = None
 
     def body(self, root: Node) -> Node:
+        """Return a scope's body, using the configured child type or root as fallback."""
         if root.type not in self.scopes:
             return root
         body = root.child_by_field_name("body")
@@ -125,9 +128,11 @@ class MetricPolicy:
         )
 
     def scope(self, node: Node) -> bool:
+        """Test built-in and language-specific boundaries for nested metric traversal."""
         return node.type in self.scopes or self.extra_scope(node)
 
     def decision(self, node: Node) -> bool:
+        """Apply decision overrides first; exclude default/else switch branches."""
         override = self.decision_overrides.get(node.type)
         if override is not None:
             return override(node)
@@ -138,11 +143,13 @@ class MetricPolicy:
         return True
 
     def logical(self, node: Node) -> bool:
+        """Identify configured boolean nodes with an and/or operator token."""
         return node.type in self.booleans and any(
             child.type in {"&&", "||", "and", "or"} for child in node.children
         )
 
     def alternative(self, node: Node) -> bool:
+        """Recognize shared or language-specific else-if syntax."""
         return alternative(node) or self.extra_alternative(node)
 
 

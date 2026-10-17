@@ -16,7 +16,10 @@ from sqlalchemy.orm import Session
 from atlas.domain.repositories import RepositoryError
 
 def default_database_path() -> Path:
-    """Keep the shared database in user data, never in the analyzed repository."""
+    """Return DATABASE_PATH, or atlas/atlas.sqlite under XDG_DATA_HOME/user data.
+
+    Expand home markers without creating the shared database or its directories.
+    """
     if path := os.environ.get("DATABASE_PATH"):
         return Path(path).expanduser()
     data_home = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
@@ -24,6 +27,11 @@ def default_database_path() -> Path:
 
 
 def create_engine(path: str | Path | None = None) -> Engine:
+    """Return a SQLite engine with foreign keys and explicit transaction control.
+
+    Resolve the supplied or default path and create its parent directories, but
+    do not migrate. The caller must dispose the engine after use.
+    """
     target = (Path(path).expanduser() if path is not None else default_database_path()).resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
     engine = sqlalchemy_create_engine(f"sqlite:///{target}")
@@ -46,7 +54,11 @@ def create_engine(path: str | Path | None = None) -> Engine:
 
 
 def migrate_database(path: str | Path | None = None) -> None:
-    """Apply Alembic revisions to a database explicitly."""
+    """Enable WAL and apply all Alembic revisions at the supplied/default path.
+
+    Commit schema changes together; roll them back on failure. Translate
+    SQLAlchemy failures to RepositoryError (500) and always dispose the engine.
+    """
     engine = create_engine(path)
     try:
         with engine.connect() as connection:
@@ -67,7 +79,12 @@ def migrate_database(path: str | Path | None = None) -> None:
 
 @contextmanager
 def repository_session(path: str | Path | None = None) -> Generator[Session, None, None]:
-    """Own the session lifecycle and translate storage errors at the boundary."""
+    """Yield a session at the supplied/default path without migrating or committing.
+
+    Close the session and dispose the engine on exit; uncommitted work rolls
+    back. Translate SQLAlchemy failures, including body errors, to
+    RepositoryError (500). Store methods own explicit commits.
+    """
     engine = create_engine(path)
     try:
         with Session(engine) as session:
@@ -79,6 +96,7 @@ def repository_session(path: str | Path | None = None) -> Generator[Session, Non
 
 
 def main() -> None:
+    """Run explicit migration from argv; exit with usage for invalid arguments."""
     if len(sys.argv) not in (2, 3) or sys.argv[1] != "migrate":
         raise SystemExit("Usage: python -m atlas.persistence.database migrate [PATH]")
     migrate_database(sys.argv[2] if len(sys.argv) == 3 else None)

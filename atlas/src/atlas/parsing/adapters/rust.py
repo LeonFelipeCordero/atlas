@@ -51,12 +51,14 @@ INHERITANCE = InheritancePolicy(frozenset())
 
 
 def declaration(node: Node) -> DeclarationCarrier:
+    """Mark closures as callbacks with supported bindings; keep other names."""
     if node.type == "closure_expression":
         return callback_carrier(node, callback_binding(node))
     return named_carrier(node)
 
 
 def metadata(node: Node) -> tuple[str | None, list[str]]:
+    """Return explicit Rust visibility and modifier annotations, if present."""
     return modifier_metadata(node, frozenset({"pub"}))
 
 
@@ -66,6 +68,10 @@ def rust_module_import(node: Node) -> bool:
 
 
 def rust_call_target(site: CallSite) -> CallTarget:
+    """Preserve macro names with '!'; otherwise extract the shared call target.
+
+    Clear bare-name and qualifier evidence for shadowed synthetic payload targets.
+    """
     node, _, opaque, parents = site
     if node.type == "macro_invocation":
         return text(field(node, "macro")) + "!", False, None
@@ -90,6 +96,10 @@ class _RustTraversal:
 
 
 def rust_call_sites(root: Node) -> Iterator[CallSite]:
+    """Yield calls and macros, including recognized evaluating macro payloads.
+
+    Synthetic sites carry source-byte shifts and enclosing payload scopes.
+    """
     yield from _rust_call_sites(_RustTraversal(root, root))
 
 
@@ -198,7 +208,11 @@ def _macro_tokens(node: Node) -> Node | None:
 def macro_payloads(
     node: Node, origin: Node | None = None, parents: tuple[Node, ...] = ()
 ) -> Iterator[tuple[Node, int]]:
-    """Only recognized evaluating macros expose candidate calls in valid Rust syntax."""
+    """Yield a synthetic root and source-byte shift for evaluating macro arguments.
+
+    Only recognized, unshadowed macros qualify. Try expression-list then statement
+    wrappers; yield nothing if neither parses without errors. No macro is expanded.
+    """
     if not _evaluating(node, origin, parents):
         return
     tokens = _macro_tokens(node)
@@ -270,7 +284,11 @@ def _payload_target(node: Node) -> Node | None:
 
 
 def payload_unshadowed(node: Node, name: str, parents: tuple[Node, ...] = ()) -> bool:
-    """Reject matching bindings in synthetic payloads without inferring local targets."""
+    """Test for absence of matching bindings across payload and parent roots.
+
+    Reject object receivers and matching declarations/imports conservatively,
+    without inferring local targets or declaration order.
+    """
     target = _payload_target(node)
     if target is not None and target.type == "field_expression":
         return False  # A synthetic object receiver is not a module namespace.

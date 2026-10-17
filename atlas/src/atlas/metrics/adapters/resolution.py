@@ -34,6 +34,7 @@ class Binding:
     scope: Node | None = None
 
     def member(self, name: str) -> list[Symbol]:
+        """Use explicit namespace aliases when present, otherwise filter targets by name."""
         if self.members is not None:
             return self.members.get(name, [])
         return [symbol for symbol in self.targets if symbol.name == name]
@@ -56,6 +57,10 @@ class Modules:
         }
 
     def declared(self, source: ParsedFile, name: str) -> list[Symbol]:
+        """Find all declarations with this module identity in source's language.
+
+        Preserve duplicate matches so callers can reject ambiguity.
+        """
         adapter = self.syntax[source.source.path].adapter
         files = [
             file
@@ -75,6 +80,7 @@ class Modules:
         ]
 
     def same_package(self, source: ParsedFile, name: str) -> list[Symbol]:
+        """Delegate implicit package lookup to source's language policy."""
         return self.syntax[source.source.path].adapter.same_package(self, source, name)
 
 
@@ -92,6 +98,7 @@ class CallableIdentity:
     def select(
         self, file: ParsedFile, call: Call, matches: list[Symbol]
     ) -> list[Symbol]:
+        """Select executable call candidates through the source language's identity policy."""
         request = ResolutionRequest(file, call, None, call.name, call.qualifier)
         return self.syntax[file.source.path].adapter.select(self, request, matches)
 
@@ -111,6 +118,7 @@ class ImportBindings:
         }
 
     def path_files(self, file: ParsedFile, path: str) -> list[ParsedFile]:
+        """Cache path matches among repository files in the importer's language family."""
         key = (file.source.path, path)
         if key in self._paths:
             return self._paths[key]
@@ -131,6 +139,7 @@ class ImportBindings:
     def files(
         self, file: ParsedFile, path: str, position: int | None = None
     ) -> list[ParsedFile]:
+        """Resolve import files by language policy; position is an optional byte offset."""
         return self.syntax[file.source.path].adapter.import_files(
             self, ImportRequest(file, path, position)
         )
@@ -186,6 +195,10 @@ class ImportBindings:
         return [binding for binding in self.bindings[file.source.path] if binding.name == name]
 
     def get(self, file: ParsedFile, name: str, position: int) -> Binding | None:
+        """Return the narrowest visible binding at a byte position, or None if absent.
+
+        Equal-width matches yield an empty binding to block ambiguous fallback.
+        """
         matches = [
             b
             for b in self._named_bindings(file, name)

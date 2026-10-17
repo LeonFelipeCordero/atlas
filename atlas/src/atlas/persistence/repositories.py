@@ -54,13 +54,22 @@ def _repository_dto(row: RepositoryRow, imported_at: int | None) -> RepositoryDT
 
 @contextmanager
 def repository_store(path: str | Path | None = None) -> Generator["RepositoryStore", None, None]:
-    """Own storage construction; the service factory receives only a repository."""
+    """Yield a store backed by a managed session at the supplied/default path.
+
+    Never migrate or commit on exit. Store writes commit explicitly; session
+    cleanup rolls back remaining work and translates SQLAlchemy failures.
+    """
     with repository_session(path) as session:
         yield RepositoryStore(session)
 
 
 class RepositoryStore(GraphReadRepository):
     def register(self, name: str, location: str) -> RepositoryDTO:
+        """Commit a registration without a graph and return its DTO.
+
+        Discard pending session work first. Roll back failures; a
+        case-insensitive duplicate name raises RepositoryError (409).
+        """
         self._session.rollback()
         row = RepositoryRow(
             id=str(uuid4()), name=name, location=location, created_at=int(time() * 1000)
@@ -83,6 +92,7 @@ class RepositoryStore(GraphReadRepository):
         return _repository_dto(row, None)
 
     def list(self) -> list[RepositoryDTO]:
+        """Return registrations by creation time/ID, with normalized import times."""
         rows = self._session.execute(
             select(RepositoryRow, case(
                 (RepositoryGraphRow.graph_revision.is_not(None), RepositoryGraphRow.imported_at),
@@ -96,9 +106,11 @@ class RepositoryStore(GraphReadRepository):
         return [_repository_dto(row, imported_at) for row, imported_at in rows]
 
     def exists(self, identifier: str) -> bool:
+        """Return whether a registration exists for the repository ID."""
         return self._session.get(RepositoryRow, identifier) is not None
 
     def resolve(self, name: str) -> str | None:
+        """Return the ID for a case-insensitive name, or None if unregistered."""
         row = self._session.scalar(
             select(RepositoryRow).where(
                 func.lower(RepositoryRow.name) == func.lower(name)
@@ -107,6 +119,11 @@ class RepositoryStore(GraphReadRepository):
         return row.id if row else None
 
     def save_new(self, name: str, location: str, artifact: dict[str, Any]) -> GraphDTO:
+        """Commit registration and normalized graph atomically; return a summary.
+
+        Discard pending work first. Roll back both registration and graph on
+        validation or storage failure; propagate the error.
+        """
         self._session.rollback()
         row = RepositoryRow(
             id=str(uuid4()), name=name, location=location, created_at=int(time() * 1000)
@@ -120,6 +137,11 @@ class RepositoryStore(GraphReadRepository):
             raise
 
     def save(self, identifier: str, artifact: dict[str, Any]) -> GraphDTO:
+        """Replace a registered repository's graph and commit a new revision.
+
+        Return its summary. Discard pending work first; validation or storage
+        failures roll back the replacement and preserve the previous graph.
+        """
         # End orchestration reads before promoting a stale WAL snapshot to a write.
         self._session.rollback()
         return self._save(identifier, artifact)

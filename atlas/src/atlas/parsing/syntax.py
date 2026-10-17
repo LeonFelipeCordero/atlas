@@ -15,7 +15,10 @@ from ..syntax import field, text, walk
 def modifier_metadata(
     node: Node, visibility_words: frozenset[str]
 ) -> tuple[str | None, list[str]]:
-    """Decode modifiers once; each adapter chooses its visibility vocabulary."""
+    """Return optional visibility and annotation text from direct modifiers.
+
+    Recognize visibility modifier nodes and the adapter's visibility words.
+    """
     modifiers = next(
         (child for child in node.named_children if child.type == "modifiers"), None
     )
@@ -49,6 +52,7 @@ FALLBACK_CALL_TYPES = CALL_NODE_TYPES | REFERENCES
 def relationship(
     site: tuple[Node, int, bool, tuple[Node, ...]],
 ) -> Literal["CALLS", "REFERENCES"]:
+    """Classify method/callable references separately from invocation sites."""
     return "REFERENCES" if site[0].type in REFERENCES else "CALLS"
 
 
@@ -68,6 +72,7 @@ CallTarget = tuple[str | None, bool, str | None]
 
 
 def call_member(target: Node) -> str:
+    """Return stripped member text, falling back to the complete target text."""
     member = field(target, "property", "attribute", "field", "name", "method", "right")
     return text(member or target).strip()
 
@@ -84,6 +89,11 @@ def _reference_target(node: Node) -> tuple[str | None, bool, str | None]:
 def call_target(
     node: Node, member_name: Callable[[Node], str] = call_member
 ) -> CallTarget:
+    """Return target name, bare-name flag, and optional syntactic qualifier.
+
+    Handle constructor references and dotted/scoped names without resolution;
+    return (None, False, None) when no callee node exists.
+    """
     if node.type in REFERENCES:
         return _reference_target(node)
     target = _callee_node(node)
@@ -123,18 +133,21 @@ def _bare_call(node: Node, target: Node) -> bool:
 
 
 def normalize_call(site: CallSite) -> CallTarget:
+    """Extract the site's target without using offset or synthetic-scope data."""
     return call_target(site[0])
 
 
 def call_sites(
     root: Node, node_types: frozenset[str] | set[str] = FALLBACK_CALL_TYPES
 ) -> Iterator[CallSite]:
+    """Yield matching nodes with zero offset and no synthetic payload context."""
     for node in walk(root):
         if node.type in node_types:
             yield node, 0, False, ()
 
 
 def metadata(node: Node) -> tuple[str | None, list[str]]:
+    """Return visibility and annotations using the shared visibility vocabulary."""
     return modifier_metadata(
         node, frozenset({"public", "private", "protected", "internal", "pub"})
     )
@@ -149,11 +162,13 @@ class DeclarationCarrier:
 
 
 def named_carrier(node: Node) -> DeclarationCarrier:
+    """Keep the declaration node and its name field, or None when unnamed."""
     name = node.child_by_field_name("name")
     return DeclarationCarrier(node, text(name) if name is not None else None)
 
 
 def callback_carrier(node: Node, binding: str | None = None) -> DeclarationCarrier:
+    """Mark a function carrier, preferring a nonempty binding to its own name."""
     name = node.child_by_field_name("name")
     return DeclarationCarrier(
         node, binding or (text(name) if name is not None else None), "function"
@@ -213,6 +228,10 @@ class ParsedSyntax:
     root: Node | None = None
 
     def tree(self) -> Node:
+        """Reuse the supplied root or parse source bytes without caching the result.
+
+        Parser lookup and parsing failures propagate.
+        """
         return self.root if self.root is not None else get_parser(
             self.source.language
         ).parse(self.source.source).root_node
@@ -227,6 +246,11 @@ class ImportPolicy:
 def supplement_imports(
     syntax: ParsedSyntax, imports: list[tuple[str, int]], policy: ImportPolicy
 ) -> list[tuple[str, int]]:
+    """Add accepted AST imports with one-based lines, sorted by source line.
+
+    Deduplicate additions by stripped text and line; preserve native entries.
+    Return the original list without parsing when the policy has no node type.
+    """
     if policy.node_type is None:
         return imports
     return _merge_imports(syntax.tree(), imports, policy)
@@ -375,6 +399,11 @@ class DeclarationHeader:
 def inheritance_names(
     header: DeclarationHeader, policy: InheritancePolicy = DEFAULT_POLICY
 ) -> list[str]:
+    """Extract syntactic base names from type headers, excluding body contents.
+
+    Policies can retry incomplete headers with an empty body. Return [] for
+    unsupported kinds, empty signatures, or parser lookup/parsing failures.
+    """
     if header.kind not in {"class", "interface", "struct", "trait"} or not header.signature:
         return []
     try:

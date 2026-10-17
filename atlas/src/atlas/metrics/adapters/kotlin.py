@@ -20,6 +20,7 @@ from ..resolution_contract import SCOPES
 
 
 def alternative(node: Node) -> bool:
+    """Recognize an else-if wrapped in Kotlin's alternative control-structure body."""
     parent = node.parent
     owner = parent.parent if parent is not None else None
     return bool(
@@ -33,6 +34,10 @@ def alternative(node: Node) -> bool:
 
 
 def parameter_count(node: Node) -> int | None:
+    """Count explicit inputs, treating a destructured input as one parameter.
+
+    An explicit empty lambda header counts zero; implicit it and errors yield None.
+    """
     parameters = parameter_node(node, "function_value_parameters", "lambda_parameters")
     if parameters is None:
         # An implicit lambda input (it) cannot be inferred without type resolution.
@@ -60,6 +65,7 @@ METRICS = replace(
 class KotlinResolution(JavaResolution):
     receiver_bindings = staticmethod(kotlin_bindings)
     def import_path(self, source: str) -> str:
+        """Extract a Kotlin import path, preferring quoted text and falling back to source."""
         match = re.search(r"\bimport\s+([\w.]+)", source)
         return quoted_path(source) or (match[1] if match else source.strip())
 
@@ -80,12 +86,14 @@ class KotlinResolution(JavaResolution):
     receiver_updates = {"prefix_expression", "postfix_expression"}
 
     def write_target(self, node):
+        """Find write operands, rejecting prefix/postfix expressions other than ++/--."""
         if node.type in self.receiver_updates and not any(c.type in {"++", "--"} for c in node.children):
             return None
         return super().write_target(node)
     single_parameter_functions = {"lambda_expression"}
 
     def call_target(self, node):
+        """Split navigation expressions into callee and receiver after Java target extraction."""
         callee, receiver = super().call_target(node)
         if callee and callee.type == "navigation_expression":
             receiver = callee.named_children[0]
@@ -94,6 +102,7 @@ class KotlinResolution(JavaResolution):
         return callee, receiver
 
     def binding(self, syntax, node, scope):
+        """Find property and loop variable targets, with loop variables scoped to the loop."""
         if node.type == "property_declaration":
             return next(
                 (c for c in node.named_children if c.type == "variable_declaration"),
@@ -112,9 +121,11 @@ class KotlinResolution(JavaResolution):
         return super().binding(syntax, node, scope)
 
     def import_name(self, source, path):
+        """Keep the normalized path rather than applying Java import-text parsing."""
         return path
 
     def import_item(self, ctx, request):
+        """Bind an explicit alias or final path name to module-qualified declarations."""
         file, source, path = request.file, request.source, request.path
         alias = re.search(r"\bas\s*:?\s*([\w]+)", source)
         return [
@@ -126,6 +137,7 @@ class KotlinResolution(JavaResolution):
         ]
 
     def static_member(self, parent):
+        """Allow module and singleton-object members without a static modifier."""
         return parent.kind in {"module", "object"}
 
 

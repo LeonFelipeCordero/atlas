@@ -62,6 +62,11 @@ def dependency_metrics(view: GraphView) -> dict[str, dict[str, int | float | Non
     SCC condensation handles cycles iteratively. Bitsets are propagated in
     topological order and discarded after propagation, rather than retaining an
     all-pairs closure. A long chain thus needs only one live reachability bitset.
+
+    Return metrics keyed by view node: distinct incoming/outgoing peer counts,
+    transitive dependents excluding self, and fanOut / (fanIn + fanOut).
+    Isolated nodes have zero counts and None instability. Ignore self-edges and
+    endpoints outside the view; do not modify the view.
     """
     adjacency = _adjacency(view)
     fan_in = Counter(chain.from_iterable(adjacency.values()))

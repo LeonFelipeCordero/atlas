@@ -43,9 +43,14 @@ class LanguageAdapter:
     def imports(
         self, syntax: ParsedSyntax, native: list[tuple[str, int]]
     ) -> list[tuple[str, int]]:
+        """Supplement native imports with accepted AST entries and one-based lines.
+
+        Return the native list unchanged when this adapter has no import node.
+        """
         return supplement_imports(
             syntax, native, ImportPolicy(self.import_node, self.accept_import)
         )
 
     def inheritance(self, header: DeclarationHeader) -> list[str]:
+        """Extract base names under this policy; parser failures produce []."""
         return inheritance_names(header, self.inheritance_policy)

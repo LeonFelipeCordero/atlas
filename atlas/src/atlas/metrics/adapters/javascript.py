@@ -27,6 +27,7 @@ from ...syntax import field, text
 
 
 def parameter_count(node: Node) -> int | None:
+    """Count explicit inputs except TypeScript this; missing/error headers yield None."""
     parameters = parameter_node(node)
     if parameters is None or parameters.has_error:
         return None
@@ -97,6 +98,7 @@ def _unique_symbols(symbols: list[Symbol]) -> list[Symbol]:
 
 
 def export_bindings(file, syntax) -> dict[str, list[Symbol]]:
+    """Map local runtime export names to unique top-level symbols, excluding re-exports."""
     result: dict[str, list[Symbol]] = {}
     declarations = top_symbols(file)
     for node in syntax.nodes:
@@ -218,6 +220,7 @@ def _script_mutation(syntax, parent, name):
 class JavaScriptResolution(ResolutionAdapter):
     receiver_bindings = staticmethod(script_bindings)
     def import_path(self, source: str) -> str:
+        """Return the last quoted module path, or stripped source if absent."""
         return quoted_path(source) or source.strip()
 
     family = "javascript"
@@ -238,9 +241,14 @@ class JavaScriptResolution(ResolutionAdapter):
     single_parameter_functions = {"arrow_function"}
 
     def instance_members(self, resolver, parent, name):
+        """Find direct/inherited members through one proven base, rejecting possible writes."""
         return inherited_members(resolver, parent, name)
 
     def select(self, identity, request, matches):
+        """Choose the last duplicate plain method in one group with equal static status.
+
+        Keep a sole candidate unchanged; reject other ambiguous declarations.
+        """
         if len(matches) <= 1:
             return matches
         if not _method_group(matches):
@@ -253,27 +261,33 @@ class JavaScriptResolution(ResolutionAdapter):
         return [max(matches, key=lambda s: s.start_byte)]
 
     def call_target(self, node):
+        """Extract constructor targets for new expressions, otherwise use shared fields."""
         if node and node.type == "new_expression":
             return field(node, "constructor", "type"), None
         return super().call_target(node)
 
     def normalized_call(self, call, callee, receiver):
+        """Preserve parsed reference names; normalize invocation names from target nodes."""
         if call.relationship == "REFERENCES":
             return CallTarget(callee, receiver, call.name, call.qualifier)
         return super().normalized_call(call, callee, receiver)
 
     def receiver_type_allowed(self, syntax, name, member):
+        """Require both class and prototype member bindings to remain unchanged."""
         return super().receiver_type_allowed(syntax, name, member) and not syntax.member_rebound(name + ".prototype", member)
 
     def receiver_class_allowed(self, syntax, callee, member):
+        """Reject constructor-based inference when the prototype member is rebound."""
         return not syntax.member_rebound(text(callee) + ".prototype", member)
 
     def member_overwritten(self, syntax, parent, name):
+        """Detect rebindings, alias-based mutations and own fields/accessors masking methods."""
         return super().member_overwritten(
             syntax, parent, name
         ) or _script_mutation(syntax, parent, name) or _script_own_field(syntax, parent, name)
 
     def binding(self, syntax, node, scope):
+        """Find bindings with function-local expression names and function-scoped var targets."""
         if node.type == "function_declaration":
             return field(node, "name"), scope
         if node.type == "function_expression":
@@ -289,6 +303,7 @@ class JavaScriptResolution(ResolutionAdapter):
         return target, scope
 
     def paths(self, source, name, files):
+        """Resolve only relative slash paths, using index files for directory imports."""
         return (
             relative_targets(ImportRequest(source, name), files, index_only=True)
             if name.startswith(".") and "/" in name
@@ -296,6 +311,7 @@ class JavaScriptResolution(ResolutionAdapter):
         )
 
     def members(self, ctx, request: ImportRequest, name):
+        """Find a runtime export by alias only when the import resolves to one file."""
         targets = self.import_files(ctx, request)
         if len(targets) != 1:
             return []
@@ -304,6 +320,7 @@ class JavaScriptResolution(ResolutionAdapter):
         )
 
     def namespace_exports(self, ctx, file, path):
+        """Collect export-name mappings across resolved files, retaining ambiguous targets."""
         result: dict[str, list[Symbol]] = {}
         for target in ctx.files(file, path):
             _extend_exports(
@@ -312,6 +329,7 @@ class JavaScriptResolution(ResolutionAdapter):
         return result
 
     def import_type_only(self, node: Node | None) -> bool:
+        """Recognize whole type imports or named clauses containing only type specifiers."""
         if node is None or node.type != "import_statement":
             return False
         if _has_type_modifier(node):
@@ -319,6 +337,10 @@ class JavaScriptResolution(ResolutionAdapter):
         return _type_only_named_clause(node)
 
     def import_item(self, ctx, request: ImportRequest):
+        """Build namespace, named and default import bindings from a from-clause.
+
+        Type-only bindings retain names but no runtime targets; absent clauses yield [].
+        """
         raw = _import_clause(request.source)
         if not raw:
             return []
@@ -349,9 +371,11 @@ class JavaScriptResolution(ResolutionAdapter):
         return [(namespace[1], [] if type_only else targets, True)]
 
     def namespace_members(self, ctx, request: ImportRequest, targets):
+        """Use export aliases for resolved namespace targets; empty targets yield {}."""
         return self.namespace_exports(ctx, request.file, request.path) if targets else {}
 
     def implicit_receiver(self, resolver, request, method):
+        """Allow this through nested arrow functions only; other qualifiers pass through."""
         if request.qualifier != "this":
             return True
         file = request.file

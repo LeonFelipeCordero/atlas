@@ -38,7 +38,10 @@ ADAPTERS = {
 
 
 def get_metric_adapter(language: str) -> MetricAdapter:
-    """Select metric hooks using the importer language catalog, not extraction."""
+    """Return dedicated metric hooks or shared defaults for a supported language.
+
+    Raise ValueError for names outside the importer language catalog.
+    """
     require_supported_language(language)
     return ADAPTERS.get(language, DEFAULT_ADAPTER)
 
@@ -64,6 +67,6 @@ def receiver_coverage() -> dict[str, dict[str, object]]:
 
 @lru_cache(maxsize=None)
 def get_resolution_adapter(language: str) -> ResolutionAdapter:
-    """Return the resolution policy, or the conservative generic fallback."""
+    """Return a cached language policy, using the generic fallback for unknown names."""
     dedicated = _RESOLUTIONS.get(language)
     return dedicated() if dedicated else GenericResolution(language)

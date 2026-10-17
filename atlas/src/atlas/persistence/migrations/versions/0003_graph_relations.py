@@ -14,6 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create metric, decorator, adjacency, and diagnostic tables/indexes.
+
+    Do not backfill existing graphs or commit outside Alembic's transaction.
+    """
     op.create_table(
         "graph_node_metrics",
         Column("repository_id", Text, primary_key=True, nullable=False),
@@ -65,6 +69,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Discard relation, diagnostic, decorator, and metric data; retain nodes.
+
+    Leave transaction control to Alembic.
+    """
     op.drop_table("graph_diagnostics")
     op.drop_table("graph_edges")
     op.drop_table("graph_node_decorators")

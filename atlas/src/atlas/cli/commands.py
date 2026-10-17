@@ -12,12 +12,17 @@ from atlas.metrics.config import CheckConfig
 
 @click.group(help="Analyze repositories and store their graphs in SQLite")
 def main() -> None:
+    """Group repository indexing, reports, checks, and graph navigation commands."""
     pass
 
 
 @main.command("index", help="Analyze a folder and save its graph in SQLite")
 @click.option("-f", "--f", "--folder", "folder", default=".", show_default=True, type=click.Path(path_type=Path), help="Folder to index")
 def index_command(folder: Path) -> None:
+    """Analyze local sources, persist the graph, and print a JSON summary.
+
+    Convert analysis and storage failures to Click errors for the CLI.
+    """
     from ..bootstrap import repository_service
     from ..domain.repositories import RepositoryError
     from ..services.repositories import analyze_folder
@@ -38,6 +43,7 @@ def index_command(folder: Path) -> None:
 
 @main.command("projects", help="List all registered projects as JSON")
 def projects_command() -> None:
+    """Print registered projects as JSON, translating storage failures to CLI errors."""
     from ..bootstrap import repository_service
     from ..domain.repositories import RepositoryError
 
@@ -69,6 +75,7 @@ def _folder_report(folder: Path, save: bool) -> dict[str, Any]:
 @click.option("--save", is_flag=True, help="Save the analyzed graph in SQLite")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
 def report_command(folder: Path, save: bool, output_format: str) -> None:
+    """Print fresh metrics as Markdown or JSON; persist the graph only if save is set."""
     from ..metrics.report import render_markdown
     from ..domain.repositories import RepositoryError
 
@@ -91,6 +98,10 @@ def report_command(folder: Path, save: bool, output_format: str) -> None:
 @click.option("--save", is_flag=True, help="Save the analyzed graph in SQLite")
 @click.option("--format", "output_format", type=click.Choice(["markdown", "json"]), default="markdown", show_default=True)
 def check_command(folder: Path, save: bool, output_format: str) -> None:
+    """Check fresh metrics against folder configuration and exit 1 on findings.
+
+    Print Markdown or JSON results; persist the analyzed graph only if save is set.
+    """
     from ..metrics.check import build_check, render_check
     from ..metrics.config import load_config
     from ..domain.repositories import RepositoryError

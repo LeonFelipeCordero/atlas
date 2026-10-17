@@ -57,6 +57,10 @@ INHERITANCE = InheritancePolicy(
 
 
 def declaration(node: Node) -> DeclarationCarrier:
+    """Normalize callbacks, function names, interfaces, and companion objects.
+
+    Use 'Companion' for an unnamed companion object.
+    """
     if node.type in {"lambda_literal", "anonymous_function"}:
         return callback_carrier(node, callback_binding(node))
     if node.type == "function_declaration":
@@ -97,14 +101,17 @@ def _member(target: Node) -> str:
 
 
 def normalize_call(site: CallSite) -> CallTarget:
+    """Extract a target using Kotlin navigation suffixes for member names."""
     return call_target(site[0], _member)
 
 
 def call_sites(root: Node):
+    """Iterate Kotlin invocations and callable references."""
     return shared_call_sites(root, CALL_TYPES)
 
 
 def metadata(node: Node) -> tuple[str | None, list[str]]:
+    """Return explicit Kotlin visibility and annotations, including internal."""
     return modifier_metadata(
         node, frozenset({"public", "private", "protected", "internal"})
     )

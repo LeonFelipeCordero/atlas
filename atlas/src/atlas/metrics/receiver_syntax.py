@@ -20,6 +20,10 @@ class ReceiverBinding:
 
 
 def type_name(node: Node | None) -> str | None:
+    """Extract a simple or qualified type name, stripping supported wrappers.
+
+    Generic arguments are discarded; absent or unsupported syntax returns None.
+    """
     if node is None:
         return None
     if node.type in {"generic_type", "generic_type_with_turbofish"}:
@@ -36,10 +40,12 @@ def _wrapped_type_name(node: Node) -> str | None:
 
 
 def child(node: Node, kinds: set[str]) -> Node | None:
+    """Return the first direct named child of a requested kind, or None."""
     return next((c for c in node.named_children if c.type in kinds), None)
 
 
 def enclosing(node: Node, kinds: set[str]) -> Node | None:
+    """Return the nearest matching ancestor, excluding node itself, or None."""
     parent = node.parent
     while parent and parent.type not in kinds:
         parent = parent.parent
@@ -58,6 +64,11 @@ class Declaration:
 
 
 def declaration(syntax, node, details: Declaration):
+    """Build one receiver binding, or an empty list if name or scope is absent.
+
+    Members use their enclosing type scope. Missing annotations and Java ``var``
+    permit conservative constructor or injected-parameter type inference.
+    """
     scope = enclosing(node, CLASSES) if details.member else syntax.scope(node)
     if details.name is None or scope is None:
         return []
@@ -87,22 +98,26 @@ def _constructed_annotation(syntax, value):
 
 
 def member_assignment(node):
+    """Return whether the left-hand target is an attribute or member expression."""
     target = field(node, "left")
     return target is not None and target.type in {"attribute", "member_expression"}
 
 
 def static_field(node):
+    """Detect a static marker on a declaration or its variable-declarator parent."""
     owner = node.parent if node.type == "variable_declarator" else node
     return owner is not None and any(c.type == "static" or c.type == "modifiers" and "static" in text(c).split()
                                      for c in owner.children)
 
 
 def constructor(node):
+    """Return whether the nearest function or method is __init__ or constructor."""
     method = enclosing(node, {"function_definition", "method_definition"})
     return method is not None and text(field(method, "name")) in {"__init__", "constructor"}
 
 
 def injected_parameter(syntax, node, name):
+    """Return the unique unwritten enclosing parameter's annotation, or None."""
     method = enclosing(node, {"function_definition", "method_definition"})
     if method is None:
         return None
@@ -127,6 +142,7 @@ def _parameter_bindings(syntax, parameters, name):
 
 
 def java_bindings(syntax, node):
+    """Extract Java parameter, local, or field receiver bindings; otherwise return []."""
     if node.type == "formal_parameter":
         return declaration(syntax, node, Declaration(field(node, "name"), type_name(field(node, "type"))))
     if node.type != "variable_declarator" or node.parent is None:
@@ -136,6 +152,10 @@ def java_bindings(syntax, node):
 
 
 def kotlin_bindings(syntax, node):
+    """Extract Kotlin parameter/property bindings, including val/var class parameters.
+
+    Plain class parameters and unsupported declarations return an empty list.
+    """
     if node.type not in {"class_parameter", "parameter", "variable_declaration"}:
         return []
     name = child(node, {"simple_identifier"})
@@ -160,6 +180,10 @@ def _kotlin_property(node, member):
 
 
 def python_bindings(syntax, node):
+    """Extract typed parameters and simple assignments as Python receiver bindings.
+
+    Class-scope names and self attributes are members; other targets return [].
+    """
     if node.type in {"typed_parameter", "typed_default_parameter"}:
         return declaration(syntax, node, Declaration(child(node, {"identifier"}), type_name(field(node, "type"))))
     if node.type != "assignment":
@@ -178,6 +202,11 @@ def python_bindings(syntax, node):
 
 
 def script_bindings(syntax, node):
+    """Extract JavaScript/TypeScript parameter, variable, and field bindings.
+
+    Includes this assignments and accessibility-marked parameter properties;
+    unsupported targets return an empty list.
+    """
     if node.type == "assignment_expression":
         target = field(node, "left")
         if target and target.type == "member_expression" and text(field(target, "object")) == "this":
@@ -190,6 +219,11 @@ def script_bindings(syntax, node):
 
 
 def go_bindings(syntax, node):
+    """Extract Go parameter, variable, field, and short-declaration bindings.
+
+    Short declarations infer types only from one initializer per name.
+    Unsupported declarations return an empty list.
+    """
     if node.type == "short_var_declaration":
         return _go_short_bindings(syntax, node)
     if node.type not in {"parameter_declaration", "var_spec", "field_declaration"}:
@@ -211,6 +245,10 @@ def _go_short_bindings(syntax, node):
 
 
 def rust_bindings(syntax, node):
+    """Extract Rust parameter, let, and field receiver bindings.
+
+    Destructured let patterns and unsupported declarations return an empty list.
+    """
     if node.type not in {"parameter", "let_declaration", "field_declaration"}:
         return []
     name = field(node, "pattern", "name")
