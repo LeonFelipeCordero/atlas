@@ -36,7 +36,7 @@ def test_path_attributes_use_file_parent_or_inline_directory(inline):
 
 
 def test_nonstandard_module_roots_require_a_module_declaration():
-    modules, files = rust_modules({"src/entry.rs": "mod child;", "src/child.rs": "pub fn run() {}", 
+    modules, files = rust_modules({"src/entry.rs": "mod child;", "src/child.rs": "pub fn run() {}",
                                    "src/unrelated.rs": "fn unrelated() {}"})
     assert modules.rust_files("crate") == [files[0]]
     assert modules.rust_files("crate::child") == [files[1]]
