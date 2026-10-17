@@ -1,5 +1,6 @@
 """Verified local source excerpts; source bodies are never persisted."""
 
+import errno
 import hashlib
 import os
 import stat
@@ -70,8 +71,12 @@ def local_bytes(root_path: str, relative_path: str) -> tuple[str, bytes]:
         return "unsafe", b""
     except FileNotFoundError:
         return "missing", b""
-    except OSError:
-        return "unreadable", b""
+    except OSError as error:
+        return read_error_status(error), b""
+
+
+def read_error_status(error: OSError) -> str:
+    return "unsafe" if error.errno == errno.ELOOP else "unreadable"
 
 
 def contained_bytes(root: Path, target: Path) -> tuple[str, bytes]:
