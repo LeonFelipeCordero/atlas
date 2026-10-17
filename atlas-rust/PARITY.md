@@ -1,5 +1,7 @@
 # Native parity and benchmarks
 
+[BENCHMARKS.md](BENCHMARKS.md) records final frozen-build coverage, every action's timings, regressions, and incomplete comparisons.
+
 Python is the reference. No test updates snapshots. Rust tests invoke Rust APIs and the native executable, never Python. `tests/code_samples` and `tests/snapshots` are symlinks to `atlas/tests/`; do not replace them with copies.
 
 ```text

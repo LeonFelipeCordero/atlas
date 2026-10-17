@@ -24,4 +24,12 @@ cargo test --locked --manifest-path atlas-rust/Cargo.toml
 uv run --project atlas atlas check --f .
 ```
 
-See `PARITY.md` for differential tests and benchmark commands. Benchmark evidence must identify failed comparisons and reference timeouts; a faster failed result is not a verified speedup.
+See [PARITY.md](PARITY.md) for differential tests and [BENCHMARKS.md](BENCHMARKS.md) for frozen-build results. Benchmark evidence identifies failed comparisons and reference timeouts; a faster failed result is not a verified speedup.
+
+## Compatibility limits
+
+The native path, home-directory and terminal helpers target Unix. Windows is not a supported build target in this port. Non-UTF-8 filesystem names currently become lossy strings.
+
+Unicode decimal categories and named escapes use Unicode 16 data. An older Python interpreter can use a different Unicode database. Decimal CLI conversion uses CPython's default 4,300-digit limit, not a user-modified interpreter setting. Oversized SQLite offsets fail safely with native JSON errors rather than Python tracebacks. Malformed internal artifacts reject transactionally, but do not reproduce every Pydantic error dump.
+
+Receiver-alias closure is finite. Python can repeat path expansion indefinitely on cyclic assignments; VU exposes that behavior. Native analysis finishes, but reference timeouts prevent claiming whole-graph parity for VU. Not every on-demand grammar has a dedicated feature fixture; the full catalog and exclusions remain unchanged.
