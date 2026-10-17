@@ -9,7 +9,7 @@ from atlas.domain.navigation import NavigationError
 from tests.services.test_navigation import artifact, BREW
 
 
-@pytest.mark.parametrize("variable", ["DATABASE_PATH", "XDG_DATA_HOME"])
+@pytest.mark.parametrize("variable", ["DATABASE_PATH", "XDG_DATA_HOME", "HOME"])
 def test_default_service_database_is_explicitly_sandboxed(
     database: Path, monkeypatch: pytest.MonkeyPatch, variable: str,
 ) -> None:
@@ -17,6 +17,9 @@ def test_default_service_database_is_explicitly_sandboxed(
     monkeypatch.setenv("XDG_DATA_HOME", str(database.parent.parent))
     if variable == "DATABASE_PATH":
         monkeypatch.setenv("DATABASE_PATH", str(database))
+    elif variable == "HOME":
+        monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+        monkeypatch.setenv("HOME", str(database.parents[3]))
     with repository_service() as repositories:
         registered = repositories.register({"name": "Coffee", "location": "/coffee"})
     with repository_service(database) as repositories:
@@ -30,6 +33,7 @@ def test_summary_and_report_facts_are_repository_scoped(database: Path, tmp_path
     second_root.mkdir()
     first_artifact = artifact(first_root)
     second_artifact = artifact(second_root)
+    second_artifact["nodes"] = second_artifact["nodes"][:2]
     second_artifact["nodes"][1]["properties"]["cyclomaticComplexity"] = 99
     second_artifact["nodes"][1]["startLine"] = 50
     second_artifact["diagnostics"] = [
@@ -44,7 +48,7 @@ def test_summary_and_report_facts_are_repository_scoped(database: Path, tmp_path
         two = repositories.get_architecture(second.repositoryId)
         assert one is not None and two is not None
         assert (one.stats.nodes, one.stats.files, one.stats.symbols, one.stats.edges, one.stats.parseErrors) == (6, 1, 5, 4, 2)
-        assert (two.stats.nodes, two.stats.files, two.stats.symbols, two.stats.edges, two.stats.parseErrors) == (6, 1, 5, 0, 0)
+        assert (two.stats.nodes, two.stats.files, two.stats.symbols, two.stats.edges, two.stats.parseErrors) == (2, 1, 1, 0, 0)
         facts = repositories.get_report_facts(first.repositoryId)
         assert facts is not None
         brew = next(node for node in facts.nodes if node.stableKey == BREW)

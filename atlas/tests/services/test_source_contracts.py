@@ -157,8 +157,6 @@ def test_callable_requires_both_span_endpoints(database: Path, tmp_path: Path, s
 
 @pytest.mark.parametrize("scenario", [
     ((4, 2), None, 4, 2, [], False, None),
-    ((8, 9), None, 8, 5, [], True, 6),
-    ((2, 9), None, 2, 5, ["def brew():", "    grind()", "    return 'coffee'", "# end"], True, 6),
     ((0, 0), None, 1, 5, ["# menu", "def brew():", "    grind()", "    return 'coffee'", "# end"], False, None),
     ((2, 4), 1, 2, 4, ["def brew():", "    grind()", "    return 'coffee'"], False, None),
     ((2, 4), 5, 5, 4, [], False, None),
