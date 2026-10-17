@@ -38,11 +38,26 @@ Inspect manifests without execution:
 uv run --project atlas atlas mutations --folder .
 ```
 
-Run the configured commands for each independent mutation:
+Run all configured targets, or select comma-separated target names:
 
 ```sh
-uv run --project atlas atlas mutations run --folder . --output mutation-results.jsonl
+uv run --project atlas atlas mutations run --folder . --target all --output mutation-results.jsonl
+uv run --project atlas atlas mutations run --folder . --target complexity,parsing --output selected.jsonl
 ```
+
+Omit `--target` to display available targets and choose interactively. Enter one
+name, comma-separated names, or `all`. Unknown names prompt again. In CI or when
+stdin is not a terminal, `--target` is required and no prompt is shown. Empty
+names and combining `all` with other names are errors. Duplicate names run once.
+Target names in configuration cannot contain commas or surrounding whitespace,
+and `all` is reserved.
+
+Selection limits both the mutated source paths and the commands that run. Even
+if an unselected target covers the same source, its command does not run. `all`
+runs every configured target, not every supported source in the repository.
+Unrelated source paths are excluded before manifest generation and produce no
+`unmapped` records. Manifest inspection without `run` still shows all enabled
+replacements.
 
 Progress logs stream to stderr during planning and execution. They show the
 mapped/unmapped counts, mutation position and edit, target command, working
@@ -50,7 +65,7 @@ directory, timeout, command-log path, outcome, duration, and confirmed source
 restoration. The final JSON summary stays on stdout. To save progress separately:
 
 ```sh
-uv run --project atlas atlas mutations run --folder . --output results.jsonl 2>progress.log
+uv run --project atlas atlas mutations run --folder . --target all --output results.jsonl 2>progress.log
 ```
 
 `--output` resolves from the project root. Each result is written immediately as
@@ -85,5 +100,5 @@ Atlas stops each command's process group, including children, before restoration
 On other systems, it stops only the direct command process.
 
 The repository configuration targets only `atlas/src/atlas/`. Dashboard and test
-sources are not executed as mutants. They can still appear as `unmapped` records
-because analysis and manifest inspection cover the entire project.
+sources are not executed as mutants. Analysis covers the entire project, but
+execution generates manifests only for sources matched by the selected targets.

@@ -8,6 +8,7 @@ import click
 
 from atlas.domain.repositories import RepositoryError
 from atlas.metrics.config import load_project_config
+from atlas.mutations.config import MutationConfig
 from atlas.mutations.report import build_mutation_report
 from atlas.mutations.rules import REGISTRY
 
@@ -64,6 +65,18 @@ def _progress(message: str) -> None:
     click.echo(f"[mutations] {message}", err=True)
 
 
+def _execution_report(root: Path, config: MutationConfig, saved: bool) -> dict[str, Any]:
+    from atlas.metrics.report import build_artifact_report
+    from atlas.mutations.runner import matching_targets
+    from atlas.services.repositories import analyze_folder
+
+    _progress(f"Reading saved candidates for {root}" if saved else f"Analyzing source files in {root}")
+    report = _saved_report(root) if saved else build_artifact_report(analyze_folder(root))
+    report["mutationCandidates"] = [item for item in report["mutationCandidates"] if matching_targets(item["path"], config)]
+    _progress(f"Found {len(report['mutationCandidates'])} candidate sites in selected targets; generating configured replacements")
+    return report
+
+
 @mutations_command.command("run", help=(
     "Apply independent mutations and run trusted configured test commands in this workspace. "
     "No baseline or isolation is provided. Nonzero command exits count as killed. "
@@ -73,26 +86,28 @@ def _progress(message: str) -> None:
 @click.option("-f", "--folder", type=click.Path(path_type=Path), help="Override the parent project folder")
 @click.option("--output", default="mutation-results.jsonl", show_default=True, type=click.Path(path_type=Path),
               help="New results file, relative to the project root")
-@click.pass_context
-def run_command(ctx: click.Context, folder: Path | None, output: Path) -> None:
-    from atlas.metrics.report import build_artifact_report
+@click.option("--target", help="Comma-separated target names, or 'all'. Prompt when omitted on a terminal.")
+def run_command(folder: Path | None, output: Path, target: str | None) -> None:
+    from atlas.cli.mutation_targets import select_targets
     from atlas.mutations.manifests import MutationManifest
     from atlas.mutations.runner import MutationRunner
-    from atlas.services.repositories import analyze_folder
 
+    ctx = click.get_current_context()
     try:
         root = (folder or ctx.obj["folder"]).expanduser().resolve()
         _progress(f"Loading configuration: {root / 'atlas.json'}")
         config = load_project_config(root).mutations
         if not config.targets:
             raise ValueError("Configure mutations.targets in atlas.json before running mutations")
-        _progress(f"Reading saved candidates for {root}" if ctx.obj["saved"] else f"Analyzing source files in {root}")
-        report = _saved_report(root) if ctx.obj["saved"] else build_artifact_report(analyze_folder(root))
-        _progress(f"Found {len(report['mutationCandidates'])} candidate sites; generating configured replacements")
+        config = select_targets(config, target)
+        _progress(f"Selected targets: {', '.join(config.targets)}")
+        report = _execution_report(root, config, ctx.obj["saved"])
         planned = build_mutation_report(root, report, config)
         manifests = [MutationManifest.model_validate(item) for item in planned["mutations"]]
         destination = root / output
         counts = MutationRunner(root, config, progress=_progress).run(manifests, destination)
+    except click.Abort:
+        raise
     except (OSError, ValueError, RuntimeError, RepositoryError) as error:
         raise click.ClickException(str(error)) from error
     click.echo(json.dumps({"output": str(destination.resolve()), "counts": counts}, indent=2))

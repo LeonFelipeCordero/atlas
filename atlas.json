@@ -40,7 +40,7 @@
         "timeoutSeconds": 60
       },
       "cli-mutations": {
-        "sources": ["atlas/src/atlas/cli/mutations.py"],
+        "sources": ["atlas/src/atlas/cli/mutations.py", "atlas/src/atlas/cli/mutation_targets.py"],
         "cwd": "atlas",
         "command": ["uv", "run", "pytest", "tests/cli/test_mutations.py", "tests/cli/test_mutation_run.py", "tests/test_coffee_mutation_manifest_snapshots.py"],
         "timeoutSeconds": 120

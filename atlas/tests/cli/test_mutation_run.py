@@ -2,6 +2,7 @@
 
 import json
 import sys
+from io import BytesIO
 from contextlib import nullcontext
 from pathlib import Path
 from textwrap import dedent
@@ -16,12 +17,12 @@ from atlas.persistence.database import migrate_database
 
 @pytest.fixture
 def project_factory(tmp_path):
-    def create(rule="comparison.less-to-less-equal", command=None):
+    def create(rule="comparison.less-to-less-equal", command=None, targets=None):
         (tmp_path / "src").mkdir()
         (tmp_path / "src/example.py").write_text("value = 1 < 2\n")
         settings = {"mutations": {
             "rules": [rule],
-            "targets": {"unit": {
+            "targets": targets if targets is not None else {"unit": {
                 "sources": ["src/**"],
                 "command": command if command is not None else [sys.executable, "-c", "print('tested')"],
             }},
@@ -44,7 +45,7 @@ def test_run_accepts_project_folder_and_writes_results(project, args):
     command = [*args, str(project)]
     if args[-1] == "--folder" and "run" not in args:
         command.append("run")
-    result = CliRunner().invoke(main, command)
+    result = CliRunner().invoke(main, [*command, "--target", "unit"])
     assert result.exit_code == 0, result.output
     summary = json.loads(result.stdout)
     assert summary["counts"] == {"survived": 1}
@@ -82,7 +83,7 @@ def test_run_kills_mutation_with_real_tests(project_factory, monkeypatch, saved)
         migrate_database(database)
         indexed = runner.invoke(main, ["index", "--folder", str(root)])
         assert indexed.exit_code == 0, indexed.output
-    command = ["mutations", "--folder", str(root), *(["--saved"] if saved else []), "run"]
+    command = ["mutations", "--folder", str(root), *(["--saved"] if saved else []), "run", "--target", "all"]
     no_refresh = patch("atlas.services.repositories.analyze_folder", side_effect=AssertionError("Saved mode must not reanalyze"))
 
     with no_refresh if saved else nullcontext():
@@ -104,6 +105,116 @@ def test_run_kills_mutation_with_real_tests(project_factory, monkeypatch, saved)
     assert "Target unit: killed (exit=1," in result.stderr
 
 
+@pytest.fixture
+def target_project(project_factory):
+    sources = {"unit": ["src/example.py"], "other": ["src/other.py"], "shared": ["src/*.py"]}
+    targets = {name: {"sources": patterns, "command": [sys.executable, "-c",
+               f"from pathlib import Path; Path('{name}.executed').touch()"]} for name, patterns in sources.items()}
+    root = project_factory(targets=targets)
+    (root / "src/other.py").write_text("value = 1 < 2\n")
+    (root / "outside.py").write_text("untouched = 1 < 2\n")
+    return root
+
+
+@pytest.mark.parametrize("case", [
+    ("unit", {"src/example.py": ["unit"]}, {"unit"}),
+    ("other", {"src/other.py": ["other"]}, {"other"}),
+    (" other, unit,unit ", {"src/example.py": ["unit"], "src/other.py": ["other"]}, {"unit", "other"}),
+    ("all", {"src/example.py": ["unit", "shared"], "src/other.py": ["other", "shared"]}, {"unit", "other", "shared"}),
+])
+def test_explicit_targets_filter_sources_and_commands(target_project, case):
+    selection, expected, executed = case
+    original = {path: path.read_bytes() for path in target_project.rglob("*.py")}
+
+    result = CliRunner().invoke(main, ["mutations", "run", "-f", str(target_project), "--target", selection])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["counts"] == {"survived": len(expected)}
+    records = _result_records(target_project)
+    assert {record["path"]: _target_names(record) for record in records} == expected
+    assert {path.stem for path in target_project.glob("*.executed")} == executed
+    assert {path: path.read_bytes() for path in original} == original
+    assert "Available mutation targets:" not in result.stderr
+
+
+def test_saved_selection_ignores_stale_unselected_sources(target_project, monkeypatch):
+    database = target_project / "atlas.sqlite"
+    monkeypatch.setenv("DATABASE_PATH", str(database))
+    migrate_database(database)
+    runner = CliRunner()
+    indexed = runner.invoke(main, ["index", "--folder", str(target_project)])
+    assert indexed.exit_code == 0, indexed.output
+    unselected = target_project / "src/other.py"
+    unselected.write_text("user_edit = 3 < 4\n")
+
+    result = runner.invoke(main, ["mutations", "--saved", "--folder", str(target_project), "run", "--target", "unit"])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["counts"] == {"survived": 1}
+    assert _result_records(target_project)[0]["path"] == "src/example.py"
+    assert unselected.read_text() == "user_edit = 3 < 4\n"
+    assert {path.stem for path in target_project.glob("*.executed")} == {"unit"}
+
+
+class TerminalInput(BytesIO):
+    def isatty(self):
+        return True
+
+
+@pytest.mark.parametrize("case", [
+    ("unit\n", {"src/example.py": ["unit"]}),
+    ("unit,other\n", {"src/example.py": ["unit"], "src/other.py": ["other"]}),
+    ("all\n", {"src/example.py": ["unit", "shared"], "src/other.py": ["other", "shared"]}),
+    ("unknown\nother\n", {"src/other.py": ["other"]}),
+    ("all,unit\nunit\n", {"src/example.py": ["unit"]}),
+])
+def test_interactive_target_selection(target_project, case):
+    answer, expected = case
+
+    result = CliRunner().invoke(main, ["mutations", "run", "-f", str(target_project)], input=TerminalInput(answer.encode()))
+
+    assert result.exit_code == 0, result.output
+    assert "Available mutation targets:" in result.stderr
+    assert "all (all configured targets)" in result.stderr
+    assert "  shared" in result.stderr
+    assert json.loads(result.stdout)["counts"] == {"survived": len(expected)}
+    assert {record["path"]: _target_names(record) for record in _result_records(target_project)} == expected
+
+
+@pytest.mark.parametrize("selection", ["missing", "unit,missing", "all,unit", "", "unit,", ",", " , "])
+def test_invalid_target_selection_fails_before_analysis(target_project, selection):
+    with patch("atlas.services.repositories.analyze_folder", side_effect=AssertionError("Must validate before analysis")):
+        result = CliRunner().invoke(main, ["mutations", "run", "-f", str(target_project), "--target", selection])
+    assert result.exit_code == 2, result.output
+    assert "Invalid value for --target:" in result.stderr
+    assert not (target_project / "mutation-results.jsonl").exists()
+    assert not list(target_project.glob("*.executed"))
+
+
+def test_noninteractive_run_requires_explicit_targets(target_project):
+    with patch("atlas.services.repositories.analyze_folder", side_effect=AssertionError("Must validate before analysis")):
+        result = CliRunner().invoke(main, ["mutations", "run", "-f", str(target_project)], input="unit\n")
+    assert result.exit_code == 2
+    assert "Pass --target NAME[,NAME...] or --target all" in result.stderr
+    assert "Available mutation targets:" not in result.stderr
+    assert not (target_project / "mutation-results.jsonl").exists()
+
+
+def test_interactive_eof_does_not_start_a_run(target_project):
+    result = CliRunner().invoke(main, ["mutations", "run", "-f", str(target_project)], input=TerminalInput())
+    assert result.exit_code == 1
+    assert "Aborted!" in result.stderr
+    assert not (target_project / "mutation-results.jsonl").exists()
+
+
+def _result_records(root):
+    return [json.loads(line) for line in (root / "mutation-results.jsonl").read_text().splitlines()]
+
+
+def _target_names(record):
+    return [target["name"] for target in record["targets"]]
+
+
 def test_run_requires_targets_before_analysis(tmp_path):
     result = CliRunner().invoke(main, ["mutations", "run", "-f", str(tmp_path)])
     assert result.exit_code == 1
@@ -112,7 +223,7 @@ def test_run_requires_targets_before_analysis(tmp_path):
 
 
 def test_custom_output_and_existing_results_are_protected(project):
-    args = ["mutations", "run", "-f", str(project), "--output", "custom.jsonl"]
+    args = ["mutations", "run", "-f", str(project), "--target", "unit", "--output", "custom.jsonl"]
     assert CliRunner().invoke(main, args).exit_code == 0
     original = (project / "custom.jsonl").read_bytes()
     result = CliRunner().invoke(main, args)

@@ -36,6 +36,13 @@ class MutationConfig(BaseModel):
     rules: list[str] = Field(default_factory=list)
     targets: dict[str, MutationTarget] = Field(default_factory=dict)
 
+    @field_validator("targets")
+    @classmethod
+    def selectable_names(cls, value: dict[str, MutationTarget]) -> dict[str, MutationTarget]:
+        if any(not name or name != name.strip() or "," in name or name == "all" for name in value):
+            raise ValueError("Target names must be nonempty, trimmed, contain no commas, and must not be 'all'")
+        return value
+
     @field_validator("rules")
     @classmethod
     def supported_rules(cls, value: list[str]) -> list[str]:

@@ -119,6 +119,13 @@ def test_config_rejects_invalid_selection(payload: dict[str, Any], error_type: s
     assert caught.value.errors()[0]["type"] == error_type
 
 
+@pytest.mark.parametrize("name", ["", " ", " unit", "unit ", "unit,other", "all"])
+def test_config_rejects_unselectable_target_names(name):
+    target = {"sources": ["src/**"], "command": ["pytest"]}
+    with pytest.raises(ValidationError, match="Target names"):
+        MutationConfig.model_validate({"targets": {name: target}})
+
+
 def test_catalog_has_exact_rule_ids_without_duplicates() -> None:
     # Given
     expected = {row[0] for row in CATALOG}
