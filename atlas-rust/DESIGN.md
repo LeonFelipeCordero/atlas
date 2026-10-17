@@ -1,6 +1,6 @@
 # Native Atlas importer
 
-`src/atlas/` follows the Python package layout. Rust modules use `.rs` and `mod.rs` in place of `.py` and `__init__.py`. Large modules split into adjacent helpers. The binary names remain `atlas` and `atlas-migrate`.
+`src/atlas/` follows the Python package layout. Rust modules use `.rs` and `mod.rs` in place of `.py` and `__init__.py`. Large modules split into adjacent helpers. `paths/` supplies the shared operations that Python gets from `pathlib`; it has no storage dependency. CLI and service modules use domain contracts, not persistence internals. Only service factories compose storage. The binary names remain `atlas` and `atlas-migrate`.
 
 ```text
 cli -> services -> indexer -> parsing -> metrics -> graph artifact

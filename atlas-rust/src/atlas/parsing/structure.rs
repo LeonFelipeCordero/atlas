@@ -81,6 +81,11 @@ struct CapturedDeclaration<'a> {
     name: Option<String>,
     has_name: bool,
 }
+#[derive(Default)]
+struct CapturedDeclarations<'a> {
+    entries: Vec<Declaration<'a>>,
+    positions: HashMap<usize, usize>,
+}
 
 impl Extraction<'_> {
     fn structure_item(&self, carrier: &DeclarationCarrier<'_>, kind: &str) -> StructureItem {
@@ -96,19 +101,19 @@ impl Extraction<'_> {
         }
     }
     fn captured_declarations<'a>(&self, root: Node<'a>, query: &Query) -> Vec<Declaration<'a>> {
-        let mut declarations = vec![];
+        let mut declarations = CapturedDeclarations::default();
         let mut cursor = QueryCursor::new();
         let mut matches = cursor.matches(query, root, self.source);
         while let Some(found) = matches.next() {
             self.add_captured_match(found.captures(), query, &mut declarations);
         }
-        declarations
+        declarations.entries
     }
     fn add_captured_match<'a>(
         &self,
         captures: &[QueryCapture<'a>],
         query: &Query,
-        declarations: &mut Vec<Declaration<'a>>,
+        declarations: &mut CapturedDeclarations<'a>,
     ) {
         let names = query.capture_names();
         let Some(definition) = captures.iter().find(|c| definition_kind(names[c.index as usize]).is_some()) else {
@@ -128,35 +133,36 @@ impl Extraction<'_> {
             self.add_capture(declarations, capture);
         }
     }
-    fn add_capture<'a>(&self, declarations: &mut Vec<Declaration<'a>>, capture: CapturedDeclaration<'a>) {
-        let index = declarations.iter().position(|(existing, _)| existing.id() == capture.node.id());
-        if index.is_some() && !capture.has_name {
+    fn add_capture<'a>(&self, declarations: &mut CapturedDeclarations<'a>, capture: CapturedDeclaration<'a>) {
+        if let Some(index) = declarations.positions.get(&capture.node.id()).copied() {
+            if capture.has_name {
+                // Metadata is pure for this node/source; only name and kind depend on the capture.
+                declarations.entries[index].1.name = capture.name;
+                declarations.entries[index].1.kind = structure_kind(&capture.kind);
+            }
             return;
         }
         let carrier = DeclarationCarrier { node: capture.node, name: capture.name, kind: None, decorators: vec![] };
-        let entry = (capture.node, self.structure_item(&carrier, &capture.kind));
-        match index {
-            Some(index) => declarations[index] = entry,
-            None => declarations.push(entry),
-        }
+        let item = self.structure_item(&carrier, &capture.kind);
+        declarations.positions.insert(capture.node.id(), declarations.entries.len());
+        declarations.entries.push((capture.node, item));
     }
     fn canonical_declaration<'a>(&self, node: Node<'a>, mut item: StructureItem) -> Option<Declaration<'a>> {
-        let mut carrier = self.adapter.normalize_declaration(node, self.source)?;
-        carrier.name = nonempty(carrier.name).or_else(|| nonempty(item.name.clone()));
-        let metadata = self.structure_item(&carrier, carrier.kind.as_deref().unwrap_or(&kind_name(&item.kind)));
+        let carrier = self.adapter.normalize_declaration(node, self.source)?;
+        let (visibility, decorators) = self.adapter.metadata(carrier.node, self.source);
         let changed_span =
             carrier.node.start_byte() != item.span.start_byte || carrier.node.end_byte() != item.span.end_byte;
-        item.name = metadata.name;
+        item.name = nonempty(carrier.name).or_else(|| nonempty(item.name));
         if let Some(kind) = carrier.kind {
             item.kind = structure_kind(&kind);
         }
         if changed_span {
-            item.span = metadata.span;
-            item.signature = metadata.signature;
+            item.span = span(carrier.node);
+            item.signature = Some(text(Some(carrier.node), self.source));
         }
-        item.visibility = nonempty(item.visibility).or(metadata.visibility);
+        item.visibility = nonempty(item.visibility).or(visibility);
         if item.decorators.is_empty() {
-            item.decorators = if carrier.decorators.is_empty() { metadata.decorators } else { carrier.decorators };
+            item.decorators = if carrier.decorators.is_empty() { decorators } else { carrier.decorators };
         }
         item.children.clear();
         Some((carrier.node, item))
@@ -172,11 +178,23 @@ fn native_declarations<'a>(root: Node<'a>, items: &[StructureItem], declarations
     for item in items {
         let end = item.span.start_byte.max(item.span.end_byte.saturating_sub(1));
         if let Some(node) = root.descendant_for_byte_range(item.span.start_byte, end) {
-            let mut item = item.clone();
-            item.children.clear();
-            declarations.push((node, item));
+            declarations.push((node, without_children(item)));
         }
         native_declarations(root, &item.children, declarations);
+    }
+}
+
+fn without_children(item: &StructureItem) -> StructureItem {
+    StructureItem {
+        kind: item.kind.clone(),
+        name: item.name.clone(),
+        visibility: item.visibility.clone(),
+        span: item.span.clone(),
+        children: vec![],
+        decorators: item.decorators.clone(),
+        doc_comment: item.doc_comment.clone(),
+        signature: item.signature.clone(),
+        body_span: item.body_span.clone(),
     }
 }
 
@@ -278,3 +296,7 @@ pub fn extract_structure(syntax: &ParsedSyntax<'_>, existing: &[StructureItem]) 
     };
     Ok(structure_hierarchy(merge_declarations(syntax, &query, existing)))
 }
+
+#[cfg(test)]
+#[path = "structure_tests.rs"]
+mod tests;

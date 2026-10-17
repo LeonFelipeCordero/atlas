@@ -142,13 +142,11 @@ impl CallResolver {
         let family = if adapter.family().is_empty() { &file.source.language } else { adapter.family() };
         self.repository
             .symbols()
+            .filter(|s| s.name == name)
             .filter(|s| {
                 let candidate = get_resolution_adapter(&s.language);
                 let language = if candidate.family().is_empty() { &s.language } else { candidate.family() };
-                s.name == name
-                    && language == family
-                    && CALLABLES.contains(&s.kind.as_str())
-                    && !TYPES.contains(&s.kind.as_str())
+                language == family && CALLABLES.contains(&s.kind.as_str()) && !TYPES.contains(&s.kind.as_str())
             })
             .cloned()
             .collect()

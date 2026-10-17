@@ -1,6 +1,9 @@
 use crate::{
-    domain::repositories::{GraphDto, RepositoryDto, RepositoryError, RepositoryProtocol},
-    persistence::database::absolute_path,
+    domain::{
+        models::SOURCE_METRIC_NAMES,
+        repositories::{GraphDto, RepositoryDto, RepositoryError, RepositoryProtocol},
+    },
+    paths::absolute_path,
 };
 use anyhow::Result;
 use serde_json::{Value, json};
@@ -93,7 +96,7 @@ impl RepositoryService {
 }
 fn add_properties(node: &mut Value) {
     let mut properties = json!({});
-    for name in crate::persistence::graph_records::METRIC_NAMES {
+    for name in SOURCE_METRIC_NAMES {
         properties[name] = node[name].clone();
     }
     node["properties"] = properties;

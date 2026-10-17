@@ -18,13 +18,11 @@ impl ReceiverInference<'_> {
         if binding.member {
             targets.extend([format!("self.{}", binding.name), format!("this.{}", binding.name)]);
         }
-        syntax.nodes().into_iter().any(|n| {
+        syntax.nodes_in((binding.scope.start_byte(), binding.scope.end_byte())).into_iter().any(|n| {
             n != binding.node
                 && Self::is_write(syntax, n)
                 && !Self::write_names(syntax, n).is_disjoint(&targets)
                 && !self.field_initialization(syntax, binding, n)
-                && binding.scope.start_byte() <= n.start_byte()
-                && n.start_byte() < binding.scope.end_byte()
         })
     }
 
@@ -54,17 +52,8 @@ impl ReceiverInference<'_> {
     ) -> bool {
         let (parent, node) = context;
         let value = text(field(node, &["right"]), &syntax.source);
-        let entries = self.bindings(&syntax.file.source.path);
-        let parameters: Vec<_> = entries
-            .iter()
-            .filter(|b| {
-                !b.member
-                    && b.name == value
-                    && b.annotation == binding.annotation
-                    && parent.start_byte() <= b.node.start_byte()
-                    && b.node.start_byte() < parent.end_byte()
-            })
-            .collect();
+        let entries = self.bindings_within(&syntax.file.source.path, &value, (parent.start_byte(), parent.end_byte()));
+        let parameters: Vec<_> = entries.iter().filter(|b| !b.member && b.annotation == binding.annotation).collect();
         parameters.len() == 1 && !self.reassigned(syntax, parameters[0], Some(&value))
     }
 
@@ -74,11 +63,7 @@ impl ReceiverInference<'_> {
             return true;
         };
         let scope = Self::call_scope(call);
-        let nodes: Vec<_> = syntax
-            .nodes()
-            .into_iter()
-            .filter(|n| scope.start_byte() <= n.start_byte() && n.start_byte() < scope.end_byte())
-            .collect();
+        let nodes = syntax.nodes_in((scope.start_byte(), scope.end_byte()));
         let aliases: Vec<_> = nodes.iter().filter_map(|node| Self::node_alias(syntax, *node)).collect();
         let suffix = format!(".{}", request.name);
         let writes = nodes

@@ -13,13 +13,21 @@ Read-only project ──> isolated SQLite clones ──> Python CLI ↔ native C
 Run from the repository root:
 
 ```sh
-cargo test --manifest-path atlas-rust/Cargo.toml --test parity
+cargo test --manifest-path atlas-rust/Cargo.toml --test parity --test parity_families --test parity_pipeline --test parity_navigation --test parity_inventory
+cargo test --manifest-path atlas-rust/Cargo.toml --test parity_pipeline typescript::same_source_grammar_variants -- --exact
+cargo test --manifest-path atlas-rust/Cargo.toml --test parity_families typescript_script_members -- --exact
 cargo test --manifest-path atlas-rust/Cargo.toml --test parity python::artifact -- --exact
 cargo test --manifest-path atlas-rust/Cargo.toml --test parity python::report -- --exact
 cargo test --manifest-path atlas-rust/Cargo.toml --test parity rust::mutation_operators -- --exact
 ```
 
-The suite has 56 tests: six tests for each of nine languages, plus fixture-link and comparison-guard tests. Each language checks the complete artifact, report JSON/Markdown, check JSON/Markdown, four production CLI outputs with exact exit codes/stderr, coffee mutation manifests, and operator mutation manifests. Artifacts include all candidates, spans, hashes, edges, views, diagnostics, and circular dependencies. Report/check API tests also use the canonical graph/report as input to isolate failures from parsing.
+The five native parity targets contain 159 tests and cover all 73 unchanged Python golden files. `parity` has 56 artifact/report/check/CLI/mutation tests. `parity_families` adds 11 safety-review, script-member, and JVM callable-selection tests. `parity_pipeline` adds 81 extraction/analysis/staged-graph tests across all nine languages. `parity_navigation` adds eight complete navigation goldens plus two normalization guards. `parity_inventory` rejects new or missing golden files until native coverage is extended.
+
+Each coffee language checks the complete artifact, report JSON/Markdown, check JSON/Markdown, and the complete four-command CLI bundle, including exact exit codes/stderr. Artifacts include all candidates, spans, hashes, edges, views, diagnostics, and circular dependencies. Report/check API tests also use the canonical graph/report as input to isolate failures from parsing.
+
+Pipeline tests reproduce `coffee_pipeline.py`, `project_snapshot_support.py`, and `source_snapshot_fixture.py`: every parsed file, source byte, content hash, optional declaration field, call, import, inheritance, enriched symbol, resolved connection, and external node. They compare native/tag-only/merged structures, all native structure fields, excluded-language bytes and C syntax, and every explicit or JSX shared-grammar variant. Serialization uses the original lowercase byte hex and exact Python `StructureKind` representation; it retains null/empty fields that native serde otherwise omits. No numeric rounding, array sorting, field dropping, or new goldens are used.
+
+Navigation goldens execute all 189 canonical requests against graphs analyzed from physical samples and stored in isolated native SQLite databases. Existing golden `filters` supply requests only; no golden graph/response populates storage. Responses receive the original `normalize_responses` metadata placeholders and root normalization only after checking every response against the saved graph's identical, nonempty repository ID, revision, and timestamp. Node keys, graph fields, provenance, ordering, diagnostics, and source lines remain exact. The developer CLI comparison below remains stricter about live UUID equality.
 
 Artifact normalization matches `coffee_snapshot`: remove `repository.indexedAt`; replace only the repository path and root node absolute path. Arrays, fields, IDs, hashes, evidence, confidence, numbers, and nulls stay unchanged. Native CLI subprocesses fail after 60 seconds. Set `ATLAS_PARITY_TIMEOUT_SECS` to change that bound; timeout is never a passing result.
 
@@ -61,7 +69,7 @@ Each CLI subprocess has its own timeout. Both implementations timing out still f
 
 ### Coverage
 
-The generic matrix has 220 cases per project: 40 analysis/storage/migration cases, 100 navigation/source cases, and 80 help/invalid-input cases. It includes all folder aliases, attached short-option values, cwd defaults, group option terminators, and literal or value-position `--help` arguments; JSON/Markdown/default formats; save variants; rule catalog; fresh/saved mutations; fresh/repeated migrations; projects; project name/ID/cwd selection; valid/stale revisions; find and child paging; context/path in all directions and relationship types; depth/node/edge limits; source JSON/text, batches, duplicates, start-line and max-line limits; help and invalid argument bounds.
+The generic matrix has 230 cases per project: 40 analysis/storage/migration cases, 110 navigation/source cases, and 80 help/invalid-input cases. It includes all folder aliases, attached short-option values, cwd defaults, group option terminators, and literal or value-position `--help` arguments; JSON/Markdown/default formats; save variants; rule catalog; fresh/saved mutations; fresh/repeated migrations; projects; project name/ID/cwd selection; valid/stale revisions; find and child paging; context/path in all directions and relationship types; depth/node/edge limits; source JSON/text, batches, duplicates, start-line and max-line limits; decimal whitespace/underscores and Arabic-Indic/fullwidth/mathematical digits; exact 100-digit source start lines in JSON/text; malformed decimal forms and overflow bounds; help and invalid argument bounds.
 
 Both readers run against the same Python-produced database and the same native-produced database. Native-origin reader cases use the `interop.native.` prefix. Eight coffee languages also replay the unchanged `CoffeeNavigation` assertions and query scenarios from `atlas/tests/coffee_navigation.py`: real declaration selection, core calls, callbacks, recursion, imports/cycles, inheritance, unresolved targets, verified source, and shortest paths. TSX has no canonical navigation scenario; its full generic matrix still runs. Aggregate UUID-masking helpers from the reference scenario are not used.
 
@@ -93,4 +101,4 @@ uv run --project atlas atlas check --f . --format json
 
 Harness self-tests check type/null/array-order sensitivity, timestamp/root-only normalization, schema/data changes, UUID validation, controlled-entropy full-row round trips, output corruption, bounded timeouts, equal-timeout rejection, and continuation after a reference setup timeout. CI runs formatting, Clippy, native tests, every CLI case and sample variant across all nine languages, the harness tests, and the whole-repository Python Atlas check. Python dependencies follow the existing unlocked `uv sync --group dev` convention; Rust uses its tracked Cargo lockfile.
 
-Extraction/analysis internal snapshots are not separately compared here; the complete public artifact and reports are. Permission/race/symlink security permutations from the Python test suite are not all reproduced by the CLI matrix. The harness adds no expected failures, snapshot regeneration, or approximation mode.
+All current golden families are covered, including the full internal extraction and analysis seams. Raw processing metrics that have no original golden are not invented as new expectations. Permission/race/symlink security permutations from the Python test suite are not all reproduced by the CLI matrix. The harness adds no expected failures, snapshot regeneration, or approximation mode.

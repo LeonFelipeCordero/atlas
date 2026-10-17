@@ -105,18 +105,25 @@ impl Options {
         Ok(value)
     }
     pub fn number(&self, name: &str, default: usize, range: (usize, usize)) -> Result<usize> {
-        let (minimum, maximum) = range;
-        let Some(value) = self.values.get(name) else {
-            return Ok(default);
+        Ok(self.checked_integer(name, default, (range.0, Some(range.1)))?.to_string().parse()?)
+    }
+    pub fn integer(&self, name: &str, default: usize, minimum: usize) -> Result<serde_json::Number> {
+        self.checked_integer(name, default, (minimum, None))
+    }
+    fn checked_integer(&self, name: &str, default: usize, range: (usize, Option<usize>)) -> Result<serde_json::Number> {
+        let number = match self.values.get(name) {
+            None => default.to_string(),
+            Some(value) => super::integers::normalize(value).ok_or_else(|| {
+                self.invalid(name, format!("{} is not a valid integer range.", super::integers::repr(value)))
+            })?,
         };
-        let number =
-            value.parse::<i64>().map_err(|_| self.invalid(name, format!("'{value}' is not a valid integer range.")))?;
-        if number < minimum as i64 || number as u64 > maximum as u64 {
-            let range =
-                if maximum == usize::MAX { format!("x>={minimum}") } else { format!("{minimum}<=x<={maximum}") };
-            return Err(self.invalid(name, format!("{number} is not in the range {range}.")));
+        if !super::integers::in_range(&number, range) {
+            return Err(self.invalid(
+                name,
+                format!("{number} is not in the range {}.", super::integers::range_description(range)),
+            ));
         }
-        Ok(number as usize)
+        Ok(number.parse()?)
     }
     pub fn invalid(&self, name: &str, message: impl fmt::Display) -> anyhow::Error {
         usage(&self.command, format!("Invalid value for '{name}': {message}"))

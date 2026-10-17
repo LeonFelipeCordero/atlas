@@ -13,6 +13,18 @@ impl<'resolver> ReceiverInference<'resolver> {
         Self { resolver }
     }
 
+    pub(super) fn bindings_at(&self, path: &str, name: &str, position: usize) -> Vec<ReceiverBinding<'resolver>> {
+        self.resolver.receivers.bindings_at(&self.resolver.syntax[path], name, position)
+    }
+    pub(super) fn bindings_within(
+        &self,
+        path: &str,
+        name: &str,
+        span: (usize, usize),
+    ) -> Vec<ReceiverBinding<'resolver>> {
+        self.resolver.receivers.bindings_within(&self.resolver.syntax[path], name, span)
+    }
+    #[cfg(test)]
     pub(super) fn bindings(&self, path: &str) -> Vec<ReceiverBinding<'resolver>> {
         self.resolver.receivers.bindings_for(&self.resolver.syntax[path])
     }

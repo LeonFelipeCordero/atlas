@@ -5,6 +5,10 @@ use crate::domain::models::{ParsedFile, Symbol};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, Mutex, OnceLock};
 use tree_sitter::{Node, Tree};
+#[path = "resolution_bindings.rs"]
+mod binding_index;
+pub use binding_index::NodeRef;
+use binding_index::{BindingIndex, StoredBinding, walk_range};
 
 pub const PARAMETERS: &[&str] = &[
     "parameters",
@@ -80,9 +84,6 @@ fn structured_names(node: Node<'_>, source: &[u8]) -> BTreeSet<String> {
     BTreeSet::new()
 }
 
-/// A tree-relative node handle remains valid when an owned syntax cache is cloned.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct NodeRef(pub usize);
 pub type ReceiverScopeData = Vec<(Vec<NodeRef>, BTreeSet<String>)>;
 
 #[derive(Default)]
@@ -117,7 +118,9 @@ struct SyntaxCache {
     tree: OnceLock<Option<Tree>>,
     index: OnceLock<NodeIndex>,
     imports: OnceLock<Vec<(String, NodeRef)>>,
-    bindings: OnceLock<Vec<(String, NodeRef, NodeRef)>>,
+    bindings: OnceLock<BindingIndex>,
+    #[cfg(test)]
+    dereferences: std::sync::atomic::AtomicUsize,
     written_members: OnceLock<HashSet<String>>,
 }
 
@@ -158,6 +161,8 @@ impl Syntax {
         *self.index().node_paths.get(&node.id()).expect("Node must belong to this syntax tree")
     }
     pub fn dereference(&self, reference: &NodeRef) -> Option<Node<'_>> {
+        #[cfg(test)]
+        self.cache.dereferences.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let paths = &self.index().path_arena;
         let mut indices = Vec::new();
         let mut index = reference.0;
@@ -174,6 +179,9 @@ impl Syntax {
     }
     pub fn nodes(&self) -> Vec<Node<'_>> {
         self.root().map(walk).unwrap_or_default()
+    }
+    pub fn nodes_in(&self, span: (usize, usize)) -> Vec<Node<'_>> {
+        self.root().map(|root| walk_range(root, span)).unwrap_or_default()
     }
     pub fn text(&self, node: Node<'_>) -> String {
         String::from_utf8_lossy(&self.source[node.byte_range()]).into_owned()
@@ -205,19 +213,44 @@ impl Syntax {
             .filter_map(|(name, node)| Some((name.clone(), self.dereference(node)?)))
             .collect()
     }
+    fn binding_index(&self) -> &BindingIndex {
+        self.cache.bindings.get_or_init(|| {
+            self.nodes()
+                .into_iter()
+                .flat_map(|node| self.node_bindings(node))
+                .map(|(name, scope, node)| StoredBinding {
+                    name,
+                    scope: self.reference(scope),
+                    node: self.reference(node),
+                    scope_span: (scope.start_byte(), scope.end_byte()),
+                    node_span: (node.start_byte(), node.end_byte()),
+                })
+                .collect()
+        })
+    }
     pub fn bindings(&self) -> Vec<(String, Node<'_>, Node<'_>)> {
-        self.cache
-            .bindings
-            .get_or_init(|| {
-                self.nodes()
-                    .into_iter()
-                    .flat_map(|node| self.node_bindings(node))
-                    .map(|(name, scope, node)| (name, self.reference(scope), self.reference(node)))
-                    .collect()
-            })
+        self.binding_index()
+            .entries
             .iter()
-            .filter_map(|(name, scope, node)| Some((name.clone(), self.dereference(scope)?, self.dereference(node)?)))
+            .filter_map(|binding| {
+                Some((binding.name.clone(), self.dereference(&binding.scope)?, self.dereference(&binding.node)?))
+            })
             .collect()
+    }
+    pub fn bindings_named(&self, name: &str) -> Vec<(Node<'_>, Node<'_>)> {
+        self.binding_index().named(name).map(|binding| self.restore_binding(binding)).collect()
+    }
+    pub fn bindings_at(&self, name: &str, position: usize) -> Vec<(Node<'_>, Node<'_>)> {
+        self.binding_index()
+            .named(name)
+            .filter(|binding| binding.visible_at(position))
+            .map(|binding| self.restore_binding(binding))
+            .collect()
+    }
+    fn restore_binding(&self, binding: &StoredBinding) -> (Node<'_>, Node<'_>) {
+        let scope = self.dereference(&binding.scope).expect("Cached binding scope must belong to this tree");
+        let node = self.dereference(&binding.node).expect("Cached binding declaration must belong to this tree");
+        (scope, node)
     }
     fn node_bindings<'a>(&'a self, node: Node<'a>) -> Vec<(String, Node<'a>, Node<'a>)> {
         let scope = self.scope(node);
@@ -248,10 +281,13 @@ impl Syntax {
         if self.adapter.import_shadowed(self, name, position) {
             return true;
         }
-        self.bindings().into_iter().any(|(binding, scope, node)| {
-            binding == name
-                && self.visible(scope, position)
-                && !self.declaration_allowed(&DeclarationLookup { name, node, position }, allowed)
+        self.binding_index().named(name).filter(|binding| binding.visible_at(position)).any(|binding| {
+            let scope = self.dereference(&binding.scope).expect("Cached binding scope must belong to this tree");
+            if !self.visible(scope, position) {
+                return false;
+            }
+            let node = self.dereference(&binding.node).expect("Cached binding declaration must belong to this tree");
+            !self.declaration_allowed(&DeclarationLookup { name, node, position }, allowed)
         })
     }
     pub fn import_node(&self, line: usize, source: Option<&str>) -> Option<Node<'_>> {
@@ -276,21 +312,26 @@ impl Syntax {
         self.import_node(line, source).map(|n| self.scope(n)).or_else(|| self.root())
     }
     pub fn class_rebound(&self, symbol: &Symbol, name: &str) -> bool {
-        self.bindings().into_iter().any(|(binding, _, node)| {
-            if binding != name || self.adapter.rebound_declarations().contains(&node.kind()) {
-                return false;
-            }
-            let mut parent = node.parent();
-            while let Some(candidate) = parent {
-                if FUNCTIONS.contains(&candidate.kind())
-                    || ["class_definition", "class_declaration"].contains(&candidate.kind())
-                {
-                    return candidate.start_byte() == symbol.start_byte && candidate.end_byte() == symbol.end_byte;
+        self.binding_index()
+            .named(name)
+            .filter(|binding| binding.contained_in((symbol.start_byte, symbol.end_byte)))
+            .any(|binding| {
+                let node =
+                    self.dereference(&binding.node).expect("Cached binding declaration must belong to this tree");
+                if self.adapter.rebound_declarations().contains(&node.kind()) {
+                    return false;
                 }
-                parent = candidate.parent();
-            }
-            false
-        })
+                let mut parent = node.parent();
+                while let Some(candidate) = parent {
+                    if FUNCTIONS.contains(&candidate.kind())
+                        || ["class_definition", "class_declaration"].contains(&candidate.kind())
+                    {
+                        return candidate.start_byte() == symbol.start_byte && candidate.end_byte() == symbol.end_byte;
+                    }
+                    parent = candidate.parent();
+                }
+                false
+            })
     }
     pub fn written_members(&self) -> &HashSet<String> {
         self.cache.written_members.get_or_init(|| {
@@ -395,6 +436,61 @@ mod tests {
         assert!(syntax.cache.index.get().is_none());
         assert!(syntax.node(0, syntax.source.len()).is_some());
         assert!(syntax.cache.index.get().is_some());
+    }
+    #[test]
+    fn shadowing_filters_names_and_scope_ranges_before_restoring_nodes() {
+        use std::sync::atomic::Ordering::Relaxed;
+        let source = (0..500).map(|index| format!("def f{index}(value):\n return value\n")).collect::<String>();
+        let syntax = syntax(source.as_bytes());
+        let original: Vec<_> = syntax.nodes().into_iter().flat_map(|node| syntax.node_bindings(node)).collect();
+        assert_eq!(syntax.bindings(), original);
+        assert_eq!(syntax.binding_index().named("value").count(), 500);
+        let counter = &syntax.cache.dereferences;
+        counter.store(0, Relaxed);
+        assert!(syntax.shadowed("value", source.rfind("return").unwrap(), &[]));
+        assert_eq!(counter.load(Relaxed), 2);
+        counter.store(0, Relaxed);
+        assert!(!syntax.shadowed("missing", 0, &[]));
+        assert!(!syntax.shadowed("value", source.len(), &[]));
+        assert_eq!(counter.load(Relaxed), 0);
+    }
+    #[test]
+    fn class_rebinding_filters_names_and_declaration_ranges_before_restoring_nodes() {
+        use std::sync::atomic::Ordering::Relaxed;
+        let source = format!(
+            "class Target:\n value = 1\n{}",
+            (0..500).map(|index| format!("def f{index}(value):\n return value\n")).collect::<String>()
+        );
+        let file = crate::parsing::parser::parse_file(parsed("python", source.as_bytes()).source).unwrap();
+        let class = file.symbols.iter().find(|symbol| symbol.name == "Target").unwrap();
+        let syntax = Syntax::new(&file, get_resolution_adapter("python"));
+        assert_eq!(syntax.binding_index().named("value").count(), 501);
+        let counter = &syntax.cache.dereferences;
+        counter.store(0, Relaxed);
+        assert!(syntax.class_rebound(class, "value"));
+        assert_eq!(counter.load(Relaxed), 1);
+        counter.store(0, Relaxed);
+        assert!(!syntax.class_rebound(class, "missing"));
+        assert_eq!(counter.load(Relaxed), 0);
+    }
+    #[test]
+    fn bounded_walk_matches_full_named_walk_including_errors_and_boundaries() {
+        let syntax = syntax(b"def first(x):\n return x\ndef broken(:\n return f()\n");
+        let nodes = syntax.nodes();
+        let spans = nodes.iter().map(|node| (node.start_byte(), node.end_byte())).chain([
+            (0, 0),
+            (0, 1),
+            (1, syntax.source.len()),
+            (syntax.source.len(), syntax.source.len()),
+        ]);
+        for span in spans {
+            let full: Vec<_> = nodes
+                .iter()
+                .copied()
+                .filter(|node| span.0 <= node.start_byte() && node.start_byte() < span.1)
+                .collect();
+            assert_eq!(syntax.nodes_in(span), full, "{span:?}");
+        }
     }
     #[test]
     fn replacement_decoding_and_exact_span_lookup() {

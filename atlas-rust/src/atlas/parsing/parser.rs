@@ -52,6 +52,8 @@ pub fn syntax_error(root: Node<'_>) -> Option<String> {
 
 pub fn extract_calls(file: &SourceFile, root: Node<'_>, adapter: LanguageAdapter<'_>) -> Vec<Call> {
     let mut calls = vec![];
+    let newlines: Vec<_> =
+        file.source.iter().enumerate().filter_map(|(index, byte)| (*byte == b'\n').then_some(index)).collect();
     adapter.visit_calls(root, &file.source, &mut |site, syntax_source| {
         let (name, bare_target, qualifier) = adapter.normalize_call(&site, syntax_source);
         let Some(name) = name.filter(|name| !name.is_empty()) else {
@@ -64,7 +66,7 @@ pub fn extract_calls(file: &SourceFile, root: Node<'_>, adapter: LanguageAdapter
             name,
             start_byte: start,
             end_byte: end,
-            line: file.source[..start].iter().filter(|byte| **byte == b'\n').count() + 1,
+            line: newlines.partition_point(|offset| *offset < start) + 1,
             evidence: String::from_utf8_lossy(&file.source[start..end]).chars().take(300).collect(),
             bare_target,
             qualifier,

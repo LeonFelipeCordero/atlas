@@ -208,7 +208,7 @@ fn navigation_order_source_verification_and_revision_errors() {
     let reader = navigation_reader(ProjectSelector::Name("COFFEE"), Some(&saved.graph_revision), Some(&db)).unwrap();
     let mut service = NavigationService::new(reader);
     assert_eq!(service.find("coffee.py", 10).unwrap()["nodes"][0]["level"], "file");
-    assert_eq!(service.children("file:coffee.py", 1, 0).unwrap()["nextOffset"], Value::Null);
+    assert_eq!(service.children("file:coffee.py", 1, 0.into()).unwrap()["nextOffset"], Value::Null);
     let shown = service.show("brew").unwrap();
     assert_eq!(shown["node"]["decorators"], json!(["one", "two"]));
     assert_eq!(shown["ancestors"][0]["stableKey"], "file:coffee.py");
@@ -237,6 +237,36 @@ fn navigation_order_source_verification_and_revision_errors() {
             .contains("Stale graph revision")
     );
     assert!(service.show("missing").unwrap_err().to_string().starts_with("Node not found: missing"));
+}
+#[test]
+fn huge_source_start_lines_remain_exact_and_offsets_do_not_wrap() {
+    let temp = tempfile::tempdir().unwrap();
+    let db = temp.path().join("db.sqlite");
+    migrate_database(Some(&db)).unwrap();
+    let mut store = repository_store(Some(&db)).unwrap();
+    let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &artifact(temp.path())).unwrap();
+    let reader = navigation_reader(ProjectSelector::Name("Coffee"), None, Some(&db)).unwrap();
+    let mut service = NavigationService::new(reader);
+    let decimal = "1234567890".repeat(50);
+    let huge: serde_json::Number = decimal.parse().unwrap();
+    let result = service.source("brew", 80, Some(huge.clone())).unwrap();
+    assert_eq!(result["filters"]["startLine"], json!(huge));
+    assert_eq!(result["source"]["startLine"], json!(huge));
+    assert_eq!(result["source"]["endLine"], 2);
+    assert_eq!(result["source"]["lines"], json!([]));
+    assert_eq!(result["source"]["nextStartLine"], Value::Null);
+    assert_eq!(result["source"]["truncated"], false);
+    assert!(crate::cli::graph_source_output::source_text(&result).contains(&format!("\"startLine\": {decimal}")));
+    assert!(
+        service
+            .children("file:coffee.py", 30, huge)
+            .unwrap_err()
+            .to_string()
+            .contains("too large to convert to SQLite INTEGER")
+    );
+    let huge = (i64::MAX as u64 + 1).into();
+    assert!(service.children("file:coffee.py", 30, huge).is_err());
+    assert_eq!(store.graph(&saved.repository_id).unwrap().unwrap().graph_revision, saved.graph_revision);
 }
 #[test]
 fn read_only_navigation_does_not_create_or_migrate() {
@@ -299,7 +329,7 @@ fn source_limits_encoding_and_containment() {
     assert_eq!(source_lines(b"a\rb\r\nc\n").unwrap(), vec!["a\rb", "c"]);
     assert!(source_lines(&[255]).is_err());
     let node = json!({"path": "good", "level": "file"});
-    let options = crate::domain::navigation::SourceOptions { max_lines: 1, start_line: Some(2) };
+    let options = crate::domain::navigation::SourceOptions { max_lines: 1, start_line: Some(2.into()) };
     assert_eq!(verified_excerpt(&node, b"a\r\nb\n", &options)["lines"], json!(["b"]));
     assert_eq!(verified_excerpt(&node, &[255], &options)["status"], "unsupported_encoding");
     std::os::unix::fs::symlink(temp.path(), root.join("escape")).unwrap();

@@ -1,5 +1,5 @@
 use crate::domain::navigation::{NavigationReader, SourceOptions};
-use crate::persistence::database::absolute_path;
+use crate::paths::absolute_path;
 use anyhow::Result;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -68,11 +68,22 @@ pub fn excerpt_lines(node: &Value, lines: &[&str], options: &SourceOptions) -> V
             node["endLine"].as_u64().filter(|n| *n != 0).map_or(lines.len(), |n| n as usize),
         )
     };
-    let start = first.max(options.start_line.unwrap_or(first));
-    let stop = last.min(lines.len()).min(start.saturating_add(options.max_lines.saturating_sub(1)));
-    let excerpt = if start <= stop { lines[start - 1..stop].to_vec() } else { vec![] };
+    let start = requested_start(first, options.start_line.as_ref());
+    let index = start.as_u64().and_then(|value| usize::try_from(value).ok());
+    let end = last.min(lines.len());
+    let stop = index.map_or(end, |start| end.min(start.saturating_add(options.max_lines.saturating_sub(1))));
+    let excerpt = index.filter(|start| *start <= stop).map_or_else(Vec::new, |start| lines[start - 1..stop].to_vec());
     json!({"status": "ok", "path": node["path"], "startLine": start, "endLine": stop,
         "lines": excerpt, "truncated": stop < last, "nextStartLine": if stop < last { Some(stop + 1) } else { None }})
+}
+fn requested_start(first: usize, requested: Option<&serde_json::Number>) -> serde_json::Number {
+    let Some(number) = requested else {
+        return first.into();
+    };
+    if number.to_string().starts_with('-') || number.as_u64().is_some_and(|value| value < first as u64) {
+        return first.into();
+    }
+    number.clone()
 }
 pub fn local_bytes(root: &str, relative: &str) -> (&'static str, Vec<u8>) {
     let relative = Path::new(relative);

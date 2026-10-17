@@ -207,7 +207,7 @@ impl NavigationReader for GraphReader {
                 .filter(graph_nodes::parent_key.eq(key))
                 .order((graph_nodes::ordinal, graph_nodes::node_key))
                 .limit(limit as i64)
-                .offset(offset as i64)
+                .offset(i64::try_from(offset).map_err(|_| error("Python int too large to convert to SQLite INTEGER"))?)
                 .load(&mut self.connection)?,
         ))
     }

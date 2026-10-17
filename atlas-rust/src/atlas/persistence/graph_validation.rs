@@ -1,15 +1,7 @@
 use super::graph_metadata::optional_mapping;
+pub use crate::domain::models::SOURCE_METRIC_NAMES as METRIC_NAMES;
 use anyhow::{Result, ensure};
 use serde_json::Value;
-pub const METRIC_NAMES: [&str; 7] = [
-    "lineCount",
-    "parameterCount",
-    "baseCyclomaticComplexity",
-    "nestedCyclomaticComplexity",
-    "loopNestedComplexity",
-    "cyclomaticComplexity",
-    "maxDecisionDepth",
-];
 pub fn collection<'a>(value: &'a Value, name: &str) -> &'a [Value] {
     value[name].as_array().map(Vec::as_slice).unwrap_or(&[])
 }

@@ -52,6 +52,17 @@ fn rust_macro_payload_offsets_and_shadowing() -> Result<()> {
 }
 
 #[test]
+fn indexed_call_lines_cover_blank_lines_nested_calls_and_macro_offsets() -> Result<()> {
+    let file = parse_file(source("python", "\nfirst()\n\nsecond(\n third()\n)\n"))?;
+    let lines: Vec<_> = file.calls.iter().map(|call| (call.name.as_str(), call.line)).collect();
+    assert_eq!(lines, [("first", 2), ("second", 4), ("third", 5)]);
+    let file = parse_file(source("rust", "fn main() {\n println!(\n \"{} {}\",\n helper(),\n nested!());\n}\n"))?;
+    let lines: Vec<_> = file.calls.iter().map(|call| (call.name.as_str(), call.line)).collect();
+    assert_eq!(lines, [("println!", 2), ("helper", 4), ("nested!", 5)]);
+    Ok(())
+}
+
+#[test]
 fn syntax_errors_and_invalid_utf8_preserve_hash_source() -> Result<()> {
     let file = parse_file(source("python", "def broken(:\n pass"))?;
     assert!(file.parse_error.unwrap().starts_with("Syntax error at line "));

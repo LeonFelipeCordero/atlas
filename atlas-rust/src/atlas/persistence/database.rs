@@ -2,9 +2,8 @@ use crate::domain::repositories::RepositoryError;
 use anyhow::{Context, Result};
 use diesel::{connection::SimpleConnection, prelude::*, sql_types::Text};
 use std::{
-    collections::HashSet,
     env,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
 };
 
 const MIGRATIONS: &[(&str, &str)] = &[
@@ -20,41 +19,7 @@ struct Revision {
     version_num: String,
 }
 
-pub use super::home::expand_home;
-pub fn absolute_path(path: &Path) -> Result<PathBuf> {
-    let expanded = expand_home(path)?;
-    let absolute = if expanded.is_absolute() { expanded } else { env::current_dir()?.join(expanded) };
-    resolve_components(&absolute, &mut HashSet::new())
-}
-fn resolve_components(path: &Path, links: &mut HashSet<PathBuf>) -> Result<PathBuf> {
-    let mut resolved = PathBuf::new();
-    for part in path.components() {
-        match part {
-            Component::ParentDir => {
-                resolved.pop();
-            }
-            Component::CurDir => {}
-            other => {
-                resolved.push(other);
-                resolved = resolve_link(resolved, links)?;
-            }
-        }
-    }
-    Ok(resolved)
-}
-fn resolve_link(path: PathBuf, links: &mut HashSet<PathBuf>) -> Result<PathBuf> {
-    if !path.symlink_metadata().is_ok_and(|metadata| metadata.file_type().is_symlink()) {
-        return Ok(path);
-    }
-    if !links.insert(path.clone()) {
-        return Err(std::io::Error::from_raw_os_error(libc::ELOOP).into());
-    }
-    let target = std::fs::read_link(&path)?;
-    let absolute = if target.is_absolute() { target } else { path.parent().unwrap_or(Path::new("/")).join(target) };
-    let resolved = resolve_components(&absolute, links);
-    links.remove(&path);
-    resolved
-}
+pub use crate::paths::{absolute_path, expand_home};
 pub fn default_database_path() -> Result<PathBuf> {
     if let Some(path) = env::var_os("DATABASE_PATH").filter(|s| !s.is_empty()) {
         return expand_home(Path::new(&path));

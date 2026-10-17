@@ -1,6 +1,16 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+pub const SOURCE_METRIC_NAMES: [&str; 7] = [
+    "lineCount",
+    "parameterCount",
+    "baseCyclomaticComplexity",
+    "nestedCyclomaticComplexity",
+    "loopNestedComplexity",
+    "cyclomaticComplexity",
+    "maxDecisionDepth",
+];
+
 pub type GraphArtifact = serde_json::Value;
 pub type GraphNode = serde_json::Value;
 pub type GraphEdge = serde_json::Value;

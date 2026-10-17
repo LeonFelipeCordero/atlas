@@ -318,10 +318,8 @@ fn module_attribute(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &st
         return false;
     }
     let syntax = &ctx.syntax[&modules[0].source.path];
-    let assigned = syntax.bindings().into_iter().any(|(alias, scope, node)| {
-        alias == name
-            && Some(scope) == syntax.root()
-            && (node.kind() != "assignment" || field(node, &["right"]).is_some())
+    let assigned = syntax.bindings_named(name).into_iter().any(|(scope, node)| {
+        Some(scope) == syntax.root() && (node.kind() != "assignment" || field(node, &["right"]).is_some())
     });
     let excluded = if modules[0].source.path == request.file.source.path { request.position } else { None };
     assigned
@@ -420,12 +418,10 @@ pub fn implicit_receiver(resolver: &CallResolver, request: &ResolutionRequest<'_
     if parameters.and_then(|n| n.named_child(0)).is_none_or(|n| syntax.text(n) != "self") {
         return false;
     }
-    !syntax.bindings().into_iter().any(|(name, scope, declaration)| {
-        name == "self"
-            && scope.start_byte() <= request.call.start_byte
-            && request.call.start_byte < scope.end_byte()
-            && Some(declaration) != parameters
-    })
+    !syntax
+        .bindings_at("self", request.call.start_byte)
+        .into_iter()
+        .any(|(_, declaration)| Some(declaration) != parameters)
 }
 
 #[cfg(test)]

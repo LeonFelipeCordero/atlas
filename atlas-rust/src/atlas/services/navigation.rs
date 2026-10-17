@@ -65,14 +65,18 @@ impl NavigationService {
             &nodes,
         )
     }
-    pub fn children(&mut self, key: &str, limit: usize, offset: usize) -> Result<Value> {
+    pub fn children(&mut self, key: &str, limit: usize, offset: serde_json::Number) -> Result<Value> {
         let node = self.reader.node(key)?;
-        let mut rows = self.reader.children(key, limit + 1, offset)?;
+        let database_offset = offset
+            .as_i64()
+            .and_then(|value| usize::try_from(value).ok())
+            .ok_or_else(|| crate::domain::navigation::error("Python int too large to convert to SQLite INTEGER"))?;
+        let mut rows = self.reader.children(key, limit + 1, database_offset)?;
         let truncated = rows.len() > limit;
         rows.truncate(limit);
         let mut nodes = vec![node];
         nodes.extend(rows.clone());
-        self.response(json!({"nodes": rows, "truncated": truncated, "nextOffset": if truncated { Some(offset + limit) } else { None }}),
+        self.response(json!({"nodes": rows, "truncated": truncated, "nextOffset": if truncated { Some(database_offset + limit) } else { None }}),
             json!({"key": key, "limit": limit, "offset": offset}), &nodes)
     }
     pub fn context(&mut self, request: &TraversalRequest) -> Result<Value> {
@@ -94,18 +98,24 @@ impl NavigationService {
             .extend(route(&walk, &options.key, &request.target).as_object().unwrap().clone());
         self.response(payload, filters, &walk.nodes.into_values().collect::<Vec<_>>())
     }
-    pub fn source(&mut self, key: &str, max_lines: usize, start_line: Option<usize>) -> Result<Value> {
+    pub fn source(&mut self, key: &str, max_lines: usize, start_line: Option<serde_json::Number>) -> Result<Value> {
         let node = self.reader.node(key)?;
-        let excerpt = source_excerpt(self.reader.as_mut(), &node, &SourceOptions { max_lines, start_line })?;
+        let excerpt =
+            source_excerpt(self.reader.as_mut(), &node, &SourceOptions { max_lines, start_line: start_line.clone() })?;
         self.response(
             json!({"source": excerpt}),
             json!({"key": key, "maxLines": max_lines, "startLine": start_line}),
             &[node],
         )
     }
-    pub fn sources(&mut self, keys: &[String], max_lines: usize, start_line: Option<usize>) -> Result<Value> {
+    pub fn sources(
+        &mut self,
+        keys: &[String],
+        max_lines: usize,
+        start_line: Option<serde_json::Number>,
+    ) -> Result<Value> {
         let nodes = keys.iter().map(|k| self.reader.node(k)).collect::<Result<Vec<_>>>()?;
-        let options = SourceOptions { max_lines, start_line };
+        let options = SourceOptions { max_lines, start_line: start_line.clone() };
         let mut excerpts = vec![];
         for node in &nodes {
             let mut value = json!({"stableKey": node["stableKey"]});

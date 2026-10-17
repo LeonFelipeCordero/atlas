@@ -59,6 +59,7 @@ def navigation_cases(root: Path, keys: tuple[str, str, str, str], revision: str)
     result = [Case(f"graph.{arguments[0]}.default.{index}", prefix + arguments) for index, arguments in enumerate(queries)]
     result.extend(traversal_cases((prefix, first, second)))
     result.extend(source_cases((prefix, first, second)))
+    result.extend(numeric_cases((prefix, file, first)))
     result.extend([Case("graph.source.default", prefix + ("source", first)),
                    Case("graph.source.unavailable", prefix + ("source", "external:missing"), valid=False),
                    Case("graph.project.cwd", ("graph", "overview")),
@@ -69,6 +70,21 @@ def navigation_cases(root: Path, keys: tuple[str, str, str, str], revision: str)
                    Case("graph.group.terminator", prefix + ("--", "overview")),
                    Case("graph.group.root.terminator", ("--", "graph", "--", "overview")),
                    Case("graph.find.literal.help", prefix + ("find", "--", "--help"))])
+    return result
+
+
+def numeric_cases(selection: tuple) -> list[Case]:
+    prefix, file, first = selection
+    huge = "1" + "0" * 99
+    result = [Case("graph.numeric.find.decimal", prefix + ("find", first, "--limit", " 1_0 ")),
+              Case("graph.numeric.find.math", prefix + ("find", first, "--limit", "𝟙𝟘")),
+              Case("graph.numeric.children.decimal", prefix + ("children", file, "--offset", "١_٠")),
+              Case("graph.numeric.context.fullwidth", prefix + ("context", first, "--depth", "２")),
+              Case("graph.numeric.source.huge.json", prefix + ("source", first, "--start-line", huge, "--format", "json")),
+              Case("graph.numeric.source.huge.text", prefix + ("source", first, "--start-line", huge, "--format", "text"))]
+    invalid = [("double-underscore", "1__0"), ("non-decimal", "²"), ("hexadecimal", "0x10"), ("overflow", "9" * 100)]
+    result.extend(Case(f"graph.numeric.invalid.limit.{name}", prefix + ("find", first, "--limit", value), valid=False)
+                  for name, value in invalid)
     return result
 
 

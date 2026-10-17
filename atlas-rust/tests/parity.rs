@@ -1,4 +1,5 @@
 //! Strict Python snapshots. No Python process or snapshot update path exists here.
+mod support;
 use atlas::{
     indexer,
     metrics::{check, config, report},
@@ -7,22 +8,14 @@ use serde_json::{Value, json};
 use std::{
     collections::BTreeSet,
     fs,
-    path::{Path, PathBuf},
+    path::Path,
     process::{Child, Command, ExitStatus, Output, Stdio},
     thread,
     time::{Duration, Instant},
 };
+use support::{assert_json, fixtures, snapshot};
 
 const LANGUAGES: &[&str] = &["java", "kotlin", "go", "rust", "javascript", "typescript", "elixir", "python", "tsx"];
-
-fn fixtures() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/code_samples").canonicalize().unwrap()
-}
-
-fn snapshot(relative: &str) -> Value {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots").join(relative);
-    serde_json::from_slice(&fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap()
-}
 
 fn graph(language: &str) -> Value {
     snapshot(&format!("coffee/{language}/graph.json"))
@@ -30,25 +23,6 @@ fn graph(language: &str) -> Value {
 
 fn cli_snapshot(language: &str, action: &str, format: &str) -> Value {
     snapshot(&format!("coffee/{language}/cli.json"))[format!("{action}-{format}")].clone()
-}
-
-fn assert_json(actual: &Value, expected: &Value, pointer: &str) {
-    match (actual, expected) {
-        (Value::Object(a), Value::Object(e)) => {
-            assert_eq!(a.keys().collect::<BTreeSet<_>>(), e.keys().collect::<BTreeSet<_>>(), "keys at {pointer}");
-            for (key, value) in e {
-                let escaped = key.replace('~', "~0").replace('/', "~1");
-                assert_json(&a[key], value, &format!("{pointer}/{escaped}"));
-            }
-        }
-        (Value::Array(a), Value::Array(e)) => {
-            assert_eq!(a.len(), e.len(), "array length at {pointer}");
-            for (index, (a, e)) in a.iter().zip(e).enumerate() {
-                assert_json(a, e, &format!("{pointer}/{index}"));
-            }
-        }
-        _ => assert_eq!(actual, expected, "value at {pointer}"),
-    }
 }
 
 fn artifact_snapshot(language: &str) {
@@ -123,6 +97,7 @@ fn cli_snapshots(language: &str) {
     let temp = tempfile::tempdir().unwrap();
     let database = temp.path().join("absent/atlas.sqlite");
     let root = fixtures().join(language);
+    let mut outputs = serde_json::Map::new();
     for (action, format) in [("report", "json"), ("report", "markdown"), ("check", "json"), ("check", "markdown")] {
         let result = invoke(&root, &database, &[action, "--folder", root.to_str().unwrap(), "--format", format]);
         let expected = cli_snapshot(language, action, format);
@@ -132,15 +107,15 @@ fn cli_snapshots(language: &str) {
             "{action}-{format}: {}",
             String::from_utf8_lossy(&result.stderr)
         );
-        assert_eq!(String::from_utf8_lossy(&result.stderr), expected["stderr"].as_str().unwrap());
         let stdout = String::from_utf8(result.stdout).unwrap();
-        if format == "json" {
-            assert_json(&serde_json::from_str::<Value>(&stdout).unwrap(), &expected["output"], "");
-        } else {
-            assert_eq!(stdout, expected["output"].as_str().unwrap());
-        }
+        let output = if format == "json" { serde_json::from_str::<Value>(&stdout).unwrap() } else { json!(stdout) };
+        let record = json!({"exit_code": result.status.code(), "output": output, "stderr": String::from_utf8(result.stderr).unwrap()});
+        let label = format!("{action}-{format}");
+        assert_json(&record, &expected, &format!("/{label}"));
+        outputs.insert(label, record);
         assert!(!database.exists(), "read-only analysis created a database");
     }
+    assert_json(&outputs.into(), &snapshot(&format!("coffee/{language}/cli.json")), "");
 }
 
 fn copy_tree(source: &Path, target: &Path) {

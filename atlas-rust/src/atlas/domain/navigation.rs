@@ -51,7 +51,7 @@ pub struct PathRequest {
 #[derive(Clone, Debug)]
 pub struct SourceOptions {
     pub max_lines: usize,
-    pub start_line: Option<usize>,
+    pub start_line: Option<serde_json::Number>,
 }
 
 pub trait NavigationReader {

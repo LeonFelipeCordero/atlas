@@ -68,9 +68,8 @@ impl ReceiverInference<'_> {
         if name.is_empty() || name.contains('.') || name.contains("::") {
             return None;
         }
-        let bindings = self.bindings(&request.file.source.path);
-        let candidates: Vec<_> =
-            bindings.iter().filter(|b| b.name == name && self.visible(syntax, b, request)).collect();
+        let bindings = self.bindings_at(&request.file.source.path, name, request.call.start_byte);
+        let candidates: Vec<_> = bindings.iter().filter(|b| self.visible(syntax, b, request)).collect();
         if candidates.is_empty() {
             return None;
         }
@@ -261,16 +260,8 @@ impl ReceiverInference<'_> {
             return Some(vec![]);
         }
         let parent = &types[0];
-        let entries = self.bindings(&parent.file_path);
-        let bindings: Vec<_> = entries
-            .iter()
-            .filter(|b| {
-                b.member
-                    && b.name == name
-                    && parent.start_byte <= b.node.start_byte()
-                    && b.node.start_byte() < parent.end_byte
-            })
-            .collect();
+        let entries = self.bindings_within(&parent.file_path, name, (parent.start_byte, parent.end_byte));
+        let bindings: Vec<_> = entries.iter().filter(|binding| binding.member).collect();
         if bindings.len() != 1 {
             return Some(vec![]);
         }
@@ -307,11 +298,8 @@ impl ReceiverInference<'_> {
     }
 
     fn shadowed(&self, syntax: &Syntax, binding: &ReceiverBinding<'_>, position: usize) -> bool {
-        syntax.bindings().into_iter().any(|(name, scope, node)| {
-            name == binding.name
-                && scope.start_byte() <= position
-                && position < scope.end_byte()
-                && scope.end_byte() - scope.start_byte() <= binding.scope.end_byte() - binding.scope.start_byte()
+        syntax.bindings_at(&binding.name, position).into_iter().any(|(scope, node)| {
+            scope.end_byte() - scope.start_byte() <= binding.scope.end_byte() - binding.scope.start_byte()
                 && !(node.start_byte() <= binding.node.start_byte() && binding.node.start_byte() < node.end_byte())
                 && !syntax.adapter.assignments().contains(node.kind())
         })

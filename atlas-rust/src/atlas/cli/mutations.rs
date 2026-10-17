@@ -17,7 +17,7 @@ fn output(options: &Options) -> Result<Value> {
     if options.has("--rules") {
         return Ok(json!({"rules": &*REGISTRY}));
     }
-    let root = crate::persistence::database::absolute_path(Path::new(options.get("--folder", ".")))?;
+    let root = crate::paths::absolute_path(Path::new(options.get("--folder", ".")))?;
     let project = crate::metrics::config::load_project_config(&root)?;
     let config = config::from_project(&project)?;
     let report = if options.has("--saved") {

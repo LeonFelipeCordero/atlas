@@ -63,7 +63,7 @@ def validate_paths(args, roots: list[Path]) -> None:
 
 
 def prepare_output(args) -> None:
-    args.output.mkdir(parents=True, exist_ok=True)
+    args.output.mkdir(mode=0o700, parents=True, exist_ok=True)
     if (args.output / "metadata.json").exists():
         parser().error("Output already contains a run; choose a new directory")
     if args.inventory:

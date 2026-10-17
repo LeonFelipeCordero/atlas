@@ -15,8 +15,24 @@ pub struct ReceiverTypes {
 struct FileBindings {
     syntax: Syntax,
     entries: OnceLock<Vec<StoredReceiverBinding>>,
+    names: OnceLock<BTreeMap<String, Vec<usize>>>,
 }
 impl FileBindings {
+    fn named(&self, name: &str) -> impl Iterator<Item = &StoredReceiverBinding> {
+        let entries = self.entries();
+        self.names
+            .get_or_init(|| {
+                let mut names: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+                for (index, binding) in entries.iter().enumerate() {
+                    names.entry(binding.name.clone()).or_default().push(index);
+                }
+                names
+            })
+            .get(name)
+            .into_iter()
+            .flatten()
+            .map(move |index| &entries[*index])
+    }
     fn entries(&self) -> &Vec<StoredReceiverBinding> {
         self.entries.get_or_init(|| {
             self.syntax
@@ -35,6 +51,8 @@ struct StoredReceiverBinding {
     annotation: Option<String>,
     scope: NodeRef,
     node: NodeRef,
+    scope_span: (usize, usize),
+    node_start: usize,
     inferred: bool,
     member: bool,
     static_: bool,
@@ -47,6 +65,8 @@ impl StoredReceiverBinding {
             annotation: binding.annotation,
             scope: syntax.reference(binding.scope),
             node: syntax.reference(binding.node),
+            scope_span: (binding.scope.start_byte(), binding.scope.end_byte()),
+            node_start: binding.node.start_byte(),
             inferred: binding.inferred,
             member: binding.member,
             static_: binding.static_,
@@ -65,18 +85,56 @@ impl StoredReceiverBinding {
         })
     }
 }
+fn restore_bindings<'tree, 'stored>(
+    syntax: &'tree Syntax,
+    bindings: impl Iterator<Item = &'stored StoredReceiverBinding>,
+) -> Vec<ReceiverBinding<'tree>> {
+    bindings
+        .map(|binding| binding.restore(syntax).expect("Receiver index must use the syntax trees it was built from"))
+        .collect()
+}
 
 impl ReceiverTypes {
     pub fn new(syntax: &BTreeMap<String, Syntax>) -> Self {
         let bindings = syntax
             .iter()
             .map(|(path, syntax)| {
-                (path.clone(), Arc::new(FileBindings { syntax: syntax.clone(), entries: OnceLock::new() }))
+                (
+                    path.clone(),
+                    Arc::new(FileBindings { syntax: syntax.clone(), entries: OnceLock::new(), names: OnceLock::new() }),
+                )
             })
             .collect();
         Self { bindings }
     }
 
+    pub(super) fn bindings_at<'tree>(
+        &self,
+        syntax: &'tree Syntax,
+        name: &str,
+        position: usize,
+    ) -> Vec<ReceiverBinding<'tree>> {
+        restore_bindings(
+            syntax,
+            self.bindings[&syntax.file.source.path]
+                .named(name)
+                .filter(|binding| binding.scope_span.0 <= position && position < binding.scope_span.1),
+        )
+    }
+    pub(super) fn bindings_within<'tree>(
+        &self,
+        syntax: &'tree Syntax,
+        name: &str,
+        span: (usize, usize),
+    ) -> Vec<ReceiverBinding<'tree>> {
+        restore_bindings(
+            syntax,
+            self.bindings[&syntax.file.source.path]
+                .named(name)
+                .filter(|binding| span.0 <= binding.node_start && binding.node_start < span.1),
+        )
+    }
+    #[cfg(test)]
     pub(super) fn bindings_for<'tree>(&self, syntax: &'tree Syntax) -> Vec<ReceiverBinding<'tree>> {
         self.bindings[&syntax.file.source.path]
             .entries()

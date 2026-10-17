@@ -16,7 +16,7 @@ pub enum Operation {
     Overview,
     Find(String, usize),
     Show(String),
-    Children(String, usize, usize),
+    Children(String, usize, serde_json::Number),
     Context(TraversalRequest),
     Path(PathRequest),
     Source(Vec<String>, SourceOptions),
@@ -39,11 +39,9 @@ impl Operation {
             "overview" => Self::Overview,
             "find" => Self::Find(key, options.number("--limit", 10, (1, 100))?),
             "show" => Self::Show(key),
-            "children" => Self::Children(
-                key,
-                options.number("--limit", 30, (1, 100))?,
-                options.number("--offset", 0, (0, usize::MAX))?,
-            ),
+            "children" => {
+                Self::Children(key, options.number("--limit", 30, (1, 100))?, options.integer("--offset", 0, 0)?)
+            }
             "context" => Self::Context(traversal_request(command, &options, &key)?),
             "path" => Self::Path(PathRequest {
                 target: options.positional[1].clone(),
@@ -67,19 +65,15 @@ impl Operation {
 }
 fn source(service: &mut NavigationService, keys: &[String], options: &SourceOptions) -> Result<Value> {
     if keys.len() == 1 {
-        service.source(&keys[0], options.max_lines, options.start_line)
+        service.source(&keys[0], options.max_lines, options.start_line.clone())
     } else {
-        service.sources(keys, options.max_lines, options.start_line)
+        service.sources(keys, options.max_lines, options.start_line.clone())
     }
 }
 fn source_options(options: &Options) -> Result<SourceOptions> {
     Ok(SourceOptions {
         max_lines: options.number("--max-lines", 80, (1, 500))?,
-        start_line: if options.has("--start-line") {
-            Some(options.number("--start-line", 1, (1, usize::MAX))?)
-        } else {
-            None
-        },
+        start_line: if options.has("--start-line") { Some(options.integer("--start-line", 1, 1)?) } else { None },
     })
 }
 fn flags(command: &str) -> &'static [&'static str] {

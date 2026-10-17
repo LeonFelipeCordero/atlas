@@ -146,6 +146,30 @@ fn cached_bindings_restore_exact_nodes_across_syntax_clones() {
 }
 
 #[test]
+fn named_receiver_lookup_preserves_full_index_order_and_scope_boundaries() {
+    let source =
+        (0..500).map(|index| format!("function f{index}(input: Thing) {{ input.run(); }}\n")).collect::<String>();
+    let syntax = syntax("typescript", &source);
+    let index = ReceiverTypes::new(&[(syntax.file.source.path.clone(), syntax.clone())].into());
+    let all = index.bindings_for(&syntax);
+    let position = source.rfind("input.run").unwrap();
+    let expected: Vec<_> = all
+        .iter()
+        .filter(|binding| {
+            binding.name == "input" && binding.scope.start_byte() <= position && position < binding.scope.end_byte()
+        })
+        .collect();
+    let selected = index.bindings_at(&syntax, "input", position);
+    assert_eq!(selected.len(), 1);
+    assert_eq!(expected.len(), selected.len());
+    assert_eq!(selected[0].annotation, expected[0].annotation);
+    assert_eq!(selected[0].scope, expected[0].scope);
+    assert_eq!(selected[0].node, expected[0].node);
+    assert!(index.bindings_at(&syntax, "input", source.len()).is_empty());
+    assert!(index.bindings_at(&syntax, "missing", position).is_empty());
+}
+
+#[test]
 fn type_names_strip_only_supported_wrappers() {
     let syntax = syntax("rust", "fn f(a: &'a pkg::Thing<T>, b: (A, B), c: &mut Thing) {}\n");
     let parameters: Vec<_> = syntax.nodes().into_iter().filter(|n| n.kind() == "parameter").collect();

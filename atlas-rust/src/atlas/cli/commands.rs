@@ -1,5 +1,5 @@
 use super::options::{Options, UsageError, json_dump, usage};
-use crate::{persistence::database::absolute_path, services::repositories::analyze_folder};
+use crate::{paths::absolute_path, services::repositories::analyze_folder};
 use anyhow::Result;
 use serde_json::json;
 use std::path::Path;

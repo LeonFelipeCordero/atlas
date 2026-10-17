@@ -60,6 +60,19 @@ class ComparisonTests(unittest.TestCase):
         self.assertTrue(Run(argparse.Namespace(actions=["graph.source.*"])).selected(Case("graph.source.one", ())))
         self.assertEqual(len([item for item in definitions() if item[0].startswith("invalid")]), 8)
 
+    def test_numeric_regressions_stay_in_matrix(self):
+        cases = navigation_cases(Path("/sample"), ("r", "f", "a", "b"), "revision")
+        actual = {case.name: case for case in cases}
+        expected = {"graph.numeric.find.decimal", "graph.numeric.find.math", "graph.numeric.children.decimal",
+                    "graph.numeric.context.fullwidth", "graph.numeric.source.huge.json", "graph.numeric.source.huge.text",
+                    "graph.numeric.invalid.limit.double-underscore", "graph.numeric.invalid.limit.non-decimal",
+                    "graph.numeric.invalid.limit.hexadecimal", "graph.numeric.invalid.limit.overflow"}
+        self.assertTrue(expected <= actual.keys())
+        self.assertEqual(actual["graph.numeric.find.decimal"].args[-1], " 1_0 ")
+        self.assertEqual(actual["graph.numeric.children.decimal"].args[-1], "١_٠")
+        self.assertEqual(len(actual["graph.numeric.source.huge.json"].args[-3]), 100)
+        self.assertFalse(any(actual[name].valid for name in expected if ".invalid." in name))
+
     def test_option_regressions_stay_in_matrix(self):
         root = Path("/sample")
         cases = analysis_cases(root) + navigation_cases(root, ("r", "f", "a", "b"), "revision") + usage_cases()
