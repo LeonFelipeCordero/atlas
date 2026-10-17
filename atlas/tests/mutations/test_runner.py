@@ -5,7 +5,9 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
+from textwrap import dedent
 from unittest.mock import patch
 
 import pytest
@@ -30,8 +32,8 @@ def project(tmp_path):
 
 
 def config(script, **overrides):
-    return MutationConfig(targets={"unit": MutationTarget(
-        sources=["source.py"], command=[sys.executable, "-c", script], **overrides)})
+    return MutationConfig(targets={"unit": MutationTarget.model_validate({
+        "sources": ["source.py"], "command": [sys.executable, "-c", script], **overrides})})
 
 
 def results(root):
@@ -41,7 +43,7 @@ def results(root):
 @pytest.mark.parametrize("exit_code,outcome", [(0, "survived"), (1, "killed"), (5, "killed")])
 def test_each_mutation_is_independent_and_captures_logs(project, exit_code, outcome):
     root, path, original, manifests = project
-    script = f"from pathlib import Path; import sys; print(Path('source.py').read_text()); sys.exit({exit_code})"
+    script = f"from pathlib import Path; import sys; sys.stdout.buffer.write(Path('source.py').read_bytes()); sys.exit({exit_code})"
     counts = MutationRunner(root, config(script)).run(manifests, root / "results.jsonl")
     assert counts == {outcome: 2}
     assert path.read_bytes() == original
@@ -49,9 +51,74 @@ def test_each_mutation_is_independent_and_captures_logs(project, exit_code, outc
         assert result["manifestId"] == manifest.id
         execution = result["targets"][0]
         assert execution["exitCode"] == exit_code
-        assert manifest.replacement in Path(execution["log"]).read_text()
+        start, end = manifest.span.startByte, manifest.span.endByte
+        expected = original[:start] + manifest.replacement.encode() + original[end:]
+        assert Path(execution["log"]).read_bytes() == expected
         assert execution["durationSeconds"] >= 0
-    assert len(results(root)) == 2  # No unchanged baseline execution.
+    assert len(results(root)) == 2
+
+
+def test_results_are_flushed_before_the_next_command(project):
+    root, path, original, manifests = project
+    script = dedent("""
+        from pathlib import Path
+        calls = Path('invocations')
+        if calls.exists():
+            Path('observed.jsonl').write_bytes(Path('results.jsonl').read_bytes())
+        with calls.open('a') as stream:
+            stream.write('executed\\n')
+    """)
+
+    counts = MutationRunner(root, config(script)).run(manifests, root / "results.jsonl")
+
+    observed = json.loads((root / "observed.jsonl").read_text())
+    assert observed["manifestId"] == manifests[0].id
+    assert observed["outcome"] == "survived"
+    assert counts == {"survived": 2}
+    assert (root / "invocations").read_text().splitlines() == ["executed", "executed"]
+    assert path.read_bytes() == original
+
+
+def test_command_runs_from_configured_working_directory(project):
+    root, path, original, manifests = project
+    directory = root / "tests"
+    directory.mkdir()
+    script = "from pathlib import Path; assert Path('../source.py').is_file(); Path('executed').write_text('done')"
+
+    counts = MutationRunner(root, config(script, cwd="tests")).run(manifests[:1], root / "results.jsonl")
+
+    assert counts == {"survived": 1}
+    assert (directory / "executed").read_text() == "done"
+    assert not (root / "executed").exists()
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("case", [
+    ("survived", "error", "error"),
+    ("survived", "timeout", "timeout"),
+    ("timeout", "error", "error"),
+    ("killed", "error", "killed"),
+    ("timeout", "killed", "killed"),
+])
+def test_mixed_target_outcomes(project, case):
+    first, second, expected = case
+    root, path, original, manifests = project
+    commands = {
+        "survived": [sys.executable, "-c", "pass"],
+        "killed": [sys.executable, "-c", "raise SystemExit(1)"],
+        "timeout": [sys.executable, "-c", "import time; time.sleep(60)"],
+        "error": [str(root / "missing-command")],
+    }
+    settings = config("", command=commands[first], timeoutSeconds=1)
+    settings.targets["other"] = MutationTarget(sources=["source.py"], command=commands[second], timeoutSeconds=1)
+
+    counts = MutationRunner(root, settings).run(manifests[:1], root / "results.jsonl")
+
+    record = results(root)[0]
+    assert counts == {expected: 1}
+    assert record["outcome"] == expected
+    assert [target["outcome"] for target in record["targets"]] == [first, second]
+    assert path.read_bytes() == original
 
 
 def test_unmapped_source_is_not_modified(project):
@@ -176,12 +243,37 @@ def test_sigterm_restores_source(project):
 @pytest.mark.skipif(os.name != "posix", reason="POSIX process groups")
 def test_timeout_kills_children(project):
     root, path, original, manifests = project
-    child = "import time; from pathlib import Path; time.sleep(2); Path('leaked').touch()"
+    child = "import os, time; from pathlib import Path; Path('child.pid').write_text(str(os.getpid())); time.sleep(60)"
     script = f"import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(60)"
-    MutationRunner(root, config(script, timeoutSeconds=1)).run(manifests[:1], root / "results.jsonl")
-    subprocess.run([sys.executable, "-c", "import time; time.sleep(2)"], check=True)
-    assert not (root / "leaked").exists()
-    assert path.read_bytes() == original
+    try:
+        counts = MutationRunner(root, config(script, timeoutSeconds=5)).run(manifests[:1], root / "results.jsonl")
+        pid = int((root / "child.pid").read_text())  # Readiness proves the child actually started.
+        assert counts == {"timeout": 1}
+        _assert_process_stopped(pid)
+        assert path.read_bytes() == original
+    finally:
+        _clean_up_child(root / "child.pid")
+
+
+def _assert_process_stopped(pid):
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        probe = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True, check=False)
+        assert probe.returncode in (0, 1), probe.stderr
+        assert not probe.stderr
+        state = probe.stdout.strip()
+        if not state or state.startswith("Z"):
+            return  # A zombie has stopped executing but has not been reaped yet.
+        time.sleep(0.01)
+    pytest.fail(f"Child process {pid} is still running")
+
+
+def _clean_up_child(pid_file):
+    if pid_file.exists():
+        try:
+            os.kill(int(pid_file.read_text()), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 def test_restoration_failure_aborts_before_the_next_mutation(project):

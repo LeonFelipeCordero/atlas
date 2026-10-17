@@ -2,24 +2,39 @@
 
 import json
 import sys
+from contextlib import nullcontext
 from pathlib import Path
+from textwrap import dedent
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
 
 from atlas.cli import main
+from atlas.persistence.database import migrate_database
 
 
 @pytest.fixture
-def project(tmp_path):
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src/example.py").write_text("value = 1 < 2\n")
-    settings = {"mutations": {
-        "rules": ["comparison.less-to-less-equal"],
-        "targets": {"unit": {"sources": ["src/**"], "command": [sys.executable, "-c", "print('tested')"]}},
-    }}
-    (tmp_path / "atlas.json").write_text(json.dumps(settings))
-    return tmp_path
+def project_factory(tmp_path):
+    def create(rule="comparison.less-to-less-equal", command=None):
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src/example.py").write_text("value = 1 < 2\n")
+        settings = {"mutations": {
+            "rules": [rule],
+            "targets": {"unit": {
+                "sources": ["src/**"],
+                "command": command if command is not None else [sys.executable, "-c", "print('tested')"],
+            }},
+        }}
+        (tmp_path / "atlas.json").write_text(json.dumps(settings))
+        return tmp_path
+
+    return create
+
+
+@pytest.fixture
+def project(project_factory):
+    return project_factory()
 
 
 @pytest.mark.parametrize("args", [
@@ -37,6 +52,47 @@ def test_run_accepts_project_folder_and_writes_results(project, args):
     assert record["path"] == "src/example.py"
     assert Path(record["targets"][0]["log"]).read_text() == "tested\n"
     assert (project / "src/example.py").read_text() == "value = 1 < 2\n"
+
+
+@pytest.mark.parametrize("saved", [False, True], ids=["fresh", "saved"])
+def test_run_kills_mutation_with_real_tests(project_factory, monkeypatch, saved):
+    root = project_factory(rule="comparison.less-to-greater", command=[sys.executable, "-m", "pytest", "-q", "tests"])
+    tests = root / "tests"
+    tests.mkdir()
+    (tests / "test_example.py").write_text(dedent("""
+        from pathlib import Path
+        import runpy
+
+        def test_comparison():
+            module = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'src/example.py'))
+            assert module['value'] is True
+    """))
+    source = root / "src/example.py"
+    original = source.read_bytes()
+    runner = CliRunner()
+    if saved:
+        database = root / "atlas.sqlite"
+        monkeypatch.setenv("DATABASE_PATH", str(database))
+        migrate_database(database)
+        indexed = runner.invoke(main, ["index", "--folder", str(root)])
+        assert indexed.exit_code == 0, indexed.output
+    command = ["mutations", "--folder", str(root), *(["--saved"] if saved else []), "run"]
+    no_refresh = patch("atlas.services.repositories.analyze_folder", side_effect=AssertionError("Saved mode must not reanalyze"))
+
+    with no_refresh if saved else nullcontext():
+        result = runner.invoke(main, command)
+
+    assert result.exit_code == 0, result.output
+    summary = json.loads(result.stdout)
+    assert summary["counts"] == {"killed": 1}
+    record = json.loads(Path(summary["output"]).read_text())
+    execution = record["targets"][0]
+    assert record["outcome"] == "killed"
+    assert execution["exitCode"] == 1
+    log = Path(execution["log"]).read_text()
+    assert "FAILED tests/test_example.py::test_comparison" in log
+    assert "assert False is True" in log
+    assert source.read_bytes() == original
 
 
 def test_run_requires_targets_before_analysis(tmp_path):
