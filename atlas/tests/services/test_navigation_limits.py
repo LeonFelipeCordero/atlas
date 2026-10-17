@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from atlas.domain.navigation import TraversalRequest
 from atlas.domain.repositories import RepositoryError
 from atlas.services.factories import navigation_service, repository_service
 from tests.services.test_navigation import artifact, BREW, FILE
@@ -106,3 +107,28 @@ def test_search_ranks_exact_matches_before_substrings(database: Path, tmp_path: 
         rows = navigation.find("needle", limit=6)
     assert [node["stableKey"] for node in rows["nodes"]] == ["needle", "path-file", "path-symbol", "name", "qualified", "substring"]
     assert rows["truncated"] is False
+
+
+def test_search_prefers_local_nodes_over_external_ties(database: Path, tmp_path: Path) -> None:
+    nodes = [
+        {"stableKey": key, "type": kind, "level": level, "kind": kind, "name": "needle"}
+        for key, level, kind in [("a-external", "external", "external"), ("z-local", "callable", "function")]
+    ]
+    with repository_service(database) as repositories:
+        indexed = repositories.save_folder(tmp_path, {"nodes": nodes, "edges": []})
+    with navigation_service(indexed.repositoryId, path=database) as navigation:
+        result = navigation.find("needle", limit=2)
+    assert [node["stableKey"] for node in result["nodes"]] == ["z-local", "a-external"]
+    assert result["truncated"] is False
+
+
+def test_empty_adjacency_does_not_exhaust_zero_edge_budget(database: Path, tmp_path: Path) -> None:
+    payload = artifact(tmp_path)
+    payload["edges"] = []
+    with repository_service(database) as repositories:
+        indexed = repositories.save_folder(tmp_path, payload)
+    with navigation_service(indexed.repositoryId, path=database) as navigation:
+        result = navigation.context(TraversalRequest(BREW, "out", ["CALLS"], 10, 1, 0))
+    assert [node["stableKey"] for node in result["nodes"]] == [BREW]
+    assert result["edges"] == result["boundaries"] == []
+    assert result["truncated"] is False
