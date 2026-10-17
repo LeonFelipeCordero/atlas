@@ -131,6 +131,6 @@ edits are emitted. Nested candidates stay independent. Manifests are alternative
 against the original file, never a composed patch or an instruction to apply them
 sequentially.
 
-Phase three is deliberately absent: no applying/restoring source, isolated execution
-workspace, target build/test configuration, baselines, outcomes/classification,
-agent decisions or dashboard UI.
+Manifest inspection remains read-only. For opt-in execution with explicit test
+targets, see [Autonomous mutation execution](MUTATION_RUNNER.md). The runner does
+not create a workspace, run baselines, or require an AI agent or dashboard.
