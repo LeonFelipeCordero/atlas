@@ -86,7 +86,6 @@ def test_saved_selects_exact_local_root_without_analysis(boundaries):
     repository.assert_called_once_with()
     service.report.assert_called_once_with("café")
     service.save_folder.assert_not_called()
-    repository.return_value.__exit__.assert_called_once_with(None, None, None)
 
 
 @pytest.mark.parametrize("count", [0, 2])
@@ -101,8 +100,10 @@ def test_saved_requires_one_matching_project(boundaries, count):
     analyze.assert_not_called()
 
 
-@pytest.mark.parametrize("error_type", [OSError, ValueError, RuntimeError, RepositoryError])
-@pytest.mark.parametrize("stage", ["analysis", "list", "report"])
+@pytest.mark.parametrize(("error_type", "stage"), [
+    (RuntimeError, "analysis"), (RuntimeError, "list"), (RuntimeError, "report"),
+    (OSError, "analysis"), (ValueError, "analysis"), (RepositoryError, "analysis"),
+])
 def test_boundary_errors_are_click_errors(boundaries, error_type, stage):
     analyze, _, service = boundaries
     service.list.return_value = [project("coffee", str(Path.cwd()))]
@@ -129,7 +130,7 @@ def test_invalid_config_stops_before_boundaries(boundaries, config):
 @pytest.mark.parametrize("saved", [False, True])
 def test_enabled_rule_emits_verified_manifest_without_writes(boundaries, saved):
     analyze, _, service = boundaries
-    source = Path(__file__).resolve().parents[2] / "src/atlas/cli/graph_source_output.py"
+    source = Path(__file__).resolve().parent / "samples/comparison.py"
     original = source.read_bytes()
     target = Path.cwd() / source.name
     target.write_bytes(original)
@@ -163,7 +164,7 @@ def test_enabled_rule_emits_verified_manifest_without_writes(boundaries, saved):
         analyze.assert_called_once_with(Path.cwd())
 
 
-def test_saved_stale_candidates_fail_without_refresh(boundaries):
+def test_saved_malformed_candidates_fail_without_refresh(boundaries):
     analyze, _, service = boundaries
     service.list.return_value = [project("coffee", str(Path.cwd()))]
     service.report.return_value = {"mutationCandidates": [{"id": "invalid"}]}

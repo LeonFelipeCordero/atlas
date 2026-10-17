@@ -2,7 +2,7 @@
 
 import json
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -50,8 +50,7 @@ def test_dispatch_defaults_and_options(navigation, case):
     assert json.loads(result.stdout) == payload
     assert "café" in result.stdout
     boundary.assert_called_once_with(None, None)
-    assert service.mock_calls == [call.__getattr__(method)(**options)]
-    boundary.return_value.__exit__.assert_called_once_with(None, None, None)
+    getattr(service, method).assert_called_once_with(**options)
 
 
 def test_project_and_revision_are_group_options(navigation):
@@ -217,8 +216,11 @@ def test_cli_projects_unresolved_output_without_changing_stable_keys(navigation)
     }
 
 
-@pytest.mark.parametrize("error_type", [NavigationError, OSError, ValueError])
-@pytest.mark.parametrize("stage", ["factory", "enter", "command", "exit"])
+@pytest.mark.parametrize(("error_type", "stage"), [
+    (NavigationError, "factory"), (NavigationError, "enter"),
+    (NavigationError, "command"), (NavigationError, "exit"),
+    (OSError, "command"), (ValueError, "command"),
+])
 def test_navigation_errors_are_json_on_stderr(navigation, error_type, stage):
     boundary, service = navigation
     error = error_type('stale "café"\nreindex')

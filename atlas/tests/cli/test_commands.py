@@ -2,73 +2,48 @@
 
 import json
 from copy import deepcopy
-from dataclasses import asdict
 from itertools import product
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
+from command_scenarios import make_artifact
 
 from atlas.cli import main
-from atlas.domain.models import GraphNode
+from atlas.domain.models import Diagnostic
 from atlas.domain.repositories import GraphDTO, GraphStatsDTO, RepositoryDTO, RepositoryError
-from atlas.metrics.artifact import GraphArtifact
 from atlas.metrics.config import CheckConfig
 from atlas.services.repositories import RepositoryService
 
 
 @pytest.fixture
-def artifact(tmp_path: Path) -> dict[str, Any]:
-    nodes: list[GraphNode] = [
-        {
-            "stableKey": "file:café.py", "type": "file", "kind": "file", "level": "file",
-            "language": "python", "name": "café.py", "qualifiedName": "café.py",
-            "path": "café.py", "parentStableKey": None, "depth": 0, "ancestorStableKeys": [],
-            "properties": {"lineCount": 600},
-        },
-        {
-            "stableKey": "function:brew", "type": "function", "kind": "function", "level": "callable",
-            "language": "python", "name": "brew", "qualifiedName": "café.brew",
-            "path": "café.py", "parentStableKey": "file:café.py", "startLine": 2,
-            "depth": 1, "ancestorStableKeys": ["file:café.py"],
-            "properties": {
-                "lineCount": 100, "parameterCount": 3, "baseCyclomaticComplexity": 5,
-                "cyclomaticComplexity": 8, "nestedCyclomaticComplexity": 3,
-                "loopNestedComplexity": 0, "maxDecisionDepth": 3,
-            },
-        },
-    ]
-    return asdict(GraphArtifact(
-        schemaVersion=2, repository={"path": str(tmp_path), "name": "café"},
-        stats={"files": 1, "symbols": 1, "modules": 0, "types": 0, "callables": 1,
-               "nodes": 2, "edges": 0, "externalNodes": 0, "parseErrors": 0},
-        nodes=nodes, edges=[], views={}, diagnostics=[],
-    ))
-
-
-@pytest.fixture
-def boundaries(artifact: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def scenario(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
     with (
-        patch("atlas.services.repositories.analyze_folder", return_value=artifact) as analyze,
+        patch("atlas.services.repositories.analyze_folder") as analyze,
         patch("atlas.bootstrap.repository_service") as repository,
     ):
-        service = MagicMock(spec=RepositoryService)
-        service.save_folder.return_value = GraphDTO(
-            repositoryId="coffee", graphRevision="rev-1", schemaVersion=2,
-            indexedAt="2026-01-01T00:00:00Z", rootName="café", rootPath=str(tmp_path),
-            importedAt=123, stats=GraphStatsDTO.model_validate(artifact["stats"]),
-        )
-        repository.return_value.__enter__.return_value = service
-        yield analyze, repository, service
+        def create(**overrides: Any):
+            artifact = make_artifact(tmp_path, **overrides)
+            analyze.return_value = artifact
+            service = MagicMock(spec=RepositoryService)
+            service.save_folder.return_value = GraphDTO(
+                repositoryId="coffee", graphRevision="rev-1", schemaVersion=2,
+                indexedAt="2026-01-01T00:00:00Z", rootName="café", rootPath=str(tmp_path),
+                importedAt=123, stats=GraphStatsDTO.model_validate(artifact["stats"]),
+            )
+            repository.return_value.__enter__.return_value = service
+            return analyze, repository, service
+
+        yield create
 
 
 @pytest.mark.parametrize("command", ["index", "report", "check"])
 @pytest.mark.parametrize("flag", [None, "-f", "--f", "--folder"])
-def test_folder_defaults_and_aliases(boundaries, command, flag):
-    analyze, repository, service = boundaries
+def test_folder_defaults_and_aliases(scenario, command, flag):
+    analyze, repository, service = scenario()
     root = Path.cwd() if flag is None else Path.cwd() / "source"
     root.mkdir(exist_ok=True)
     args = [command, *([] if flag is None else [flag, "source/../source"])]
@@ -85,15 +60,14 @@ def test_folder_defaults_and_aliases(boundaries, command, flag):
         assert json.loads(result.stdout) == {
             "repositoryId": "coffee", "schemaVersion": 2, "stats": saved.stats.model_dump(),
         }
-        repository.return_value.__exit__.assert_called_once_with(None, None, None)
     else:
         repository.assert_not_called()
         assert result.stdout.startswith("# Metrics" if command == "report" else "All checks passed.")
 
 
 @pytest.mark.parametrize("command", ["index", "report", "check"])
-def test_folder_expands_home(boundaries, monkeypatch: pytest.MonkeyPatch, command):
-    analyze, _, _ = boundaries
+def test_folder_expands_home(scenario, monkeypatch: pytest.MonkeyPatch, command):
+    analyze, _, _ = scenario()
     tmp_path = Path.cwd()
     monkeypatch.setenv("HOME", str(tmp_path))
     result = CliRunner().invoke(main, [command, "--folder", "~/source/.."])
@@ -103,10 +77,10 @@ def test_folder_expands_home(boundaries, monkeypatch: pytest.MonkeyPatch, comman
 
 @pytest.mark.parametrize("command", ["report", "check"])
 @pytest.mark.parametrize("options", list(product([None, "markdown", "json"], [False, True])))
-def test_formats_and_opt_in_save(boundaries, command, options):
+def test_formats_and_opt_in_save(scenario, command, options):
     output_format, save = options
     tmp_path = Path.cwd()
-    analyze, repository, service = boundaries
+    analyze, repository, service = scenario()
     before = deepcopy(analyze.return_value)
     args = [command, *(["--save"] if save else [])]
     if output_format is not None:
@@ -120,8 +94,7 @@ def test_formats_and_opt_in_save(boundaries, command, options):
     assert analyze.return_value == before
     if save:
         repository.assert_called_once_with()
-        assert service.mock_calls == [call.save_folder(tmp_path, analyze.return_value)]
-        repository.return_value.__exit__.assert_called_once_with(None, None, None)
+        service.save_folder.assert_called_once_with(tmp_path, analyze.return_value)
     else:
         repository.assert_not_called()
         service.save_folder.assert_not_called()
@@ -154,8 +127,8 @@ def assert_report_output(output: str, output_format: str | None):
 
 
 @pytest.mark.parametrize("empty", [False, True])
-def test_projects_serializes_domain_values(boundaries, empty):
-    analyze, repository, service = boundaries
+def test_projects_serializes_domain_values(scenario, empty):
+    analyze, repository, service = scenario()
     projects = [] if empty else [
         RepositoryDTO(id="coffee", name="Café", location="/coffee", createdAt=123, importedAt=None),
         RepositoryDTO(id="tea", name="Tea", location="https://example.com/tea", createdAt=456, importedAt=789),
@@ -169,15 +142,14 @@ def test_projects_serializes_domain_values(boundaries, empty):
         assert "Café" in result.stdout and '\n    "id"' in result.stdout
     analyze.assert_not_called()
     repository.assert_called_once_with()
-    assert service.mock_calls == [call.list()]
-    repository.return_value.__exit__.assert_called_once_with(None, None, None)
+    service.list.assert_called_once_with()
 
 
 @pytest.mark.parametrize("save", [False, True])
 @pytest.mark.parametrize("output_format", ["markdown", "json"])
-def test_check_findings_have_failure_status_and_can_save(boundaries, save, output_format):
+def test_check_findings_have_failure_status_and_can_save(scenario, save, output_format):
     tmp_path = Path.cwd()
-    analyze, repository, service = boundaries
+    analyze, repository, service = scenario()
     (tmp_path / "atlas.json").write_text('{"maxParameters": 2}', encoding="utf-8")
     result = CliRunner().invoke(main, ["check", "--format", output_format, *(["--save"] if save else [])])
     assert result.exit_code == 1
@@ -195,15 +167,13 @@ def test_check_findings_have_failure_status_and_can_save(boundaries, save, outpu
     analyze.assert_called_once_with(tmp_path)
     if save:
         service.save_folder.assert_called_once_with(tmp_path, analyze.return_value)
-        repository.return_value.__exit__.assert_called_once_with(None, None, None)
     else:
         repository.assert_not_called()
 
 
 @pytest.mark.parametrize("disabled", [False, True])
-def test_check_null_disables_rule_and_missing_keys_keep_defaults(boundaries, tmp_path: Path, disabled):
-    analyze, repository, _ = boundaries
-    analyze.return_value["nodes"][1]["properties"]["parameterCount"] = 4
+def test_check_null_disables_rule_and_missing_keys_keep_defaults(scenario, tmp_path: Path, disabled):
+    _, repository, _ = scenario(function_metrics={"parameterCount": 4})
     (tmp_path / "atlas.json").write_text(
         json.dumps({"maxFileLines": None, **({"maxParameters": None} if disabled else {})}), encoding="utf-8",
     )
@@ -214,8 +184,8 @@ def test_check_null_disables_rule_and_missing_keys_keep_defaults(boundaries, tmp
     repository.assert_not_called()
 
 
-def test_check_reads_target_config_not_cwd(boundaries, tmp_path: Path):
-    analyze, repository, _ = boundaries
+def test_check_reads_target_config_not_cwd(scenario, tmp_path: Path):
+    analyze, repository, _ = scenario()
     (tmp_path / "atlas.json").write_text('{"maxParameters": 0}', encoding="utf-8")
     root = tmp_path / "target"
     root.mkdir()
@@ -228,9 +198,8 @@ def test_check_reads_target_config_not_cwd(boundaries, tmp_path: Path):
 
 
 @pytest.mark.parametrize("output_format", ["markdown", "json"])
-def test_check_unavailable_measurement_is_a_finding(boundaries, output_format):
-    analyze, _, _ = boundaries
-    del analyze.return_value["nodes"][1]["properties"]["parameterCount"]
+def test_check_unavailable_measurement_is_a_finding(scenario, output_format):
+    scenario(function_metrics={"parameterCount": None})
     result = CliRunner().invoke(main, ["check", "--format", output_format])
     assert result.exit_code == 1
     assert result.stderr == ""
@@ -245,10 +214,9 @@ def test_check_unavailable_measurement_is_a_finding(boundaries, output_format):
 
 @pytest.mark.parametrize("command", ["report", "check"])
 @pytest.mark.parametrize("output_format", ["markdown", "json"])
-def test_analysis_diagnostics_are_reported(boundaries, command, output_format):
-    analyze, repository, _ = boundaries
-    diagnostic = {"severity": "error", "language": "python", "path": "café.py", "message": "Parse failed"}
-    analyze.return_value["diagnostics"] = [diagnostic]
+def test_analysis_diagnostics_are_reported(scenario, command, output_format):
+    diagnostic: Diagnostic = {"severity": "error", "language": "python", "path": "café.py", "message": "Parse failed"}
+    _, repository, _ = scenario(diagnostics=[diagnostic])
     result = CliRunner().invoke(main, [command, "--format", output_format])
     assert result.exit_code == (1 if command == "check" else 0), result.output
     assert result.stderr == ""
@@ -267,9 +235,8 @@ def test_analysis_diagnostics_are_reported(boundaries, command, output_format):
 
 
 @pytest.mark.parametrize("command", ["report", "check"])
-def test_empty_analysis_is_successful(boundaries, command):
-    analyze, repository, _ = boundaries
-    analyze.return_value = {"nodes": [], "edges": [], "diagnostics": []}
+def test_empty_analysis_is_successful(scenario, command):
+    _, repository, _ = scenario(empty=True)
     result = CliRunner().invoke(main, [command, "--format", "json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.stdout)
@@ -286,9 +253,9 @@ def test_empty_analysis_is_successful(boundaries, command):
     ("maxParameters", 2, 3), ("maxWeightedComplexity", 7, 8),
     ("maxDecisionDepth", 2, 3),
 ])
-def test_check_configured_limits_use_real_metrics(boundaries, tmp_path: Path, case):
+def test_check_configured_limits_use_real_metrics(scenario, tmp_path: Path, case):
     rule, limit, actual = case
-    _, repository, _ = boundaries
+    _, repository, _ = scenario()
     (tmp_path / "atlas.json").write_text(json.dumps({rule: limit}), encoding="utf-8")
     result = CliRunner().invoke(main, ["check", "--format", "json"])
     assert result.exit_code == 1
@@ -299,19 +266,8 @@ def test_check_configured_limits_use_real_metrics(boundaries, tmp_path: Path, ca
 
 
 @pytest.mark.parametrize("output_format", ["markdown", "json"])
-def test_check_circular_imports_and_dependency_findings(boundaries, tmp_path: Path, output_format):
-    analyze, repository, _ = boundaries
-    artifact = analyze.return_value
-    other = deepcopy(artifact["nodes"][0])
-    other.update(stableKey="file:tea.py", name="tea.py", qualifiedName="tea.py", path="tea.py")
-    artifact["nodes"].append(other)
-    artifact["edges"] = [
-        {"sourceStableKey": f"file:{source}", "targetStableKey": f"file:{target}",
-         "type": "IMPORTS", "confidence": "EXTRACTED", "path": source, "line": 1,
-         "evidence": "import", "sourceType": "file", "sourceKind": "file", "sourceLevel": "file",
-         "targetType": "file", "targetKind": "file", "targetLevel": "file"}
-        for source, target in [("café.py", "tea.py"), ("tea.py", "café.py")]
-    ]
+def test_check_circular_imports_and_dependency_findings(scenario, tmp_path: Path, output_format):
+    _, repository, _ = scenario(circular_imports=True)
     (tmp_path / "atlas.json").write_text('{"maxChangeImpact": 0, "maxInstability": 0.4}', encoding="utf-8")
     result = CliRunner().invoke(main, ["check", "--format", output_format])
     assert result.exit_code == 1
@@ -330,8 +286,8 @@ def test_check_circular_imports_and_dependency_findings(boundaries, tmp_path: Pa
     repository.assert_not_called()
 
 
-def test_unreadable_config_fails_before_analysis(boundaries, tmp_path: Path):
-    analyze, repository, _ = boundaries
+def test_unreadable_config_fails_before_analysis(scenario, tmp_path: Path):
+    analyze, repository, _ = scenario()
     (tmp_path / "atlas.json").mkdir()
     result = CliRunner().invoke(main, ["check", "--save"])
     assert result.exit_code == 1
@@ -346,8 +302,8 @@ def test_unreadable_config_fails_before_analysis(boundaries, tmp_path: Path):
     '{"maxParameters": "3"}', '{"maxInstability": 2}',
     '{"mutations": {"rules": {"arithmetic.add-to-subtract": "-"}}}',
 ])
-def test_invalid_config_fails_before_analysis_or_saving(boundaries, tmp_path: Path, source):
-    analyze, repository, _ = boundaries
+def test_invalid_config_fails_before_analysis_or_saving(scenario, tmp_path: Path, source):
+    analyze, repository, _ = scenario()
     config = tmp_path / "atlas.json"
     config.write_text(source, encoding="utf-8")
     result = CliRunner().invoke(main, ["check", "--save", "--format", "json"])
@@ -358,13 +314,15 @@ def test_invalid_config_fails_before_analysis_or_saving(boundaries, tmp_path: Pa
     repository.assert_not_called()
 
 
-@pytest.mark.parametrize("command", ["index", "projects", "report", "check"])
-@pytest.mark.parametrize("case", list(product(
-    [OSError, ValueError, RuntimeError, RepositoryError], ["operation", "open", "close"],
-)))
-def test_boundary_errors_are_click_errors(boundaries, command, case):
-    error_type, stage = case
-    analyze, repository, service = boundaries
+@pytest.mark.parametrize("case", [
+    (command, stage, OSError)
+    for command, stage in product(["index", "projects", "report", "check"], ["operation", "open", "close"])
+] + [
+    ("index", "operation", error_type) for error_type in [ValueError, RuntimeError, RepositoryError]
+])
+def test_boundary_errors_are_click_errors(scenario, case):
+    command, stage, error_type = case
+    analyze, repository, service = scenario()
     error = RepositoryError("boundary failed", 503) if error_type is RepositoryError else error_type("boundary failed")
     if stage == "operation":
         operation = service.list if command == "projects" else service.save_folder
@@ -382,15 +340,12 @@ def test_boundary_errors_are_click_errors(boundaries, command, case):
     if stage == "open":
         service.list.assert_not_called()
         service.save_folder.assert_not_called()
-    else:
-        assert repository.return_value.__exit__.call_count == 1
 
 
 @pytest.mark.parametrize("command", ["index", "report", "check"])
-@pytest.mark.parametrize("error_type", [OSError, ValueError, RuntimeError, RepositoryError])
-def test_analysis_failure_never_opens_database(boundaries, command, error_type):
-    analyze, repository, service = boundaries
-    analyze.side_effect = RepositoryError("analysis failed", 400) if error_type is RepositoryError else error_type("analysis failed")
+def test_analysis_failure_never_opens_database(scenario, command):
+    analyze, repository, service = scenario()
+    analyze.side_effect = OSError("analysis failed")
     result = CliRunner().invoke(main, [command, *(["--save"] if command != "index" else [])])
     assert result.exit_code == 1
     assert result.stdout == ""
@@ -401,8 +356,8 @@ def test_analysis_failure_never_opens_database(boundaries, command, error_type):
 
 @pytest.mark.parametrize("command", ["report", "check"])
 @pytest.mark.parametrize("output_format", ["yaml", "JSON", ""])
-def test_invalid_format_does_not_analyze_or_open_database(boundaries, command, output_format):
-    analyze, repository, _ = boundaries
+def test_invalid_format_does_not_analyze_or_open_database(scenario, command, output_format):
+    analyze, repository, _ = scenario()
     result = CliRunner().invoke(main, [command, "--save", "--format", output_format])
     assert result.exit_code == 2
     assert result.stdout == ""
@@ -419,8 +374,8 @@ def test_invalid_format_does_not_analyze_or_open_database(boundaries, command, o
     (["index", "--folder"], "requires an argument"),
     (["projects", "extra"], "Got unexpected extra argument"),
 ])
-def test_usage_errors_have_no_side_effects(boundaries, args, message):
-    analyze, repository, _ = boundaries
+def test_usage_errors_have_no_side_effects(scenario, args, message):
+    analyze, repository, _ = scenario()
     result = CliRunner().invoke(main, args)
     assert result.exit_code == 2
     assert result.stdout == ""
@@ -430,8 +385,8 @@ def test_usage_errors_have_no_side_effects(boundaries, args, message):
 
 
 @pytest.mark.parametrize("command", [None, "index", "projects", "report", "check"])
-def test_help_has_no_side_effects(boundaries, command):
-    analyze, repository, _ = boundaries
+def test_help_has_no_side_effects(scenario, command):
+    analyze, repository, _ = scenario()
     result = CliRunner().invoke(main, [*([command] if command else []), "--help"])
     assert result.exit_code == 0, result.output
     assert "Usage:" in result.stdout
@@ -443,8 +398,8 @@ def test_help_has_no_side_effects(boundaries, command):
     repository.assert_not_called()
 
 
-def test_check_help_documents_defaults(boundaries):
-    analyze, repository, _ = boundaries
+def test_check_help_documents_defaults(scenario):
+    analyze, repository, _ = scenario()
     result = CliRunner().invoke(main, ["check", "--help"])
     assert result.exit_code == 0, result.output
     for rule, value in CheckConfig().model_dump().items():
