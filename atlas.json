@@ -24,7 +24,7 @@
       "entrypoints": {
         "sources": ["atlas/src/atlas/*.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/test_coffee_pipeline.py", "tests/cli/test_commands.py", "tests/services/test_storage_contracts.py"],
+        "command": ["uv", "run", "pytest", "tests/test_coffee_pipeline.py", "tests/cli/test_commands.py", "tests/services/test_storage_contracts.py", "tests/parsing/test_campaign_core_regressions.py"],
         "timeoutSeconds": 120
       },
       "cli-commands": {
@@ -66,7 +66,7 @@
       "mutation-candidates": {
         "sources": ["atlas/src/atlas/domain/mutation_candidates.py", "atlas/src/atlas/parsing/mutation_candidates.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/mutations", "tests/test_coffee_mutation_candidate_snapshots.py"],
+        "command": ["uv", "run", "pytest", "tests/mutations", "tests/test_coffee_mutation_candidate_snapshots.py", "tests/parsing/test_campaign_core_regressions.py"],
         "timeoutSeconds": 120
       },
       "discovery": {
@@ -96,7 +96,7 @@
       "navigation-services": {
         "sources": ["atlas/src/atlas/services/navigation*.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/services/test_navigation.py", "tests/services/test_navigation_limits.py", "tests/services/test_source_contracts.py", "tests/services/test_symbol_contracts.py"],
+        "command": ["uv", "run", "pytest", "tests/services/test_navigation.py", "tests/services/test_navigation_limits.py", "tests/services/test_source_contracts.py", "tests/services/test_symbol_contracts.py", "tests/services/test_campaign_storage_walk_regressions.py"],
         "timeoutSeconds": 60
       },
       "mutations": {
@@ -132,31 +132,31 @@
       "dependency-metrics": {
         "sources": ["atlas/src/atlas/metrics/cycles.py", "atlas/src/atlas/metrics/dependency_metrics.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_cycles.py", "tests/metrics/test_dependency_metrics.py"],
+        "command": ["uv", "run", "pytest", "tests/metrics/test_cycles.py", "tests/metrics/test_dependency_metrics.py", "tests/metrics/test_campaign_other_regressions.py"],
         "timeoutSeconds": 30
       },
       "reports": {
         "sources": ["atlas/src/atlas/metrics/report.py", "atlas/src/atlas/metrics/report_markdown.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_report.py", "tests/metrics/test_report_markdown.py", "tests/test_coffee_report_snapshots.py"],
+        "command": ["uv", "run", "pytest", "tests/metrics/test_report.py", "tests/metrics/test_report_markdown.py", "tests/test_coffee_report_snapshots.py", "tests/metrics/test_campaign_other_regressions.py"],
         "timeoutSeconds": 60
       },
       "receivers": {
         "sources": ["atlas/src/atlas/metrics/receiver_*.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_receiver_bindings.py", "tests/metrics/test_receiver_resolution.py", "tests/metrics/test_receiver_syntax.py", "tests/test_coffee_go_rust_receiver_snapshots.py"],
+        "command": ["uv", "run", "pytest", "tests/metrics/test_receiver_bindings.py", "tests/metrics/test_receiver_resolution.py", "tests/metrics/test_receiver_syntax.py", "tests/test_coffee_go_rust_receiver_snapshots.py", "tests/metrics/test_receiver_mutation_regressions.py", "tests/metrics/test_receiver_ownership_regressions.py", "tests/metrics/test_shared_syntax_mutation_regressions.py"],
         "timeoutSeconds": 60
       },
       "resolution": {
         "sources": ["atlas/src/atlas/metrics/resolver.py", "atlas/src/atlas/metrics/resolution_*.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_resolver.py", "tests/metrics/test_resolution_contract.py", "tests/metrics/test_resolution_members.py", "tests/metrics/test_resolution_syntax.py", "tests/test_coffee_safety_review_snapshots.py"],
+        "command": ["uv", "run", "pytest", "tests/metrics/test_resolver.py", "tests/metrics/test_resolution_contract.py", "tests/metrics/test_resolution_members.py", "tests/metrics/test_resolution_syntax.py", "tests/test_coffee_safety_review_snapshots.py", "tests/metrics/test_shared_syntax_mutation_regressions.py", "tests/metrics/test_campaign_other_regressions.py"],
         "timeoutSeconds": 60
       },
       "metric-adapters": {
         "sources": ["atlas/src/atlas/metrics/adapters/*.py"],
         "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_adapter_binding_indexes.py", "tests/metrics/test_adapter_elixir_syntax.py", "tests/metrics/test_adapter_imports.py", "tests/metrics/test_adapter_inheritance.py", "tests/metrics/test_adapter_metrics.py", "tests/metrics/test_adapter_parameters.py", "tests/metrics/test_adapter_paths.py", "tests/metrics/test_adapter_policy.py", "tests/metrics/test_adapter_python_modules.py", "tests/metrics/test_adapter_receivers.py", "tests/metrics/test_adapter_resolution.py", "tests/metrics/test_adapter_rust_modules.py", "tests/metrics/test_adapter_script_members.py", "tests/metrics/test_adapter_selection.py", "tests/metrics/test_adapter_syntax.py", "tests/test_script_member_coffee_snapshots.py", "tests/test_jvm_callable_selection_snapshots.py"],
+        "command": ["uv", "run", "pytest", "tests/metrics/test_adapter_binding_indexes.py", "tests/metrics/test_adapter_elixir_syntax.py", "tests/metrics/test_adapter_imports.py", "tests/metrics/test_adapter_inheritance.py", "tests/metrics/test_adapter_metrics.py", "tests/metrics/test_adapter_parameters.py", "tests/metrics/test_adapter_paths.py", "tests/metrics/test_adapter_policy.py", "tests/metrics/test_adapter_python_modules.py", "tests/metrics/test_adapter_receivers.py", "tests/metrics/test_adapter_resolution.py", "tests/metrics/test_adapter_rust_modules.py", "tests/metrics/test_adapter_script_members.py", "tests/metrics/test_adapter_selection.py", "tests/metrics/test_adapter_syntax.py", "tests/test_script_member_coffee_snapshots.py", "tests/test_jvm_callable_selection_snapshots.py", "tests/metrics/test_adapter_python_mutation_regressions.py", "tests/metrics/test_adapter_regression_contracts_a.py", "tests/metrics/test_adapter_regression_syntax_a.py", "tests/metrics/test_adapter_rust_mutation_regressions.py", "tests/metrics/test_adapter_script_mutation_regressions.py"],
         "timeoutSeconds": 120
       }
     }

@@ -88,7 +88,8 @@ def _descriptor_aliases(imported: Node) -> set[str]:
 def _descriptor_method(syntax, owner: Node) -> bool:
     descriptors = {"staticmethod", "classmethod", "builtins.staticmethod", "builtins.classmethod"}
     for imported in syntax.nodes:
-        descriptors |= _descriptor_aliases(imported)
+        if imported.parent is None or _prior_import(syntax, imported, owner.start_byte):
+            descriptors |= _descriptor_aliases(imported)
     return any(text(c).removeprefix("@").strip() in descriptors for c in owner.named_children)
 
 
@@ -99,9 +100,21 @@ def _first_self(node: Node) -> bool:
 
 
 def _self_assignment(syntax, assignment: Node, node: Node) -> bool:
-    return (assignment.type in syntax.adapter.assignments
+    if not (assignment.type in syntax.adapter.assignments
             and node.start_byte <= assignment.start_byte < node.end_byte
-            and text(field(assignment, "left", "name")) == "self")
+            and text(field(assignment, "left", "name")) == "self"):
+        return False
+    scope = assignment.parent
+    while scope is not None and scope.type not in syntax.adapter.scopes:
+        scope = scope.parent
+    _, scope = syntax.adapter.binding(syntax, assignment, scope or node)
+    return scope == node or _nonlocal_self(syntax, scope)
+
+
+def _nonlocal_self(syntax, scope) -> bool:
+    return any(n.type == "nonlocal_statement" and syntax.scope(n) == scope
+               and any(text(child) == "self" for child in n.named_children)
+               for n in syntax.nodes)
 
 
 def _instance_owner(syntax, node: Node) -> bool:
