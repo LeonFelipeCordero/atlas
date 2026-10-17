@@ -1,0 +1,14 @@
+Usage: atlas check [OPTIONS]
+
+  Check current sources against atlas.json in the analyzed folder, without
+  saving by default. Missing keys inherit defaults: maxFileLines=600,
+  maxFunctionLines=100, maxParameters=3, maxWeightedComplexity=8,
+  maxDecisionDepth=3, maxNestedLoops=0, maxCircularImportGroups=0.
+  maxChangeImpact and maxInstability are disabled by default and apply to
+  files/modules. Null disables a check. Equality passes; violations exit 1.
+
+Options:
+  -f, --f, --folder PATH    Folder to analyze and check  [default: .]
+  --save                    Save the analyzed graph in SQLite
+  --format [markdown|json]  [default: markdown]
+  --help                    Show this message and exit.

@@ -1,0 +1,129 @@
+use super::options::Options;
+use crate::{
+    domain::navigation::{PathRequest, SourceOptions, TraversalRequest},
+    services::navigation::NavigationService,
+};
+use anyhow::Result;
+use serde_json::Value;
+use std::collections::BTreeSet;
+
+const RELATIONS: &[&str] = &["CONTAINS", "CALLS", "REFERENCES", "IMPORTS", "INHERITS"];
+pub struct GraphOptions {
+    pub operation: Operation,
+    pub text: bool,
+}
+pub enum Operation {
+    Overview,
+    Find(String, usize),
+    Show(String),
+    Children(String, usize, usize),
+    Context(TraversalRequest),
+    Path(PathRequest),
+    Source(Vec<String>, SourceOptions),
+}
+impl GraphOptions {
+    pub fn parse(command: &str, args: &[String]) -> Result<Option<Self>> {
+        let options = Options::parse(&format!("graph {command}"), args, (flags(command), &["--help"]))?;
+        if options.has("--help") {
+            return Ok(None);
+        }
+        options.arguments(argument_names(command), command == "source")?;
+        let text = options.choice("--format", "json", &["json", "text"])? == "text";
+        Ok(Some(Self { operation: Operation::parse(command, options)?, text }))
+    }
+}
+impl Operation {
+    fn parse(command: &str, options: Options) -> Result<Self> {
+        let key = options.positional.first().cloned().unwrap_or_default();
+        Ok(match command {
+            "overview" => Self::Overview,
+            "find" => Self::Find(key, options.number("--limit", 10, (1, 100))?),
+            "show" => Self::Show(key),
+            "children" => Self::Children(
+                key,
+                options.number("--limit", 30, (1, 100))?,
+                options.number("--offset", 0, (0, usize::MAX))?,
+            ),
+            "context" => Self::Context(traversal_request(command, &options, &key)?),
+            "path" => Self::Path(PathRequest {
+                target: options.positional[1].clone(),
+                traversal: traversal_request(command, &options, &key)?,
+            }),
+            "source" => Self::Source(options.positional.clone(), source_options(&options)?),
+            _ => unreachable!(),
+        })
+    }
+    pub fn execute(self, service: &mut NavigationService) -> Result<Value> {
+        match self {
+            Self::Overview => service.overview(),
+            Self::Find(query, limit) => service.find(&query, limit),
+            Self::Show(key) => service.show(&key),
+            Self::Children(key, limit, offset) => service.children(&key, limit, offset),
+            Self::Context(request) => service.context(&request),
+            Self::Path(request) => service.path(&request),
+            Self::Source(keys, options) => source(service, &keys, &options),
+        }
+    }
+}
+fn source(service: &mut NavigationService, keys: &[String], options: &SourceOptions) -> Result<Value> {
+    if keys.len() == 1 {
+        service.source(&keys[0], options.max_lines, options.start_line)
+    } else {
+        service.sources(keys, options.max_lines, options.start_line)
+    }
+}
+fn source_options(options: &Options) -> Result<SourceOptions> {
+    Ok(SourceOptions {
+        max_lines: options.number("--max-lines", 80, (1, 500))?,
+        start_line: if options.has("--start-line") {
+            Some(options.number("--start-line", 1, (1, usize::MAX))?)
+        } else {
+            None
+        },
+    })
+}
+fn flags(command: &str) -> &'static [&'static str] {
+    match command {
+        "find" => &["--limit"],
+        "children" => &["--limit", "--offset"],
+        "context" => &["--depth", "--direction", "--relations", "--max-nodes", "--max-edges"],
+        "path" => &["--max-depth", "--direction", "--relations", "--max-nodes", "--max-edges"],
+        "source" => &["--max-lines", "--start-line", "--format"],
+        _ => &[],
+    }
+}
+fn argument_names(command: &str) -> &'static [&'static str] {
+    match command {
+        "overview" => &[],
+        "find" => &["QUERY"],
+        "path" => &["FROM", "TO"],
+        "source" => &["KEYS..."],
+        _ => &["KEY"],
+    }
+}
+fn traversal_request(command: &str, options: &Options, key: &str) -> Result<TraversalRequest> {
+    let direction = options.choice("--direction", "out", &["out", "in", "both"])?;
+    let relations: BTreeSet<_> = options
+        .get("--relations", "CALLS,REFERENCES")
+        .split(',')
+        .map(|p| p.trim().to_uppercase())
+        .filter(|p| !p.is_empty())
+        .collect();
+    if relations.is_empty() || relations.iter().any(|r| !RELATIONS.contains(&r.as_str())) {
+        return Err(
+            options.invalid("--relations", format!("Choose comma-separated relations from {}", RELATIONS.join(", ")))
+        );
+    }
+    let (depth_flag, default_depth) = depth_option(command);
+    Ok(TraversalRequest {
+        key: key.into(),
+        direction: direction.into(),
+        relations: relations.into_iter().collect(),
+        depth: options.number(depth_flag, default_depth, (0, 20))?,
+        max_nodes: options.number("--max-nodes", 30, (1, 300))?,
+        max_edges: options.number("--max-edges", 100, (1, 1000))?,
+    })
+}
+pub fn depth_option(command: &str) -> (&'static str, usize) {
+    if command == "path" { ("--max-depth", 6) } else { ("--depth", 2) }
+}

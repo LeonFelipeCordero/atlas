@@ -235,6 +235,7 @@ graphs/
 *.tsbuildinfo
 *.lock
 *.lockb
+!atlas-rust/Cargo.lock
 package-lock.json
 yarn.lock
 pnpm-lock.yaml

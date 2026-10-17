@@ -1,0 +1,10 @@
+Usage: atlas graph source [OPTIONS] KEYS...
+
+  Fetch verified excerpts for one or more keys; limits apply per excerpt.
+
+Options:
+  --max-lines INTEGER RANGE   [default: 80; 1<=x<=500]
+  --start-line INTEGER RANGE  Absolute 1-based line; clamped to each symbol
+                              start.  [x>=1]
+  --format [json|text]        [default: json]
+  --help                      Show this message and exit.
