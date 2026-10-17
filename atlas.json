@@ -1,0 +1,24 @@
+{
+  "mutations": {
+    "rules": [
+      "arithmetic.add-to-subtract",
+      "arithmetic.subtract-to-add",
+      "arithmetic.multiply-to-divide",
+      "arithmetic.divide-to-multiply",
+      "comparison.equal-to-not-equal",
+      "comparison.not-equal-to-equal",
+      "comparison.less-to-less-equal",
+      "comparison.less-equal-to-less",
+      "comparison.greater-to-greater-equal",
+      "comparison.greater-equal-to-greater",
+      "comparison.less-to-greater",
+      "comparison.greater-to-less",
+      "logical.and-to-or",
+      "logical.or-to-and",
+      "assignment.add-to-subtract",
+      "assignment.subtract-to-add",
+      "assignment.multiply-to-divide",
+      "assignment.divide-to-multiply"
+    ]
+  }
+}
