@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, spyOn, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
+import { migratedDatabaseFixture } from '../../tests/migrated-database-fixture'
 import {
   createRepositoryService,
   repositoryErrorResponse,
@@ -22,6 +23,7 @@ let directory: string
 let path: string
 let database: Database
 let service: RepositoryService
+const copyMigratedDatabase = migratedDatabaseFixture()
 
 // Raw connections belong to test fixtures/assertions only, never the service API.
 const openDatabase = (file: string) =>
@@ -63,7 +65,7 @@ function python(...args: Array<string>) {
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'shared-graph-database-'))
   path = join(directory, 'nested', 'test.sqlite')
-  python('atlas-migrate')
+  copyMigratedDatabase(path)
   database = openDatabase(path)
   service = createRepositoryService(path)
 })

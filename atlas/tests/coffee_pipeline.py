@@ -29,6 +29,7 @@ GRAMMAR_VARIANTS = {
 }
 
 
+@cache
 def project_analysis(language):
     sources = coffee_sources(language)
     repository = parse_files(sources)

@@ -1,8 +1,5 @@
-"""Real migrated SQLite, with exclusive suite access even under pytest-xdist."""
+"""Real migrated SQLite, isolated per pytest worker and cleaned after each test."""
 
-import fcntl
-import hashlib
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -17,7 +14,9 @@ from atlas.services.factories import migrate_database
 @pytest.fixture(scope="session")
 def _database_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     # A private file per worker also isolates concurrent pytest invocations.
-    return tmp_path_factory.mktemp("service-database") / ".local" / "share" / "atlas" / "atlas.sqlite"
+    path = tmp_path_factory.mktemp("service-database") / ".local" / "share" / "atlas" / "atlas.sqlite"
+    migrate_database(path)
+    return path
 
 
 def clean_database(path: Path) -> None:
@@ -34,17 +33,7 @@ def clean_database(path: Path) -> None:
 
 @pytest.fixture(autouse=True)
 def database(_database_path: Path) -> Iterator[Path]:
-    identity = hashlib.sha256(str(Path(__file__).resolve()).encode()).hexdigest()[:16]
-    lock = Path(tempfile.gettempdir()) / f"atlas-service-tests-{identity}.lock"
-    # Hold the OS lock through setup, test, and teardown. Worker crashes release it.
-    with lock.open("a") as handle:
-        fcntl.flock(handle, fcntl.LOCK_EX)
-        try:
-            migrate_database(_database_path)
-            clean_database(_database_path)
-            try:
-                yield _database_path
-            finally:
-                clean_database(_database_path)
-        finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
+    try:
+        yield _database_path
+    finally:
+        clean_database(_database_path)
