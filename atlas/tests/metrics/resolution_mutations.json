@@ -1,0 +1,598 @@
+{
+  "continuation": {
+    "isolation_directory": "/tmp/atlas-resolution-continuation-dp9xdsni", "import_probe": "/tmp/atlas-resolution-continuation-dp9xdsni/src/atlas/metrics/resolver.py",
+    "cwd": "/home/leon/.t3/worktrees/atlas/t3-7575acd4/atlas", "environment_overrides": {"PYTHONPATH": "/tmp/atlas-resolution-continuation-dp9xdsni/src", "PYTHONDONTWRITEBYTECODE": "1"},
+    "command": ".venv/bin/python -B -m pytest tests/metrics/test_resolver.py tests/metrics/test_resolution_members.py tests/metrics/test_receiver_resolution.py tests/metrics/test_receiver_bindings.py tests/metrics/test_receiver_syntax.py tests/metrics/test_resolution_syntax.py -q --tb=short",
+    "evidence": "Full results, source hashes, assertion failures and logs: /tmp/atlas-resolution-continuation-dp9xdsni/results.json; per-case logs: mutant-{id}.log in that directory. Every before snippet matched exactly once in an isolated source copy. Shared production files were not changed.",
+    "validation": "217 passed serial and with -n 4; owned-file ruff passed; project pyright: 0 errors, 0 warnings. Branch-inclusive coverage: resolver 99%, receiver_resolution 98%, receiver_syntax 92%, resolution_syntax 96%. Logs: /tmp/resolution-owned-coverage.log, /tmp/resolution-owned-parallel.log, /tmp/resolution-owned-pyright.log.",
+    "summary": "29 additional mutations killed by assertion failures, 0 survived, 0 inconclusive. Previous 41 kills retained as historical evidence, not rerun. No production edits, commits, full suite, dashboard, parser pipeline or atlas check.",
+    "strengthened_survivors": "42 initially survived: add an unrelated typed binding to check candidate name filtering. 56 initially survived: constrain named/qualified stubs to actual visible type identities instead of returning a type for every spelling. Both now killed. Initial 56 evidence: /tmp/atlas-resolution-continuation-2bd4fs67/mutant-56.log.",
+    "results": [
+      {"id": 42, "module": "receiver_resolution.py", "before": "if b.name == name and self._visible(syntax, b, request)", "after": "if self._visible(syntax, b, request)", "outcome": "killed"},
+      {"id": 43, "module": "receiver_resolution.py", "before": "if self._path_written(request):\n            return []", "after": "if False:\n            return []", "outcome": "killed"},
+      {"id": 44, "module": "receiver_resolution.py", "before": "if member and not self.resolver._self_class(", "after": "if False and not self.resolver._self_class(", "outcome": "killed"},
+      {"id": 45, "module": "receiver_resolution.py", "before": "if not self._member_receiver(syntax, request) and self._shadowed(syntax, binding, request.call.start_byte):", "after": "if False:", "outcome": "killed"},
+      {"id": 46, "module": "receiver_resolution.py", "before": "binding.member and not binding.static and self._static(request)", "after": "False", "outcome": "killed"},
+      {"id": 47, "module": "receiver_resolution.py", "before": "if not binding.annotation or not syntax.adapter.receiver_type_allowed(syntax, binding.annotation, request.name):", "after": "if not binding.annotation:", "outcome": "killed"},
+      {"id": 48, "module": "receiver_resolution.py", "before": "if binding.inferred or not syntax.adapter.validate_receiver_initializer:", "after": "if binding.inferred or syntax.adapter.validate_receiver_initializer:", "outcome": "killed"},
+      {"id": 49, "module": "receiver_resolution.py", "before": "if len(bindings) != 1:", "after": "if not bindings:", "outcome": "killed"},
+      {"id": 50, "module": "receiver_resolution.py", "before": "if b.member and b.name == name\n                and parent.start_byte <= b.node.start_byte < parent.end_byte]", "after": "if b.member and b.name == name\n                and parent.start_byte <= b.node.start_byte]", "outcome": "killed"},
+      {"id": 51, "module": "receiver_resolution.py", "before": "or self._conditional(syntax, bindings[0])", "after": "or False", "outcome": "killed"},
+      {"id": 52, "module": "receiver_resolution.py", "before": "and not self._field_initialization(syntax, binding, n)", "after": "and True", "outcome": "killed"},
+      {"id": 53, "module": "receiver_resolution.py", "before": "return len(parameters) == 1 and not self._reassigned(syntax, parameters[0], value)", "after": "return bool(parameters) and not self._reassigned(syntax, parameters[0], value)", "outcome": "killed"},
+      {"id": 54, "module": "receiver_resolution.py", "before": "b.annotation == binding.annotation", "after": "True", "outcome": "killed"},
+      {"id": 55, "module": "receiver_resolution.py", "before": "if member != request.name:", "after": "if False:", "outcome": "killed"},
+      {"id": 56, "module": "receiver_resolution.py", "before": "qualifier.removesuffix(\".prototype\")", "after": "qualifier", "outcome": "killed"},
+      {"id": 57, "module": "receiver_resolution.py", "before": "return {s.key for s in matches}", "after": "return set()", "outcome": "killed"},
+      {"id": 58, "module": "resolver.py", "before": "and s.kind in CALLABLES\n", "after": "\n", "outcome": "killed"},
+      {"id": 59, "module": "resolver.py", "before": "if self.syntax[file.source.path].static(method):", "after": "if False:", "outcome": "killed"},
+      {"id": 60, "module": "resolver.py", "before": "if not get_resolution_adapter(file.source.language).implicit_receiver(", "after": "if False and not get_resolution_adapter(file.source.language).implicit_receiver(", "outcome": "killed"},
+      {"id": 61, "module": "resolver.py", "before": "return binding.member(name)", "after": "return []", "outcome": "killed"},
+      {"id": 62, "module": "resolver.py", "before": "return self.named(request, fallback=not constructor)", "after": "return self.named(request, fallback=True)", "outcome": "killed"},
+      {"id": 63, "module": "resolver.py", "before": "if nested is not None:", "after": "if False:", "outcome": "killed"},
+      {"id": 64, "module": "resolver.py", "before": "if not adapter.receiver_class_allowed(syntax, callee, request.name):", "after": "if False:", "outcome": "killed"},
+      {"id": 65, "module": "receiver_syntax.py", "before": "if _parameter_written(syntax, method, name):", "after": "if False:", "outcome": "killed"},
+      {"id": 66, "module": "receiver_syntax.py", "before": "return matches[0].annotation if len(matches) == 1 else None", "after": "return matches[0].annotation if matches else None", "outcome": "killed"},
+      {"id": 67, "module": "receiver_syntax.py", "before": "node.parent.type == \"field_declaration\"", "after": "False", "outcome": "killed"},
+      {"id": 68, "module": "receiver_syntax.py", "before": "return value, parent.parent is not None and parent.parent.type == \"class_body\"", "after": "return value, False", "outcome": "killed"},
+      {"id": 69, "module": "resolution_syntax.py", "before": "and parent.start_byte == symbol.start_byte", "after": "and True", "outcome": "killed"},
+      {"id": 70, "module": "resolution_syntax.py", "before": "binding != name or node.type in self.adapter.rebound_declarations", "after": "binding != name", "outcome": "killed"}
+    ]
+  },
+  "initial_survivors": [
+    {"file": "atlas/src/atlas/metrics/report.py", "before": "values[\"weightedComplexitySum\"] += complexity", "after": "values[\"weightedComplexitySum\"] = complexity", "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8", "outcome": "survived", "exit_code": 0, "failures": [], "log": "/tmp/atlas-resolution-mutations-_2a0_4i5/mutant-04.log"},
+    {"file": "atlas/src/atlas/metrics/resolution_syntax.py", "before": "return names(field(node, \"value\"))", "after": "return names(field(node, \"key\"))", "source_sha256": "0e8bc92662ccba3191b01db75de466b0f85aada086be20c25fedb0b6edb2ebe4", "outcome": "survived", "exit_code": 0, "failures": [], "log": "/tmp/atlas-resolution-mutations-_2a0_4i5/mutant-37.log"}
+  ],
+  "strengthened_gaps": [
+    {
+      "mutation": 4,
+      "change": "Add a second nonzero callable complexity so replacing accumulation with assignment cannot pass."
+    },
+    {
+      "mutation": 37,
+      "change": "Remove duplicate bound name outside the pair pattern so losing the pair value is observable."
+    }
+  ],
+  "baseline_command": "cd atlas && uv run pytest tests/metrics/test_report.py tests/metrics/test_report_markdown.py tests/metrics/test_resolver.py tests/metrics/test_receiver_resolution.py tests/metrics/test_receiver_syntax.py tests/metrics/test_resolution_contract.py tests/metrics/test_resolution_syntax.py -q",
+  "baseline_result": "........................................................................ [ 49%]\n........................................................................ [ 98%]\n..                                                                       [100%]\n146 passed in 0.31s",
+  "isolation_directory": "/tmp/atlas-resolution-mutations-7f2p1_ts",
+  "import_probe": "/tmp/atlas-resolution-mutations-7f2p1_ts/src/atlas/metrics/resolver.py",
+  "mutation_command": [
+    "/home/leon/.t3/worktrees/atlas/t3-7575acd4/atlas/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "tests/metrics/test_report.py",
+    "tests/metrics/test_report_markdown.py",
+    "tests/metrics/test_resolver.py",
+    "tests/metrics/test_receiver_resolution.py",
+    "tests/metrics/test_receiver_syntax.py",
+    "tests/metrics/test_resolution_contract.py",
+    "tests/metrics/test_resolution_syntax.py",
+    "-q",
+    "--tb=short"
+  ],
+  "cwd": "/home/leon/.t3/worktrees/atlas/t3-7575acd4/atlas",
+  "environment_overrides": {
+    "PYTHONPATH": "/tmp/atlas-resolution-mutations-7f2p1_ts/src",
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "reproduction": "Copy atlas/src to a fresh temporary src directory, excluding __pycache__. Set PYTHONPATH to that src directory and PYTHONDONTWRITEBYTECODE=1. Verify atlas.metrics.resolver.__file__ points there. Run the baseline. For each case, require exactly one before match, replace before with after in the copied file, run the mutation command with the repository venv Python, then restore the copied file. Exit 1 with FAILED test assertions is killed; exit 0 is survived; other errors are inconclusive.",
+  "limitations": "Hand-selected behavioral and boundary mutations, not exhaustive coverage. Native parsing, adapter integration, database, and end-to-end flows are intentionally outside these unit tests.",
+  "validation": {
+    "owned_tests": "146 passed, serial and with -n 4; only the seven named test files were selected.",
+    "types": "(cd atlas && uv run pyright): 0 errors, 0 warnings.",
+    "lint": "(cd atlas && uv run ruff check .): passed.",
+    "project_analysis": "uv run --project atlas atlas check --f .: exit 1; test helpers and parameterized tests exceed metric thresholds, including owned tests and other shared test files. Log: /tmp/atlas-resolution-project-check-final.log",
+    "scope": "No production edits, README edits, dependencies, commits, E2E runs, or full-suite runs. Mutation writes were restricted to isolated /tmp source copies. Final selected mutations: 41 killed, 0 survived, 0 inconclusive; no equivalents identified."
+  },
+  "results": [
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "metrics[\"lineCount\"] = properties.get(\"lineCount\")",
+      "after": "metrics[\"lineCount\"] = properties.get(\"lineCount\") or None",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_measurement_maps_complexity_and_preserves_zero_and_unavailable"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-01.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "\"baseCyclomaticComplexity\": \"cyclomaticComplexity\"",
+      "after": "\"baseCyclomaticComplexity\": \"weightedComplexity\"",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_measurement_maps_complexity_and_preserves_zero_and_unavailable"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-02.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "if complexity is not None:",
+      "after": "if complexity:",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_file_summary_counts_nested_callables_but_not_orphans_or_types"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-03.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "values[\"weightedComplexitySum\"] += complexity",
+      "after": "values[\"weightedComplexitySum\"] = complexity",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_file_summary_counts_nested_callables_but_not_orphans_or_types"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-04.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "for node in sorted(nodes, key=_node_order)",
+      "after": "for node in nodes",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_report_orders_by_path_line_key_filters_non_subjects_and_does_not_mutate"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-05.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "groupSize\": len(group[\"nodeStableKeys\"])",
+      "after": "groupSize\": len(group[\"exampleCycle\"])",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_supplied_cycles_count_distinct_directed_pairs_and_unknown_paths"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-06.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report.py",
+      "before": "for edge in graph.edges or graph.imports",
+      "after": "for edge in graph.imports or graph.edges",
+      "source_sha256": "5474c0965f422c3652feefdd25c0c0bb344611f119a0688bb360fe435351fab8",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report.py::test_saved_facts_prefers_edges_and_nests_metric_properties[True]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-07.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report_markdown.py",
+      "before": ".replace(\"|\", \"\\\\|\")",
+      "after": ".replace(\"|\", \"|\")",
+      "source_sha256": "ce46a0f1a0010447d9b706472a43395d23c1d18d0f86370574e943c334001667",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report_markdown.py::test_code_escapes_table_breaks_and_chooses_unused_fence[a|b\\nc\\rd-`a\\\\|b c d`]",
+        "FAILED tests/metrics/test_report_markdown.py::test_size_and_dependency_tables_have_exact_labels_order_and_values",
+        "FAILED tests/metrics/test_report_markdown.py::test_cycles_and_diagnostics_render_literal_paths_in_order",
+        "FAILED tests/metrics/test_report_markdown.py::test_mutation_candidates_sort_counts_but_preserve_site_order_and_byte_columns"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-08.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report_markdown.py",
+      "before": "if node.get(\"line\") is not None else path",
+      "after": "if node.get(\"line\") else path",
+      "source_sha256": "ce46a0f1a0010447d9b706472a43395d23c1d18d0f86370574e943c334001667",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report_markdown.py::test_location_preserves_zero_and_uses_unknown_path[node1-a.py:0]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-09.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report_markdown.py",
+      "before": "f\"{value:.2f}\"",
+      "after": "f\"{value:.1f}\"",
+      "source_sha256": "ce46a0f1a0010447d9b706472a43395d23c1d18d0f86370574e943c334001667",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report_markdown.py::test_value_text_distinguishes_unavailable_zero_and_float[0.0-0.00]",
+        "FAILED tests/metrics/test_report_markdown.py::test_value_text_distinguishes_unavailable_zero_and_float[1.236-1.24]",
+        "FAILED tests/metrics/test_report_markdown.py::test_size_and_dependency_tables_have_exact_labels_order_and_values"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-10.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report_markdown.py",
+      "before": "if \"fanIn\" in node[\"metrics\"]",
+      "after": "if node[\"metrics\"].get(\"fanIn\")",
+      "source_sha256": "ce46a0f1a0010447d9b706472a43395d23c1d18d0f86370574e943c334001667",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report_markdown.py::test_size_and_dependency_tables_have_exact_labels_order_and_values"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-11.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/report_markdown.py",
+      "before": "for kind, count in sorted(counts.items())",
+      "after": "for kind, count in counts.items()",
+      "source_sha256": "ce46a0f1a0010447d9b706472a43395d23c1d18d0f86370574e943c334001667",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_report_markdown.py::test_mutation_candidates_sort_counts_but_preserve_site_order_and_byte_columns"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-12.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "min(enclosing, key=lambda s: s.end_byte - s.start_byte)",
+      "after": "max(enclosing, key=lambda s: s.end_byte - s.start_byte)",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_owner_uses_smallest_containing_span_including_exact_boundaries"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-13.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "and binding.start == 0",
+      "after": "and binding.start != 0",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_module_import_masks_top_level_local_only_at_zero_position[0-False-expected0]",
+        "FAILED tests/metrics/test_resolver.py::test_module_import_masks_top_level_local_only_at_zero_position[1-False-expected1]",
+        "FAILED tests/metrics/test_resolver.py::test_module_import_masks_top_level_local_only_at_zero_position[0-True-expected2]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-14.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "binding.targets if not binding.namespace else []",
+      "after": "binding.targets if binding.namespace else []",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_import_binding_does_not_treat_namespace_as_callable[False-expected0]",
+        "FAILED tests/metrics/test_resolver.py::test_import_binding_does_not_treat_namespace_as_callable[True-expected1]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-15.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "if not fallback:",
+      "after": "if fallback:",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_global_fallback_excludes_types_and_requires_opt_in"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-16.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "if typed is not None:",
+      "after": "if typed:",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_typed_receiver_rejection_is_not_replaced_with_qualified_guess"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-17.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "if adapter.require_import_node and directive is None:",
+      "after": "if False:",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_import_connection_keeps_evidence_type_only_and_required_node_policy[None-True-external:pkg-EXTRACTED]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-18.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "if len(matches) == 1\n            else external",
+      "after": "if len(matches) >= 1\n            else external",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_inheritance_requires_unique_target[2-external]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-19.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "call.relationship,\n            \"INFERRED\",",
+      "after": "\"CALLS\",\n            \"INFERRED\",",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_call_connections_preserves_reference_relationship_and_file_fallback"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-20.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "return None if types is None else self.resolver.members(types, request.name, False)",
+      "after": "return None if not types else self.resolver.members(types, request.name, False)",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_resolve_distinguishes_unknown_from_known_receiver[types1-expected1]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-21.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "return declared or candidates",
+      "after": "return candidates",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_nearest_binding_prefers_declared_type_only_within_smallest_scope"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-22.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "binding.node.start_byte >= request.call.start_byte",
+      "after": "binding.node.start_byte > request.call.start_byte",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_unsafe_rejects_use_before_declaration_and_missing_annotation[20-Service-True]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-23.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "if not binding.inferred and syntax.adapter.trust_receiver_annotations:",
+      "after": "if syntax.adapter.trust_receiver_annotations:",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_conditional_declarations_require_trusted_explicit_annotation[True-True-True]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-24.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "or types[0].key != initialized[0].key",
+      "after": "or types[0].key == initialized[0].key",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_initializer_requires_single_matching_identity[left0-right0-False]",
+        "FAILED tests/metrics/test_receiver_resolution.py::test_initializer_requires_single_matching_identity[left1-right1-True]",
+        "FAILED tests/metrics/test_receiver_resolution.py::test_declared_type_rejects_initializer_identity_conflict[initialized1]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-25.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "if path == original or path.startswith(original + \".\")",
+      "after": "if path.startswith(original)",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_aliases_preserve_suffix_and_require_path_component_boundary[paths2-alias-service-expected2]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-26.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "for _ in range(len(nodes)):",
+      "after": "for _ in range(1):",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_alias_expansion_reaches_fixed_point_across_reverse_order_chain"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-27.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "return True\n        scope = self._call_scope(call)",
+      "after": "return False\n        scope = self._call_scope(call)",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_missing_call_node_is_unsafe_for_receiver_writes"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-28.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "(paths if receiver else set())",
+      "after": "(paths if not receiver else set())",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_path_writes_distinguishes_receiver_from_called_member[True-service-True]",
+        "FAILED tests/metrics/test_receiver_resolution.py::test_path_writes_distinguishes_receiver_from_called_member[False-service-False]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-29.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_syntax.py",
+      "before": "if len(children) == 1 else None",
+      "after": "if len(children) >= 1 else None",
+      "source_sha256": "adde0ec7fc409d876dffbbccf7be5cee3ebab554c372a701518167483e152e46",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_syntax.py::test_type_name_unwraps_generic_reference_and_ignores_lifetime"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-30.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_syntax.py",
+      "before": "None if details.annotation == \"var\" else details.annotation",
+      "after": "details.annotation",
+      "source_sha256": "adde0ec7fc409d876dffbbccf7be5cee3ebab554c372a701518167483e152e46",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_syntax.py::test_declaration_infers_constructor_for_missing_or_var_annotation[var]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-31.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_syntax.py",
+      "before": "values[index] if len(values) == len(names) else None",
+      "after": "values[0] if values else None",
+      "source_sha256": "adde0ec7fc409d876dffbbccf7be5cee3ebab554c372a701518167483e152e46",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_syntax.py::test_go_short_declaration_pairs_only_one_value_per_name[1-expected0]",
+        "FAILED tests/metrics/test_receiver_syntax.py::test_go_short_declaration_pairs_only_one_value_per_name[2-expected1]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-32.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_syntax.py",
+      "before": "if details.member and member_assignment(node) and not constructor(node):",
+      "after": "if False:",
+      "source_sha256": "adde0ec7fc409d876dffbbccf7be5cee3ebab554c372a701518167483e152e46",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_syntax.py::test_member_constructor_inference_is_rejected_outside_constructor"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-33.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolution_contract.py",
+      "before": "position: int | None = None",
+      "after": "position: int | None = 0",
+      "source_sha256": "36c392b5c910fff8420e41bc4c0ad96f81908aadfe93e3c537b1424a5117cd10",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolution_contract.py::test_import_request_defaults_and_context_override"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-34.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolution_contract.py",
+      "before": "@dataclass(frozen=True)\nclass CallTarget:",
+      "after": "@dataclass(frozen=False)\nclass CallTarget:",
+      "source_sha256": "36c392b5c910fff8420e41bc4c0ad96f81908aadfe93e3c537b1424a5117cd10",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolution_contract.py::test_records_reject_field_assignment[record2]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-35.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolution_syntax.py",
+      "before": "scope.start_byte <= position < scope.end_byte",
+      "after": "scope.start_byte <= position <= scope.end_byte",
+      "source_sha256": "0e8bc92662ccba3191b01db75de466b0f85aada086be20c25fedb0b6edb2ebe4",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolution_syntax.py::test_visible_uses_half_open_scope_and_adapter_policy[20-True-False]",
+        "FAILED tests/metrics/test_resolution_syntax.py::test_shadowed_respects_visibility_and_allowed_declaration[20-False-False]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-36.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolution_syntax.py",
+      "before": "return names(field(node, \"value\"))",
+      "after": "return names(field(node, \"key\"))",
+      "source_sha256": "0e8bc92662ccba3191b01db75de466b0f85aada086be20c25fedb0b6edb2ebe4",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolution_syntax.py::test_names_collects_patterns_without_keys_or_annotations"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-37.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolution_syntax.py",
+      "before": "if len(candidates) == 1 else None",
+      "after": "if len(candidates) >= 1 else None",
+      "source_sha256": "0e8bc92662ccba3191b01db75de466b0f85aada086be20c25fedb0b6edb2ebe4",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolution_syntax.py::test_import_lookup_disambiguates_source_and_rejects_ambiguous_line"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-38.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolution_syntax.py",
+      "before": "return self.spans.get((start, end))",
+      "after": "return self.spans.get((start, end - 1))",
+      "source_sha256": "0e8bc92662ccba3191b01db75de466b0f85aada086be20c25fedb0b6edb2ebe4",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolution_syntax.py::test_span_lookup_requires_both_exact_coordinates"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-39.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/resolver.py",
+      "before": "if not static:\n            return declarations",
+      "after": "if static:\n            return declarations",
+      "source_sha256": "6eb834e2f378d1d9973bc686a3b6bb7b3886d54ce2a8803876bca34d8241f27d",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_resolver.py::test_members_applies_static_filter_only_for_class_access[False-expected0]",
+        "FAILED tests/metrics/test_resolver.py::test_members_applies_static_filter_only_for_class_access[True-expected1]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-40.log"
+    },
+    {
+      "file": "atlas/src/atlas/metrics/receiver_resolution.py",
+      "before": "if initialized is not None and self._conflicting_types(types, initialized):",
+      "after": "if False:",
+      "source_sha256": "f893cc26eaa97643cf8da4377c1a06042d4c40801432c6e160f43dc59c715cc6",
+      "outcome": "killed",
+      "exit_code": 1,
+      "failures": [
+        "FAILED tests/metrics/test_receiver_resolution.py::test_declared_type_rejects_initializer_identity_conflict[initialized0]",
+        "FAILED tests/metrics/test_receiver_resolution.py::test_declared_type_rejects_initializer_identity_conflict[initialized1]"
+      ],
+      "log": "/tmp/atlas-resolution-mutations-7f2p1_ts/mutant-41.log"
+    }
+  ]
+}
