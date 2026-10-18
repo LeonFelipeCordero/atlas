@@ -1,0 +1,212 @@
+[
+  {
+    "source": "safety.ts::invoke",
+    "evidence": "port.brew('coffee')",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::AliasWrite.constructor",
+    "evidence": "super()",
+    "target": "external:typescript:super",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::AliasMutator.constructor",
+    "evidence": "super()",
+    "target": "external:typescript:super",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::AliasMutator.constructor",
+    "evidence": "Reflect.set(alias, 'brew', replacement)",
+    "target": "external:typescript:set",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::SafeAlias.constructor",
+    "evidence": "super()",
+    "target": "external:typescript:super",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Pickup().brew(order)",
+    "target": "safety.ts::Brewing.brew",
+    "signature": "brew(order: string)",
+    "targetLine": 1
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Pickup()",
+    "target": "safety.ts::Pickup",
+    "signature": "class Pickup extends Brewing",
+    "targetLine": 2
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Abstract().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Abstract()",
+    "target": "safety.ts::Abstract",
+    "signature": "abstract class Abstract extends Brewing { abstract brew(order: string): string; }",
+    "targetLine": 3
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new SignatureOnly().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new SignatureOnly()",
+    "target": "safety.ts::SignatureOnly",
+    "signature": "class SignatureOnly extends Brewing",
+    "targetLine": 4
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Getter().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Getter()",
+    "target": "safety.ts::Getter",
+    "signature": "class Getter extends Brewing",
+    "targetLine": 5
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Menu().price(order)",
+    "target": "safety.ts::Menu.price",
+    "signature": "price(order: string | number)",
+    "targetLine": 9
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Menu()",
+    "target": "safety.ts::Menu",
+    "signature": "class Menu",
+    "targetLine": 6
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Duplicate().price(order)",
+    "target": "external:typescript:price",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new Duplicate()",
+    "target": "safety.ts::Duplicate",
+    "signature": "class Duplicate",
+    "targetLine": 11
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "quote(order)",
+    "target": "safety.ts::quote",
+    "signature": "function quote(order: string | number)",
+    "targetLine": 17
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new AliasWrite().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new AliasWrite()",
+    "target": "safety.ts::AliasWrite",
+    "signature": "class AliasWrite extends Brewing",
+    "targetLine": 20
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new AliasMutator().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new AliasMutator()",
+    "target": "safety.ts::AliasMutator",
+    "signature": "class AliasMutator extends Brewing",
+    "targetLine": 23
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new AliasOverride().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new AliasOverride()",
+    "target": "safety.ts::AliasOverride",
+    "signature": "class AliasOverride extends AliasWrite",
+    "targetLine": 26
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new SafeAlias().brew(order)",
+    "target": "safety.ts::Brewing.brew",
+    "signature": "brew(order: string)",
+    "targetLine": 1
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new SafeAlias()",
+    "target": "safety.ts::SafeAlias",
+    "signature": "class SafeAlias extends Brewing",
+    "targetLine": 27
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new FieldOverride().brew(order)",
+    "target": "external:typescript:brew",
+    "signature": null,
+    "targetLine": null
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new FieldOverride()",
+    "target": "safety.ts::FieldOverride",
+    "signature": "class FieldOverride extends FieldMiddle",
+    "targetLine": 33
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new StaticFieldOverride().brew(order)",
+    "target": "safety.ts::StaticFieldOverride.brew",
+    "signature": "brew(order: string)",
+    "targetLine": 35
+  },
+  {
+    "source": "safety.ts::serve",
+    "evidence": "new StaticFieldOverride()",
+    "target": "safety.ts::StaticFieldOverride",
+    "signature": "class StaticFieldOverride extends StaticFieldBase",
+    "targetLine": 35
+  }
+]

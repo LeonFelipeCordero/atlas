@@ -11,7 +11,7 @@ use std::{
 };
 
 fn fixtures() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../atlas/tests")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests")
 }
 fn read_json(path: impl AsRef<Path>) -> Value {
     serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()

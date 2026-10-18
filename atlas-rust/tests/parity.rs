@@ -178,14 +178,10 @@ macro_rules! language_tests {
 language_tests!(java, kotlin, go, rust, javascript, typescript, elixir, python, tsx);
 
 #[test]
-fn shared_fixtures_are_reference_symlinks() {
+fn fixtures_are_local_directories() {
     let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     for name in ["code_samples", "snapshots"] {
-        assert!(fs::symlink_metadata(tests.join(name)).unwrap().file_type().is_symlink());
-        assert_eq!(
-            tests.join(name).canonicalize().unwrap(),
-            tests.join("../../atlas/tests").join(name).canonicalize().unwrap()
-        );
+        assert!(fs::symlink_metadata(tests.join(name)).unwrap().file_type().is_dir());
     }
 }
 

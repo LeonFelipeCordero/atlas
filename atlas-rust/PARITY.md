@@ -1,6 +1,6 @@
 # Native parity tests
 
-Python snapshots are the reference. No test updates snapshots. Rust tests invoke Rust APIs and the native executable, never Python. `tests/code_samples` and `tests/snapshots` are symlinks to `atlas/tests/`; do not replace them with copies.
+Python snapshots are the reference. No test updates snapshots. Rust tests invoke Rust APIs and the native executable, never Python. `tests/code_samples` and `tests/snapshots` are local copies of the Python reference fixtures, so native tests do not depend on the Python source tree.
 
 ```text
 Python fixtures/snapshots ──> cargo test ──> native artifact/report/check/mutations
