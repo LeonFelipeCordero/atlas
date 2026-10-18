@@ -23,7 +23,7 @@ def test_missing_config_uses_defaults_without_searching_parents(tmp_path: Path) 
 
     result = load_project_config(child)
 
-    assert result.model_dump() == {**DEFAULTS, "mutations": {"rules": []}}
+    assert result.model_dump() == {**DEFAULTS, "mutations": {"rules": [], "targets": {}}}
 
 
 def test_load_checks_excludes_mutation_settings_and_preserves_overrides(tmp_path: Path) -> None:

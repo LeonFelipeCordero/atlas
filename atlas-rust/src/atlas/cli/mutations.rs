@@ -23,6 +23,12 @@ fn output(options: &Options) -> Result<Value> {
 /// Errors propagate to the CLI boundary.
 pub fn run(matches: &clap::ArgMatches) -> Result<i32> {
     let options = Options::from_matches("mutations", matches);
+    if let Some(("run", child)) = matches.subcommand() {
+        if options.has("--rules") {
+            return Err(super::options::usage("mutations", "--rules cannot be combined with a subcommand"));
+        }
+        return super::mutation_run::run(&options, child);
+    }
     println!("{}", serde_json::to_string_pretty(&output(&options)?)?);
     Ok(0)
 }
@@ -70,7 +76,7 @@ mod tests {
         service.save_folder(root.path(), &artifact)?;
         let project = service.list()?.remove(0);
         let saved = service.report(&project.name)?;
-        let config = config::MutationConfig { rules: vec!["arithmetic.add-to-subtract".into()] };
+        let config = config::MutationConfig { rules: vec!["arithmetic.add-to-subtract".into()], ..Default::default() };
         let expected = build_mutation_report(root.path(), &artifact, &config)?;
         assert_eq!(expected["mutations"].as_array().unwrap().len(), 1);
         assert_eq!(build_mutation_report(root.path(), &saved, &config)?, expected);

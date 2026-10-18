@@ -77,7 +77,7 @@ fn traversal_request(command: &str, options: &Options, key: &str) -> Result<Trav
     let relations: BTreeSet<_> = options
         .get("--relations", "CALLS,REFERENCES")
         .split(',')
-        .map(|p| p.trim().to_uppercase())
+        .map(|p| p.trim_matches(|c: char| c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&c)).to_uppercase())
         .filter(|p| !p.is_empty())
         .collect();
     if relations.is_empty() || relations.iter().any(|r| !RELATIONS.contains(&r.as_str())) {

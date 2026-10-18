@@ -1,8 +1,13 @@
-//! On-demand verified mutations. This layer never writes source or persists edits.
+//! Verified mutation manifests and opt-in, restoring command execution.
 pub mod config;
+mod formatting;
 pub mod manifests;
+pub mod matching;
+mod process;
 pub mod report;
 pub mod rules;
+pub mod runner;
+mod workspace;
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -28,5 +33,9 @@ pub fn canonical_json(value: &Value) -> String {
     }
 }
 
+#[cfg(test)]
+mod runner_process_tests;
+#[cfg(test)]
+mod runner_tests;
 #[cfg(test)]
 mod tests;

@@ -49,7 +49,12 @@ pub fn cli() -> Command {
             .long_about("Derive independent JSON byte-edit manifests, never change source or save results. Opt in via atlas.json: mutations.rules is a list of rule IDs. Default/empty lists generate nothing. --rules lists exact language coverage. Conditions, unary operators and unlisted aliases are excluded. Syntactic support is not type validity.")
             .arg(folder())
             .arg(flag("saved", "Read persisted candidates; reject stale sources"))
-            .arg(flag("rules", "Show the versioned rule catalog and limitations")))
+            .arg(flag("rules", "Show the versioned rule catalog and limitations"))
+            .subcommand(command("run", "Apply independent mutations and run trusted configured test commands")
+                .long_about("Apply independent mutations and run trusted configured test commands in this workspace. No baseline or isolation is provided. Nonzero command exits count as killed. Results are incremental JSONL with separate command logs. Each run overwrites previous results. Progress is printed to stderr; stdout remains JSON.")
+                .arg(value("folder", "Override the parent project folder").short('f').value_name("PATH"))
+                .arg(value("output", "Results file relative to the project root; overwritten on each run").default_value("mutation-results.jsonl").value_name("PATH"))
+                .arg(value("target", "Comma-separated target names, or 'all'; prompt when omitted on a terminal"))))
         .subcommand(graph())
 }
 fn graph() -> Command {

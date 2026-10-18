@@ -101,10 +101,11 @@ class Process:
     def environment(self) -> dict:
         return {**os.environ, "DATABASE_PATH": str(self.database), "XDG_DATA_HOME": str(self.database.parent / "xdg"),
                 "PYTHONDONTWRITEBYTECODE": "1", "PYTHONHASHSEED": "0", "LC_ALL": "C.UTF-8",
-                "ATLAS_PARITY_UUID": "", **self.extra_env}
+                "ATLAS_PARITY_UUID": "", "ATLAS_PARITY_REPOSITORY_UUID": "", **self.extra_env}
 
     def run(self) -> dict:
         start = time.perf_counter_ns()
+        started_ms = time.time_ns() // 1_000_000
         try:
             result = subprocess.run(self.command, cwd=self.cwd, env=self.environment(), capture_output=True,
                                     timeout=self.timeout, check=False)
@@ -113,7 +114,8 @@ class Process:
         except subprocess.TimeoutExpired as error:
             output = self.output(error.stdout or b"", error.stderr or b"")
             output.update(exit_code=None, timeout=True)
-        return {**output, "command": self.command, "elapsed_ns": time.perf_counter_ns() - start}
+        return {**output, "command": self.command, "elapsed_ns": time.perf_counter_ns() - start,
+                "started_ms": started_ms, "finished_ms": time.time_ns() // 1_000_000}
 
     def output(self, stdout: bytes, stderr: bytes) -> dict:
         return {"stdout": stdout.decode("utf-8", "replace"), "stderr": stderr.decode("utf-8", "replace")}

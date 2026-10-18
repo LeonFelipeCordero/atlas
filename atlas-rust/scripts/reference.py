@@ -18,6 +18,9 @@ def main() -> None:
         repositories.uuid4 = lambda: UUID("00000000-0000-4000-8000-000000000001")
         with repository_store(database) as store:
             store.register(root.name, str(root))
+    elif mode == "historical":
+        from lifecycle import historical
+        historical(Path(os.environ["DATABASE_PATH"]), args[0], Path(args[1]))
     elif mode == "migrate":
         from atlas.persistence.database import main as migrate
         sys.argv = ["atlas-migrate", "migrate", *args]
@@ -27,7 +30,9 @@ def main() -> None:
         fixture = os.environ.get("ATLAS_PARITY_UUID")
         if fixture:
             from atlas.persistence import repositories
-            repositories.uuid4 = lambda: UUID(fixture)
+            repository = os.environ.get("ATLAS_PARITY_REPOSITORY_UUID")
+            identities = iter([repository, fixture] if repository else [fixture])
+            repositories.uuid4 = lambda: UUID(next(identities))
         cli(args=args, prog_name="atlas")
     else:
         raise SystemExit(f"Unknown reference operation: {mode}")
