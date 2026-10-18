@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
+import { rustCli, rustFixture } from '../../tests/rust-cli'
 import { migratedDatabaseFixture } from '../../tests/migrated-database-fixture'
 import {
   architectureScope,
@@ -28,14 +28,6 @@ let path: string
 let database: Database
 let service: RepositoryService
 const copyMigratedDatabase = migratedDatabaseFixture()
-const project = fileURLToPath(new URL('../../../atlas', import.meta.url))
-function python(...args: Array<string>) {
-  const result = Bun.spawnSync(['uv', 'run', '--project', project, ...args], {
-    env: { ...process.env, DATABASE_PATH: path },
-  })
-  if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-  return result.stdout.toString()
-}
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'normalized-dashboard-'))
   path = join(directory, 'atlas.sqlite')
@@ -60,21 +52,7 @@ function ready(id: string, scope: GraphScope = { kind: 'repository' }) {
 function save(artifact: Artifact, name = 'custom'): string {
   const fixturePath = join(directory, 'fixture.json')
   writeFileSync(fixturePath, JSON.stringify(artifact))
-  return python(
-    'python',
-    '-c',
-    `
-import json, sys
-from pathlib import Path
-from atlas.persistence.database import repository_session
-from atlas.persistence.repositories import RepositoryStore
-with repository_session() as session:
-    graph = RepositoryStore(session).save_new(sys.argv[2], sys.argv[2], json.loads(Path(sys.argv[1]).read_text()))
-    print(graph.repositoryId)
-`,
-    fixturePath,
-    name,
-  ).trim()
+  return JSON.parse(rustFixture(path, 'save', fixturePath, name)) as string
 }
 type FixtureNode = {
   key: string
@@ -354,7 +332,7 @@ test('normalized-only DTOs preserve partial metrics, symbol details, ordered dia
   ).not.toContain('artifact')
 })
 
-test('Python analyzer and normalized Bun reads agree on all navigable views, dependency metrics and cycles', () => {
+test('Rust analyzer and normalized Bun reads agree on all navigable views, dependency metrics and cycles', () => {
   const source = join(directory, 'source')
   mkdirSync(source)
   writeFileSync(
@@ -367,30 +345,12 @@ test('Python analyzer and normalized Bun reads agree on all navigable views, dep
     'import a\ndef test_run():\n    return a.C().run()\n',
   )
   writeFileSync(join(source, 'bad.py'), 'def broken(:\n')
-  const result = JSON.parse(
-    python(
-      'python',
-      '-c',
-      `
-import json, sys
-from pathlib import Path
-from dataclasses import asdict
-from atlas.indexer import analyze_repository
-from atlas.persistence.database import repository_session
-from atlas.persistence.repositories import RepositoryStore
-artifact = asdict(analyze_repository(Path(sys.argv[1])))
-with repository_session() as session:
-    graph = RepositoryStore(session).save_new('fixture', sys.argv[1], artifact)
-    print(json.dumps({'id': graph.repositoryId, 'artifact': artifact}))
-`,
-      source,
-    ),
-  ) as { id: string; artifact: Artifact }
-  const expected = result.artifact
+  const { repositoryId: id } = JSON.parse(rustCli(path, 'index', '-f', source))
+  const expected = JSON.parse(rustFixture(path, 'analyze', source)) as Artifact
   const visible = hideTestFiles(expected)
   const pending: Array<GraphScope> = [{ kind: 'repository' }]
   for (const scope of pending) {
-    const view = ready(result.id, scope)
+    const view = ready(id, scope)
     const graph = buildProjectGraph(visible, scope)
     expect(view.graph.edges).toEqual(graph.edges)
     expect(view.graph.nodes.map(({ properties, ...node }) => node)).toEqual(
@@ -405,7 +365,7 @@ with repository_session() as session:
     enqueueScopes(graph, pending)
   }
   expect(pending.length).toBeGreaterThan(2)
-  expect(ready(result.id).cycles).toHaveLength(1)
+  expect(ready(id).cycles).toHaveLength(1)
 })
 
 test('type-only imports do not create cycles; hidden membership removes an entire cyclic group', () => {
@@ -430,7 +390,7 @@ test('type-only imports do not create cycles; hidden membership removes an entir
   expect(ready(save(artifact, 'hidden-member')).cycles).toEqual([])
 })
 
-test('cycle IDs, members and evidence ordering match Python for Unicode stable keys', () => {
+test('cycle IDs, members and evidence ordering match Rust for Unicode stable keys', () => {
   const artifact = fixture()
   const keys = ['\ufffd.py', '😀.py']
   const renamed = new Map([
@@ -471,14 +431,9 @@ test('cycle IDs, members and evidence ordering match Python for Unicode stable k
       evidence: null,
     },
   ]
-  const expected = JSON.parse(
-    python(
-      'python',
-      '-c',
-      'import json, sys; from atlas.metrics.cycles import circular_dependencies; graph = json.loads(sys.argv[1]); print(json.dumps(circular_dependencies(graph["nodes"], graph["edges"])["groups"]))',
-      JSON.stringify(artifact),
-    ),
-  )
+  const fixturePath = join(directory, 'cycles.json')
+  writeFileSync(fixturePath, JSON.stringify(artifact))
+  const expected = JSON.parse(rustFixture(path, 'cycles', fixturePath))
   expect(ready(save(artifact)).cycles.map((cycle) => cycle.group)).toEqual(
     expected,
   )

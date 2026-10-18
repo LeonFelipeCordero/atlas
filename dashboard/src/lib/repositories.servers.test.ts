@@ -7,9 +7,9 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, spyOn, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
+import { rustCli } from '../../tests/rust-cli'
 import { migratedDatabaseFixture } from '../../tests/migrated-database-fixture'
 import {
   createRepositoryService,
@@ -47,20 +47,7 @@ function ready(
 const fileView = (id: string, key = 'file:main.py') =>
   ready(id, { kind: 'file', key })
 
-function python(...args: Array<string>) {
-  const result = Bun.spawnSync(
-    [
-      'uv',
-      'run',
-      '--project',
-      fileURLToPath(new URL('../../../atlas', import.meta.url)),
-      ...args,
-    ],
-    { env: { ...process.env, DATABASE_PATH: path } },
-  )
-  if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-  return result.stdout.toString()
-}
+const atlas = (...args: Array<string>) => rustCli(path, ...args)
 
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'shared-graph-database-'))
@@ -76,7 +63,7 @@ afterEach(() => {
   rmSync(directory, { recursive: true, force: true })
 })
 
-test('UI opens a Python-migrated database without owning migrations', () => {
+test('UI opens a Rust-migrated database without owning migrations', () => {
   const repository = registerRepository(
     { name: ' Example ', location: ' /work/example ' },
     database,
@@ -109,6 +96,7 @@ test('UI opens a Python-migrated database without owning migrations', () => {
     { name: 'graph_symbols' },
     { name: 'repositories' },
     { name: 'repository_graphs' },
+    { name: 'seaql_migrations' },
   ])
 })
 
@@ -153,7 +141,7 @@ test('name uniqueness and validation retain existing API behavior', () => {
   )
 })
 
-test('Python indexes repositories registered by the UI, and the UI sees reindex writes', () => {
+test('Rust indexes repositories registered by the UI, and the UI sees reindex writes', () => {
   const source = join(directory, 'source')
   mkdirSync(source)
   const file = join(source, 'main.py')
@@ -162,12 +150,12 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     { name: 'Shared', location: source },
     database,
   )
-  const summary = JSON.parse(python('atlas', 'index', '-f', source))
+  const summary = JSON.parse(atlas('index', '-f', source))
   const first = fileView(repository.id)
   expect(summary.repositoryId).toBe(repository.id)
   expect(first.graph.nodes.some((node) => node.label === 'run')).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('atlas', 'index', '-f', source)
+  atlas('index', '-f', source)
   const replacement = fileView(repository.id)
   expect(
     replacement.graph.nodes.some((node) => node.label === 'replacement'),
@@ -193,7 +181,7 @@ test('Python indexes repositories registered by the UI, and the UI sees reindex 
     database,
   )
   writeFileSync(join(otherSource, 'main.py'), 'def id_named():\n    return 3\n')
-  const selected = JSON.parse(python('atlas', 'index', '-f', otherSource))
+  const selected = JSON.parse(atlas('index', '-f', otherSource))
   expect(selected.repositoryId).toBe(idNamed.id)
   const idNamedGraph = fileView(idNamed.id)
   expect(
@@ -218,7 +206,7 @@ test('folder reports register and update graphs visible to the UI', () => {
   mkdirSync(source)
   const file = join(source, 'main.py')
   writeFileSync(file, 'def first():\n    return 1\n')
-  python('atlas', 'report', '-f', source, '--save')
+  atlas('report', '-f', source, '--save')
   const repository = listRepositories(database)[0]
   expect(repository.name).toBe('source')
   expect(repository.location).toBe(source)
@@ -226,7 +214,7 @@ test('folder reports register and update graphs visible to the UI', () => {
     fileView(repository.id).graph.nodes.some((node) => node.label === 'first'),
   ).toBe(true)
   writeFileSync(file, 'def replacement():\n    return 2\n')
-  python('atlas', 'report', '--f', source, '--save')
+  atlas('report', '--f', source, '--save')
   expect(listRepositories(database)).toHaveLength(1)
   expect(
     fileView(repository.id).graph.nodes.some(
@@ -245,7 +233,7 @@ test('Python src imports become dashboard arrows even when the report has no fin
     'from app import worker as w\ndef run():\n    w.work()\n',
   )
   writeFileSync(join(app, 'worker.py'), 'def work(): pass\n')
-  python('atlas', 'report', '-f', source, '--save')
+  atlas('report', '-f', source, '--save')
   const repository = listRepositories(database)[0]
   const { graph } = ready(repository.id, {
     kind: 'folder',
@@ -259,7 +247,7 @@ test('Python src imports become dashboard arrows even when the report has no fin
   })
 })
 
-test('indexed metrics survive Python/Bun storage and keep hidden test dependents', () => {
+test('indexed metrics survive Rust/Bun storage and keep hidden test dependents', () => {
   const source = join(directory, 'impact-source')
   mkdirSync(source)
   writeFileSync(join(source, 'core.py'), 'def core():\n    return 1\n')
@@ -271,7 +259,7 @@ test('indexed metrics survive Python/Bun storage and keep hidden test dependents
     join(source, 'test_main.py'),
     'from main import main\ndef test_main():\n    return main()\n',
   )
-  python('atlas', 'report', '-f', source, '--save')
+  atlas('report', '-f', source, '--save')
   const repository = listRepositories(database)[0]
   const view = ready(repository.id)
   const core = view.details.nodes.find((node) => node.name === 'core.py')!
@@ -320,7 +308,7 @@ test('one read transaction keeps metadata and nodes on one WAL snapshot', () => 
   mkdirSync(source)
   const file = join(source, 'main.py')
   writeFileSync(file, 'def before(): return 1\n')
-  python('atlas', 'index', '-f', source)
+  atlas('index', '-f', source)
   const repository = listRepositories(database)[0]
   const before = fileView(repository.id)
   writeFileSync(file, 'def after(): return 2\n')
@@ -338,7 +326,7 @@ test('one read transaction keeps metadata and nodes on one WAL snapshot', () => 
       sql.includes('from "graph_nodes" left join "graph_symbols"')
     ) {
       interleaved = true
-      python('atlas', 'index', '-f', source)
+      atlas('index', '-f', source)
     }
     return original.call(this, sql)
   } as typeof original)

@@ -1,0 +1,17 @@
+[package]
+name = "dashboard-atlas-fixture"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "atlas"
+path = "../../../atlas-rust/src/atlas/main.rs"
+
+[[bin]]
+name = "atlas-migrate"
+path = "../../../atlas-rust/src/atlas/migrate.rs"
+
+[dependencies]
+atlas-rust = { path = "../../../atlas-rust" }
+serde_json = "1"

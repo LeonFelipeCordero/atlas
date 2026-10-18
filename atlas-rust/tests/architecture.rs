@@ -50,33 +50,3 @@ fn assert_file(file: &Path, (parser, forbidden): (&mut tree_sitter::Parser, &reg
         assert!(!forbidden.is_match(text), "{} crosses the persistence boundary: {text}", file.display());
     }
 }
-
-#[test]
-fn every_python_package_module_has_a_native_counterpart() {
-    let native = root();
-    let python = Path::new(env!("CARGO_MANIFEST_DIR")).join("../atlas/src/atlas");
-    for file in source_files(&python, "py") {
-        let relative = file.strip_prefix(&python).unwrap();
-        if relative.components().any(|part| part.as_os_str() == "migrations") {
-            assert_migration(relative, &native);
-            continue;
-        }
-        let target = match relative.file_name().unwrap().to_str().unwrap() {
-            "__init__.py" if relative.parent() == Some(Path::new("")) => PathBuf::from("lib.rs"),
-            "__init__.py" => relative.with_file_name("mod.rs"),
-            "__main__.py" => relative.with_file_name("main.rs"),
-            _ => relative.with_extension("rs"),
-        };
-        assert!(native.join(&target).is_file(), "Missing native module: {}", target.display());
-    }
-}
-
-fn assert_migration(relative: &Path, native: &Path) {
-    if relative.parent().is_some_and(|parent| parent.ends_with("versions")) {
-        assert!(
-            native.join(relative.with_extension("sql")).is_file(),
-            "Missing native revision: {}",
-            relative.display()
-        );
-    }
-}

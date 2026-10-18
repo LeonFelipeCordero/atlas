@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { rustFixture } from '../../tests/rust-cli'
 import type { Artifact, ArtifactNode } from './architecture-artifact'
 
 const samples = {
@@ -41,7 +41,7 @@ export function run() { return helper() }
 
 let imported: Artifact | undefined
 
-/** Projection-only fixture from the real in-memory analyzer; no persisted JSON export. */
+/** Projection-only fixture from the real Rust analyzer; no persisted JSON export. */
 export function importedArtifact(): Artifact {
   if (imported) return imported
   const directory = mkdtempSync(join(tmpdir(), 'atlas-language-fixture-'))
@@ -52,21 +52,9 @@ export function importedArtifact(): Artifact {
       mkdirSync(dirname(file), { recursive: true })
       writeFileSync(file, content)
     }
-    const command = [
-      'uv',
-      'run',
-      '--project',
-      fileURLToPath(new URL('../../../atlas', import.meta.url)),
-    ]
-    const result = Bun.spawnSync([
-      ...command,
-      'python',
-      '-c',
-      'import json, sys; from pathlib import Path; from dataclasses import asdict; from atlas.indexer import analyze_repository; print(json.dumps(asdict(analyze_repository(Path(sys.argv[1])))))',
-      source,
-    ])
-    if (result.exitCode !== 0) throw new Error(result.stderr.toString())
-    imported = JSON.parse(result.stdout.toString()) as Artifact
+    imported = JSON.parse(
+      rustFixture(join(directory, 'unused.sqlite'), 'analyze', source),
+    ) as Artifact
     return imported
   } finally {
     rmSync(directory, { recursive: true, force: true })

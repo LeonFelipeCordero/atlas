@@ -1,5 +1,9 @@
 # Test suite timing
 
+Historical measurements from before removal of the Python importer. Python paths
+and commands below no longer apply. Dashboard tests now use Rust. See `AGENTS.md`
+for current checks.
+
 Measured on the same machine with installed dependencies. These are single-run measurements, not timing assertions. No tests or assertions were removed. README and production code are unchanged.
 
 ## Suite runtime
