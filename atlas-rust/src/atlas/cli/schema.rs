@@ -33,6 +33,10 @@ fn traversal(name: &'static str, depth: &'static str, default: &'static str) -> 
         .arg(value("max-nodes", "Maximum nodes (1..=300)").default_value("30"))
         .arg(value("max-edges", "Maximum edges (1..=1000)").default_value("100"))
 }
+/// Build the command schema with routing, defaults, help, and syntax validation.
+///
+/// This does not parse arguments or execute commands. Numeric ranges and graph
+/// relation selections receive additional validation after parsing.
 pub fn cli() -> Command {
     command("atlas", "Analyze repositories and store their graphs in SQLite")
         .subcommand_required(true)

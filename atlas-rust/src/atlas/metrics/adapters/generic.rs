@@ -5,6 +5,8 @@ use crate::syntax::{field, named_children};
 use serde_json::{Value, json};
 use tree_sitter::Node;
 
+/// Return sorted policy-registration metadata for `languages`, marking entries in `dedicated`.
+/// Report registration only; hooks are empty and grammar behavior is not verified here.
 pub fn receiver_coverage(languages: &[&str], dedicated: &[&str]) -> Value {
     let mut languages = languages.to_vec();
     languages.sort_unstable();
@@ -21,6 +23,7 @@ pub fn receiver_coverage(languages: &[&str], dedicated: &[&str]) -> Value {
     Value::Object(result)
 }
 
+/// Remove single-child parenthesized-expression wrappers, preserving `None` and other shapes.
 pub fn unwrapped(mut node: Option<Node<'_>>) -> Option<Node<'_>> {
     while let Some(current) = node {
         let children = named_children(current);
@@ -32,7 +35,8 @@ pub fn unwrapped(mut node: Option<Node<'_>>) -> Option<Node<'_>> {
     node
 }
 
-/// Shared extraction before dedicated Java/Kotlin/Go handling.
+/// Return `(callee, receiver)` using shared fields and `adapter` member-node metadata.
+/// Missing syntax yields `(None, None)`; missing callee fields fall back to the first named child.
 pub fn default_call_target<'a>(
     adapter: &ResolutionAdapter,
     node: Option<Node<'a>>,
@@ -56,15 +60,19 @@ fn member_fields<'a>(adapter: &'a ResolutionAdapter, kind: &str) -> Option<(&'a 
     adapter.member_nodes().iter().find(|(node, _, _)| *node == kind).map(|(_, receiver, callee)| (*receiver, *callee))
 }
 
+/// Extract shared `(callee, receiver)` nodes after unwrapping call and receiver parentheses.
 pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (Option<Node<'a>>, Option<Node<'a>>) {
     let (callee, receiver) = default_call_target(adapter, unwrapped(node));
     (callee, unwrapped(receiver))
 }
 
+/// Allow class-expression inference only if the callee's named member is not rebound in `syntax`.
 pub fn receiver_class_allowed(syntax: &Syntax, callee: Option<Node<'_>>, member: &str) -> bool {
     !syntax.member_rebound(&callee.map(|n| syntax.text(n)).unwrap_or_default(), member)
 }
 
+/// Return an assignment/declaration/loop target according to `adapter`, retaining the input scope.
+/// Unsupported nodes yield `(None, scope)`; the syntax argument is unused.
 pub fn binding<'a>(
     adapter: &ResolutionAdapter,
     _syntax: &'a Syntax,
@@ -82,6 +90,7 @@ pub fn binding<'a>(
     (None, scope)
 }
 
+/// Find a write operand by left/argument/operand field, then first named child, or return `None`.
 pub fn write_target(node: Node<'_>) -> Option<Node<'_>> {
     field(node, &["left", "argument", "operand"]).or_else(|| node.named_child(0))
 }

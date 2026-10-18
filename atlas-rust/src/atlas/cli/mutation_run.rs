@@ -22,6 +22,17 @@ fn ascii_json(value: &serde_json::Value) -> Result<String> {
         .collect())
 }
 
+/// Select targets, generate verified manifests, and execute a mutation campaign.
+///
+/// Inherit the parent's folder and saved-candidate mode unless the child overrides
+/// the folder. Validate all configuration before target selection and lock the
+/// project before analysis. Temporarily edit sources, execute trusted commands,
+/// and replace JSONL results and reused logs. Print progress to stderr and a JSON
+/// summary to stdout. No baseline or isolated workspace is created.
+///
+/// Return 0 on completion, even for surviving mutants or recorded target errors;
+/// return 1 on selection cancellation or interruption. Propagate configuration,
+/// source-validation, locking, output, and restoration failures.
 pub fn run(parent: &Options, matches: &clap::ArgMatches) -> Result<i32> {
     let options = Options::from_matches("mutations run", matches);
     let root = crate::paths::absolute_path(Path::new(options.get("--folder", parent.get("--folder", "."))))?;

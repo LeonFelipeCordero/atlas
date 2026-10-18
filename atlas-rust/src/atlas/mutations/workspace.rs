@@ -13,6 +13,11 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
+/// Resolve each target's working directory in configuration order.
+///
+/// `root` must be an absolute, resolved project directory. Reject paths that
+/// escape it or are not directories; propagate path-resolution errors. This
+/// reads filesystem metadata but does not create directories.
 pub fn working_directories(root: &Path, config: &MutationConfig) -> Result<Vec<PathBuf>> {
     config
         .targets
@@ -27,7 +32,10 @@ pub fn working_directories(root: &Path, config: &MutationConfig) -> Result<Vec<P
         .collect()
 }
 
-/// Resolve existing symlinks while allowing missing output files, as Path.resolve does.
+/// Make a path absolute, collapse dot components, and resolve existing symlinks.
+///
+/// Allow missing components so callers can resolve output paths before creation.
+/// Read filesystem metadata only; propagate errors other than `NotFound`.
 pub fn resolve(path: &Path) -> Result<PathBuf> {
     let absolute = std::path::absolute(path)?;
     let mut resolved = PathBuf::new();
@@ -63,6 +71,13 @@ fn validate_output(root: &Path, manifests: &[Value], output: &Path) -> Result<()
     Ok(())
 }
 
+/// Protect project sources and configuration, then create or reuse a log directory.
+///
+/// `root` and `output` must already be resolved absolute paths. Protect recognized
+/// repository sources, manifest paths, and `atlas.json`; append `.logs` to the
+/// output path and return that directory. Do not create the results file itself.
+/// Reject protected output paths and symlink log directories; propagate discovery,
+/// resolution, and directory-creation failures. Parent directories must exist.
 pub fn prepare_output(root: &Path, manifests: &[Value], output: &Path) -> Result<PathBuf> {
     validate_output(root, manifests, output)?;
     let mut logs = output.as_os_str().to_owned();
@@ -79,7 +94,11 @@ pub fn prepare_output(root: &Path, manifests: &[Value], output: &Path) -> Result
     Ok(logs)
 }
 
-/// Replace the directory entry, never truncate a potentially hardlinked inode.
+/// Atomically replace a path with a new empty file and return its open handle.
+///
+/// Create a temporary file in the same directory, then replace the directory
+/// entry instead of truncating a potentially hardlinked inode. Reject a symlink
+/// destination and propagate temporary-file or replacement errors.
 pub fn fresh_file(path: &Path) -> Result<File> {
     if path.is_symlink() {
         bail!("Refusing to overwrite a symlink: {}", path.display());
@@ -95,6 +114,11 @@ pub struct Source {
     restored: bool,
 }
 impl Source {
+    /// Write the saved original bytes back to the source path.
+    ///
+    /// Propagate write failures so the campaign stops rather than continuing with
+    /// modified source. Disable the drop fallback before attempting the write;
+    /// a failed restoration is not silently retried.
     pub fn restore(&mut self) -> Result<()> {
         // A failed restoration aborts the campaign; do not silently retry in Drop.
         self.restored = true;
@@ -103,12 +127,19 @@ impl Source {
     }
 }
 impl Drop for Source {
+    /// Restore original bytes unless explicitly attempted; ignore fallback write errors.
     fn drop(&mut self) {
         if !self.restored {
             let _ = fs::write(&self.path, &self.original);
         }
     }
 }
+/// Read and verify a manifest's source and prepare replacement bytes in memory.
+///
+/// `root` must be resolved. Reject absolute, parent-traversing, or escaping paths,
+/// invalid base64, invalid byte spans, and source hash/original-byte mismatches.
+/// Propagate file-resolution and read errors. No mutation is written here; the
+/// returned guard restores original bytes on drop unless `restore` was attempted.
 pub fn source(root: &Path, manifest: &Value) -> Result<Source> {
     let name = text(manifest, "path");
     let relative = Path::new(name);

@@ -20,6 +20,8 @@ use std::{
 pub struct RepositoryStore {
     pub(crate) connection: DatabaseConnection,
 }
+/// Open a store at the supplied/default database path without migrating.
+/// May create the database and parent directories; propagate path/open errors.
 pub fn repository_store(path: Option<&Path>) -> Result<RepositoryStore> {
     Ok(RepositoryStore { connection: create_engine(path)? })
 }
@@ -51,16 +53,21 @@ fn duplicate_error(error: sea_orm::DbErr) -> anyhow::Error {
     }
     storage_error(error)
 }
+/// Build a literal SQLite case-insensitive repository-name comparison without querying.
 pub(crate) fn name_matches(name: &str) -> sea_orm::sea_query::SimpleExpr {
     Expr::expr(Func::lower(Expr::col(repositories::Column::Name))).eq(Func::lower(Expr::val(name)))
 }
 impl RepositoryProtocol for RepositoryStore {
+    /// Insert and commit a name/location registration without indexing; return its DTO.
+    /// Report duplicate names as status 409, other database errors as 500, and propagate RNG errors.
     fn register(&mut self, name: &str, location: &str) -> Result<RepositoryDto> {
         let row = registration(name, location)?;
         run(repositories::Entity::insert(row.clone().into_active_model()).exec(&self.connection))
             .map_err(duplicate_error)?;
         Ok(dto(row, None))
     }
+    /// Read registrations by creation time/ID with revisioned graph import times.
+    /// Return database failures as repository errors with status 500.
     fn list(&mut self) -> Result<Vec<RepositoryDto>> {
         let rows = run(repositories::Entity::find()
             .find_also_related(repository_graphs::Entity)
@@ -73,14 +80,19 @@ impl RepositoryProtocol for RepositoryStore {
             .map(|(r, g)| dto(r, g.filter(|g| g.graph_revision.is_some()).map(|g| g.imported_at)))
             .collect())
     }
+    /// Check the registration for repository ID `identifier`; wrap database failures as status 500.
     fn exists(&mut self, identifier: &str) -> Result<bool> {
         Ok(run(repositories::Entity::find_by_id(identifier).one(&self.connection)).map_err(storage_error)?.is_some())
     }
+    /// Read an ID by literal case-insensitive `name`, or `None` if absent.
+    /// Wrap database failures as repository errors with status 500.
     fn resolve(&mut self, name: &str) -> Result<Option<String>> {
         Ok(run(repositories::Entity::find().filter(name_matches(name)).one(&self.connection))
             .map_err(storage_error)?
             .map(|r| r.id))
     }
+    /// Read the ID's summary in one transaction; return `None` without a revisioned graph.
+    /// Wrap query/transaction failures as repository errors with status 500; do not modify graph rows.
     fn graph(&mut self, identifier: &str) -> Result<Option<GraphDto>> {
         run(async {
             let tx = self.connection.begin().await?;
@@ -93,6 +105,8 @@ impl RepositoryProtocol for RepositoryStore {
         })
         .map_err(storage_error)
     }
+    /// Read one revision's report inputs in one transaction, or `None` without a saved graph.
+    /// Wrap query, JSON, and transaction failures as status 500; do not read source files.
     fn report_facts(&mut self, identifier: &str) -> Result<Option<Value>> {
         run(async {
             let tx = self.connection.begin().await?;
@@ -105,6 +119,9 @@ impl RepositoryProtocol for RepositoryStore {
         })
         .map_err(storage_error)
     }
+    /// Validate `artifact`, replace the ID's graph atomically, and return a new revision summary.
+    /// Shape/cycle errors propagate before writes. Wrap transactional failures as status 500;
+    /// rollback preserves the old graph, including on metadata or foreign-key failures.
     fn save(&mut self, identifier: &str, artifact: &Value) -> Result<GraphDto> {
         validate_parentage(artifact)?;
         run(async {
@@ -115,6 +132,9 @@ impl RepositoryProtocol for RepositoryStore {
         })
         .map_err(storage_error)
     }
+    /// Validate `artifact`, then atomically register name/location and save its graph.
+    /// Return a new revision summary. Propagate validation/RNG errors; wrap transactional
+    /// failures as status 500 and roll back both registration and graph.
     fn save_new(&mut self, name: &str, location: &str, artifact: &Value) -> Result<GraphDto> {
         validate_parentage(artifact)?;
         let row = registration(name, location)?;

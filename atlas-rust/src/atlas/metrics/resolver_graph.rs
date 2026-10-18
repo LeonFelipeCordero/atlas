@@ -80,6 +80,9 @@ impl GraphBuilder {
         }));
     }
 }
+/// Emit import, inheritance, and call connections in repository order.
+/// Represent unresolved targets as deduplicated external nodes; return an in-memory graph.
+/// This implementation does not return errors for unresolved relationships.
 pub fn resolve_connections(repository: &ParsedRepository) -> Result<ResolvedGraph> {
     let resolver = CallResolver::new(repository);
     let mut builder = GraphBuilder::default();

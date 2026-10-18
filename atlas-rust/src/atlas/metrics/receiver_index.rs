@@ -95,6 +95,7 @@ fn restore_bindings<'tree, 'stored>(
 }
 
 impl ReceiverTypes {
+    /// Retain shared syntax clones per file and defer receiver extraction and name indexing.
     pub fn new(syntax: &BTreeMap<String, Syntax>) -> Self {
         let bindings = syntax
             .iter()
@@ -108,6 +109,8 @@ impl ReceiverTypes {
         Self { bindings }
     }
 
+    /// Restore named bindings whose half-open scopes contain byte `position`.
+    /// `syntax` must be the indexed file's tree or a shared clone.
     pub(super) fn bindings_at<'tree>(
         &self,
         syntax: &'tree Syntax,
@@ -121,6 +124,8 @@ impl ReceiverTypes {
                 .filter(|binding| binding.scope_span.0 <= position && position < binding.scope_span.1),
         )
     }
+    /// Restore named bindings with declaration starts in half-open `span`.
+    /// `syntax` must be the indexed file's tree or a shared clone.
     pub(super) fn bindings_within<'tree>(
         &self,
         syntax: &'tree Syntax,

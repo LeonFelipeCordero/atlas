@@ -26,6 +26,8 @@ const NONCALLS: &[&str] = &[
     "try",
 ];
 
+/// Mark anonymous functions as callbacks with supported bindings; keep other declaration names.
+/// `source` must correspond to the node's syntax tree.
 pub fn declaration<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarrier<'tree> {
     if node.kind() == "anonymous_function" {
         callback_carrier(node, callback_binding(node, source), source)
@@ -63,6 +65,8 @@ fn pipeline_target(node: Node<'_>) -> bool {
     })
 }
 
+/// Return the optional target name, bare-name flag, and qualifier from matching source bytes.
+/// Treat pipeline right-side identifiers as bare calls; use shared syntax for other sites.
 pub fn normalize_call(site: &CallSite<'_>, source: &[u8]) -> CallTarget {
     if site.node.kind() == "identifier" {
         (Some(text(Some(site.node), source)), true, None)
@@ -71,6 +75,8 @@ pub fn normalize_call(site: &CallSite<'_>, source: &[u8]) -> CallTarget {
     }
 }
 
+/// Invoke `visitor` for calls and pipeline right-side identifiers in depth-first source order.
+/// Exclude special forms and declaration heads; `source` must match the root's syntax tree.
 pub fn visit_calls(root: Node<'_>, source: &[u8], visitor: &mut CallVisitor<'_>) {
     for node in walk(root) {
         if node.kind() == "identifier" {

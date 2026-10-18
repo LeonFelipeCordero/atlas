@@ -3,6 +3,9 @@ use crate::{domain::models::Complexity, syntax::named_children};
 use tree_sitter::Node;
 
 /// Calculate entry, decision, deep-decision and nested-loop costs without recursion.
+/// Use `policy` to classify nodes in `root` and `source` for source-dependent predicates.
+/// Exclude nested callable/type bodies and keep else-if alternatives at the same depth.
+/// Return base complexity, penalties below depth two, nested loops, their sum, and maximum depth.
 pub fn calculate_complexity(root: Node<'_>, policy: &MetricPolicy, source: &[u8]) -> Complexity {
     let root = policy.body(root);
     let (mut base, mut nested, mut loops, mut maximum) = (1, 0, 0, 0);
@@ -32,6 +35,8 @@ pub fn calculate_complexity(root: Node<'_>, policy: &MetricPolicy, source: &[u8]
     }
 }
 
+/// Measure `root` against `source` using the merged default grammar policies.
+/// Return the same complexity components as [`calculate_complexity`].
 pub fn default_complexity(root: Node<'_>, source: &[u8]) -> Complexity {
     calculate_complexity(root, &DEFAULT_METRICS, source)
 }

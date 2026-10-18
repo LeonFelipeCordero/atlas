@@ -12,6 +12,8 @@ fn identifier_name(node: Node<'_>, kind: &str, source: &[u8]) -> Option<String> 
     named_children(node).into_iter().find(|child| child.kind() == kind).map(|child| text(Some(child), source))
 }
 
+/// Normalize callbacks, function names, interfaces, and companion objects from matching source bytes.
+/// Use `Companion` for a companion object without an explicit name.
 pub fn declaration<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarrier<'tree> {
     if CALLBACK_TYPES.contains(&node.kind()) {
         return callback_carrier(node, callback_binding(node, source), source);
@@ -38,6 +40,8 @@ fn member(target: Node<'_>, source: &[u8]) -> String {
     text(Some(member.unwrap_or(target)), source).trim().to_owned()
 }
 
+/// Return the optional target name, bare-name flag, and qualifier from matching source bytes.
+/// Use Kotlin navigation suffixes to extract member names.
 pub fn normalize_call(site: &CallSite<'_>, source: &[u8]) -> CallTarget {
     syntax::call_target(site.node, source, member)
 }

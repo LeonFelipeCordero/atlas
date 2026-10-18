@@ -68,6 +68,8 @@ pub struct CallResolver {
 }
 pub type Resolver = CallResolver;
 impl CallResolver {
+    /// Clone repository facts and build module, import, callable, and lazy receiver indexes.
+    /// Syntax parsing uses retained source rather than filesystem reads.
     pub fn new(repository: &ParsedRepository) -> Self {
         let files = repository.files.iter().map(|f| (f.source.path.clone(), f.clone())).collect();
         let symbols = repository.symbols().map(|s| (s.key.clone(), s.clone())).collect();
@@ -82,6 +84,8 @@ impl CallResolver {
         let receivers = ReceiverTypes::new(&syntax);
         Self { repository: repository.clone(), files, symbols, syntax, modules, imports, identity, receivers }
     }
+    /// Return the narrowest symbol containing the call's full byte span, or `None`.
+    /// The call's file must belong to this repository.
     pub fn owner(&self, call: &Call) -> Option<&Symbol> {
         self.files[&call.file_path]
             .symbols
@@ -89,6 +93,7 @@ impl CallResolver {
             .filter(|s| s.start_byte <= call.start_byte && call.end_byte <= s.end_byte)
             .min_by_key(|s| s.end_byte - s.start_byte)
     }
+    /// Return `owner` and its symbol ancestors, nearest first, stopping at missing parents or cycles.
     pub fn ancestors<'a>(&'a self, mut owner: Option<&'a Symbol>) -> Vec<Symbol> {
         let mut result: Vec<Symbol> = Vec::new();
         while let Some(symbol) = owner {
@@ -100,6 +105,8 @@ impl CallResolver {
         }
         result
     }
+    /// Find `name` in the nearest nonempty enclosing declaration scope, then the file scope.
+    /// Apply language rules that exclude type scopes from lexical lookup.
     pub fn lexical(&self, file: &ParsedFile, name: &str, owner: Option<&Symbol>) -> Vec<Symbol> {
         let scopes = self.ancestors(owner).into_iter().map(|s| s.key).chain([file_key(&file.source.path)]);
         for scope in scopes {
@@ -118,6 +125,8 @@ impl CallResolver {
         }
         file.symbols.iter().filter(|s| s.name == name && s.parent_key == scope).cloned().collect()
     }
+    /// Resolve an unqualified request through lexical declarations, imports, and package peers.
+    /// Reject shadowed names; `fallback` permits same-language repository callable lookup last.
     pub fn named(&self, request: &ResolutionRequest<'_>, fallback: bool) -> Vec<Symbol> {
         let file = request.file;
         let binding = self.imports.get(file, &request.name, request.call.start_byte);
@@ -151,6 +160,7 @@ impl CallResolver {
             .cloned()
             .collect()
     }
+    /// Resolve type candidates without global fallback and apply language qualification rules.
     pub fn class_named(&self, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
         let matches = self.named(request, false);
         get_resolution_adapter(&request.file.source.language)
@@ -179,6 +189,8 @@ impl CallResolver {
         request.name = callee.map(|n| syntax.text(n)).unwrap_or_default();
         self.class_named(&request)
     }
+    /// Return the enclosing type for a permitted implicit instance receiver, or no candidates.
+    /// Static methods and invalid implicit receivers are excluded.
     pub fn self_class(&self, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
         let ancestors = self.ancestors(request.owner);
         let Some(parent) = ancestors.iter().find(|s| TYPES.contains(&s.kind.as_str())) else {
@@ -195,6 +207,8 @@ impl CallResolver {
         }
         vec![parent.clone()]
     }
+    /// Find `name` on exactly one unmodified type; ambiguity or rebinding yields no candidates.
+    /// When `static_` is true, retain only static or namespace-eligible members.
     pub fn members(&self, types: &[Symbol], name: &str, static_: bool) -> Vec<Symbol> {
         if types.len() != 1 {
             return Vec::new();
@@ -214,6 +228,7 @@ impl CallResolver {
             .filter(|s| self.syntax[&s.file_path].static_symbol(s) || adapter.static_member(parent))
             .collect()
     }
+    /// Return direct callable declarations named `name` under `parent`, without inheritance lookup.
     pub fn member_declarations(&self, parent: &Symbol, name: &str) -> Vec<Symbol> {
         self.files[&parent.file_path]
             .symbols
@@ -232,6 +247,8 @@ impl CallResolver {
         }
         binding.member(&request.name)
     }
+    /// Resolve a qualified member through self, import namespaces, or named types.
+    /// Reject shadowed qualifiers and overwritten members rather than guessing.
     pub fn qualified(&self, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
         let qualifier = request.qualifier.as_deref().unwrap_or("");
         let syntax = &self.syntax[&request.file.source.path];
@@ -300,6 +317,9 @@ impl CallResolver {
         }
         self.members(&self.receiver_class(request, Some(receiver)), &request.name, false)
     }
+    /// Resolve a call in optional lexical `owner` and apply language callable-selection rules.
+    /// Return accepted local symbols, or an empty vector for unresolved, unsafe, or ambiguous calls.
+    /// The call's file must belong to this repository; macros are not resolved.
     pub fn resolve(&self, call: &Call, owner: Option<&Symbol>) -> Vec<Symbol> {
         let file = &self.files[&call.file_path];
         let syntax = &self.syntax[&call.file_path];

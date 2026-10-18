@@ -6,6 +6,8 @@ use tree_sitter::Node;
 pub const QUERY: &str = "\n(lambda) @definition.function\n";
 pub const CALLBACK_TYPES: &[&str] = &["lambda"];
 
+/// Unwrap decorated definitions and retain their decorator text on the declaration carrier.
+/// Mark lambdas as function carriers with supported bindings; `source` must match the node's tree.
 pub fn declaration<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarrier<'tree> {
     let node = if node.kind() == "decorated_definition" {
         node.child_by_field_name("definition").unwrap_or(node)

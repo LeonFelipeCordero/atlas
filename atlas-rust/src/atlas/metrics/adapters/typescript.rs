@@ -6,11 +6,16 @@ use crate::metrics::resolution_contract::ResolutionRequest;
 use std::collections::BTreeSet;
 use tree_sitter::Node;
 
+/// Count TypeScript inputs, including callable property signatures, excluding explicit `this`.
+/// Use matching `source` through the script adapter; non-callable or unknown headers yield `None`.
 pub fn parameter_count(node: Node<'_>, source: &[u8]) -> Option<usize> {
     let callable =
         if node.kind() == "property_signature" { crate::language_syntax::property_callable(node)? } else { node };
     javascript::parameter_count(callable, source)
 }
+/// Select an executable TypeScript implementation, excluding signature-only single candidates.
+/// Multiple candidates need consistent staticness and one body following supported signatures.
+/// The request argument is unused; unsafe or ambiguous groups yield no targets.
 pub fn select(identity: &CallableIdentity, _request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     if matches.len() <= 1 {
         return matches

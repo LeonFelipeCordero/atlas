@@ -6,12 +6,17 @@ use std::collections::{HashMap, HashSet};
 
 pub use super::graph_validation::{METRIC_NAMES, collection};
 pub const POSITIONS: [&str; 4] = ["startLine", "startColumn", "endLine", "endColumn"];
+/// Return an owned string field, or `None` when `name` is absent or not a string.
 pub fn text(value: &Value, name: &str) -> Option<String> {
     value[name].as_str().map(str::to_owned)
 }
+/// Return string field `name`, or an error if it is absent or not a string.
+/// Empty strings are accepted.
 pub fn required(value: &Value, name: &str) -> Result<String> {
     text(value, name).ok_or_else(|| anyhow!("Missing or invalid graph field: {name}"))
 }
+/// Identify symbol-bearing nodes by level, source fields, or symbol properties.
+/// Field presence counts even when its value is null; do not validate the node.
 pub fn is_symbol(node: &Value) -> bool {
     let level = node["level"].as_str().unwrap_or("");
     matches!(level, "type" | "callable" | "symbol")
@@ -21,6 +26,8 @@ pub fn is_symbol(node: &Value) -> bool {
         || node["properties"].get("visibility").is_some()
         || node["properties"].get("decorators").is_some()
 }
+/// Validate artifact shapes and reject missing/non-string node keys or parent cycles.
+/// Leave missing parent references to database foreign-key checks; do not write rows.
 pub fn validate_parentage(artifact: &Value) -> Result<()> {
     super::graph_validation::validate_artifact(artifact)?;
     let mut parents = HashMap::new();
@@ -43,6 +50,8 @@ fn validate_chain(key: &str, parents: &HashMap<String, Option<String>>, complete
     complete.extend(chain);
     Ok(())
 }
+/// Build an unsaved node row scoped to repository `id` and artifact `ordinal`.
+/// Return an error for missing/non-string required node fields; optional strings become null.
 pub fn node_record(id: &str, ordinal: usize, n: &Value) -> Result<GraphNodeRow> {
     Ok(GraphNodeRow {
         repository_id: id.into(),
@@ -84,6 +93,9 @@ fn metric_record(id: &str, key: &str, n: &Value) -> GraphNodeMetricRow {
         max_decision_depth: p["maxDecisionDepth"].as_i64(),
     }
 }
+/// Insert file, symbol, decorator, and metric rows for node `n` under repository `id`.
+/// Return errors for invalid keys/decorators or failed writes. The caller must supply
+/// a transaction for atomicity; this function neither commits nor rolls back.
 pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n: &Value) -> Result<()> {
     let key = required(n, "stableKey")?;
     if n["level"] == "file" {
@@ -112,6 +124,9 @@ pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n:
     }
     Ok(())
 }
+/// Insert `artifact` edges for repository `id` in artifact order.
+/// Return errors for required string fields or database failures; only literal `true`
+/// sets `type_only`. The caller owns the transaction and any rollback.
 pub async fn insert_edges(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
     for (ordinal, e) in collection(artifact, "edges").iter().enumerate() {
         let row = GraphEdgeRow {
@@ -130,6 +145,8 @@ pub async fn insert_edges(connection: &impl ConnectionTrait, id: &str, artifact:
     }
     Ok(())
 }
+/// Insert `artifact` diagnostics for repository `id` in artifact order.
+/// Return errors for required string fields or failed writes; the caller owns the transaction.
 pub async fn insert_diagnostics(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
     for (ordinal, d) in collection(artifact, "diagnostics").iter().enumerate() {
         let row = GraphDiagnosticRow {
@@ -144,6 +161,9 @@ pub async fn insert_diagnostics(connection: &impl ConnectionTrait, id: &str, art
     }
     Ok(())
 }
+/// Insert ordered mutation candidates and JSON payloads for repository `id`.
+/// Link each path to an artifact file node; fail for missing file matches, invalid
+/// required fields, serialization, or database writes. The caller owns the transaction.
 pub async fn insert_candidates(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
     let files: HashMap<_, _> = collection(artifact, "nodes")
         .iter()

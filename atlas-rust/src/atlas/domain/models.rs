@@ -102,20 +102,25 @@ pub struct ParsedRepository {
     pub files: Vec<ParsedFile>,
 }
 impl ParsedRepository {
+    /// Iterate over borrowed declarations in file order without deduplication.
     pub fn symbols(&self) -> impl Iterator<Item = &Symbol> {
         self.files.iter().flat_map(|f| &f.symbols)
     }
+    /// Iterate over borrowed unresolved imports in file order without deduplication.
     pub fn imports(&self) -> impl Iterator<Item = &Import> {
         self.files.iter().flat_map(|f| &f.imports)
     }
+    /// Iterate over borrowed call sites in file order without deduplication.
     pub fn calls(&self) -> impl Iterator<Item = &Call> {
         self.files.iter().flat_map(|f| &f.calls)
     }
+    /// Iterate over borrowed base-type references in file order without deduplication.
     pub fn inheritances(&self) -> impl Iterator<Item = &Inheritance> {
         self.files.iter().flat_map(|f| &f.inheritances)
     }
 }
 
+/// Prefix `path` with `file:` without normalizing or checking the path.
 pub fn file_key(path: &str) -> String {
     format!("file:{path}")
 }

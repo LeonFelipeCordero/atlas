@@ -29,6 +29,13 @@ fn parse(value: &str, targets: &Map<String, Value>) -> Result<Map<String, Value>
     Ok(names.into_iter().map(|name| (name.to_owned(), targets[name].clone())).collect())
 }
 
+/// Replace the in-memory target map with the explicit or interactive selection.
+///
+/// `project` must already contain a validated `mutations.targets` object. Keep
+/// requested order and remove duplicate names. Prompt on stderr only when stdin
+/// is a terminal. Return `false` on prompt EOF without changing the project.
+/// Reject empty or unknown names, mixed `all` selections, and missing nonterminal
+/// selections; propagate terminal I/O errors. Do not write configuration to disk.
 pub fn select(project: &mut Value, options: &Options) -> Result<bool> {
     let targets = project["mutations"]["targets"].as_object().expect("validated targets");
     let selected = if let Some(value) = options.values.get("--target") {

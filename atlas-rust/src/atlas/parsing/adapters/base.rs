@@ -12,18 +12,25 @@ pub struct LanguageAdapter<'a> {
     pub language: &'a str,
 }
 
+/// Select extraction policies for a Rust-importer language ID.
+///
+/// # Errors
+/// Returns an error if the language ID is unsupported.
 pub fn get_adapter(language: &str) -> Result<LanguageAdapter<'_>> {
     require_supported_language(language)?;
     Ok(LanguageAdapter { language })
 }
 
 impl LanguageAdapter<'_> {
+    /// Test whether this language has dedicated extraction hooks rather than fallback policies.
     pub fn is_dedicated(self) -> bool {
         matches!(
             self.language,
             "javascript" | "jsx" | "typescript" | "tsx" | "java" | "kotlin" | "go" | "rust" | "elixir" | "python"
         )
     }
+    /// Return supplemental declaration query text, or an empty string for fallback languages.
+    /// Bundled tags are added separately by structure extraction.
     pub fn declaration_query(self) -> &'static str {
         const QUERIES: &[(&[&str], &str)] = &[
             (&["javascript", "jsx"], javascript::QUERY),
@@ -41,6 +48,7 @@ impl LanguageAdapter<'_> {
             .map(|(_, query)| *query)
             .unwrap_or_default()
     }
+    /// Return syntax node kinds treated as callback carriers, or an empty slice for fallback languages.
     pub fn callback_types(self) -> &'static [&'static str] {
         match self.language {
             "javascript" | "jsx" | "typescript" | "tsx" => javascript::CALLBACK_TYPES,
@@ -53,6 +61,8 @@ impl LanguageAdapter<'_> {
             _ => &[],
         }
     }
+    /// Normalize a declaration's carrier, name, kind, and decorators using matching source bytes.
+    /// Return `None` for TypeScript property signatures without a function type.
     pub fn normalize_declaration<'tree>(self, node: Node<'tree>, source: &[u8]) -> Option<DeclarationCarrier<'tree>> {
         if matches!(self.language, "javascript" | "jsx" | "typescript" | "tsx") {
             return self.script_declaration(node, source);
@@ -74,6 +84,8 @@ impl LanguageAdapter<'_> {
             Some(javascript::declaration(node, source))
         }
     }
+    /// Invoke `visitor` for language-specific call/reference sites using the root's source bytes.
+    /// Rust synthetic macro sites include byte shifts and matching synthetic source bytes.
     pub fn visit_calls(self, root: Node<'_>, source: &[u8], visitor: &mut CallVisitor<'_>) {
         match self.language {
             "javascript" | "jsx" | "typescript" | "tsx" => javascript::visit_calls(root, source, visitor),
@@ -94,6 +106,8 @@ impl LanguageAdapter<'_> {
             visitor(CallSite::new(node), source);
         }
     }
+    /// Return the optional target name, bare-name flag, and syntactic qualifier for a site.
+    /// `source` must match the site's tree, including synthetic macro payload trees.
     pub fn normalize_call(self, site: &CallSite<'_>, source: &[u8]) -> CallTarget {
         match self.language {
             "javascript" | "jsx" | "typescript" | "tsx" => javascript::normalize_call(site, source),
@@ -103,6 +117,7 @@ impl LanguageAdapter<'_> {
             _ => syntax::normalize_call(site, source),
         }
     }
+    /// Return `REFERENCES` for method/callable references and script JSX tags; otherwise `CALLS`.
     pub fn call_relationship(self, site: &CallSite<'_>) -> &'static str {
         if matches!(self.language, "javascript" | "jsx" | "typescript" | "tsx") && javascript::is_jsx_site(site.node) {
             "REFERENCES"
@@ -110,6 +125,8 @@ impl LanguageAdapter<'_> {
             syntax::relationship(site)
         }
     }
+    /// Return explicit visibility and annotation text using this language's modifier vocabulary.
+    /// `source` must match the node's tree; default visibility is not inferred.
     pub fn metadata(self, node: Node<'_>, source: &[u8]) -> (Option<String>, Vec<String>) {
         let words: &[&str] = match self.language {
             "javascript" | "jsx" | "typescript" | "tsx" | "java" => &["public", "private", "protected"],
@@ -119,6 +136,9 @@ impl LanguageAdapter<'_> {
         };
         syntax::modifier_metadata(node, source, words)
     }
+    /// Supplement native imports with Kotlin import headers or Rust external module declarations.
+    /// Use matching root/source bytes and one-based lines; deduplicate additions and sort by line.
+    /// Return `native` unchanged for languages without supplemental import nodes.
     pub fn imports(self, root: Node<'_>, source: &[u8], native: Vec<(String, usize)>) -> Vec<(String, usize)> {
         let node_type = match self.language {
             "kotlin" => Some("import_header"),
@@ -131,9 +151,11 @@ impl LanguageAdapter<'_> {
         };
         syntax::supplement_imports((root, source), native, policy)
     }
+    /// Extract syntactic base names under this language's policy; parser failures yield an empty list.
     pub fn inheritance(self, header: DeclarationHeader<'_>) -> Vec<String> {
         syntax::inheritance_names(header, self.inheritance_policy())
     }
+    /// Return this language's header-only inheritance rules, or the broad fallback policy.
     pub fn inheritance_policy(self) -> InheritancePolicy {
         let mut policy = InheritancePolicy::new(&[]);
         match self.language {

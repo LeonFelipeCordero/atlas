@@ -29,6 +29,8 @@ static NAMESPACE_IMPORT: LazyLock<Regex> =
 static DEFAULT_IMPORT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^([\p{L}\p{N}_$]+)(?:[\s\x1c-\x1f]*,|$)").unwrap());
 
+/// Count explicit inputs except TypeScript `this`; missing/error headers yield `None`.
+/// A single identifier parameter counts as one; the source argument is unused.
 pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     let parameters = parameter_node(node, &[])?;
     if parameters.has_error() {
@@ -80,6 +82,8 @@ fn export_entries(node: Node<'_>, declarations: &[Symbol], source: &[u8]) -> Vec
     }
     entries
 }
+/// Map local runtime export names in `syntax` to unique top-level symbols from `file`.
+/// Exclude re-exports and type-only exports; retain aliases and default exports.
 pub fn export_bindings(file: &ParsedFile, syntax: &Syntax) -> BTreeMap<String, Vec<Symbol>> {
     ordered_export_bindings(file, syntax).into_iter().collect()
 }
@@ -137,6 +141,8 @@ fn named_imports(ctx: &ImportBindings, request: &ImportRequest<'_>, raw: &str) -
 fn has_type_modifier(node: Node<'_>) -> bool {
     children(node).iter().any(|c| c.kind() == "type")
 }
+/// Test whether an import has a whole-statement type modifier or only type-marked named specifiers.
+/// Missing/non-import nodes and mixed runtime imports return false.
 pub fn import_type_only(node: Option<Node<'_>>) -> bool {
     let Some(node) = node.filter(|n| n.kind() == "import_statement") else {
         return false;
@@ -203,9 +209,12 @@ fn script_mutation(syntax: &Syntax, parent: &Symbol, name: &str) -> bool {
             || member_mutation(node, &receivers, &syntax.source)
     })
 }
+/// Find instance members along a supported single-base chain, rejecting mutations and masking fields.
 pub fn instance_members(resolver: &CallResolver, parent: &Symbol, name: &str) -> Vec<Symbol> {
     inherited_members(resolver, parent, name)
 }
+/// Retain a unique candidate or the final plain method in one same-staticness declaration group.
+/// Accessors, mixed scopes, and other ambiguities yield no targets; the request argument is unused.
 pub fn select(identity: &CallableIdentity, _request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     if matches.len() <= 1 {
         return matches;
@@ -227,23 +236,30 @@ pub fn select(identity: &CallableIdentity, _request: &ResolutionRequest<'_>, mat
     let last = matches.iter().map(|s| s.start_byte).max().unwrap();
     matches.into_iter().find(|s| s.start_byte == last).into_iter().collect()
 }
+/// Return the last quoted import path in `source`, falling back to trimmed directive text.
 pub fn import_path(source: &str) -> String {
     quoted_path(source).unwrap_or_else(|| source.trim().to_owned())
 }
+/// Return `(callee, receiver)` for calls; `new` expressions use the constructor/type with no receiver.
+/// Other forms use shared target extraction with `adapter` metadata.
 pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (Option<Node<'a>>, Option<Node<'a>>) {
     if let Some(node) = node.filter(|n| n.kind() == "new_expression") {
         return (field(node, &["constructor", "type"]), None);
     }
     super::generic::default_call_target(adapter, node)
 }
+/// Permit class-expression receiver inference only if its prototype member is not rebound in `syntax`.
 pub fn receiver_class_allowed(syntax: &Syntax, callee: Option<Node<'_>>, member: &str) -> bool {
     !syntax.member_rebound(&format!("{}.prototype", text(callee, &syntax.source)), member)
 }
+/// Detect rebinding, alias/prototype mutation, or fields/accessors that mask `name` on `parent`.
 pub fn member_overwritten(syntax: &Syntax, parent: &Symbol, name: &str) -> bool {
     syntax.adapter.default_member_overwritten(syntax, parent, name)
         || script_mutation(syntax, parent, name)
         || own_field(syntax, parent, name)
 }
+/// Extract script binding targets and scopes, keeping named function-expression names inside the function.
+/// Hoist `var` targets to the nearest function/root scope; unsupported nodes have no target.
 pub fn binding<'a>(
     adapter: &ResolutionAdapter,
     syntax: &'a Syntax,
@@ -263,6 +279,8 @@ pub fn binding<'a>(
     }
     (target, scope)
 }
+/// Resolve dot-prefixed slash imports relative to `source`, allowing directory `index` files only.
+/// Bare package names yield no targets; normalization may query filesystem metadata.
 pub fn paths(source: &ParsedFile, name: &str, files: &[ParsedFile]) -> Vec<ParsedFile> {
     if name.starts_with('.') && name.contains('/') {
         relative_targets(
@@ -274,6 +292,7 @@ pub fn paths(source: &ParsedFile, name: &str, files: &[ParsedFile]) -> Vec<Parse
         vec![]
     }
 }
+/// Return runtime exports named `name` only when the requested import resolves to one file.
 pub fn members(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &str) -> Vec<Symbol> {
     let targets = ctx.path_files(request.file, &request.path);
     if targets.len() != 1 {
@@ -281,6 +300,8 @@ pub fn members(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &str) ->
     }
     export_bindings(&targets[0], &ctx.syntax[&targets[0].source.path]).remove(name).unwrap_or_default()
 }
+/// Merge runtime export aliases from files resolved by `path` relative to `file` in `ctx`.
+/// Preserve multiple symbol candidates under the same export name.
 pub fn namespace_exports(ctx: &ImportBindings, file: &ParsedFile, path: &str) -> BTreeMap<String, Vec<Symbol>> {
     ordered_namespace_exports(ctx, file, path).into_iter().collect()
 }
@@ -299,6 +320,8 @@ fn ordered_namespace_exports(ctx: &ImportBindings, file: &ParsedFile, path: &str
     }
     result
 }
+/// Return `(local name, symbols, namespace flag)` entries for namespace, named, and default imports.
+/// Type-only imports retain bindings with empty targets; side-effect/unsupported imports yield none.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     let clause = import_clause(&request.source);
     if clause.is_empty() {
@@ -320,6 +343,7 @@ pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(St
     }
     result
 }
+/// Return namespace export aliases for the request, or an empty map when `targets` is empty.
 pub fn namespace_members(
     ctx: &ImportBindings,
     request: &ImportRequest<'_>,
@@ -327,6 +351,8 @@ pub fn namespace_members(
 ) -> BTreeMap<String, Vec<Symbol>> {
     if targets.is_empty() { BTreeMap::new() } else { namespace_exports(ctx, request.file, &request.path) }
 }
+/// Permit `this` only when scopes nested inside `method` are arrow functions that retain its receiver.
+/// Other qualifiers require no extra check; missing method ancestry rejects `this`.
 pub fn implicit_receiver(resolver: &CallResolver, request: &ResolutionRequest<'_>, method: &Symbol) -> bool {
     if request.qualifier.as_deref() != Some("this") {
         return true;

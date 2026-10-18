@@ -135,6 +135,11 @@ fn cycle_paths(group: &Value) -> Result<Vec<String>> {
         .collect()
 }
 
+/// Evaluate `report` against validated `config` limits and return a findings object.
+/// Null limits disable checks; unavailable enabled metrics and parse diagnostics become findings.
+///
+/// # Errors
+/// Reject invalid settings, malformed report arrays, or nonnumeric checked metrics.
 pub fn build_check(report: &Value, config: &Value) -> Result<Value> {
     let config = validate_config(config)?;
     let mut findings = Vec::new();
@@ -168,6 +173,8 @@ fn finding_section(finding: &Value) -> String {
     rows.join("\n")
 }
 
+/// Format check findings as Markdown, or return `All checks passed.` when none exist.
+/// Missing or non-array `findings` is treated as empty.
 pub fn render_check(check: &Value) -> String {
     let findings = check["findings"].as_array().map(Vec::as_slice).unwrap_or_default();
     if findings.is_empty() {

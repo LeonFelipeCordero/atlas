@@ -10,6 +10,8 @@ use crate::metrics::resolution_syntax::{Syntax, names};
 use crate::syntax::{field, named_children, text};
 
 impl ReceiverInference<'_> {
+    /// Detect writes to a receiver binding or qualifier anywhere in its scope.
+    /// Exempt the declaration and safe constructor initialization from a matching typed parameter.
     pub(super) fn reassigned(&self, syntax: &Syntax, binding: &ReceiverBinding<'_>, qualifier: Option<&str>) -> bool {
         let mut targets: BTreeSet<_> = [binding.name.clone()].into();
         if let Some(qualifier) = qualifier {
@@ -57,6 +59,8 @@ impl ReceiverInference<'_> {
         parameters.len() == 1 && !self.reassigned(syntax, parameters[0], Some(&value))
     }
 
+    /// Detect alias-reachable writes to the requested member within the enclosing call scope.
+    /// When `receiver` is true, also reject writes to the receiver itself; missing call syntax rejects.
     pub(super) fn path_written(&self, request: &ResolutionRequest<'_>, receiver: bool) -> bool {
         let syntax = &self.resolver.syntax[&request.file.source.path];
         let Some(call) = syntax.node(request.call.start_byte, request.call.end_byte) else {
@@ -97,6 +101,8 @@ impl ReceiverInference<'_> {
         (left.kind() == "identifier" && !right.is_empty()).then(|| (syntax.text(left), right))
     }
 
+    /// Test whether member writes in the request file replace the sole candidate type's member.
+    /// Return false if `types` does not contain exactly one symbol.
     pub(super) fn identity_overwritten(&self, types: &[Symbol], request: &ResolutionRequest<'_>) -> bool {
         if types.len() != 1 {
             return false;
@@ -139,6 +145,7 @@ impl ReceiverInference<'_> {
         if node.kind() == "expression_list" && entries.len() == 1 { Some(entries[0]) } else { Some(node) }
     }
 
+    /// Collect binding names and the space-stripped full spelling of a write operand.
     pub(super) fn write_names(syntax: &Syntax, node: Node<'_>) -> BTreeSet<String> {
         let target = Self::single_expression(syntax.adapter.write_target(node));
         let mut result = names(target, &syntax.source);

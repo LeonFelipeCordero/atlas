@@ -10,6 +10,15 @@ use crate::parsing::{
     parser::parse_files,
 };
 
+/// Read a local repository and build an in-memory graph with metrics, relationships, and diagnostics.
+/// Do not open a database or write an output file; Git is not required.
+///
+/// # Arguments
+/// * `root` - Relative or absolute directory to validate and resolve before discovery.
+///
+/// # Errors
+/// Propagate invalid-root, path/ignore/source reading, parsing, metric, resolution,
+/// and artifact-construction failures. File parse diagnostics may also be included in the graph.
 pub fn analyze_repository(root: &Path) -> Result<GraphArtifact> {
     let root = validate_repository(root)?;
     let mut repository = parse_files(discover_files(&root)?)?;

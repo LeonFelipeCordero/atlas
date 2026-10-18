@@ -7,6 +7,11 @@ use super::{
 use anyhow::Result;
 use serde_json::Value;
 
+/// Execute parsed graph arguments against the selected SQLite snapshot.
+///
+/// Print projected JSON or numbered source text and return 0. Source requests
+/// also read and verify local files. Navigation failures print JSON to stderr
+/// and return 1; option validation errors propagate to the CLI boundary.
 pub fn run(matches: &clap::ArgMatches) -> Result<i32> {
     let selection = Options::from_matches("graph", matches);
     let (command, matches) = matches.subcommand().expect("clap requires a graph command");

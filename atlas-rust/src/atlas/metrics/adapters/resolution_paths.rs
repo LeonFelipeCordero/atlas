@@ -21,12 +21,16 @@ static DEFAULT_IMPORT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^[\s\x1c-\x1f]*import[\s\x1c-\x1f]+[\p{L}\p{N}_]+[\s\x1c-\x1f]+from(?:$|[^\p{L}\p{N}_])").unwrap()
 });
 
+/// Return declarations directly parented by `file`, preserving symbol order.
 pub fn top_symbols(file: &ParsedFile) -> Vec<Symbol> {
     file.symbols.iter().filter(|s| s.parent_key == file_key(&file.source.path)).cloned().collect()
 }
+/// Return the last nonempty quoted substring of `source`, or `None` when absent.
 pub fn quoted_path(source: &str) -> Option<String> {
     QUOTED.captures_iter(source).last().map(|m| m[1].to_owned())
 }
+/// Extract an include path, last quoted path, or directive name, in that order.
+/// Fall back to trimmed `source` when no supported pattern matches.
 pub fn import_path(source: &str) -> String {
     if let Some(c) = INCLUDE.captures(source) {
         return c[1].to_owned();
@@ -40,7 +44,9 @@ pub fn import_path(source: &str) -> String {
         .map(|m| m.as_str().to_owned())
         .unwrap_or_else(|| source.trim().to_owned())
 }
-/// Resolve non-existent paths lexically, just as pathlib resolve(strict=False).
+/// Return an absolute normalized path, resolving existing prefixes and symlinks where possible.
+/// Use the current directory for relative paths and normalize missing components lexically.
+/// Filesystem lookup failures are ignored, as with non-strict path resolution.
 pub fn resolve_path(path: &Path) -> PathBuf {
     let path =
         if path.is_absolute() { path.to_owned() } else { std::env::current_dir().unwrap_or_default().join(path) };
@@ -74,6 +80,10 @@ fn parent(path: &str) -> String {
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| ".".into())
 }
+/// Match `request.path` relative to its importing file against retained `files`.
+/// Accept one direct match with optional extension omission; reject multiple direct matches.
+/// Otherwise return directory files, limited to `index` stems when `index_only` is true.
+/// Path normalization may query the filesystem but does not read file contents.
 pub fn relative_targets(request: &ImportRequest<'_>, files: &[ParsedFile], index_only: bool) -> Vec<ParsedFile> {
     let base = resolve_path(&request.file.source.absolute_path.parent().unwrap_or(Path::new(".")).join(&request.path));
     let matches: Vec<_> = files
@@ -96,6 +106,8 @@ pub fn relative_targets(request: &ImportRequest<'_>, files: &[ParsedFile], index
         .cloned()
         .collect()
 }
+/// Match `name` to one exact file, then one package directory; ambiguous matches yield no files.
+/// Normalize `::` and dotted names to paths and allow directory suffix matches.
 pub fn package_targets(name: &str, files: &[ParsedFile]) -> Vec<ParsedFile> {
     let path = name.replace("::", "/");
     let path = if path.contains('/') { path } else { path.replace('.', "/") };
@@ -118,6 +130,8 @@ pub fn package_targets(name: &str, files: &[ParsedFile]) -> Vec<ParsedFile> {
     }
     files.iter().filter(|f| directories.contains(&parent(&f.source.path))).cloned().collect()
 }
+/// Return a sole file key or a shared-directory module key for `files`.
+/// Empty or mixed-directory targets yield `None`.
 pub fn path_target_key(files: &[ParsedFile]) -> Option<String> {
     if files.len() == 1 {
         return Some(file_key(&files[0].source.path));
@@ -125,6 +139,8 @@ pub fn path_target_key(files: &[ParsedFile]) -> Option<String> {
     let parents: BTreeSet<_> = files.iter().map(|f| parent(&f.source.path)).collect();
     (parents.len() == 1).then(|| format!("module:{}", parents.first().unwrap()))
 }
+/// Infer a namespace alias or final `path` component from import `source`.
+/// Reject brace/from/default imports and recognized blank/dot forms; explicit prefixes win first.
 pub fn namespace_binding(source: &str, path: &str) -> Option<String> {
     if source.contains('{') || FROM_PREFIX.is_match(source) {
         return None;

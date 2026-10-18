@@ -16,6 +16,7 @@ pub struct ResolutionAdapter {
     pub language: String,
 }
 impl ResolutionAdapter {
+    /// Extract language receiver declarations from `node` using its owning `syntax`; generic policies yield none.
     pub fn receiver_bindings<'a>(&self, syntax: &'a Syntax, node: Node<'a>) -> Vec<ReceiverBinding<'a>> {
         match self.language.as_str() {
             "python" => receiver_syntax::python_bindings(syntax, node),
@@ -27,9 +28,13 @@ impl ResolutionAdapter {
             _ => vec![],
         }
     }
+    /// Return Rust implicit receiver types, or `None` to delegate to shared inference.
+    /// `Some([])` rejects receiver resolution.
     pub fn receiver_owner(&self, resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Option<Vec<Symbol>> {
         (self.language == "rust").then(|| rust::receiver_owner(resolver, request))
     }
+    /// Find named instance members using language rules, including supported script inheritance and Rust impls.
+    /// Other languages use direct declarations of `parent`.
     pub fn instance_members(&self, resolver: &CallResolver, parent: &Symbol, name: &str) -> Vec<Symbol> {
         match self.language.as_str() {
             "rust" => rust::instance_members(resolver, parent, name),
@@ -39,9 +44,12 @@ impl ResolutionAdapter {
             _ => resolver.member_declarations(parent, name),
         }
     }
+    /// Return `(imported name, scope)` entries for Python lexical shadowing; other policies yield none.
     pub fn lexical_imports<'a>(&self, syntax: &'a Syntax) -> Vec<(String, Node<'a>)> {
         if self.language == "python" { python::lexical_imports(syntax) } else { vec![] }
     }
+    /// Extract a binding target and adjusted scope from `node` using language rules.
+    /// Unsupported nodes return `(None, scope)`.
     pub fn binding<'a>(&self, syntax: &'a Syntax, node: Node<'a>, scope: Node<'a>) -> (Option<Node<'a>>, Node<'a>) {
         match self.language.as_str() {
             "python" => python::binding(self, syntax, (node, scope)),
@@ -52,24 +60,33 @@ impl ResolutionAdapter {
             _ => generic::binding(self, syntax, (node, scope)),
         }
     }
+    /// Find a write operand, rejecting Kotlin unary expressions that are not updates.
     pub fn write_target<'a>(&self, node: Node<'a>) -> Option<Node<'a>> {
         if self.language == "kotlin" { kotlin::write_target(node) } else { generic::write_target(node) }
     }
+    /// Apply extra Python visibility restrictions at byte `position`; other policies permit visibility.
+    /// The caller must separately check scope byte-range containment.
     pub fn visible(&self, syntax: &Syntax, scope: Node<'_>, position: usize) -> bool {
         self.language != "python" || python::visible(syntax, scope, position)
     }
+    /// Test whether a Python declaration is exempt from shadowing checks for `lookup`.
+    /// Other languages grant no exemption.
     pub fn declaration_allowed(&self, syntax: &Syntax, lookup: &DeclarationLookup<'_>) -> bool {
         self.language == "python" && python::declaration_allowed(syntax, lookup)
     }
+    /// Detect extra Python class-import shadowing for `name` at byte `position`; otherwise return false.
     pub fn import_shadowed(&self, syntax: &Syntax, name: &str, position: usize) -> bool {
         self.language == "python" && python::import_shadowed(syntax, name, position)
     }
+    /// Test whether the node kind belongs to this policy's configured import-node set.
     pub fn is_import_node(&self, node: Node<'_>) -> bool {
         self.import_nodes().contains(node.kind())
     }
+    /// Recognize import nodes, inspecting matching `source` bytes for Elixir alias/import calls.
     pub fn is_import_node_with_source(&self, node: Node<'_>, source: &[u8]) -> bool {
         if self.language == "elixir" { elixir::is_import_node(node, source) } else { self.is_import_node(node) }
     }
+    /// Detect static symbols with Python decorator and Rust receiver overrides, then shared modifier rules.
     pub fn static_symbol(&self, syntax: &Syntax, symbol: &Symbol) -> bool {
         match self.language.as_str() {
             "python" => python::static_symbol(syntax, symbol),
@@ -77,6 +94,7 @@ impl ResolutionAdapter {
             _ => self.default_static_symbol(syntax, symbol),
         }
     }
+    /// Detect configured static tokens/modifiers in `syntax`, using the signature only when no node exists.
     pub fn default_static_symbol(&self, syntax: &Syntax, symbol: &Symbol) -> bool {
         if let Some(node) = syntax.node(symbol.start_byte, symbol.end_byte) {
             return children(node).iter().any(|c| {
@@ -95,6 +113,8 @@ impl ResolutionAdapter {
             .split_whitespace()
             .any(|w| w == "static")
     }
+    /// Match import `name` against retained `files` under language-specific path rules relative to `source`.
+    /// Generic policies use relative slash paths or package matching; normalization may query the filesystem.
     pub fn paths(&self, source: &ParsedFile, name: &str, files: &[ParsedFile]) -> Vec<ParsedFile> {
         match self.language.as_str() {
             "python" => python::paths(source, name, files),
@@ -107,6 +127,7 @@ impl ResolutionAdapter {
             _ => resolution_paths::package_targets(name, files),
         }
     }
+    /// Resolve request files through Python/Rust module rules or cached language-family path lookup.
     pub fn import_files(&self, ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<ParsedFile> {
         match self.language.as_str() {
             "python" => python::import_files(ctx, request),
@@ -114,6 +135,7 @@ impl ResolutionAdapter {
             _ => ctx.path_files(request.file, &request.path),
         }
     }
+    /// Extract a language-specific import path from directive text, with trimmed-source fallback.
     pub fn import_path(&self, source: &str) -> String {
         match self.language.as_str() {
             "python" => python::import_path(source),
@@ -126,6 +148,7 @@ impl ResolutionAdapter {
             _ => resolution_paths::import_path(source),
         }
     }
+    /// Return a resolved import's node/module key, or `None` for missing or ambiguous targets.
     pub fn import_key(&self, ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<String> {
         match self.language.as_str() {
             "java" => java::import_key(ctx, request),
@@ -135,6 +158,8 @@ impl ResolutionAdapter {
             _ => resolution_paths::path_target_key(&self.import_files(ctx, request)),
         }
     }
+    /// Return `(path, optional target key)` dependencies, expanding Python child-module imports.
+    /// Retain unresolved paths with `None` keys.
     pub fn import_targets(&self, ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Option<String>)> {
         if self.language == "python" {
             python::import_targets(ctx, request)
@@ -142,9 +167,12 @@ impl ResolutionAdapter {
             vec![(request.path.clone(), self.import_key(ctx, request))]
         }
     }
+    /// Recognize script imports with no runtime dependency; other languages return false.
     pub fn import_type_only(&self, node: Option<Node<'_>>) -> bool {
         self.script() && javascript::import_type_only(node)
     }
+    /// Return `(local name, target symbols, namespace flag)` bindings under language import rules.
+    /// Unsupported forms yield none; unresolved recognized imports can retain empty targets.
     pub fn import_item(&self, ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
         match self.language.as_str() {
             "python" => python::import_item(ctx, request),
@@ -166,6 +194,7 @@ impl ResolutionAdapter {
                 .unwrap_or_default(),
         }
     }
+    /// Return script namespace export aliases, or `None` to use binding targets filtered by name.
     pub fn namespace_members(
         &self,
         ctx: &ImportBindings,
@@ -174,9 +203,13 @@ impl ResolutionAdapter {
     ) -> Option<BTreeMap<String, Vec<Symbol>>> {
         if self.script() { Some(javascript::namespace_members(ctx, request, targets)) } else { None }
     }
+    /// Return implicit Rust module bindings outside imports; other policies yield none.
+    /// `source_length` supplies fallback file-wide byte bounds.
     pub fn module_bindings(&self, ctx: &ImportBindings, file: &ParsedFile, source_length: usize) -> Vec<Binding> {
         if self.language == "rust" { rust::module_bindings(ctx, file, source_length) } else { vec![] }
     }
+    /// Find imported members named `name` through language rules.
+    /// Generic policies require a unique file and return only its top-level declarations.
     pub fn members(&self, ctx: &ImportBindings, request: &ImportRequest<'_>, name: &str) -> Vec<Symbol> {
         match self.language.as_str() {
             "rust" => rust::members(ctx, request, name),
@@ -191,6 +224,7 @@ impl ResolutionAdapter {
             }
         }
     }
+    /// Return a JVM/Elixir declaration's module-qualified lookup name, or an empty string otherwise.
     pub fn module_identity(&self, file: &ParsedFile, symbol: &Symbol, syntax: &Syntax) -> String {
         match self.language.as_str() {
             "java" | "kotlin" => java::module_identity(file, symbol, syntax),
@@ -198,6 +232,7 @@ impl ResolutionAdapter {
             _ => String::new(),
         }
     }
+    /// Find declarations named `name` implicitly visible in the source's JVM/Go package; otherwise yield none.
     pub fn same_package(&self, modules: &Modules, source: &ParsedFile, name: &str) -> Vec<Symbol> {
         match self.language.as_str() {
             "java" | "kotlin" => java::same_package(modules, source, name),
@@ -205,6 +240,7 @@ impl ResolutionAdapter {
             _ => vec![],
         }
     }
+    /// Adjust named type `matches` for JVM or Rust qualification; other policies retain candidates.
     pub fn qualify_class(
         &self,
         resolver: &CallResolver,
@@ -217,6 +253,7 @@ impl ResolutionAdapter {
             _ => matches,
         }
     }
+    /// Resolve Rust/Elixir qualified names beyond shared lookup; other policies yield no candidates.
     pub fn qualified(&self, resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
         match self.language.as_str() {
             "rust" => rust::qualified(resolver, request),
@@ -224,12 +261,15 @@ impl ResolutionAdapter {
             _ => vec![],
         }
     }
+    /// Permit nonempty Rust module declarations in `local` to act as namespaces; otherwise return false.
     pub fn local_namespace(&self, resolver: &CallResolver, local: &[Symbol]) -> bool {
         self.language == "rust" && rust::local_namespace(resolver, local)
     }
+    /// Permit module members, and Kotlin object members, without a static modifier during static lookup.
     pub fn static_member(&self, parent: &Symbol) -> bool {
         if self.language == "kotlin" { kotlin::static_member(parent) } else { parent.kind == "module" }
     }
+    /// Detect namespace/class rebinding and script-specific mutations or fields that mask `name` on `parent`.
     pub fn member_overwritten(&self, syntax: &Syntax, parent: &Symbol, name: &str) -> bool {
         if self.script() {
             javascript::member_overwritten(syntax, parent, name)
@@ -237,9 +277,12 @@ impl ResolutionAdapter {
             self.default_member_overwritten(syntax, parent, name)
         }
     }
+    /// Reject a member when the qualified target or class-body binding has been rebound in `syntax`.
     pub fn default_member_overwritten(&self, syntax: &Syntax, parent: &Symbol, name: &str) -> bool {
         syntax.member_rebound(&parent.name, name) || syntax.class_rebound(parent, name)
     }
+    /// Return optional `(callee, receiver)` nodes under language-specific syntax rules.
+    /// Missing syntax yields `(None, None)`; shared extraction supplies fallback fields.
     pub fn call_target<'a>(&self, node: Option<Node<'a>>) -> (Option<Node<'a>>, Option<Node<'a>>) {
         match self.language.as_str() {
             "java" => java::call_target(self, node),
@@ -253,6 +296,8 @@ impl ResolutionAdapter {
             _ => generic::default_call_target(self, node),
         }
     }
+    /// Combine target nodes with source spellings, falling back to parsed `call` hints.
+    /// Preserve parsed names and qualifiers for script `REFERENCES` relationships.
     pub fn normalized_call<'a>(
         &self,
         syntax: &Syntax,
@@ -270,10 +315,13 @@ impl ResolutionAdapter {
             qualifier: receiver.map(|n| syntax.text(n)).or_else(|| call.qualifier.clone()),
         }
     }
+    /// Allow receiver type `name` only if its member is not rebound, including script prototype writes.
     pub fn receiver_type_allowed(&self, syntax: &Syntax, name: &str, member: &str) -> bool {
         !syntax.member_rebound(name, member)
             && (!self.script() || !syntax.member_rebound(&format!("{name}.prototype"), member))
     }
+    /// Apply script prototype or generic member-write checks before class-expression inference.
+    /// Other dedicated policies permit inference without additional checks here.
     pub fn receiver_class_allowed(&self, syntax: &Syntax, callee: Option<Node<'_>>, member: &str) -> bool {
         if self.script() {
             javascript::receiver_class_allowed(syntax, callee, member)
@@ -283,9 +331,11 @@ impl ResolutionAdapter {
             true
         }
     }
+    /// Reject unsafe explicit Rust receiver syntax before fallback lookup; other policies return false.
     pub fn receiver_rejected(&self, receiver: Option<Node<'_>>, qualifier: Option<&str>) -> bool {
         self.language == "rust" && rust::receiver_rejected(receiver, qualifier)
     }
+    /// Validate Python `self` or script `this` binding at the call site; other policies permit it.
     pub fn implicit_receiver(&self, resolver: &CallResolver, request: &ResolutionRequest<'_>, method: &Symbol) -> bool {
         match self.language.as_str() {
             "python" => python::implicit_receiver(resolver, request, method),
@@ -293,6 +343,8 @@ impl ResolutionAdapter {
             _ => true,
         }
     }
+    /// Apply language callable-identity selection to `matches` for the request.
+    /// Generic policies accept only one candidate; unresolved ambiguity yields no targets.
     pub fn select(
         &self,
         identity: &CallableIdentity,
@@ -309,6 +361,7 @@ impl ResolutionAdapter {
             _ => vec![],
         }
     }
+    /// Resolve inherited type candidates using JVM qualification or shared namespace/`::` rules.
     pub fn inheritance(
         &self,
         resolver: &CallResolver,
@@ -321,6 +374,8 @@ impl ResolutionAdapter {
         default_inheritance(resolver, request, matches)
     }
 }
+/// Resolve dotted import namespaces or `::` class names, otherwise retain `matches`.
+/// Namespace lookup requires an unshadowed qualifier without lexical declarations.
 pub fn default_inheritance(
     resolver: &CallResolver,
     request: &ResolutionRequest<'_>,

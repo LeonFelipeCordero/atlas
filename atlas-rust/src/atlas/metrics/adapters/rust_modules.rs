@@ -25,6 +25,9 @@ pub struct RustModules {
     paths: BTreeMap<PathBuf, Vec<Arc<ParsedFile>>>,
 }
 impl RustModules {
+    /// Index explicit inline/external Rust modules from retained files and matching `syntax`.
+    /// Prefer `lib.rs`/`main.rs` roots; honor direct path attributes without guessing `cfg_attr`.
+    /// Path normalization can query the filesystem; source contents come from the repository.
     pub fn new(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>) -> Self {
         let mut result = Self {
             index: ModuleIndex::new(),
@@ -175,18 +178,25 @@ impl RustModules {
     fn target(&self, source: &ParsedFile, name: &str, position: Option<usize>) -> Option<&ModuleScope> {
         self.index.unique_scope(&self.identities(source, name, position))
     }
+    /// Return the unique module file/declaration key for `name` relative to `source` and byte `position`.
+    /// No position uses file-root scopes; unresolved or ambiguous paths yield `None`.
     pub fn rust_key(&self, source: &ParsedFile, name: &str, position: Option<usize>) -> Option<String> {
         ModuleIndex::scope_key(self.target(source, name, position), &self.syntax)
     }
+    /// Return the unique external module file for `name` in the source's lexical position.
+    /// No position uses file roots; inline, missing, or ambiguous modules produce no files.
     pub fn rust_import(&self, source: &ParsedFile, name: &str, position: Option<usize>) -> Vec<ParsedFile> {
         self.target(source, name, position)
             .filter(|s| s.node(&self.syntax).is_some_and(|n| n.kind() == "source_file"))
             .map(|s| vec![s.file.as_ref().clone()])
             .unwrap_or_default()
     }
+    /// Return direct declarations of the unique module named relative to `source` and byte `position`.
+    /// No position uses file roots; missing or ambiguous modules produce no symbols.
     pub fn rust_symbols(&self, source: &ParsedFile, name: &str, position: Option<usize>) -> Vec<Symbol> {
         ModuleIndex::scope_symbols(self.target(source, name, position), &self.syntax)
     }
+    /// Return a unique file-root module for absolute identity `name`; inline or ambiguous scopes yield none.
     pub fn rust_files(&self, name: &str) -> Vec<ParsedFile> {
         self.index.scope_files(name, &self.syntax)
     }
@@ -226,6 +236,9 @@ fn resolve(path: &Path) -> PathBuf {
     resolved
 }
 
+/// Decode direct path attributes preceding `node`, nearest first, using matching `source` bytes.
+/// Skip comments and unrelated attributes; do not infer paths from `cfg_attr`.
+/// Raw strings are retained and quoted strings use Python-compatible literal escapes.
 pub fn path_attributes(node: Node<'_>, source: &[u8]) -> Vec<String> {
     let mut result = Vec::new();
     let mut sibling = node.prev_named_sibling();

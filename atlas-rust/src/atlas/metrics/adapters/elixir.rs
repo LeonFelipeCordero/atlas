@@ -34,21 +34,27 @@ pub const SCOPES: &[&str] = &[
     "defimpl",
 ];
 
+/// Return an unqualified Elixir call target identifier from matching `source`, or an empty string.
 pub fn target(node: Node<'_>, source: &[u8]) -> String {
     if node.kind() != "call" {
         return String::new();
     }
     text(field(node, &["target"]).filter(|n| n.kind() == "identifier"), source)
 }
+/// Recognize declaration calls that create Elixir metric scope boundaries using matching `source`.
 pub fn scope(node: Node<'_>, source: &[u8]) -> bool {
     SCOPES.contains(&target(node, source).as_str())
 }
+/// Count unqualified `if` and `unless` calls as decisions using target text in `source`.
 pub fn call_decision(node: Node<'_>, source: &[u8]) -> bool {
     ["if", "unless"].contains(&target(node, source).as_str())
 }
+/// Identify a `when` token among the guard expression's direct children; source bytes are unused.
 pub fn guard_decision(node: Node<'_>, _source: &[u8]) -> bool {
     children(node).iter().any(|c| c.kind() == "when")
 }
+/// Count refutable Elixir clauses, excluding anonymous-function clauses and plain fallback patterns.
+/// Bare `_` and cond's `true` fallback do not count; guarded wildcards still count.
 pub fn clause_decision(node: Node<'_>, source: &[u8]) -> bool {
     let Some(parent) = node.parent().filter(|n| n.kind() != "anonymous_function") else {
         return false;
@@ -66,12 +72,15 @@ pub fn clause_decision(node: Node<'_>, source: &[u8]) -> bool {
     }
     !(fallback.trim() == "true" && parent.parent().is_some_and(|owner| target(owner, source) == "cond"))
 }
+/// Find an arguments field or supported argument-list child, or `None` for missing/unsupported syntax.
 pub fn arguments(node: Option<Node<'_>>) -> Option<Node<'_>> {
     let node = node?;
     field(node, &["arguments"]).or_else(|| {
         named_children(node).into_iter().find(|n| ["arguments", "argument_list", "value_arguments"].contains(&n.kind()))
     })
 }
+/// Count declaration inputs or a shared anonymous-clause arity using matching `source`.
+/// Unsupported/error heads and differing anonymous-clause counts yield `None`.
 pub fn parameter_count(node: Node<'_>, source: &[u8]) -> Option<usize> {
     if node.kind() == "anonymous_function" {
         return anonymous_count(node);
@@ -105,9 +114,12 @@ fn anonymous_count(node: Node<'_>) -> Option<usize> {
         .collect();
     if counts.len() == 1 { counts.into_iter().next().flatten() } else { None }
 }
+/// Count named argument nodes, treating calls without arguments as zero and unsupported forms as `None`.
 pub fn arity(node: Option<Node<'_>>) -> Option<usize> {
     arguments(node).map(|a| named_children(a).len()).or_else(|| node.filter(|n| n.kind() == "call").map(|_| 0))
 }
+/// Return call arity including one implicit input when the node is a pipeline's right operand.
+/// Read pipeline spelling from matching `source`; unsupported nodes yield `None`.
 pub fn call_arity(node: Option<Node<'_>>, source: &[u8]) -> Option<usize> {
     let pipeline = node.is_some_and(|n| {
         n.parent().is_some_and(|p| {
@@ -130,6 +142,8 @@ fn clause_signature(node: Option<Node<'_>>, source: &[u8]) -> Clause {
     let defaults = parameters.iter().filter(|n| text(Some(**n), source).contains("\\\\")).count();
     Clause { minimum: maximum - defaults, maximum, private: text(field(node, &["target"]), source) == "defp" }
 }
+/// Extract a quoted path or Elixir import/alias/require/use name from `source`.
+/// Fall back to trimmed directive text when no pattern matches.
 pub fn import_path(source: &str) -> String {
     static PATH: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"(?:^|[^\p{L}\p{N}_])(?:import|alias|require|use)[\s\x1c-\x1f]+([\p{L}\p{N}_.:/]+)").unwrap()
@@ -137,9 +151,12 @@ pub fn import_path(source: &str) -> String {
     quoted_path(source)
         .unwrap_or_else(|| PATH.captures(source).map(|c| c[1].into()).unwrap_or_else(|| source.trim().into()))
 }
+/// Recognize Elixir `alias` and `import` calls using their target spelling in `source`.
 pub fn is_import_node(node: Node<'_>, source: &[u8]) -> bool {
     node.kind() == "call" && ["alias", "import"].contains(&text(field(node, &["target"]), source).as_str())
 }
+/// Return module names directly, otherwise the final `::` component of a declaration's qualified name.
+/// The file and syntax arguments are unused.
 pub fn module_identity(_file: &ParsedFile, symbol: &Symbol, _syntax: &Syntax) -> String {
     if symbol.kind == "module" {
         symbol.name.clone()
@@ -147,10 +164,13 @@ pub fn module_identity(_file: &ParsedFile, symbol: &Symbol, _syntax: &Syntax) ->
         symbol.qualified_name.rsplit("::").next().unwrap_or("").into()
     }
 }
+/// Return the uniquely declared Elixir import target key, or `None` for missing/ambiguous targets.
 pub fn import_key(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<String> {
     let targets = ctx.modules.declared(request.file, &request.path);
     if targets.len() == 1 { Some(targets[0].key.clone()) } else { None }
 }
+/// Return one `(alias or terminal name, declaration targets, false)` Elixir binding.
+/// Preserve unresolved and ambiguous module-index targets.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     static ALIAS: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?:^|[^\p{L}\p{N}_])as[\s\x1c-\x1f]*:?[\s\x1c-\x1f]*([\p{L}\p{N}_]+)").unwrap());
@@ -160,6 +180,7 @@ pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(St
         .unwrap_or_else(|| request.path.rsplit('.').next().unwrap_or("").into());
     vec![(alias, ctx.modules.declared(request.file, &request.path), false)]
 }
+/// Resolve the requested member as a static member of the module named by its qualifier.
 pub fn qualified(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
     resolver.members(
         &resolver.modules.declared(request.file, request.qualifier.as_deref().unwrap_or("")),
@@ -167,6 +188,8 @@ pub fn qualified(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Ve
         true,
     )
 }
+/// Index Elixir function/method minimum/maximum arity and privacy by symbol key.
+/// Read declaration heads from `syntax`; missing syntax uses zero arity and public visibility.
 pub fn clauses(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>) -> BTreeMap<String, Clause> {
     repository
         .symbols()
@@ -180,6 +203,9 @@ pub fn clauses(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>)
         })
         .collect()
 }
+/// Select Elixir clauses by pipeline-aware call arity and private-call visibility.
+/// Retain all viable clauses in one parent/name group; ambiguity between groups yields none.
+/// Unknown arity accepts only an already unique candidate.
 pub fn select(identity: &CallableIdentity, request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     let syntax = &identity.syntax[&request.file.source.path];
     let node = syntax.node(request.call.start_byte, request.call.end_byte);
@@ -208,9 +234,11 @@ pub struct ElixirModules {
     pub syntax: BTreeMap<String, Syntax>,
 }
 impl ElixirModules {
+    /// Retain repository facts and shared syntax for Elixir module-identity lookup.
     pub fn new(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>) -> Self {
         Self { repository: repository.clone(), syntax: syntax.clone() }
     }
+    /// Return declarations with exact module identity `name` and `source`'s language, preserving ambiguity.
     pub fn declared(&self, source: &ParsedFile, name: &str) -> Vec<Symbol> {
         self.repository
             .files

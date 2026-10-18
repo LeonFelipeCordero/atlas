@@ -18,6 +18,11 @@ pub struct IgnoreSpec {
 }
 
 impl IgnoreSpec {
+    /// Compile GitIgnoreSpec-compatible rules from ignore-file text.
+    /// Blank lines and comments add no rules; negations can re-include paths.
+    ///
+    /// # Errors
+    /// Returns an error if a pattern is invalid or its generated regular expression cannot compile.
     pub fn new(content: &str) -> Result<Self> {
         let lines = content.split(|c| {
             matches!(
@@ -29,6 +34,9 @@ impl IgnoreSpec {
         Ok(Self { patterns })
     }
 
+    /// Match a `/`-separated path relative to this ignore file; append `/` for directories.
+    /// Return `Some(true)` to ignore, `Some(false)` to re-include, or `None` for no match.
+    /// Later rules take priority, except direct file matches override directory-marker matches.
     pub fn check_file(&self, path: &str) -> Option<bool> {
         let mut result = None;
         for pattern in self.patterns.iter().rev() {

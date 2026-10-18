@@ -23,6 +23,11 @@ fn default_timeout() -> Number {
 }
 
 impl MutationTarget {
+    /// Check source globs, command arguments, and the timeout without doing I/O.
+    ///
+    /// Reject empty lists or blank items, absolute/backslash/parent-traversing
+    /// source patterns, and nonpositive or noninteger timeouts. Working directory
+    /// containment and command executability are checked elsewhere.
     pub fn validate(&self) -> Result<()> {
         if self.sources.is_empty() || self.command.is_empty() {
             bail!("Source patterns and commands must not be empty");
@@ -56,6 +61,10 @@ pub struct MutationConfig {
 }
 
 impl MutationConfig {
+    /// Deserialize a strict mutation configuration and validate its rules and targets.
+    ///
+    /// Missing fields use empty defaults. Reject nonobjects, unknown fields,
+    /// incorrect field types, unknown rules, and invalid targets or target names.
     pub fn from_value(value: &Value) -> Result<Self> {
         if !value.is_object() {
             bail!("Mutation configuration must be an object");
@@ -65,6 +74,10 @@ impl MutationConfig {
         Ok(config)
     }
 
+    /// Check rule IDs, selectable target names, and each target without doing I/O.
+    ///
+    /// Accept empty rules/targets and duplicate rules. Reject unknown rules,
+    /// blank or untrimmed names, commas, the reserved name `all`, or invalid targets.
     pub fn validate(&self) -> Result<()> {
         validate_rules(&self.rules)?;
         for (name, target) in &self.targets {
@@ -77,7 +90,10 @@ impl MutationConfig {
     }
 }
 
-/// Load the mutation section from an already validated project configuration.
+/// Read the mutation section of a project object, defaulting to no rules or targets.
+///
+/// Reject a nonobject project or an invalid mutation section. Other project fields
+/// are not validated here; this function does not read configuration files.
 pub fn from_project(value: &Value) -> Result<MutationConfig> {
     let Some(project) = value.as_object() else {
         bail!("Project configuration must be an object");

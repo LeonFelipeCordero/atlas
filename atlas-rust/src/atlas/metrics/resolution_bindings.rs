@@ -2,6 +2,7 @@
 use std::collections::BTreeMap;
 use tree_sitter::Node;
 
+/// Collect root-first named nodes with start bytes in half-open `span`, pruning outside subtrees.
 pub fn walk_range(root: Node<'_>, span: (usize, usize)) -> Vec<Node<'_>> {
     let mut result = Vec::new();
     let mut pending = vec![root];
@@ -34,9 +35,11 @@ pub struct StoredBinding {
     pub node_span: (usize, usize),
 }
 impl StoredBinding {
+    /// Test whether byte `position` lies in this binding's half-open scope span.
     pub fn visible_at(&self, position: usize) -> bool {
         self.scope_span.0 <= position && position < self.scope_span.1
     }
+    /// Test whether the entire declaration span lies within `span`.
     pub fn contained_in(&self, span: (usize, usize)) -> bool {
         span.0 <= self.node_span.0 && self.node_span.1 <= span.1
     }
@@ -48,6 +51,7 @@ pub struct BindingIndex {
     names: BTreeMap<String, Vec<usize>>,
 }
 impl FromIterator<StoredBinding> for BindingIndex {
+    /// Retain bindings in input order and build an index of entry positions by name.
     fn from_iter<T: IntoIterator<Item = StoredBinding>>(iter: T) -> Self {
         let entries: Vec<_> = iter.into_iter().collect();
         let mut names: BTreeMap<String, Vec<usize>> = BTreeMap::new();
@@ -58,6 +62,7 @@ impl FromIterator<StoredBinding> for BindingIndex {
     }
 }
 impl BindingIndex {
+    /// Iterate bindings with an exact matching `name` in insertion order.
     pub fn named(&self, name: &str) -> impl Iterator<Item = &StoredBinding> {
         self.names.get(name).into_iter().flatten().map(|index| &self.entries[*index])
     }

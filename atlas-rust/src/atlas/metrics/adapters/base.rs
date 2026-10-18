@@ -81,10 +81,12 @@ pub const BOOLEANS: &[&str] = &[
     "disjunction_expression",
 ];
 
+/// Disable an optional metric predicate by returning false for every node.
 pub fn never(_node: Node<'_>) -> bool {
     false
 }
 
+/// Identify `elif` clauses and `if` nodes used as another conditional's alternative.
 pub fn alternative(node: Node<'_>) -> bool {
     if node.kind() == "elif_clause" {
         return true;
@@ -115,11 +117,13 @@ pub const COMMON_METRICS: MetricPolicy = MetricPolicy { language: String::new(),
 pub const DEFAULT_METRICS: MetricPolicy = MetricPolicy { language: String::new(), merged_defaults: true };
 
 impl MetricPolicy {
+    /// Select dedicated grammar rules for `language`, or merged defaults for other languages.
     pub fn new(language: &str) -> Self {
         let dedicated = ["javascript", "jsx", "typescript", "tsx", "java", "kotlin", "go", "rust", "elixir", "python"];
         Self { language: language.into(), merged_defaults: !dedicated.contains(&language) }
     }
 
+    /// Return a scope's body node, falling back to `root` when no supported body exists.
     pub fn body<'a>(&self, root: Node<'a>) -> Node<'a> {
         if !SCOPES.contains(&root.kind()) {
             return root;
@@ -133,11 +137,14 @@ impl MetricPolicy {
             .unwrap_or(root)
     }
 
+    /// Test whether `node` starts a nested metric scope, using `source` for Elixir calls.
     pub fn scope(&self, node: Node<'_>, source: &[u8]) -> bool {
         SCOPES.contains(&node.kind())
             || ((self.merged_defaults || self.language == "elixir") && elixir::scope(node, source))
     }
 
+    /// Apply language decision overrides, then shared rules that exclude default/else branches.
+    /// `source` must match the node's byte offsets.
     pub fn decision(&self, node: Node<'_>, source: &[u8]) -> bool {
         self.decision_override(node, source).unwrap_or_else(|| common_decision(node))
     }
@@ -157,14 +164,17 @@ impl MetricPolicy {
         }
     }
 
+    /// Test whether a supported boolean expression contains an and/or operator token.
     pub fn logical(&self, node: Node<'_>) -> bool {
         BOOLEANS.contains(&node.kind()) && children(node).iter().any(|n| ["&&", "||", "and", "or"].contains(&n.kind()))
     }
 
+    /// Recognize shared or Kotlin-specific else-if syntax for decision-depth adjustment.
     pub fn alternative(&self, node: Node<'_>) -> bool {
         alternative(node) || ((self.merged_defaults || self.language == "kotlin") && kotlin::alternative(node))
     }
 
+    /// Test whether the node kind contributes to loop nesting depth.
     pub fn is_loop(&self, node: Node<'_>) -> bool {
         LOOPS.contains(&node.kind())
     }
@@ -179,6 +189,7 @@ fn common_decision(node: Node<'_>) -> bool {
 }
 
 impl Default for MetricPolicy {
+    /// Return the merged default policy used when no language-specific policy is supplied.
     fn default() -> Self {
         DEFAULT_METRICS
     }
@@ -191,10 +202,13 @@ pub struct MetricAdapter {
 }
 
 impl MetricAdapter {
+    /// Pair `language` with its complexity policy and parameter-count dispatch.
     pub fn new(language: &str) -> Self {
         Self { language: language.into(), metrics: MetricPolicy::new(language) }
     }
 
+    /// Count explicit callable inputs using matching `source` bytes and language rules.
+    /// Return `None` for unsupported languages or unknown/invalid headers.
     pub fn parameter_count(&self, node: Node<'_>, source: &[u8]) -> Option<usize> {
         match self.language.as_str() {
             "javascript" | "jsx" => javascript::parameter_count(node, source),
@@ -217,6 +231,7 @@ impl MetricAdapter {
 }
 
 impl Default for MetricAdapter {
+    /// Return an unnamed adapter with merged metrics and no parameter-count support.
     fn default() -> Self {
         Self::new("")
     }

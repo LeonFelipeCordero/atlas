@@ -12,6 +12,8 @@ use tree_sitter::Node;
 
 static PLAIN_BASE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[\p{L}\p{N}_$]+(?:\.[\p{L}\p{N}_$]+)*$").unwrap());
 
+/// Find named instance members through a supported plain single-base class chain.
+/// Reject cycles, ambiguous bases, decorated classes, masking declarations, and receiver/member mutations.
 pub fn inherited_members(resolver: &CallResolver, parent: &Symbol, name: &str) -> Vec<Symbol> {
     InheritedMember { resolver, name }.members(parent, BTreeSet::new())
 }
@@ -220,6 +222,8 @@ fn plain_class(syntax: &Syntax, parent: &Symbol) -> bool {
         .is_some_and(|n| n.parent().is_none_or(|p| p.kind() != "decorated_definition"))
 }
 
+/// Detect supported Object/Reflect or Python attribute mutator calls on any known receiver.
+/// Read function and first-argument spellings from matching `source`; reject unrelated node shapes.
 pub fn member_mutation(node: Node<'_>, receivers: &BTreeSet<String>, source: &[u8]) -> bool {
     if !["call_expression", "call"].contains(&node.kind()) {
         return false;
@@ -242,6 +246,8 @@ pub fn member_mutation(node: Node<'_>, receivers: &BTreeSet<String>, source: &[u
             .is_some_and(|n| receivers.contains(&text(Some(n), source)))
 }
 
+/// Test whether a target writes `name`, an indexed member, or a receiver itself.
+/// Remove whitespace from `target` and compare against exact spellings in `receivers`.
 pub fn member_write(target: &str, receivers: &BTreeSet<String>, name: &str) -> bool {
     let target: String = target.chars().filter(|c| !c.is_whitespace() && !('\u{1c}'..='\u{1f}').contains(c)).collect();
     receivers.iter().any(|r| target == format!("{r}.{name}") || target.starts_with(&format!("{r}[")) || target == *r)
@@ -266,6 +272,7 @@ fn plain_base(syntax: &Syntax, parent: &Symbol, target: &str) -> bool {
     })
 }
 
+/// Test whether nonempty candidates share the same file, parent key, and name.
 pub fn same_declaration_group(matches: &[Symbol]) -> bool {
     let Some(first) = matches.first() else {
         return false;
@@ -273,6 +280,9 @@ pub fn same_declaration_group(matches: &[Symbol]) -> bool {
     matches.iter().all(|s| (&s.file_path, &s.parent_key, &s.name) == (&first.file_path, &first.parent_key, &first.name))
 }
 
+/// Return one body-bearing implementation in a shared declaration group.
+/// Every other candidate must be a preceding signature of a kind in `signature_types`.
+/// Missing syntax, unsupported signatures, and ambiguity yield no targets.
 pub fn executable_implementation(
     identity: &CallableIdentity,
     matches: Vec<Symbol>,
