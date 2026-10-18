@@ -1,0 +1,15 @@
+Usage: atlas mutations run [OPTIONS]
+
+  Apply independent mutations and run trusted configured test commands in this
+  workspace. No baseline or isolation is provided. Nonzero command exits count
+  as killed. Results are incremental JSONL with separate command logs. Each
+  run overwrites previous results. Progress is printed to stderr; stdout
+  remains JSON.
+
+Options:
+  -f, --folder PATH  Override the parent project folder
+  --output PATH      Results file, relative to the project root; overwritten
+                     on each run  [default: mutation-results.jsonl]
+  --target TEXT      Comma-separated target names, or 'all'. Prompt when
+                     omitted on a terminal.
+  --help             Show this message and exit.

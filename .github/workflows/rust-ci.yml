@@ -64,11 +64,13 @@ jobs:
       - run: uv sync --project atlas --group dev
       - name: Require Python Atlas standards across the entire repository
         run: uv run --project atlas atlas check --f . --format json
+      - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
       - name: Test the comparison and isolation harness
+        env:
+          ATLAS_RUST_BINARY: ${{ github.workspace }}/atlas-rust/target/release/atlas
         run: uv run --project atlas python -m unittest discover -s atlas-rust/scripts -p 'test_*.py'
       - run: uv run --project atlas ruff check atlas-rust/scripts
       - run: uv run --project atlas pyright atlas-rust/scripts
-      - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
       - name: Require every CLI action, flag, database direction, and sample variant
         run: >-
           uv run --project atlas python atlas-rust/scripts/parity.py

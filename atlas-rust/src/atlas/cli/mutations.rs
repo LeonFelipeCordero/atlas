@@ -5,6 +5,7 @@ use anyhow::Result;
 use serde_json::{Value, json};
 use std::path::Path;
 
+#[cfg(test)]
 fn options(args: &[String]) -> Result<Options> {
     let options = Options::parse("mutations", args, (&["--folder"], &["--saved", "--rules", "--help"]))?;
     if !options.has("--help") {
@@ -30,12 +31,27 @@ fn output(options: &Options) -> Result<Value> {
 
 /// Arguments exclude the `mutations` command name. Errors propagate to the CLI boundary.
 pub fn run(args: &[String]) -> Result<i32> {
-    let options = options(args)?;
-    if options.has("--help") {
+    let (parent, tail) = Options::parse_group("mutations", args, (&["--folder"], &["--saved", "--rules", "--help"]))?;
+    if parent.has("--help") {
         super::help::print("mutations", false);
         return Ok(0);
     }
-    println!("{}", serde_json::to_string_pretty(&output(&options)?)?);
+    if let Some(command) = tail.first() {
+        if command != "run" {
+            let (retry, _) =
+                Options::parse_group("mutations", tail, (&["--folder"], &["--saved", "--rules", "--help"]))?;
+            if retry.has("--help") {
+                super::help::print("mutations", false);
+                return Ok(0);
+            }
+            return Err(super::option_suggestions::unknown_command("mutations", command, &["run"]));
+        }
+        if parent.has("--rules") {
+            return Err(super::options::usage("mutations", "--rules cannot be combined with a subcommand"));
+        }
+        return super::mutation_run::run(&parent, &tail[1..]);
+    }
+    println!("{}", serde_json::to_string_pretty(&output(&parent)?)?);
     Ok(0)
 }
 
@@ -81,7 +97,7 @@ mod tests {
         service.save_folder(root.path(), &artifact)?;
         let project = service.list()?.remove(0);
         let saved = service.report(&project.name)?;
-        let config = config::MutationConfig { rules: vec!["arithmetic.add-to-subtract".into()] };
+        let config = config::MutationConfig { rules: vec!["arithmetic.add-to-subtract".into()], ..Default::default() };
         let expected = build_mutation_report(root.path(), &artifact, &config)?;
         assert_eq!(expected["mutations"].as_array().unwrap().len(), 1);
         assert_eq!(build_mutation_report(root.path(), &saved, &config)?, expected);

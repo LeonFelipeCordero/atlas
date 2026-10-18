@@ -237,7 +237,7 @@ fn mutation_errors(value: &Value) -> Vec<String> {
     };
     let mut errors = Vec::new();
     for (name, input) in object {
-        if name != "rules" {
+        if name != "rules" && name != "targets" {
             errors.push(validation_error(
                 &format!("mutations.{name}"),
                 ("Extra inputs are not permitted", "extra_forbidden"),
@@ -248,8 +248,129 @@ fn mutation_errors(value: &Value) -> Vec<String> {
     if let Some(rules) = object.get("rules") {
         errors.extend(mutation_rule_errors(rules));
     }
+    if let Some(targets) = object.get("targets") {
+        errors.extend(mutation_target_errors(targets));
+    }
     errors
 }
+fn mutation_target_errors(targets: &Value) -> Vec<String> {
+    let Some(entries) = targets.as_object() else {
+        return vec![validation_error(
+            "mutations.targets",
+            ("Input should be a valid dictionary", "dict_type"),
+            targets,
+        )];
+    };
+    let mut errors = Vec::new();
+    for (name, target) in entries {
+        errors.extend(target_errors(&format!("mutations.targets.{name}"), target));
+    }
+    if errors.is_empty()
+        && entries.keys().any(|name| name.is_empty() || name != name.trim() || name.contains(',') || name == "all")
+    {
+        errors.push(validation_error(
+            "mutations.targets",
+            (
+                "Value error, Target names must be nonempty, trimmed, contain no commas, and must not be 'all'",
+                "value_error",
+            ),
+            targets,
+        ));
+    }
+    errors
+}
+fn target_errors(prefix: &str, target: &Value) -> Vec<String> {
+    let Some(object) = target.as_object() else {
+        return vec![validation_error(prefix, ("Input should be an object", "model_type"), target)];
+    };
+    let mut errors = Vec::new();
+    for name in ["sources", "cwd", "command", "timeoutSeconds"] {
+        errors.extend(target_field_errors(prefix, name, target));
+    }
+    for (name, input) in object {
+        if !["sources", "cwd", "command", "timeoutSeconds"].contains(&name.as_str()) {
+            errors.push(validation_error(
+                &format!("{prefix}.{name}"),
+                ("Extra inputs are not permitted", "extra_forbidden"),
+                input,
+            ));
+        }
+    }
+    errors
+}
+fn target_field_errors(prefix: &str, name: &str, target: &Value) -> Vec<String> {
+    let field = format!("{prefix}.{name}");
+    let Some(input) = target.get(name) else {
+        return if name == "sources" || name == "command" {
+            vec![validation_error(&field, ("Field required", "missing"), target)]
+        } else {
+            vec![]
+        };
+    };
+    match name {
+        "sources" | "command" => target_list_errors(&field, name, input),
+        "cwd" if !input.is_string() => {
+            vec![validation_error(&field, ("Input should be a valid string", "string_type"), input)]
+        }
+        "timeoutSeconds" => {
+            timeout_error(input).map(|constraint| validation_error(&field, constraint, input)).into_iter().collect()
+        }
+        _ => vec![],
+    }
+}
+fn timeout_error(input: &Value) -> Option<(&'static str, &'static str)> {
+    match integer_text(input) {
+        None => Some(("Input should be a valid integer", "int_type")),
+        Some(number) if number.starts_with('-') || number == "0" => {
+            Some(("Input should be greater than 0", "greater_than"))
+        }
+        _ => None,
+    }
+}
+fn target_list_errors(field: &str, name: &str, input: &Value) -> Vec<String> {
+    let Some(items) = input.as_array() else {
+        return vec![validation_error(field, ("Input should be a valid array", "list_type"), input)];
+    };
+    if items.is_empty() {
+        return vec![validation_error(
+            field,
+            ("List should have at least 1 item after validation, not 0", "too_short"),
+            input,
+        )];
+    }
+    let mut errors = Vec::new();
+    for (index, item) in items.iter().enumerate() {
+        if !item.is_string() {
+            errors.push(validation_error(
+                &format!("{field}.{index}"),
+                ("Input should be a valid string", "string_type"),
+                item,
+            ));
+        }
+    }
+    if !errors.is_empty() {
+        return errors;
+    }
+    errors.extend(
+        target_list_constraint(name, items).map(|message| validation_error(field, (message, "value_error"), input)),
+    );
+    errors
+}
+fn target_list_constraint(name: &str, items: &[Value]) -> Option<&'static str> {
+    let strings: Vec<_> = items.iter().map(|item| item.as_str().unwrap()).collect();
+    if strings.iter().any(|item| item.trim().is_empty()) {
+        Some("Value error, Source patterns and command arguments must not be empty")
+    } else if name == "sources"
+        && strings.iter().any(|pattern| {
+            pattern.starts_with('/') || pattern.contains('\\') || pattern.split('/').any(|part| part == "..")
+        })
+    {
+        Some("Value error, Source patterns must be project-relative POSIX globs")
+    } else {
+        None
+    }
+}
+
 fn mutation_rule_errors(rules: &Value) -> Vec<String> {
     let Some(entries) = rules.as_array() else {
         return vec![validation_error("mutations.rules", ("Input should be a valid array", "list_type"), rules)];

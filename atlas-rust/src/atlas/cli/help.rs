@@ -112,6 +112,7 @@ mod tests {
             ("report", include_str!("help/report.txt")),
             ("check", include_str!("help/check.txt")),
             ("mutations", include_str!("help/mutations.txt")),
+            ("mutations run", include_str!("help/mutations-run.txt")),
             ("graph overview", include_str!("help/graph-overview.txt")),
             ("graph find", include_str!("help/graph-find.txt")),
             ("graph show", include_str!("help/graph-show.txt")),

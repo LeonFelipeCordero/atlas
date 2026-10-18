@@ -1,4 +1,4 @@
-Usage: atlas mutations [OPTIONS]
+Usage: atlas mutations [OPTIONS] [COMMAND] [ARGS]...
 
   Derive independent JSON byte-edit manifests, never change source or save
   results. Opt in via atlas.json: mutations.rules is a list of rule IDs.
@@ -13,3 +13,6 @@ Options:
   --rules                 Show the versioned rule catalog and limitations
                           instead of generating
   --help                  Show this message and exit.
+
+Commands:
+  run  Apply independent mutations and run trusted configured test...

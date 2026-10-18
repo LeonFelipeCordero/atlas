@@ -78,7 +78,11 @@ impl Options {
     ) -> Result<()> {
         let (spelling, inline) = split_option(argument, spec.0);
         let (valued, flags) = spec;
-        let option = normalize_option(spelling, valued);
+        let option = if self.command == "mutations run" && spelling == "--f" {
+            spelling
+        } else {
+            normalize_option(spelling, valued)
+        };
         let value = if flags.contains(&option) {
             if inline.is_some() {
                 return Err(usage(&self.command, format!("Option '{spelling}' does not take a value.")));

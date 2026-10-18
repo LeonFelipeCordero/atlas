@@ -54,7 +54,10 @@ fn canonical_digest_and_base64_match_snapshot() -> Result<()> {
     let report = read_json(fixtures().join("snapshots/mutations/python-operators.json"));
     let root = fixtures().join("code_samples/mutations/python");
     let found = candidates(&root, report["mutations"].as_array().unwrap())?;
-    let selected = config::MutationConfig { rules: rules::REGISTRY.iter().map(|rule| rule.id.clone()).collect() };
+    let selected = config::MutationConfig {
+        rules: rules::REGISTRY.iter().map(|rule| rule.id.clone()).collect(),
+        ..Default::default()
+    };
     assert_eq!(report::build_mutation_report(&root, &json!({"mutationCandidates": found}), &selected)?, report);
     Ok(())
 }
@@ -84,7 +87,10 @@ fn all_coffee_candidate_and_markdown_snapshots() -> Result<()> {
 
 #[test]
 fn all_manifest_snapshots() -> Result<()> {
-    let selected = config::MutationConfig { rules: rules::REGISTRY.iter().map(|rule| rule.id.clone()).collect() };
+    let selected = config::MutationConfig {
+        rules: rules::REGISTRY.iter().map(|rule| rule.id.clone()).collect(),
+        ..Default::default()
+    };
     let samples = rules::LANGUAGES.iter().flat_map(|language| [false, true].map(|operators| (*language, operators)));
     for (language, operators) in samples {
         let (sample, suffix) =

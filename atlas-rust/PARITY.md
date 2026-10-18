@@ -71,7 +71,7 @@ uv run --project atlas python atlas-rust/scripts/parity.py \
   --projects-dir ~/workspace/projects --warmups 1 --repetitions 3 --timeout 90
 ```
 
-Every process gets a temporary `DATABASE_PATH` and `XDG_DATA_HOME`. No command applies mutations. Configuration/stale-source variants copy only reference samples into temporary directories. The harness disables Python bytecode writes. Keep `--output` outside source projects; existing run directories are rejected.
+Every matrix process gets a temporary `DATABASE_PATH` and `XDG_DATA_HOME`. No matrix command applies mutations. Configuration/stale-source variants copy only reference samples into temporary directories. The harness disables Python bytecode writes. Keep `--output` outside source projects; existing run directories are rejected.
 
 Each CLI subprocess has its own timeout. Both implementations timing out still fails parity. A failed reference baseline index is recorded, graph-dependent cases are marked blocked failures, and independent actions continue. Later projects still run. When native indexing succeeds, native-origin graph reading can still run after reference indexing failed. The VU receiver-alias expansion timeout is a reference limitation, not an accepted native parity result.
 
@@ -111,9 +111,16 @@ The default output directory is a new `/tmp/atlas-parity-results-*` directory. `
 
 Timings include process startup, CLI work, and the small Python developer wrapper. They exclude database cloning, schema inspection, and prerequisite setup. Native runs first in each pair; use multiple runs on a quiet machine for performance conclusions. This measures CLI wall time, not peak memory or parser-only CPU time. Filtered/bounded runs do not prove unselected coverage. No external project benchmark has been accepted merely because both commands failed.
 
+## Mutation execution parity
+
+Native `atlas mutations run` matches the Python target configuration, parent and command folder options, `--saved`, `--target`, and `--output`. Target selection accepts ordered comma-separated names or `all`; omitted selections prompt only on a terminal. Each independent edit runs all matching trusted commands, writes incremental JSONL and separate logs, and restores the source. Timeouts stop process groups. SIGINT/SIGTERM restore the source; SIGKILL and machine failure cannot. Neither implementation provides a baseline or workspace isolation.
+
+`test_mutation_run.py` executes both CLIs against the same temporary projects. It compares stdout, stderr, JSONL text, and command log bytes, including selection errors, interactive retries/EOF, configuration errors, saved/stale candidates, reruns, killed/survived/timeout/error results, and Unicode paths. Only measured duration values are masked; their fields and display format must match. Native runner tests cover path/output protection and interruption cleanup.
+
 ## Harness and repository validation
 
 ```sh
+cargo build --manifest-path atlas-rust/Cargo.toml --locked --bins
 uv run --project atlas python -m unittest discover -s atlas-rust/scripts -p 'test_*.py' -v
 uv run --project atlas ruff check atlas-rust/scripts
 uv run --project atlas pyright atlas-rust/scripts

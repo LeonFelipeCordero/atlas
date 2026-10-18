@@ -5,7 +5,7 @@ pub fn unknown(command: &str, option: &str, spec: (&[&str], &[&str])) -> anyhow:
         return usage(command, format!("No such option {}.", repr(&format!("-{character}"))));
     }
     let mut candidates: Vec<_> = spec.0.iter().chain(spec.1).copied().chain(["--help"]).collect();
-    if candidates.contains(&"--folder") {
+    if candidates.contains(&"--folder") && command != "mutations run" {
         candidates.push("--f");
     }
     candidates.sort();
