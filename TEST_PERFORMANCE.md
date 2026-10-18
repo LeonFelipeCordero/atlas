@@ -1,6 +1,6 @@
 # Test suite timing
 
-Measured on the same machine with installed dependencies. These are single-run measurements, not timing assertions. No tests or assertions were removed. README and production code are unchanged.
+Measured on the same machine with installed dependencies. These are single-run measurements, not timing assertions. The Python and dashboard changes below did not change README or production code. The Rust follow-up retains behavior coverage while replacing repeated timeout executions with direct priority assertions.
 
 ## Suite runtime
 
@@ -125,3 +125,101 @@ The tables sum JUnit testcase durations per file. Python includes setup, call, a
 Passed: Python tests with four workers and with `-n auto`, Pyright, Ruff, dashboard tests, production build, TypeScript type check, ESLint `--fix`, and `uv run --project atlas atlas check --f .`.
 
 The measurements above preceded stacking this change onto PR #46. After rebasing onto `autonomous-mutation-testing`, all checks passed again: 1,854 Python tests and 200 dashboard tests. That concurrent validation run is not a replacement for the isolated timing measurements above.
+
+## Rust follow-up (PR #55)
+
+Baseline: `253b95a`. Debug tests, installed parser grammars, default test thread count, same machine, no concurrent checks. Compilation is excluded: the first build took 96 seconds. These are single-run measurements, not portable three-second guarantees.
+
+The sum of Cargo's test execution times fell from **49.89 to 24.61 seconds**. The library test executable fell from **32.42 to 6.87 seconds**, including snapshots. All 226 unit tests and 135 integration tests passed. All non-snapshot test files finish below three seconds when measured separately.
+
+The migration test uses a 100 ms deadline and a 10 ms SQLite busy timeout on its private connection. Production keeps its 30-second deadline, busy timeout, and error message. The test still checks rollback, unchanged migration history, and reuse of the connection after timeout.
+
+Mutation outcome priority is checked directly in both target orders. Two multi-target integration cases still check real execution, recorded outcomes, and source restoration. `runner_process_tests.rs` still exercises a real one-second timeout and child-process cleanup. This avoids three extra one-second waits under the runner's process-wide signal-handler lock.
+
+### Rust integration file times (seconds)
+
+Paths are under `atlas-rust/tests/`. Values come from Cargo's per-executable summaries. Snapshot suites were measured but not optimized.
+
+```text
+File                       Before   After
+architecture.rs             0.36     0.36
+cli.rs                      0.03     0.03
+cli_numeric.rs              0.16     0.16
+cli_validation.rs           0.09     0.09
+discovery_failures.rs        0.03     0.03
+metrics.rs                  0.12     0.12
+metrics_patterns.rs         0.06     0.07
+mutation_safety.rs          0.57     0.57
+navigation_budget.rs        0.06     0.06
+parity.rs                   9.61     9.83  snapshot suite, excluded
+parity_families.rs          0.22     0.21
+parity_inventory.rs         0.00     0.00
+parity_navigation.rs        2.43     2.43  snapshot suite, excluded
+parity_pipeline.rs          3.67     3.72  snapshot suite, excluded
+reindex.rs                  0.06     0.06
+```
+
+### Rust unit source file times (seconds)
+
+Paths are under `atlas-rust/src/atlas/`. Each source file's tests ran in a fresh library test process, with default test threads and exact fully qualified test-name filters. Values include process startup. These isolated file times do not sum to the parallel library suite time. Inline test modules are included. Shared helper files have no independent test runtime.
+
+```text
+File                                              Before   After
+cli/graph_output.rs                                0.002   0.003
+cli/integers.rs                                    0.005   0.005
+cli/mutation_targets.rs                            0.002   0.003
+cli/mutations.rs                                   0.018   0.019
+cli/options_tests.rs                               0.007   0.008
+cli/schema.rs                                     0.003   0.003
+metrics/adapters/base.rs                           0.004   0.004
+metrics/adapters/callable_selection.rs             0.008   0.007
+metrics/adapters/elixir_tests.rs                   0.157   0.152
+metrics/adapters/generic.rs                        0.003   0.003
+metrics/adapters/go.rs                             0.014   0.013
+metrics/adapters/java.rs                           0.090   0.089
+metrics/adapters/javascript.rs                     0.015   0.015
+metrics/adapters/kotlin.rs                         0.019   0.019
+metrics/adapters/parameters.rs                     0.003   0.003
+metrics/adapters/python.rs                         0.019   0.017
+metrics/adapters/resolution.rs                     0.020   0.020
+metrics/adapters/resolution_metadata.rs            0.002   0.003
+metrics/adapters/resolution_paths.rs               0.024   0.024
+metrics/adapters/rust_tests.rs                     0.145   0.146
+metrics/adapters/rust_unicode.rs                   0.002   0.002
+metrics/adapters/script_adapter_tests.rs           0.101   0.112
+metrics/adapters/script_python_selection.rs        0.003   0.003
+metrics/adapters/script_resolution.rs              0.014   0.014
+metrics/adapters/typescript.rs                     0.003   0.003
+metrics/receiver_aliases.rs                        0.008   0.009
+metrics/receiver_tests.rs                          0.072   0.073
+metrics/resolution_syntax.rs                       0.100   0.090
+metrics/resolver.rs                                0.002   0.002
+metrics/resolver_graph.rs                          0.002   0.002
+metrics/resolver_tests.rs                          0.024   0.017
+mutations/manifests.rs                             0.002   0.002
+mutations/runner_process_tests.rs                  1.203   1.194
+mutations/runner_tests.rs                          3.503   0.444
+mutations/tests.rs                                4.956   5.052  snapshots, excluded
+parsing/adapters/rust_macro_tests.rs               0.099   0.103
+parsing/adapters/tests.rs                          0.168   0.165
+parsing/discovery.rs                               0.015   0.016
+parsing/discovery_open.rs                          0.002   0.002
+parsing/ignore_spec.rs                             0.027   0.026
+parsing/structure_tests.rs                         0.144   0.147
+parsing/tests.rs                                   0.047   0.037
+paths/home.rs                                     0.003   0.003
+persistence/migration_tests.rs                    30.020   0.276
+persistence/tests.rs                               0.379   0.379
+```
+
+Reproduce the suite summaries and the two changed unit-file groups from the repository root:
+
+```sh
+cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
+cargo test --manifest-path atlas-rust/Cargo.toml --locked --lib persistence::migration_tests::
+cargo test --manifest-path atlas-rust/Cargo.toml --locked --lib mutations::runner_tests::
+```
+
+For isolated file timings, build first with `cargo test --manifest-path atlas-rust/Cargo.toml --locked --lib --no-run`. Use the reported library test executable with `--list` to obtain test names, then run it with `--exact` and all test names belonging to one source file. Measure that process's elapsed time, not compilation. Macro-defined tests belong to the source file defining the test macro.
+
+Validation passed: Rust all-target tests, locked release binary build, formatting, Clippy with warnings denied, and whole-project `uv run --project atlas atlas check --f .`. The shortened lock-timeout test also passed 20 consecutive isolated runs. Python and dashboard suites were not run because their code, shared fixtures, schemas, and output contracts did not change. Mutation campaigns were not run.

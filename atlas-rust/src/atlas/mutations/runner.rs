@@ -142,11 +142,7 @@ impl Campaign<'_, '_> {
             set_error(&mut result, error);
             return Ok(result);
         }
-        let outcome = ["killed", "error", "timeout", "survived"]
-            .into_iter()
-            .find(|outcome| result["targets"].as_array().unwrap().iter().any(|item| item["outcome"] == *outcome))
-            .unwrap();
-        result["outcome"] = json!(outcome);
+        result["outcome"] = json!(combined_outcome(result["targets"].as_array().unwrap()));
         Ok(result)
     }
 
@@ -183,6 +179,12 @@ impl Campaign<'_, '_> {
         named.as_object_mut().unwrap().extend(execution.as_object().unwrap().clone());
         Ok(named)
     }
+}
+pub(super) fn combined_outcome(targets: &[Value]) -> &'static str {
+    ["killed", "error", "timeout", "survived"]
+        .into_iter()
+        .find(|outcome| targets.iter().any(|item| item["outcome"] == *outcome))
+        .unwrap()
 }
 fn set_error(result: &mut Value, error: anyhow::Error) {
     result["outcome"] = json!("error");

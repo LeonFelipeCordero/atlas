@@ -153,20 +153,31 @@ fn outcomes_working_directory_and_stale_guards() -> Result<()> {
 }
 
 #[test]
-fn multiple_targets_obey_outcome_priority() -> Result<()> {
-    let project = project();
-    let root = project.path();
+fn combined_outcomes_obey_priority_in_either_order() {
+    // Real timeout and process cleanup are covered in runner_process_tests.
     for (first, second, expected) in [
+        ("survived", "survived", "survived"),
         ("survived", "error", "error"),
         ("survived", "timeout", "timeout"),
         ("timeout", "error", "error"),
         ("killed", "error", "killed"),
         ("timeout", "killed", "killed"),
     ] {
+        let mut targets = [first, second].map(|outcome| json!({"outcome": outcome}));
+        assert_eq!(super::runner::combined_outcome(&targets), expected);
+        targets.reverse();
+        assert_eq!(super::runner::combined_outcome(&targets), expected);
+    }
+}
+
+#[test]
+fn multiple_targets_execute_and_obey_outcome_priority() -> Result<()> {
+    let project = project();
+    let root = project.path();
+    for (first, second, expected) in [("survived", "error", "error"), ("killed", "error", "killed")] {
         let command = |outcome| match outcome {
             "survived" => vec!["python3", "-c", "pass"],
             "killed" => vec!["python3", "-c", "raise SystemExit(1)"],
-            "timeout" => vec!["python3", "-c", "import time; time.sleep(60)"],
             _ => vec!["/atlas-missing-command"],
         };
         let target = |outcome| json!({"sources": ["source.py"], "command": command(outcome), "timeoutSeconds": 1});
