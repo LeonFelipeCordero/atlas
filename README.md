@@ -89,6 +89,20 @@ atlas mutations -f . --saved     # Use saved candidates; verify current source
 
 Saved mode never refreshes the index: missing or stale source fails the whole request; reindex after source changes. Each manifest is an alternative against the original file, not a patch to apply sequentially. See [the full catalog and manifest contract](atlas/MUTATIONS.md).
 
+### Mutation testing
+
+`atlas mutations run` applies independent mutations, runs the configured test commands, and restores source after each mutation. No AI agent is needed. Configure source-to-test targets in `atlas.json`; see [the mutation runner guide](atlas/MUTATION_RUNNER.md).
+
+Mutation testing is slow because it starts the selected test commands for every mutation. A full campaign on this repository is estimated to take **70–90 minutes** on the development machine. This is an estimate from a partial run, not a completed benchmark; runtime depends on hardware, selected tests, and timeouts.
+
+For routine changes, run only mutation targets that cover the changed code and affected consumers. Check each target's `sources` and `command` in `atlas.json`. For example, from this repository's root:
+
+```sh
+uv run --project atlas atlas mutations run --folder . --target complexity,parsing
+```
+
+Replace those example targets with the ones relevant to your changes. Omit `--target` to choose interactively; CI must pass it explicitly. Use `--target all` only for a requested full campaign or a justified broad audit. Target selection limits mutation execution, not whole-project analysis. Keep running the normal tests and `atlas check` as required.
+
 ### Exclude files
 
 Atlas honors `.gitignore`. Add `.atlasignore` for analysis-only exclusions:
