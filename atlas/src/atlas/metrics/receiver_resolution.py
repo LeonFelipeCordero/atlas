@@ -186,7 +186,8 @@ class ReceiverTypes:
 
     def _field_bindings(self, parent, name):
         return [b for b in self.bindings[parent.file_path] if b.member and b.name == name
-                and parent.start_byte <= b.node.start_byte < parent.end_byte]
+                and parent.start_byte <= b.node.start_byte < parent.end_byte
+                and (b.scope.start_byte, b.scope.end_byte) == (parent.start_byte, parent.end_byte)]
 
     def _static(self, request):
         return any(s.kind in {"method", "function"} and self.resolver.syntax[s.file_path].static(s)
@@ -206,8 +207,13 @@ class ReceiverTypes:
         return any(n != binding.node and n.type in syntax.adapter.assignments | syntax.adapter.receiver_updates
                    and self._write_names(syntax, n) & targets
                    and not self._field_initialization(syntax, binding, n)
+                   and not self._other_field(syntax, binding, n)
                    and binding.scope.start_byte <= n.start_byte < binding.scope.end_byte
                    for n in syntax.nodes)
+
+    def _other_field(self, syntax, binding, node):
+        return binding.member and any(b.member and b.node == node and b.scope != binding.scope
+                                      for b in self.bindings[syntax.file.source.path])
 
     def _field_initialization(self, syntax, binding, node):
         if binding.inferred or not binding.member or not syntax.adapter.trust_receiver_annotations:
@@ -233,10 +239,28 @@ class ReceiverTypes:
         if call is None:
             return True
         scope = self._call_scope(call)
-        nodes = [n for n in syntax.nodes if scope.start_byte <= n.start_byte < scope.end_byte]
+        nodes = self._scope_nodes(syntax, scope)
         paths = self._expand_paths(syntax, nodes, {request.qualifier or ""})
         targets = (paths if receiver else set()) | {path + "." + request.name for path in paths}
-        return self._targets_written(syntax, nodes, targets)
+        writes = [n for n in nodes if not self._nested_local_write(syntax, n, scope)]
+        return self._targets_written(syntax, writes, targets)
+
+    def _scope_nodes(self, syntax, scope):
+        return [n for n in syntax.nodes if scope.start_byte <= n.start_byte < scope.end_byte]
+
+    def _nested_local_write(self, syntax, node, scope):
+        if syntax.file.source.language != "python" or node.type not in syntax.adapter.assignments:
+            return False
+        target = field(node, "left")
+        owner = self._call_scope(node)
+        if target is None or target.type != "identifier" or owner.type not in FUNCTIONS or owner == scope:
+            return False
+        return not self._outer_binding(syntax, owner, text(target))
+
+    def _outer_binding(self, syntax, owner, name):
+        return any(n.type in {"nonlocal_statement", "global_statement"}
+                   and self._call_scope(n) == owner and name in {text(c) for c in n.named_children}
+                   for n in syntax.nodes)
 
     def _call_scope(self, call):
         scope = call
