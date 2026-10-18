@@ -1,0 +1,310 @@
+{
+  "": {
+    "usage": "Usage: atlas [OPTIONS] COMMAND [ARGS]...",
+    "description": "Analyze repositories and store their graphs in SQLite",
+    "options": [
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ],
+    "commands": [
+      [
+        "check",
+        "Check current sources against atlas.json in the analyzed folder, without saving by default. Missing keys inherit defaults: maxFileLines=600, maxFunctionLines=100, maxParameters=3, maxWeightedComplexity=8, maxDecisionDepth=3, maxNestedLoops=0, maxCircularImportGroups=0. maxChangeImpact and maxInstability are disabled by default and apply to files/modules. Null disables a check. Equality passes; violations exit 1."
+      ],
+      [
+        "graph",
+        "Read an indexed graph as JSON; unresolved targets are not classified as external. Stable keys retain their indexed spelling."
+      ],
+      [
+        "index",
+        "Analyze a folder and save its graph in SQLite"
+      ],
+      [
+        "mutations",
+        "Derive independent JSON byte-edit manifests, never change source or save results. Opt in via atlas.json: mutations.rules is a list of rule IDs. Default/empty lists generate nothing. --rules lists exact language coverage. Conditions, unary operators and unlisted aliases are excluded. Syntactic support is not type validity."
+      ],
+      [
+        "projects",
+        "List all registered projects as JSON"
+      ],
+      [
+        "report",
+        "Analyze a folder and show quantitative metrics as Markdown or JSON, without saving by default"
+      ]
+    ]
+  },
+  "check": {
+    "usage": "Usage: atlas check [OPTIONS]",
+    "description": "Check current sources against atlas.json in the analyzed folder, without saving by default. Missing keys inherit defaults: maxFileLines=600, maxFunctionLines=100, maxParameters=3, maxWeightedComplexity=8, maxDecisionDepth=3, maxNestedLoops=0, maxCircularImportGroups=0. maxChangeImpact and maxInstability are disabled by default and apply to files/modules. Null disables a check. Equality passes; violations exit 1.",
+    "options": [
+      [
+        "-f, --f, --folder PATH",
+        "Folder to analyze and check  [default: .]"
+      ],
+      [
+        "--save",
+        "Save the analyzed graph in SQLite"
+      ],
+      [
+        "--format [markdown|json]",
+        "[default: markdown]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph": {
+    "usage": "Usage: atlas graph [OPTIONS] COMMAND [ARGS]...",
+    "description": "Read an indexed graph as JSON; unresolved targets are not classified as external. Stable keys retain their indexed spelling.",
+    "options": [
+      [
+        "--project TEXT",
+        "Registered project name or ID; defaults to the indexed folder containing the current directory."
+      ],
+      [
+        "--revision TEXT",
+        "Expected graphRevision; reject a stale graph."
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ],
+    "commands": [
+      [
+        "children",
+        "Print a page of direct children using key, limit, and offset options."
+      ],
+      [
+        "context",
+        "Print bounded breadth-first graph context around a stable key."
+      ],
+      [
+        "find",
+        "Print ranked node matches for a name, path, or stable key, up to limit."
+      ],
+      [
+        "overview",
+        "Print graph counts and bounded root nodes for the selected project."
+      ],
+      [
+        "path",
+        "Print a shortest discovered route, or its bounded-search failure status."
+      ],
+      [
+        "show",
+        "Print node details and bounded ancestors for an indexed stable key."
+      ],
+      [
+        "source",
+        "Fetch verified excerpts for one or more keys; limits apply per excerpt."
+      ]
+    ]
+  },
+  "graph children": {
+    "usage": "Usage: atlas graph children [OPTIONS] KEY",
+    "description": "Print a page of direct children using key, limit, and offset options.",
+    "options": [
+      [
+        "--limit INTEGER RANGE",
+        "[default: 30; 1<=x<=100]"
+      ],
+      [
+        "--offset INTEGER RANGE",
+        "[default: 0; x>=0]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph context": {
+    "usage": "Usage: atlas graph context [OPTIONS] KEY",
+    "description": "Print bounded breadth-first graph context around a stable key.",
+    "options": [
+      [
+        "--depth INTEGER RANGE",
+        "[default: 2; 0<=x<=20]"
+      ],
+      [
+        "--max-edges INTEGER RANGE",
+        "[default: 100; 1<=x<=1000]"
+      ],
+      [
+        "--max-nodes INTEGER RANGE",
+        "[default: 30; 1<=x<=300]"
+      ],
+      [
+        "--relations TEXT",
+        "[default: CALLS,REFERENCES]"
+      ],
+      [
+        "--direction [out|in|both]",
+        "[default: out]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph find": {
+    "usage": "Usage: atlas graph find [OPTIONS] QUERY",
+    "description": "Print ranked node matches for a name, path, or stable key, up to limit.",
+    "options": [
+      [
+        "--limit INTEGER RANGE",
+        "[default: 10; 1<=x<=100]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph overview": {
+    "usage": "Usage: atlas graph overview [OPTIONS]",
+    "description": "Print graph counts and bounded root nodes for the selected project.",
+    "options": [
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph path": {
+    "usage": "Usage: atlas graph path [OPTIONS] FROM TO",
+    "description": "Print a shortest discovered route, or its bounded-search failure status.",
+    "options": [
+      [
+        "--max-depth INTEGER RANGE",
+        "[default: 6; 0<=x<=20]"
+      ],
+      [
+        "--max-edges INTEGER RANGE",
+        "[default: 100; 1<=x<=1000]"
+      ],
+      [
+        "--max-nodes INTEGER RANGE",
+        "[default: 30; 1<=x<=300]"
+      ],
+      [
+        "--relations TEXT",
+        "[default: CALLS,REFERENCES]"
+      ],
+      [
+        "--direction [out|in|both]",
+        "[default: out]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph show": {
+    "usage": "Usage: atlas graph show [OPTIONS] KEY",
+    "description": "Print node details and bounded ancestors for an indexed stable key.",
+    "options": [
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "graph source": {
+    "usage": "Usage: atlas graph source [OPTIONS] KEYS...",
+    "description": "Fetch verified excerpts for one or more keys; limits apply per excerpt.",
+    "options": [
+      [
+        "--max-lines INTEGER RANGE",
+        "[default: 80; 1<=x<=500]"
+      ],
+      [
+        "--start-line INTEGER RANGE",
+        "Absolute 1-based line; clamped to each symbol start.  [x>=1]"
+      ],
+      [
+        "--format [json|text]",
+        "[default: json]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "index": {
+    "usage": "Usage: atlas index [OPTIONS]",
+    "description": "Analyze a folder and save its graph in SQLite",
+    "options": [
+      [
+        "-f, --f, --folder PATH",
+        "Folder to index  [default: .]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "mutations": {
+    "usage": "Usage: atlas mutations [OPTIONS]",
+    "description": "Derive independent JSON byte-edit manifests, never change source or save results. Opt in via atlas.json: mutations.rules is a list of rule IDs. Default/empty lists generate nothing. --rules lists exact language coverage. Conditions, unary operators and unlisted aliases are excluded. Syntactic support is not type validity.",
+    "options": [
+      [
+        "-f, --f, --folder PATH",
+        "[default: .]"
+      ],
+      [
+        "--saved",
+        "Read persisted candidates for this folder; reject stale sources instead of refreshing"
+      ],
+      [
+        "--rules",
+        "Show the versioned rule catalog and limitations instead of generating"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "projects": {
+    "usage": "Usage: atlas projects [OPTIONS]",
+    "description": "List all registered projects as JSON",
+    "options": [
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  },
+  "report": {
+    "usage": "Usage: atlas report [OPTIONS]",
+    "description": "Analyze a folder and show quantitative metrics as Markdown or JSON, without saving by default",
+    "options": [
+      [
+        "-f, --f, --folder PATH",
+        "Folder to analyze  [default: .]"
+      ],
+      [
+        "--save",
+        "Save the analyzed graph in SQLite"
+      ],
+      [
+        "--format [markdown|json]",
+        "[default: markdown]"
+      ],
+      [
+        "--help",
+        "Show this message and exit."
+      ]
+    ]
+  }
+}

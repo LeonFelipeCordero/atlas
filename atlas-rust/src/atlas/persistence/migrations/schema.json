@@ -1,0 +1,82 @@
+[
+  [
+    "alembic_version",
+    "CREATE TABLE alembic_version (\n\tversion_num VARCHAR(32) NOT NULL, \n\tCONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)\n)"
+  ],
+  [
+    "graph_diagnostics",
+    "CREATE TABLE graph_diagnostics (\n\trepository_id TEXT NOT NULL, \n\tordinal INTEGER NOT NULL, \n\tseverity TEXT NOT NULL, \n\tpath TEXT NOT NULL, \n\tlanguage TEXT NOT NULL, \n\tmessage TEXT NOT NULL, \n\tPRIMARY KEY (repository_id, ordinal), \n\tFOREIGN KEY(repository_id) REFERENCES repository_graphs (repository_id) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_diagnostics_path",
+    "CREATE INDEX graph_diagnostics_path ON graph_diagnostics (repository_id, path)"
+  ],
+  [
+    "graph_edges",
+    "CREATE TABLE graph_edges (\n\trepository_id TEXT NOT NULL, \n\tordinal INTEGER NOT NULL, \n\tsource_key TEXT NOT NULL, \n\ttarget_key TEXT NOT NULL, \n\trelationship TEXT NOT NULL, \n\tconfidence TEXT NOT NULL, \n\tpath TEXT, \n\tevidence TEXT, \n\tline INTEGER, \n\ttype_only BOOLEAN NOT NULL, \n\tPRIMARY KEY (repository_id, ordinal), \n\tFOREIGN KEY(repository_id, source_key) REFERENCES graph_nodes (repository_id, node_key) ON DELETE NO ACTION, \n\tFOREIGN KEY(repository_id, target_key) REFERENCES graph_nodes (repository_id, node_key) ON DELETE NO ACTION, \n\tFOREIGN KEY(repository_id) REFERENCES repository_graphs (repository_id) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_edges_source",
+    "CREATE INDEX graph_edges_source ON graph_edges (repository_id, source_key, relationship, ordinal)"
+  ],
+  [
+    "graph_edges_target",
+    "CREATE INDEX graph_edges_target ON graph_edges (repository_id, target_key, relationship, ordinal)"
+  ],
+  [
+    "graph_files",
+    "CREATE TABLE graph_files (\n\trepository_id TEXT NOT NULL, \n\tnode_key TEXT NOT NULL, \n\tbyte_count INTEGER, \n\tsha256 TEXT, \n\tPRIMARY KEY (repository_id, node_key), \n\tFOREIGN KEY(repository_id, node_key) REFERENCES graph_nodes (repository_id, node_key) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_mutation_candidates",
+    "CREATE TABLE graph_mutation_candidates (\n\trepository_id TEXT NOT NULL, \n\tcandidate_id TEXT NOT NULL, \n\tfile_key TEXT NOT NULL, \n\tordinal INTEGER NOT NULL, \n\tpath TEXT NOT NULL, \n\tlanguage TEXT NOT NULL, \n\tsource_hash TEXT NOT NULL, \n\tkind TEXT NOT NULL, \n\toperator TEXT, \n\tpayload TEXT NOT NULL, \n\tPRIMARY KEY (repository_id, candidate_id), \n\tFOREIGN KEY(repository_id, file_key) REFERENCES graph_files (repository_id, node_key) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_mutation_candidates_file",
+    "CREATE INDEX graph_mutation_candidates_file ON graph_mutation_candidates (repository_id, file_key)"
+  ],
+  [
+    "graph_node_decorators",
+    "CREATE TABLE graph_node_decorators (\n\trepository_id TEXT NOT NULL, \n\tnode_key TEXT NOT NULL, \n\tordinal INTEGER NOT NULL, \n\tdecorator TEXT NOT NULL, \n\tPRIMARY KEY (repository_id, node_key, ordinal), \n\tFOREIGN KEY(repository_id, node_key) REFERENCES graph_symbols (repository_id, node_key) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_node_metrics",
+    "CREATE TABLE graph_node_metrics (\n\trepository_id TEXT NOT NULL, \n\tnode_key TEXT NOT NULL, \n\tline_count INTEGER, \n\tparameter_count INTEGER, \n\tbase_complexity INTEGER, \n\tnested_complexity INTEGER, \n\tloop_complexity INTEGER, \n\ttotal_complexity INTEGER, \n\tmax_decision_depth INTEGER, \n\tPRIMARY KEY (repository_id, node_key), \n\tFOREIGN KEY(repository_id, node_key) REFERENCES graph_nodes (repository_id, node_key) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_nodes",
+    "CREATE TABLE graph_nodes (\n\trepository_id TEXT NOT NULL, \n\tnode_key TEXT NOT NULL, \n\tparent_key TEXT, \n\tordinal INTEGER NOT NULL, \n\ttype TEXT NOT NULL, \n\tkind TEXT NOT NULL, \n\tlevel TEXT NOT NULL, \n\tname TEXT NOT NULL, \n\tlanguage TEXT, \n\tqualified_name TEXT, \n\tpath TEXT, \n\tPRIMARY KEY (repository_id, node_key), \n\tUNIQUE (repository_id, ordinal), \n\tFOREIGN KEY(repository_id, parent_key) REFERENCES graph_nodes (repository_id, node_key) ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED, \n\tFOREIGN KEY(repository_id) REFERENCES repository_graphs (repository_id) ON DELETE CASCADE\n)"
+  ],
+  [
+    "graph_nodes_level",
+    "CREATE INDEX graph_nodes_level ON graph_nodes (repository_id, level)"
+  ],
+  [
+    "graph_nodes_name",
+    "CREATE INDEX graph_nodes_name ON graph_nodes (repository_id, name COLLATE NOCASE)"
+  ],
+  [
+    "graph_nodes_parent",
+    "CREATE INDEX graph_nodes_parent ON graph_nodes (repository_id, parent_key)"
+  ],
+  [
+    "graph_nodes_path",
+    "CREATE INDEX graph_nodes_path ON graph_nodes (repository_id, path)"
+  ],
+  [
+    "graph_symbols",
+    "CREATE TABLE graph_symbols (\n\trepository_id TEXT NOT NULL, \n\tnode_key TEXT NOT NULL, \n\tstart_line INTEGER, \n\tstart_column INTEGER, \n\tend_line INTEGER, \n\tend_column INTEGER, \n\tsignature TEXT, \n\tvisibility TEXT, \n\tPRIMARY KEY (repository_id, node_key), \n\tFOREIGN KEY(repository_id, node_key) REFERENCES graph_nodes (repository_id, node_key) ON DELETE CASCADE\n)"
+  ],
+  [
+    "repositories",
+    "CREATE TABLE repositories (\n\tid TEXT NOT NULL, \n\tname TEXT NOT NULL, \n\tlocation TEXT NOT NULL, \n\tcreated_at INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)"
+  ],
+  [
+    "repositories_name_unique",
+    "CREATE UNIQUE INDEX repositories_name_unique ON repositories (lower(name))"
+  ],
+  [
+    "repository_graphs",
+    "CREATE TABLE repository_graphs (\n\trepository_id TEXT NOT NULL, \n\timported_at INTEGER NOT NULL, graph_revision TEXT, schema_version INTEGER, indexed_at TEXT, root_name TEXT, root_path TEXT, \n\tPRIMARY KEY (repository_id), \n\tFOREIGN KEY(repository_id) REFERENCES repositories (id) ON DELETE CASCADE\n)"
+  ]
+]

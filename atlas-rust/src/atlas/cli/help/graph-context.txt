@@ -1,0 +1,11 @@
+Usage: atlas graph context [OPTIONS] KEY
+
+  Print bounded breadth-first graph context around a stable key.
+
+Options:
+  --depth INTEGER RANGE      [default: 2; 0<=x<=20]
+  --max-edges INTEGER RANGE  [default: 100; 1<=x<=1000]
+  --max-nodes INTEGER RANGE  [default: 30; 1<=x<=300]
+  --relations TEXT           [default: CALLS,REFERENCES]
+  --direction [out|in|both]  [default: out]
+  --help                     Show this message and exit.

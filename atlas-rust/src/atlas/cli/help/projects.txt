@@ -1,0 +1,6 @@
+Usage: atlas projects [OPTIONS]
+
+  List all registered projects as JSON
+
+Options:
+  --help  Show this message and exit.
