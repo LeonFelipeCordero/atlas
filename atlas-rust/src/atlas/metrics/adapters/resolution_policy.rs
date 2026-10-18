@@ -245,7 +245,9 @@ impl ResolutionAdapter {
             "java" => java::call_target(self, node),
             "kotlin" => kotlin::call_target(self, node),
             "go" => go::call_target(self, node),
-            "rust" => node.and_then(rust::call_target).unwrap_or_else(|| generic::default_call_target(self, node)),
+            "rust" => node
+                .and_then(|node| rust::call_target(self, node))
+                .unwrap_or_else(|| generic::default_call_target(self, node)),
             _ if self.script() => javascript::call_target(self, node),
             _ if !self.dedicated() => generic::call_target(self, node),
             _ => generic::default_call_target(self, node),

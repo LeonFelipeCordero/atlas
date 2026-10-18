@@ -4,9 +4,9 @@ use super::{
     config::MutationConfig,
     formatting::{command_error, error_suffix, io_error, python_json, repr, shell_join, text},
     process::{Interrupt, run_command},
-    workspace::{prepare_output, resolve, source, working_directories},
+    workspace::{fresh_file, prepare_output, resolve, source, working_directories},
 };
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
 use std::{
     fs::{self, File},
@@ -22,14 +22,25 @@ pub struct MutationRunner<'a> {
     root: PathBuf,
     config: &'a MutationConfig,
     directories: Vec<PathBuf>,
+    _project_locks: Vec<File>,
 }
 impl<'a> MutationRunner<'a> {
-    /// Validate every working directory before touching sources or output.
+    /// Lock the project before candidate analysis; keep this runner alive through restoration.
+    /// A competing runner fails immediately, including in the same process.
     pub fn new(root: &Path, config: &'a MutationConfig) -> Result<Self> {
         config.validate()?;
         let root = root.canonicalize()?;
+        // Lock the directory inode: no lock-file symlinks or stale lock files to manage.
+        let mut project_locks = Vec::new();
+        for (index, directory) in root.ancestors().enumerate() {
+            let lock = File::open(directory)?;
+            // Shared ancestors allow siblings; the exclusive root excludes nested campaigns.
+            let result = if index == 0 { lock.try_lock() } else { lock.try_lock_shared() };
+            result.context("Mutation project is locked or filesystem locking is unavailable")?;
+            project_locks.push(lock);
+        }
         let directories = working_directories(&root, config)?;
-        Ok(Self { root, config, directories })
+        Ok(Self { root, config, directories, _project_locks: project_locks })
     }
 
     pub fn run(&self, manifests: &[Value], output: &Path) -> Result<Value> {
@@ -46,6 +57,9 @@ impl<'a> MutationRunner<'a> {
     ) -> Result<Value> {
         let _lock = RUN_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let started = Instant::now();
+        if output.is_symlink() {
+            bail!("Mutation results must not be a symlink");
+        }
         let output = resolve(output)?;
         let logs = prepare_output(&self.root, manifests, &output)?;
         let mapped =
@@ -58,7 +72,7 @@ impl<'a> MutationRunner<'a> {
         progress(&format!("Results: {}; command logs: {}", output.display(), logs.display()));
         let interrupt = Interrupt::new()?;
         let mut campaign = Campaign { runner: self, logs, interrupt: &interrupt, progress };
-        let mut stream = File::create(&output).map_err(|error| command_error(error, &output.to_string_lossy()))?;
+        let mut stream = fresh_file(&output)?;
         let mut counts = json!({});
         for (ordinal, manifest) in manifests.iter().enumerate() {
             interrupt.check()?;

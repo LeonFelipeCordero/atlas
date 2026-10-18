@@ -5,7 +5,7 @@ import argparse
 import unittest
 from pathlib import Path
 
-from cases import Case
+from cases import Case, analysis_cases
 from interoperability import native_case
 from pairing import Pair
 from project import Project
@@ -39,9 +39,15 @@ class PresentationTests(unittest.TestCase):
         self.assertTrue(pair.outcome_diffs(python, process(2, "unexpected", "Usage: atlas")))
 
     def test_unsupported_group_terminators_have_explicit_native_status(self):
-        pair = self.pair(Case("terminator", ("--", "projects"), presentation=True, native_exit_code=2))
-        self.assertEqual(pair.outcome_diffs(process(0, "[]"), process(2, stderr="error: invalid\nTry --help")), [])
-        self.assertTrue(pair.outcome_diffs(process(0, "[]"), process(0, "Usage: atlas --help")))
+        cases = [Case("terminator", ("--", "projects"), presentation=True, native_exit_code=2),
+                 next(case for case in analysis_cases(Path("/tmp")) if case.name == "mutations.help.literal")]
+        for case in cases:
+            with self.subTest(case=case.name):
+                self.assertTrue(case.presentation)
+                self.assertEqual(case.native_exit_code, 2)
+                pair = self.pair(case)
+                self.assertEqual(pair.outcome_diffs(process(0, "[]"), process(2, stderr="error: invalid\nTry --help")), [])
+                self.assertTrue(pair.outcome_diffs(process(0, "[]"), process(0, "Usage: atlas --help")))
 
     def test_data_and_runtime_errors_still_compare_exactly(self):
         pair = self.pair(Case("projects", ("projects",)))

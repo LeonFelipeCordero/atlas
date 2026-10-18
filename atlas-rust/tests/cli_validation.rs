@@ -45,9 +45,8 @@ fn help_bypasses_numeric_validation() {
 #[test]
 fn quoted_and_control_values_fail_safely() {
     for value in ["a'b", "a\"b", "a\\b", "a\nb", "a\tb", "a\rb", "a\u{1b}b"] {
-        for command in ["report", "check"] {
-            usage_error(&[command, "--format", value], "--format");
-        }
+        usage_error(&["report", "--format", value], "--format");
+        usage_error(&["check", "--format", value], "--format");
         usage_error(&[value], "error:");
         usage_error(&["graph", "find", "brew", "--limit", value], "--limit");
     }

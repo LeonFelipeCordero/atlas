@@ -3,7 +3,6 @@ use super::config::MutationTarget;
 use anyhow::{Result, bail};
 use serde_json::{Value, json};
 use std::{
-    fs::OpenOptions,
     path::Path,
     process::{Child, Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
@@ -111,17 +110,7 @@ fn execute(
 ) -> Result<(&'static str, Option<i32>)> {
     let (cwd, log) = paths;
     interrupt.check()?;
-    if log.is_symlink() {
-        bail!("Refusing to overwrite a symlinked command log: {}", log.display());
-    }
-    let mut options = OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(libc::O_NOFOLLOW);
-    }
-    let stream = options.open(log).map_err(|error| super::formatting::command_error(error, &log.to_string_lossy()))?;
+    let stream = super::workspace::fresh_file(log)?;
     let cache = tempfile::Builder::new().prefix("atlas-pycache-").tempdir()?;
     if target.command.iter().any(|argument| argument.contains('\0')) {
         return Err(InvalidCommand.into());

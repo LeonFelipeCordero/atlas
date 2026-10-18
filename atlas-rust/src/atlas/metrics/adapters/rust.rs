@@ -54,8 +54,25 @@ pub fn static_symbol(syntax: &Syntax, symbol: &Symbol) -> Option<bool> {
     }
     None
 }
-pub fn call_target(node: Node<'_>) -> Option<(Option<Node<'_>>, Option<Node<'_>>)> {
-    (node.kind() == "struct_expression").then(|| (field(node, &["name"]), None))
+pub fn call_target<'a>(
+    adapter: &super::resolution_policy::ResolutionAdapter,
+    node: Node<'a>,
+) -> Option<(Option<Node<'a>>, Option<Node<'a>>)> {
+    if node.kind() == "struct_expression" {
+        return Some((field(node, &["name"]), None));
+    }
+    let mut function = field(node, &["function"])?;
+    if function.kind() != "generic_function" {
+        return None;
+    }
+    while function.kind() == "generic_function" {
+        function = field(function, &["function"])?;
+    }
+    Some(if function.kind() == "field_expression" {
+        super::generic::default_call_target(adapter, Some(function))
+    } else {
+        (Some(function), None)
+    })
 }
 pub fn import_path(source: &str) -> String {
     static PATH: LazyLock<Regex> =

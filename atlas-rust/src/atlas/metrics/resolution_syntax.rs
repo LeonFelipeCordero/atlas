@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex, OnceLock};
 use tree_sitter::{Node, Tree};
 #[path = "resolution_bindings.rs"]
 mod binding_index;
+#[path = "pattern_bindings.rs"]
+mod pattern_bindings;
 pub use binding_index::NodeRef;
 use binding_index::{BindingIndex, StoredBinding, walk_range};
 
@@ -253,11 +255,14 @@ impl Syntax {
         (scope, node)
     }
     fn node_bindings<'a>(&'a self, node: Node<'a>) -> Vec<(String, Node<'a>, Node<'a>)> {
+        if let Some(bindings) = pattern_bindings::scoped(self, node) {
+            return bindings;
+        }
         let scope = self.scope(node);
         if PARAMETERS.contains(&node.kind()) {
             return children(node)
                 .into_iter()
-                .flat_map(|child| names(Some(child), &self.source))
+                .flat_map(|child| self.binding_names(Some(child)))
                 .map(|name| (name, scope, node))
                 .collect();
         }
@@ -268,7 +273,14 @@ impl Syntax {
                 .unwrap_or_default();
         }
         let (target, scope) = self.adapter.binding(self, node, scope);
-        names(target, &self.source).into_iter().map(|name| (name, scope, node)).collect()
+        self.binding_names(target).into_iter().map(|name| (name, scope, node)).collect()
+    }
+    fn binding_names(&self, node: Option<Node<'_>>) -> BTreeSet<String> {
+        if self.language == "rust" {
+            pattern_bindings::rust_names(node, &self.source)
+        } else {
+            names(node, &self.source)
+        }
     }
     pub fn visible(&self, scope: Node<'_>, position: usize) -> bool {
         scope.start_byte() <= position && position < scope.end_byte() && self.adapter.visible(self, scope, position)
@@ -338,7 +350,15 @@ impl Syntax {
             self.nodes()
                 .into_iter()
                 .filter(|n| self.adapter.member_writes().contains(&n.kind()))
-                .map(|n| self.adapter.write_target(n).map(|n| self.text(n)).unwrap_or_default().replace(' ', ""))
+                .map(|n| {
+                    self.adapter
+                        .write_target(n)
+                        .map(|n| self.text(n))
+                        .unwrap_or_default()
+                        .chars()
+                        .filter(|c| !c.is_whitespace())
+                        .collect()
+                })
                 .collect()
         })
     }
@@ -534,7 +554,7 @@ mod tests {
         assert!(!syntax.shadowed("value", 0, &[]));
     }
     #[test]
-    fn member_write_matching_removes_only_literal_spaces_and_keeps_full_name() {
+    fn member_write_matching_removes_whitespace_and_keeps_full_name() {
         let syntax = syntax(b"service . run = replacement\n");
         assert!(syntax.member_rebound("service", "run"));
         assert!(!syntax.member_rebound("service", "runner"));

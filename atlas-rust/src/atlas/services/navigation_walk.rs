@@ -47,12 +47,12 @@ impl Traversal<'_> {
         Ok(self.walk)
     }
     fn expand(&mut self, key: &str, distance: usize) -> Result<()> {
-        let remaining = self.request.max_edges.saturating_sub(self.walk.edges.len());
         let rows = self.reader.edges(&EdgeRequest {
             key: key.into(),
             direction: self.request.direction.clone(),
             relations: self.request.relations.clone(),
-            limit: remaining + 1,
+            // Already visited edges can occupy the first max_edges rows.
+            limit: self.request.max_edges.saturating_add(1),
         })?;
         for edge in &rows {
             let ordinal = edge["ordinal"].to_string();
@@ -64,9 +64,6 @@ impl Traversal<'_> {
                 break;
             }
             self.add_edge((key, distance), edge.clone())?;
-        }
-        if rows.len() > remaining && !self.walk.cutoffs.contains_key(key) {
-            self.walk.cutoffs.insert(key.into(), json!("edgeFetchLimit"));
         }
         Ok(())
     }

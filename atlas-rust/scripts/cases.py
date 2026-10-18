@@ -48,7 +48,7 @@ def option_cases(root: Path) -> list[Case]:
             Case("report.help.folder.value", ("report", "--folder", "--help"), valid=False),
             Case("report.help.format.value", ("report", "--format", "--help"), valid=False, presentation=True),
             Case("mutations.help.folder.value", ("mutations", "--folder", "--help"), valid=False),
-            Case("mutations.help.literal", ("mutations", "--", "--help"), valid=False, presentation=True)]
+            Case("mutations.help.literal", ("mutations", "--", "--help"), valid=False, presentation=True, native_exit_code=2)]
 
 
 def navigation_cases(root: Path, keys: tuple[str, str, str, str], revision: str) -> list[Case]:

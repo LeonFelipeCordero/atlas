@@ -2,6 +2,7 @@
 
 Run with: uv run --project atlas python -m unittest discover -s atlas-rust/scripts -p test_mutation_run.py
 Build atlas-rust/target/debug/atlas first. Only measured durations are masked.
+Selection diagnostics use clap formatting; invalid cwd fails before native analysis.
 """
 import json
 import os
@@ -32,6 +33,10 @@ def duration_mask(text):
 
 def record_mask(text):
     return re.sub(r'("durationSeconds": )\d+(?:\.\d+)?(?:[eE][+-]?\d+)?', r'\1"<duration>"', text)
+
+
+def file_bytes(root):
+    return {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
 
 
 class MutationRunParity(unittest.TestCase):
@@ -109,13 +114,40 @@ class MutationRunParity(unittest.TestCase):
                 channel, empty = (actual.stdout, actual.stderr) if code == 0 else (actual.stderr, actual.stdout)
                 self.assertEqual(empty, "")
                 self.assertIn("--help", channel)
-                self.assertIn("Usage:", channel)
+                if arguments == ["mutations", "run", "--target"]:
+                    self.assertEqual(channel, "error: a value is required for '--target <target>' but none was supplied\n"
+                                     "\nFor more information, try '--help'.\n")
+                else:
+                    self.assertIn("Usage:", channel)
                 self.assertFalse((self.root / "mutation-results.jsonl").exists())
 
     def test_target_errors_precede_analysis(self):
-        for target in [None, "", "unit,", "all,unit", "missing", "z,a"]:
+        empty = "Invalid value for --target: Provide comma-separated target names or 'all'; empty names are not allowed"
+        for target, message in [
+            (None, "Pass --target NAME[,NAME...] or --target all when stdin is not a terminal"),
+            ("", empty), ("unit,", empty),
+            ("all,unit", "Invalid value for --target: Use 'all' alone, not with other target names"),
+            ("missing", "Invalid value for --target: Unknown mutation targets: missing. Available targets: unit, shared, all"),
+            ("z,a", "Invalid value for --target: Unknown mutation targets: a, z. Available targets: unit, shared, all"),
+        ]:
             with self.subTest(target=target):
-                self.compare(["mutations", "run", *([] if target is None else ["--target", target])])
+                self.assert_target_error(target, message)
+
+    def assert_target_error(self, target, message):
+        arguments = ["mutations", "run", *([] if target is None else ["--target", target])]
+        before = file_bytes(self.root)
+        progress = f"[mutations] Loading configuration: {self.root / 'atlas.json'}\n"
+        diagnostics = {
+            "python": (f"Usage: atlas mutations run [OPTIONS]\nTry 'atlas mutations run --help' for help.\n\n"
+                       f"Error: {message}\n"),
+            "rust": (f"error: {message}\n\nUsage: atlas mutations run [OPTIONS]\n\n"
+                     "For more information, try '--help'.\n"),
+        }
+        for implementation, diagnostic in diagnostics.items():
+            result = self.invoke(implementation, arguments)
+            self.assertEqual((result.returncode, result.stdout), (2, ""))
+            self.assertEqual(result.stderr, progress + diagnostic)
+            self.assertEqual(file_bytes(self.root), before)
 
     def test_interactive_selection_retry_and_eof(self):
         for answer in ["unit\n", "all\n", "missing\nunit\n", "all,unit\nshared\n", "\nunit\n", "\x04"]:
@@ -209,7 +241,21 @@ class MutationRunParity(unittest.TestCase):
         self.compare(["mutations", "run", "--target", "unit", "--output", "result.jsonl"], "unused.jsonl")
         self.settings["mutations"]["targets"]["unit"]["cwd"] = "missing"
         self.save_config()
-        self.compare(["mutations", "run", "--target", "unit"], "unused.jsonl")
+        (self.root / "mutation-results.jsonl").write_text('{"sentinel": true}\n')
+        logs = self.root / "mutation-results.jsonl.logs"
+        logs.mkdir()
+        (logs / "sentinel.log").write_bytes(b"previous output\n")
+        before = file_bytes(self.root)
+        progress = (f"[mutations] Loading configuration: {self.root / 'atlas.json'}\n"
+                    "[mutations] Selected targets: unit\n")
+        error = f"Error: Invalid working directory for target unit: {self.root / 'missing'}\n"
+        analysis = (f"[mutations] Analyzing source files in {self.root}\n"
+                    "[mutations] Found 1 candidate sites in selected targets; generating configured replacements\n")
+        for implementation in ["python", "rust"]:
+            result = self.invoke(implementation, ["mutations", "run", "--target", "unit"])
+            self.assertEqual((result.returncode, result.stdout), (1, ""))
+            self.assertEqual(result.stderr, progress + (analysis if implementation == "python" else "") + error)
+            self.assertEqual(file_bytes(self.root), before)
 
     def test_unicode_paths_and_target_names(self):
         old = self.root

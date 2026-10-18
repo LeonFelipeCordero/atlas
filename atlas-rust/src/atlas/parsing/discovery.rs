@@ -2,7 +2,10 @@
 use super::catalog::LANGUAGES;
 use super::ignore_spec::IgnoreSpec;
 use crate::domain::models::SourceFile;
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail};
+#[path = "discovery_open.rs"]
+mod discovery_open;
+use discovery_open::SourceRoot;
 use std::{
     collections::HashSet,
     fs,
@@ -51,7 +54,7 @@ pub fn require_supported_language(language: &str) -> Result<()> {
 
 pub fn validate_repository(root: &Path) -> Result<PathBuf> {
     let resolved = resolve_path(root, 0)?;
-    if !resolved.is_dir() {
+    if !metadata(&resolved)?.is_some_and(|info| info.is_dir()) {
         bail!("Repository does not exist: {}", resolved.display());
     }
     Ok(resolved)
@@ -78,7 +81,16 @@ fn resolve_component(resolved: &mut PathBuf, component: std::path::Component<'_>
         Component::CurDir => {}
         component => resolved.push(component.as_os_str()),
     }
-    if resolved.is_symlink() {
+    resolve_symlink(resolved, depth)
+}
+
+fn resolve_symlink(resolved: &mut PathBuf, depth: usize) -> Result<()> {
+    let info = match fs::symlink_metadata(&*resolved) {
+        Ok(info) => Some(info),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(error).with_context(|| format!("Cannot inspect path {}", resolved.display())),
+    };
+    if info.is_some_and(|info| info.is_symlink()) {
         let target = fs::read_link(&*resolved)?;
         let target =
             if target.is_absolute() { target } else { resolved.parent().unwrap_or(Path::new("/")).join(target) };
@@ -99,10 +111,21 @@ struct Rules {
     spec: IgnoreSpec,
 }
 
+fn metadata(path: &Path) -> Result<Option<fs::Metadata>> {
+    match fs::metadata(path) {
+        Ok(info) => Ok(Some(info)),
+        // Broken and self-looping symlinks are intentionally absent from discovery.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound || error.raw_os_error() == Some(libc::ELOOP) => {
+            Ok(None)
+        }
+        Err(error) => Err(error).with_context(|| format!("Cannot inspect path {}", path.display())),
+    }
+}
+
 fn directory_rules(base: &Path, inherited: &[Rules], filename: &str) -> Result<Vec<Rules>> {
     let mut rules = inherited.to_vec();
     let path = base.join(filename);
-    if path.is_file() {
+    if metadata(&path)?.is_some_and(|info| info.is_file()) {
         let content = fs::read_to_string(&path)?;
         rules.push(Rules { base: base.to_owned(), spec: IgnoreSpec::new(&content)? });
     }
@@ -156,24 +179,23 @@ impl DirectoryContext {
 
 fn walk_directory(mut context: DirectoryContext, paths: &mut Vec<PathBuf>) -> Result<()> {
     context.load_rules()?;
-    let entries = match fs::read_dir(&context.base) {
-        Ok(entries) => entries,
-        Err(_) => return Ok(()),
-    };
-    for entry in entries.flatten() {
-        visit_entry(entry.path(), &context, paths)?;
+    let entries =
+        fs::read_dir(&context.base).with_context(|| format!("Cannot scan directory {}", context.base.display()))?;
+    for entry in entries {
+        visit_entry(entry?.path(), &context, paths)?;
     }
     Ok(())
 }
 
 fn visit_entry(path: PathBuf, context: &DirectoryContext, paths: &mut Vec<PathBuf>) -> Result<()> {
-    if !path.is_dir() {
+    let Some(info) = metadata(&path)? else { return Ok(()) };
+    if !info.is_dir() {
         if context.include_file(&path) {
             paths.push(path);
         }
         return Ok(());
     }
-    if context.include_directory(&path) && !path.is_symlink() {
+    if context.include_directory(&path) && !fs::symlink_metadata(&path)?.is_symlink() {
         let child = DirectoryContext { base: path, ..context.clone() };
         walk_directory(child, paths)?;
     }
@@ -187,12 +209,12 @@ pub fn repository_paths(root: &Path) -> Result<Vec<PathBuf>> {
         base: root.clone(),
         git: vec![],
         atlas: vec![],
-        use_gitignore: root.join(".gitignore").is_file(),
+        use_gitignore: metadata(&root.join(".gitignore"))?.is_some_and(|info| info.is_file()),
     };
     walk_directory(context, &mut paths)?;
     let mut contained = vec![];
     for path in paths {
-        if path.is_file() && fs::canonicalize(&path)?.starts_with(&root) {
+        if metadata(&path)?.is_some_and(|info| info.is_file()) && fs::canonicalize(&path)?.starts_with(&root) {
             contained.push(path);
         }
     }
@@ -200,24 +222,26 @@ pub fn repository_paths(root: &Path) -> Result<Vec<PathBuf>> {
 }
 
 pub fn discover_files(root: &Path) -> Result<Vec<SourceFile>> {
-    let mut paths = repository_paths(root)?;
+    let root = resolve_path(root, 0)?;
+    let source_root = SourceRoot::new(&root)?;
+    let mut paths = repository_paths(&root)?;
     paths.sort();
-    paths
-        .into_iter()
-        .filter_map(|path| detect_language(&path).map(|language| (path, language)))
-        .map(|(path, language)| {
-            Ok(SourceFile {
-                path: path
-                    .strip_prefix(root)
-                    .map_err(|e| anyhow!(e))?
-                    .to_string_lossy()
-                    .replace(std::path::MAIN_SEPARATOR, "/"),
-                source: fs::read(&path)?,
-                absolute_path: path,
-                language,
-            })
-        })
-        .collect()
+    let mut files = Vec::new();
+    for path in paths {
+        let Some(language) = detect_language(&path) else { continue };
+        let Some(source) = source_root.read(&path)? else { continue };
+        files.push(SourceFile {
+            path: path
+                .strip_prefix(&root)
+                .map_err(|e| anyhow!(e))?
+                .to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/"),
+            source,
+            absolute_path: path,
+            language,
+        });
+    }
+    Ok(files)
 }
 
 #[cfg(test)]
@@ -252,6 +276,8 @@ mod tests {
         symlink(temp.path().join("main.py"), temp.path().join("alias.py"))?;
         symlink(outside.path().join("outside.py"), temp.path().join("outside.py"))?;
         symlink(temp.path(), temp.path().join("cycle"))?;
+        symlink("loop.py", temp.path().join("loop.py"))?;
+        symlink("missing.py", temp.path().join("dangling.py"))?;
         let files = discover_files(temp.path())?;
         assert_eq!(files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["alias.py", "main.py"]);
         Ok(())

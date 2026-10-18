@@ -4,11 +4,12 @@ use super::{
     digest,
     formatting::{command_error, text},
 };
+use crate::parsing::discovery::{detect_language, repository_paths};
 use anyhow::{Result, bail};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::Value;
 use std::{
-    fs,
+    fs::{self, File},
     path::{Component, Path, PathBuf},
 };
 
@@ -49,14 +50,21 @@ pub fn resolve(path: &Path) -> Result<PathBuf> {
     Ok(resolved)
 }
 
-pub fn prepare_output(root: &Path, manifests: &[Value], output: &Path) -> Result<PathBuf> {
+fn validate_output(root: &Path, manifests: &[Value], output: &Path) -> Result<()> {
     let mut protected = vec![resolve(&root.join("atlas.json"))?];
-    for manifest in manifests {
-        protected.push(resolve(&root.join(text(manifest, "path")))?);
+    // Candidate selection and empty rule sets must not remove source protection.
+    let sources = repository_paths(root)?.into_iter().filter(|path| detect_language(path).is_some());
+    for path in sources.chain(manifests.iter().map(|manifest| root.join(text(manifest, "path")))) {
+        protected.push(resolve(&path)?);
     }
-    if protected.iter().any(|path| path == output) {
+    if (output.try_exists()? && detect_language(output).is_some()) || protected.iter().any(|path| path == output) {
         bail!("Mutation results cannot overwrite source files or atlas.json");
     }
+    Ok(())
+}
+
+pub fn prepare_output(root: &Path, manifests: &[Value], output: &Path) -> Result<PathBuf> {
+    validate_output(root, manifests, output)?;
     let mut logs = output.as_os_str().to_owned();
     logs.push(".logs");
     let logs = PathBuf::from(logs);
@@ -69,6 +77,15 @@ pub fn prepare_output(root: &Path, manifests: &[Value], output: &Path) -> Result
         Err(error) => return Err(command_error(error, &logs.to_string_lossy())),
     }
     Ok(logs)
+}
+
+/// Replace the directory entry, never truncate a potentially hardlinked inode.
+pub fn fresh_file(path: &Path) -> Result<File> {
+    if path.is_symlink() {
+        bail!("Refusing to overwrite a symlink: {}", path.display());
+    }
+    let temporary = tempfile::NamedTempFile::new_in(path.parent().unwrap_or(Path::new(".")))?;
+    temporary.persist(path).map_err(|error| command_error(error.error, &path.to_string_lossy()))
 }
 
 pub struct Source {

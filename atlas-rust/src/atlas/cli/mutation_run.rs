@@ -38,6 +38,7 @@ pub fn run(parent: &Options, matches: &clap::ArgMatches) -> Result<i32> {
     let config = config::from_project(&project)?;
     let names = project["mutations"]["targets"].as_object().unwrap().keys().cloned().collect::<Vec<_>>();
     progress(&format!("Selected targets: {}", names.join(", ")));
+    let runner = runner::MutationRunner::new(&root, &config)?;
     let saved = parent.has("--saved");
     progress(&format!(
         "{} {}",
@@ -57,11 +58,7 @@ pub fn run(parent: &Options, matches: &clap::ArgMatches) -> Result<i32> {
     ));
     let planned = build_mutation_report(&root, &report, &config)?;
     let destination = root.join(options.get("--output", "mutation-results.jsonl"));
-    let execution = runner::MutationRunner::new(&root, &config)?.run_with_progress(
-        planned["mutations"].as_array().unwrap(),
-        &destination,
-        &mut progress,
-    );
+    let execution = runner.run_with_progress(planned["mutations"].as_array().unwrap(), &destination, &mut progress);
     let counts = match execution {
         Err(error) if error.to_string() == "Mutation run interrupted" => {
             eprintln!("\nAborted!");

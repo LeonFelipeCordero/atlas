@@ -5,7 +5,7 @@ use crate::{
     },
     syntax::{children, field, named_children, text, walk},
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tree_sitter::Node;
 pub const QUERY: &str = "\n(closure_expression) @definition.function\n(function_signature_item name: (identifier) @name) @definition.function\n";
 pub const CALLBACK_TYPES: &[&str] = &["closure_expression"];
@@ -74,24 +74,52 @@ fn macro_shadowed(node: Node<'_>, source: &[u8], parts: &[&str]) -> bool {
             && !value.starts_with("use core::")
 }
 
-fn evaluating((node, source): (Node<'_>, &[u8]), origin: (Node<'_>, &[u8]), parents: &[(Node<'_>, &[u8])]) -> bool {
-    let name = text(field(node, &["macro"]), source);
-    let parts: Vec<_> = name.split("::").collect();
+#[derive(Default)]
+struct ShadowCache {
+    roots: HashMap<usize, HashMap<String, bool>>,
+    #[cfg(test)]
+    scans: usize,
+    #[cfg(test)]
+    nodes: usize,
+}
+
+impl ShadowCache {
+    fn shadowed(&mut self, (root, source): (Node<'_>, &[u8]), path: &str, parts: &[&str]) -> bool {
+        let paths = self.roots.entry(root.id()).or_default();
+        *paths.entry(path.to_owned()).or_insert_with(|| {
+            #[cfg(test)]
+            {
+                self.scans += 1;
+            }
+            walk(root).any(|decl| {
+                #[cfg(test)]
+                {
+                    self.nodes += 1;
+                }
+                macro_shadowed(decl, source, parts)
+            })
+        })
+    }
+}
+
+fn evaluating(node: Node<'_>, traversal: &Traversal<'_>, cache: &mut ShadowCache) -> bool {
+    let path = text(field(node, &["macro"]), traversal.source);
+    let parts: Vec<_> = path.split("::").collect();
     let name = parts.last().copied().unwrap_or_default();
     if !EXPRESSION_MACROS.contains(&name) || parts.len() > 1 && !["std", "core"].contains(&parts[0]) {
         return false;
     }
     let current = root(node);
-    let mut roots = vec![(current, source)];
-    roots.extend_from_slice(parents);
-    if origin.0.id() != current.id() {
-        roots.push(origin);
+    let mut roots = vec![(current, traversal.source)];
+    roots.extend_from_slice(&traversal.parents);
+    if traversal.origin.0.id() != current.id() {
+        roots.push(traversal.origin);
     }
-    !roots.into_iter().any(|(root, source)| walk(root).any(|decl| macro_shadowed(decl, source, &parts)))
+    !roots.into_iter().any(|root| cache.shadowed(root, &path, &parts))
 }
 
 fn pattern_names(node: Node<'_>, source: &[u8]) -> HashSet<String> {
-    if matches!(node.kind(), "identifier" | "field_identifier") {
+    if matches!(node.kind(), "identifier" | "field_identifier" | "shorthand_field_identifier") {
         return HashSet::from([text(Some(node), source)]);
     }
     children(node)
@@ -106,7 +134,7 @@ fn pattern_names(node: Node<'_>, source: &[u8]) -> HashSet<String> {
 
 fn payload_binding(node: Node<'_>, source: &[u8], name: &str) -> bool {
     let pattern = match node.kind() {
-        "let_declaration" | "for_expression" | "match_arm" => field(node, &["pattern"]),
+        "let_declaration" | "let_condition" | "for_expression" | "match_arm" => field(node, &["pattern"]),
         "parameters" | "closure_parameters" => Some(node),
         _ => None,
     };
@@ -169,10 +197,14 @@ struct Traversal<'a> {
 }
 
 pub fn visit_calls<'a>(root: Node<'a>, source: &'a [u8], visitor: &mut CallVisitor<'_>) {
-    visit(Traversal { root, source, origin: (root, source), offset: 0, opaque: false, parents: vec![] }, visitor);
+    visit(
+        Traversal { root, source, origin: (root, source), offset: 0, opaque: false, parents: vec![] },
+        visitor,
+        &mut ShadowCache::default(),
+    );
 }
 
-fn visit(traversal: Traversal<'_>, visitor: &mut CallVisitor<'_>) {
+fn visit(traversal: Traversal<'_>, visitor: &mut CallVisitor<'_>, cache: &mut ShadowCache) {
     for node in walk(traversal.root) {
         if matches!(node.kind(), "call_expression" | "macro_invocation") {
             visitor(
@@ -186,13 +218,15 @@ fn visit(traversal: Traversal<'_>, visitor: &mut CallVisitor<'_>) {
             );
         }
         if node.kind() == "macro_invocation" {
-            macro_sites(node, &traversal, visitor);
+            macro_sites((node, &traversal), visitor, cache);
         }
     }
+    // Payload trees can reuse node IDs after they are dropped.
+    cache.roots.remove(&root(traversal.root).id());
 }
 
-fn macro_sites(node: Node<'_>, traversal: &Traversal<'_>, visitor: &mut CallVisitor<'_>) {
-    if !evaluating((node, traversal.source), traversal.origin, &traversal.parents) {
+fn macro_sites((node, traversal): (Node<'_>, &Traversal<'_>), visitor: &mut CallVisitor<'_>, cache: &mut ShadowCache) {
+    if !evaluating(node, traversal, cache) {
         return;
     }
     let tokens = named_children(node).into_iter().find(|child| child.kind() == "token_tree");
@@ -222,7 +256,12 @@ fn macro_sites(node: Node<'_>, traversal: &Traversal<'_>, visitor: &mut CallVisi
                 parents,
             },
             visitor,
+            cache,
         );
         return;
     }
 }
+
+#[cfg(test)]
+#[path = "rust_macro_tests.rs"]
+mod macro_tests;
