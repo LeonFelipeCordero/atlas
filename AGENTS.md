@@ -4,9 +4,16 @@ The snapshot testing it's to have a high coverage of features per language witho
 
 # Checks
 
-Always run these commands from the repository root to validate your changes.
+Run only the checks relevant to the changed components and their affected consumers. Run commands from the repository root. Do not run every suite by default.
 
-## Importer
+- For Python indexer changes (`atlas/`), run the Python indexer checks.
+- For Rust indexer changes (`atlas-rust/`), run the Rust indexer checks.
+- For dashboard changes (`dashboard/`), run the dashboard checks.
+- For shared fixtures, snapshots, database schemas, or output contracts, also run checks for each affected consumer. The Rust parity tests reuse Python fixtures and snapshots, so changes to those shared files require both indexer suites. Run dashboard checks when a shared change affects the dashboard.
+- For build, dependency, or CI changes, run the checks for the components they affect.
+- For documentation-only changes, check the text and command accuracy. Do not run runtime suites or Atlas analysis unless the change affects executable behavior.
+
+## Python indexer
 
 ```sh
 (cd atlas && uv run pytest -n auto) # Run importer tests in parallel
@@ -15,6 +22,17 @@ Always run these commands from the repository root to validate your changes.
 ```
 
 `pytest-xdist` selects the worker count with `-n auto`; use `-n 4` to limit it to four workers. Omit `-n` for a serial run. Keep files, databases, and ports isolated between tests. Session-scoped fixtures run once per worker.
+
+## Rust indexer
+
+These commands apply when `atlas-rust/` is present (introduced in PR #50).
+
+```sh
+cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
+cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
+cargo fmt --manifest-path atlas-rust/Cargo.toml --check
+cargo clippy --manifest-path atlas-rust/Cargo.toml --locked --all-targets -- -D warnings
+```
 
 ## Mutation testing
 
@@ -28,7 +46,7 @@ From the repository root, for example:
 uv run --project atlas atlas mutations run --folder . --target complexity,parsing
 ```
 
-Replace the example targets with those relevant to the change. `--target` accepts comma-separated names or `all`. Omit it for interactive selection; non-interactive runs must pass it explicitly. This guidance applies to mutation execution only. Keep the normal checks above and below, and analyze the entire project with `atlas check`.
+Replace the example targets with those relevant to the change. `--target` accepts comma-separated names or `all`. Omit it for interactive selection; non-interactive runs must pass it explicitly. Run mutation targets only when they cover the changed behavior or affected consumers. This selection does not replace the relevant component checks or the Atlas analysis below.
 
 ## Dashboard
 
@@ -41,7 +59,7 @@ Replace the example targets with those relevant to the change. `--target` accept
 
 # Atlas
 
-Run atlas against the entire project being worked on, not just the changed files.
+For changes that affect executable behavior, run Atlas once against the entire project being worked on, not just the changed files. This does not require running unrelated component test suites. Skip this analysis for documentation-only changes.
 
 For this project, from the repository root:
 

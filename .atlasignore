@@ -2,6 +2,8 @@
 # Analyzing a sample project directly still includes all of its files.
 /atlas/tests/code_samples/
 /atlas/tests/snapshots/
+/atlas-rust/tests/code_samples/
+/atlas-rust/tests/snapshots/
 
 # Keep Python analysis independent of the dashboard.
 /dashboard/

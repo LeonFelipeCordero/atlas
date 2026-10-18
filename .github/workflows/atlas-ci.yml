@@ -3,20 +3,8 @@ name: Atlas CI
 on:
   pull_request:
     branches: [main]
-    paths:
-      - atlas/**
-      - dashboard/**
-      - .atlasignore
-      - .gitignore
-      - .github/workflows/atlas-ci.yml
   push:
     branches: [main]
-    paths:
-      - atlas/**
-      - dashboard/**
-      - .atlasignore
-      - .gitignore
-      - .github/workflows/atlas-ci.yml
 
 permissions:
   contents: read

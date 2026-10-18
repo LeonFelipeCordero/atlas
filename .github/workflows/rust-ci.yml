@@ -1,0 +1,49 @@
+name: Rust CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - atlas-rust/**
+      - atlas/**
+      - .github/workflows/rust-ci.yml
+  push:
+    branches: [main]
+    paths:
+      - atlas-rust/**
+      - atlas/**
+      - .github/workflows/rust-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: atlas-rust
+      - run: cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
+      - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: atlas-rust
+      - run: cargo fmt --manifest-path atlas-rust/Cargo.toml --check
+      - run: cargo clippy --manifest-path atlas-rust/Cargo.toml --locked --all-targets -- -D warnings
