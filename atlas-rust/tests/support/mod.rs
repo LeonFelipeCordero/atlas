@@ -1,5 +1,5 @@
 //! Shared access to Python fixtures and reference goldens for the dedicated language catalog.
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::{
     collections::BTreeSet,
     fs,
@@ -13,6 +13,21 @@ pub fn fixtures() -> PathBuf {
 pub fn snapshot(relative: &str) -> Value {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots").join(relative);
     serde_json::from_slice(&fs::read(&path).unwrap_or_else(|error| panic!("{}: {error}", path.display()))).unwrap()
+}
+
+#[allow(dead_code)] // Only artifact and navigation parity need the complete production graph.
+pub fn assert_artifact(language: &str, graph: &Value) {
+    let root = fixtures().join(language);
+    assert_eq!(graph["repository"]["path"], root.to_str().unwrap());
+    let indexed_at = graph["repository"]["indexedAt"].as_str().expect("indexedAt string");
+    chrono::DateTime::parse_from_rfc3339(indexed_at).expect("timezone-aware indexedAt");
+    assert_eq!(graph["nodes"][0]["properties"]["absolutePath"], root.to_str().unwrap());
+    let mut actual = graph.clone();
+    actual["repository"].as_object_mut().unwrap().remove("indexedAt");
+    let canonical = format!("/samples/coffee/{language}");
+    actual["repository"]["path"] = json!(canonical);
+    actual["nodes"][0]["properties"]["absolutePath"] = json!(canonical);
+    assert_json(&actual, &snapshot(&format!("coffee/{language}/graph.json")), "");
 }
 
 pub fn assert_json(actual: &Value, expected: &Value, pointer: &str) {

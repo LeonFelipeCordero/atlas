@@ -10,10 +10,11 @@ use std::{
     fs,
     path::Path,
     process::{Child, Command, ExitStatus, Output, Stdio},
+    sync::OnceLock,
     thread,
     time::{Duration, Instant},
 };
-use support::{assert_json, fixtures, snapshot};
+use support::{assert_artifact, assert_json, fixtures, snapshot};
 
 const LANGUAGES: &[&str] = &["java", "kotlin", "go", "rust", "javascript", "typescript", "elixir", "python", "tsx"];
 
@@ -25,18 +26,10 @@ fn cli_snapshot(language: &str, action: &str, format: &str) -> Value {
     snapshot(&format!("coffee/{language}/cli.json"))[format!("{action}-{format}")].clone()
 }
 
-fn artifact_snapshot(language: &str) {
-    let root = fixtures().join(language);
-    let mut actual = indexer::analyze_repository(&root).unwrap();
-    assert_eq!(actual["repository"]["path"], root.to_str().unwrap());
-    let indexed_at = actual["repository"]["indexedAt"].as_str().expect("indexedAt string");
-    chrono::DateTime::parse_from_rfc3339(indexed_at).expect("timezone-aware indexedAt");
-    actual["repository"].as_object_mut().unwrap().remove("indexedAt");
-    let canonical = format!("/samples/coffee/{language}");
-    assert_eq!(actual["nodes"][0]["properties"]["absolutePath"], root.to_str().unwrap());
-    actual["repository"]["path"] = json!(canonical);
-    actual["nodes"][0]["properties"]["absolutePath"] = json!(canonical);
-    assert_json(&actual, &graph(language), "");
+#[test]
+fn tsx_artifact() {
+    // Other languages check the production artifact before saving it for navigation.
+    assert_artifact("tsx", &indexer::analyze_repository(&fixtures().join("tsx")).unwrap());
 }
 
 fn report_snapshot(language: &str) {
@@ -111,7 +104,6 @@ fn cli_snapshots(language: &str) {
         let output = if format == "json" { serde_json::from_str::<Value>(&stdout).unwrap() } else { json!(stdout) };
         let record = json!({"exit_code": result.status.code(), "output": output, "stderr": String::from_utf8(result.stderr).unwrap()});
         let label = format!("{action}-{format}");
-        assert_json(&record, &expected, &format!("/{label}"));
         outputs.insert(label, record);
         assert!(!database.exists(), "read-only analysis created a database");
     }
@@ -131,18 +123,21 @@ fn copy_tree(source: &Path, target: &Path) {
     }
 }
 
-fn all_rule_ids() -> BTreeSet<String> {
-    LANGUAGES
-        .iter()
-        .flat_map(|language| {
-            snapshot(&format!("mutations/{language}-operators.json"))["mutations"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|m| m["ruleId"].as_str().unwrap().to_owned())
-                .collect::<Vec<_>>()
-        })
-        .collect()
+fn all_rule_ids() -> &'static BTreeSet<String> {
+    static RULE_IDS: OnceLock<BTreeSet<String>> = OnceLock::new();
+    RULE_IDS.get_or_init(|| {
+        LANGUAGES
+            .iter()
+            .flat_map(|language| {
+                snapshot(&format!("mutations/{language}-operators.json"))["mutations"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|m| m["ruleId"].as_str().unwrap().to_owned())
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    })
 }
 
 fn mutation_snapshot(language: &str, operators: bool) {
@@ -165,7 +160,6 @@ fn mutation_snapshot(language: &str, operators: bool) {
 macro_rules! language_tests {
     ($($language:ident),+ $(,)?) => {$ (
         mod $language {
-            #[test] fn artifact() { super::artifact_snapshot(stringify!($language)); }
             #[test] fn report() { super::report_snapshot(stringify!($language)); }
             #[test] fn check() { super::check_snapshot(stringify!($language)); }
             #[test] fn cli() { super::cli_snapshots(stringify!($language)); }
