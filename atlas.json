@@ -30,7 +30,7 @@
       "cli-commands": {
         "sources": ["atlas-rust/src/atlas/cli/commands.rs", "atlas-rust/src/atlas/cli/mod.rs", "atlas-rust/src/atlas/cli/options.rs", "atlas-rust/src/atlas/cli/schema.rs", "atlas-rust/src/atlas/cli/integers.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "cli", "--test", "cli_validation", "--test", "cli_numeric", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib -- cli::options_tests:: cli::schema:: cli::integers:: && cargo test --locked --test cli --test cli_validation --test cli_numeric --test parity"],
         "timeoutSeconds": 300
       },
       "cli-graph": {

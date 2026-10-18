@@ -45,6 +45,40 @@ fn project_config(root: &Path, rules: Value, script: &str) {
 }
 
 #[test]
+fn cli_runs_only_selected_targets_even_when_sources_overlap() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let root = project.path();
+    fs::write(root.join("source.py"), SOURCE).unwrap();
+    let target = |script: &str| {
+        json!({
+            "sources": ["source.py"], "command": ["python3", "-c", script], "timeoutSeconds": 5
+        })
+    };
+    fs::write(
+        root.join("atlas.json"),
+        serde_json::to_vec(&json!({"mutations": {
+            "rules": ["comparison.less-to-greater"],
+            "targets": {
+                "unit": target("print('selected')"),
+                "unselected": target("raise RuntimeError('unselected target ran')")
+            }
+        }}))
+        .unwrap(),
+    )
+    .unwrap();
+    let output = command(root, "results").output().unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let results = fs::read_to_string(root.join("results")).unwrap();
+    let results: Vec<Value> = results.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0]["outcome"], "survived");
+    assert_eq!(results[0]["targets"].as_array().unwrap().len(), 1);
+    assert_eq!(results[0]["targets"][0]["name"], "unit");
+    assert_eq!(fs::read(root.join("source.py")).unwrap(), SOURCE);
+}
+
+#[test]
 fn api_protects_sources_without_manifests_or_target_mapping() {
     let _guard = TEST_LOCK.lock().unwrap();
     let project = tempfile::tempdir().unwrap();
