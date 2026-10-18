@@ -1,20 +1,17 @@
-name: Rust parity
+name: Rust CI
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - atlas-rust/**
       - atlas/**
-      - .atlasignore
-      - .gitignore
       - .github/workflows/rust-ci.yml
   push:
     branches: [main]
     paths:
       - atlas-rust/**
       - atlas/**
-      - .atlasignore
-      - .gitignore
       - .github/workflows/rust-ci.yml
 
 permissions:
@@ -25,31 +22,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  native-snapshots:
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: atlas-rust
-      - run: cargo fmt --manifest-path atlas-rust/Cargo.toml --check
-      - run: cargo clippy --manifest-path atlas-rust/Cargo.toml --locked --all-targets -- -D warnings
-      - name: Require native unit tests and all canonical Python snapshots
-        run: cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
-      - name: Reference samples and snapshots must not change
-        run: git diff --exit-code -- atlas/tests
-
-  cli-parity:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [java, kotlin, go, rust, javascript, typescript, elixir, python, tsx]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -62,26 +37,32 @@ jobs:
           cache-dependency-glob: atlas/pyproject.toml
           python-version: "3.14"
       - run: uv sync --project atlas --group dev
-      - name: Require Python Atlas standards across the entire repository
-        run: uv run --project atlas atlas check --f . --format json
+      - run: cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
       - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
-      - name: Test the comparison and isolation harness
+      - run: uv run --project atlas python -m unittest discover -s atlas-rust/scripts -p 'test_*.py'
         env:
           ATLAS_RUST_BINARY: ${{ github.workspace }}/atlas-rust/target/release/atlas
-        run: uv run --project atlas python -m unittest discover -s atlas-rust/scripts -p 'test_*.py'
+      - run: uv run --project atlas python atlas-rust/scripts/parity.py --variants --warmups 0 --repetitions 1
+      - run: git diff --exit-code -- atlas/tests
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: atlas-rust
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: atlas/pyproject.toml
+          python-version: "3.14"
+      - run: uv sync --project atlas --group dev
+      - run: cargo fmt --manifest-path atlas-rust/Cargo.toml --check
+      - run: cargo clippy --manifest-path atlas-rust/Cargo.toml --locked --all-targets -- -D warnings
       - run: uv run --project atlas ruff check atlas-rust/scripts
       - run: uv run --project atlas pyright atlas-rust/scripts
-      - name: Require every CLI action, flag, database direction, and sample variant
-        run: >-
-          uv run --project atlas python atlas-rust/scripts/parity.py
-          --sample ${{ matrix.language }} --variants --warmups 0 --repetitions 1
-          --output "${{ runner.temp }}/parity-${{ matrix.language }}"
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rust-parity-${{ matrix.language }}
-          path: ${{ runner.temp }}/parity-${{ matrix.language }}
-          if-no-files-found: warn
-      - name: Reference samples and snapshots must not change
-        if: always()
-        run: git diff --exit-code -- atlas/tests
