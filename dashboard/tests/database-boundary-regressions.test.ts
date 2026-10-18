@@ -20,6 +20,9 @@ const options = ts.parseJsonConfigFileContent(
   root,
 ).options
 
+// Fixture sources stay fresh; unchanged dependencies can reuse their parsed ASTs.
+const dependencySources = new Map<string, ts.SourceFile>()
+
 function fixtureProgram(fixtures: Record<string, string>) {
   const files = new Map(
     Object.entries(fixtures).map(([file, text]) => [join(root, file), text]),
@@ -28,9 +31,13 @@ function fixtureProgram(fixtures: Record<string, string>) {
   const original = host.getSourceFile.bind(host)
   host.getSourceFile = (...args: Parameters<typeof original>) => {
     const text = files.get(args[0])
-    return text === undefined
-      ? original(...args)
-      : ts.createSourceFile(args[0], text, ts.ScriptTarget.Latest, true)
+    if (text !== undefined)
+      return ts.createSourceFile(args[0], text, ts.ScriptTarget.Latest, true)
+    const cached = dependencySources.get(args[0])
+    if (cached && !args[3]) return cached
+    const source = original(...args)
+    if (source) dependencySources.set(args[0], source)
+    return source
   }
   const originalExists = host.fileExists.bind(host)
   const originalRead = host.readFile.bind(host)

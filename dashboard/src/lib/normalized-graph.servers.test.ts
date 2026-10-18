@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, expect, test } from 'bun:test'
 import { Database } from 'bun:sqlite'
+import { migratedDatabaseFixture } from '../../tests/migrated-database-fixture'
 import {
   architectureScope,
   createRepositoryService,
@@ -26,6 +27,7 @@ let directory: string
 let path: string
 let database: Database
 let service: RepositoryService
+const copyMigratedDatabase = migratedDatabaseFixture()
 const project = fileURLToPath(new URL('../../../atlas', import.meta.url))
 function python(...args: Array<string>) {
   const result = Bun.spawnSync(['uv', 'run', '--project', project, ...args], {
@@ -37,7 +39,7 @@ function python(...args: Array<string>) {
 beforeEach(() => {
   directory = mkdtempSync(join(tmpdir(), 'normalized-dashboard-'))
   path = join(directory, 'atlas.sqlite')
-  python('atlas-migrate')
+  copyMigratedDatabase(path)
   database = new Database(path, {
     readwrite: true,
     create: false,
