@@ -19,10 +19,21 @@ pub struct Options {
     pub command: String,
     pub values: BTreeMap<String, String>,
     pub positional: Vec<String>,
+    option_order: Vec<String>,
 }
 impl Options {
+    fn new(command: &str) -> Self {
+        Self { command: command.into(), values: BTreeMap::new(), positional: vec![], option_order: vec![] }
+    }
+    pub fn validate_options(&self, mut validate: impl FnMut(&str) -> Result<()>) -> Result<()> {
+        // Click processes explicit options before arguments, at their first occurrence with their last value.
+        for name in &self.option_order {
+            validate(name)?;
+        }
+        Ok(())
+    }
     pub fn parse(command: &str, args: &[String], spec: (&[&str], &[&str])) -> Result<Self> {
-        let mut result = Self { command: command.into(), values: BTreeMap::new(), positional: vec![] };
+        let mut result = Self::new(command);
         let mut args = args.iter();
         let mut literal = false;
         while let Some(argument) = args.next() {
@@ -43,7 +54,7 @@ impl Options {
         arguments: &'a [String],
         spec: (&[&str], &[&str]),
     ) -> Result<(Self, &'a [String])> {
-        let mut result = Self { command: command.into(), values: BTreeMap::new(), positional: vec![] };
+        let mut result = Self::new(command);
         let mut args = arguments.iter();
         loop {
             let remaining = args.as_slice();
@@ -82,6 +93,9 @@ impl Options {
                 .or_else(|| args.next().cloned())
                 .ok_or_else(|| usage(&self.command, format!("Option '{spelling}' requires an argument.")))?
         };
+        if !self.has(option) {
+            self.option_order.push(option.into());
+        }
         self.values.insert(option.into(), value);
         Ok(())
     }
@@ -97,8 +111,9 @@ impl Options {
             return Err(self.invalid(
                 name,
                 format!(
-                    "'{value}' is not one of {}.",
-                    choices.iter().map(|c| format!("'{c}'")).collect::<Vec<_>>().join(", ")
+                    "{} is not one of {}.",
+                    super::integers::repr(value),
+                    choices.iter().map(|c| super::integers::repr(c)).collect::<Vec<_>>().join(", ")
                 ),
             ));
         }

@@ -2,7 +2,13 @@
 
 These results use source commit `0ca66c3f15938de526e42a01273cd2f197ad6f9b` and frozen release executables. The original Python importer, dashboard, samples, and snapshots remain unchanged. See [PARITY.md](PARITY.md) for comparison rules and [DESIGN.md](DESIGN.md) for architecture and limits.
 
-## Validation
+## Historical measurements versus new coverage
+
+All counts and timings below are the old recorded results at the stated commit, not results for the current expanded harness. The recorded comparable `index` cases (including CSV `index.folder.*` entries) clone already indexed databases: label them **reindex unchanged project**. They do not measure first registration/indexing or changed-source replacement. Recorded fresh/repeated migrations do not establish upgrades from populated historical revisions.
+
+The harness now adds genuine first indexing, changed/deleted-source replacement, upgrades from populated actual Python migration revisions 0001–0004, timestamp write invariants, and additional CLI error/whitespace cases. See [PARITY.md](PARITY.md) for cases and commands. No new benchmark timings or full-matrix pass counts are claimed here. These workflow measurements do not establish a universal Rust speedup; `mini-broker` is a recorded regression and VU analysis parity remains unverified.
+
+## Recorded validation
 
 | Check | Result |
 |---|---:|
@@ -47,7 +53,7 @@ Median milliseconds, three measured repetitions after one warmup. Each repeated 
 
 | Action | Python ms | Rust ms | Ratio |
 |---|---:|---:|---:|
-| index | 1,413.27 | 356.03 | 3.97× |
+| reindex unchanged project | 1,413.27 | 356.03 | 3.97× |
 | projects | 642.68 | 2.92 | 219.91× |
 | report, fresh JSON | 1,296.18 | 329.33 | 3.94× |
 | check, fresh JSON | 1,349.91 | 333.37 | 4.05× |
@@ -90,13 +96,13 @@ The table shows fresh JSON report times in seconds, one repetition. Each project
 | sintropy-engine | 135 | 12 | 20.781 | 3.619 | 5.74× |
 | VU | 109 | 13 | timeout, 30 s | 9.832 | unverified |
 
-Rust is slower on `mini-broker` in all four fresh analysis actions in this run: check 1.491 vs 1.276 seconds; index 1.515 vs 1.455; mutations 1.542 vs 1.346; report 1.535 vs 1.314. No regression is omitted from the CSV results.
+Rust is slower on `mini-broker` in all four fresh analysis actions in this run: check 1.491 vs 1.276 seconds; reindex unchanged project 1.515 vs 1.455; mutations 1.542 vs 1.346; report 1.535 vs 1.314. No regression is omitted from the CSV results.
 
 ### VU is not a passing whole-graph comparison
 
 Python times out in baseline indexing and all four fresh analysis actions: five 30-second timeouts. That blocks 13 reference-origin reader cases. The strict harness exits 1 and records all 18 failures. Earlier diagnostic runs also exceeded 90 seconds in Python receiver-alias expansion; those runs are not final timing evidence.
 
-Rust completes index in 9.721 seconds, report in 9.832, check in 9.332, and mutations in 11.025. Check correctly exits 1 with 713 findings; this does not imply equality to the unavailable Python check result. Native indexing reports 109 files, 3,787 symbols, 115 modules, 47 types, 3,696 callables, 4,849 nodes, 22,970 edges, and zero parse errors.
+Rust completes index in 9.721 seconds, report in 9.832, check in 9.332, and mutations in 11.025. VU is the exception to the recorded reindex setup: failed reference indexing left only its seeded registration. This unverified native write does not establish first-index differential parity. Check correctly exits 1 with 713 findings; this does not imply equality to the unavailable Python check result. Native indexing reports 109 files, 3,787 symbols, 115 modules, 47 types, 3,696 callables, 4,849 nodes, 22,970 edges, and zero parse errors.
 
 Both readers complete and match on the native-produced database: all 14 interoperability cases pass, including source, graph navigation, saved mutations, and revision checks. Four independent cases also pass. Overall VU results are 18 passes, five timeouts, and 13 blocked cases. Whole-graph analysis parity remains unverified, and no VU analysis speedup is claimed. See [VU CSV](benchmarks/project-VU.csv).
 
@@ -131,4 +137,4 @@ atlas/.venv/bin/python atlas-rust/scripts/parity.py \
 
 Repeat `--project` or use `--projects-dir` for local inputs. Repeat `--actions` with case-name filters from `--list-actions` to reproduce the selected core actions. Private projects are not public fixtures; only their aggregate counts and timing results are published.
 
-The authoritative outputs are the final frozen-binary runs. Earlier changing-binary diagnostics and initial environment failures are not benchmark results. Local raw reports retain full evidence; public CSV files retain every final case outcome. No reference timeout, missing dependency, failed comparison, or blocked case was converted to a pass.
+The authoritative outputs for these historical measurements are the final frozen-binary runs. They are not evidence that newly added harness cases pass. Earlier changing-binary diagnostics and initial environment failures are not benchmark results. Local raw reports retain full evidence; public CSV files retain every final case outcome. No reference timeout, missing dependency, failed comparison, or blocked case was converted to a pass.

@@ -51,12 +51,18 @@ class ComparisonTests(unittest.TestCase):
 
     def test_action_matrix_covers_commands_and_flags(self):
         cases = analysis_cases(Path("/sample")) + navigation_cases(Path("/sample"), ("r", "f", "a", "b"), "revision") + usage_cases()
-        self.assertEqual(len(cases), len({case.name for case in cases}))
+        names = {case.name for case in cases}
+        self.assertEqual(len(cases), len(names))
         flags = {arg for case in cases for arg in case.args if arg.startswith("-")}
         self.assertTrue({"-f", "--f", "--folder", "--save", "--saved", "--rules", "--format", "--project", "--revision",
                          "--limit", "--offset", "--direction", "--relations", "--depth", "--max-depth", "--max-nodes",
                          "--max-edges", "--max-lines", "--start-line", "--help"} <= flags)
-        self.assertTrue(any(case.name == "graph.source.True.text.True" for case in cases))
+        self.assertIn("graph.source.True.text.True", names)
+        self.assertTrue({"index.first", "index.replace.changed", "index.replace.deleted",
+                         "migrate.from.0001_initial", "migrate.from.0002_graph_nodes",
+                         "migrate.from.0003_graph_relations", "migrate.from.0004_drop_graph_artifact",
+                         "invalid.competing.0", "invalid.competing.5", "invalid.quoted.command.6",
+                         "invalid.quoted.option.6", "graph.relations.whitespace.1c"} <= names)
         self.assertTrue(Run(argparse.Namespace(actions=["graph.source.*"])).selected(Case("graph.source.one", ())))
         self.assertEqual(len([item for item in definitions() if item[0].startswith("invalid")]), 8)
 
@@ -179,15 +185,21 @@ class OracleRoundTripTests(unittest.TestCase):
             reference = Path(__file__).with_name("reference.py")
             executable.write_text(f"#!{sys.executable}\nimport runpy,sys\nsys.argv=[{str(reference)!r},'cli',*sys.argv[1:]]\nrunpy.run_path({str(reference)!r},run_name='__main__')\n")
             executable.chmod(0o700)
-            args = argparse.Namespace(timeout=30, rust_bin=executable, rust_migrate=executable, output=folder,
+            migrate = folder / "oracle-migrate"
+            migrate.write_text(f"#!{sys.executable}\nimport runpy,sys\nsys.argv=[{str(reference)!r},'migrate']\nrunpy.run_path({str(reference)!r},run_name='__main__')\n")
+            migrate.chmod(0o700)
+            args = argparse.Namespace(timeout=30, rust_bin=executable, rust_migrate=migrate, output=folder,
                                       max_cases=None, warmups=0, repetitions=1, actions=[], inventory=None, variants=False)
             project = Project(Run(args), root, folder)
             project.prepare()
-            for case in [Case("index", ("index",), True), Case("report", ("report", "--format", "json"))]:
+            from lifecycle import cases
+            for case in [Case("index", ("index",), True), Case("report", ("report", "--format", "json")), *cases()]:
                 work = folder / case.name
                 work.mkdir()
                 result = Pair(project, case, work).execute()
                 self.assertEqual(result["diffs"], [], result)
+                self.lifecycle_assertions(case, work)
+            self.read_only_output_timestamps_are_checked(project)
             self.invalid_config_preserves_revision(project)
             executable.write_text(f"#!{sys.executable}\nprint('{{\"wrong\":true}}')\n")
             work = folder / "corrupt"
@@ -198,6 +210,33 @@ class OracleRoundTripTests(unittest.TestCase):
             self.assertFalse((root / "__pycache__").exists())
             self.assertEqual(os.stat(root / "coffee.py").st_size, 29)
             self.baseline_timeout_continues(project)
+
+    def lifecycle_assertions(self, case, work):
+        if case.name.startswith("index.replace."):
+            nodes = contents(work / "rust.sqlite")["data"]["graph_nodes"]
+            self.assertFalse(any(row["name"] == "obsolete" for row in nodes))
+            self.assertEqual(any(row["name"] == "replacement" for row in nodes), case.name.endswith("changed"))
+        if case.name == "index.first":
+            self.assertEqual(contents(work / "baseline.sqlite")["data"]["repositories"], [])
+            self.assertEqual(len(contents(work / "rust.sqlite")["data"]["repositories"]), 1)
+
+    def read_only_output_timestamps_are_checked(self, project):
+        work = project.folder / "corrupt-output-timestamps"
+        work.mkdir()
+        pair = Pair(project, Case("projects", ("projects",)), work)
+        original = pair.native
+        def corrupt(database):
+            result = original(database)
+            rows = json.loads(result["stdout"])
+            for row in rows:
+                row.update(createdAt=0, importedAt=0)
+            result["stdout"] = json.dumps(rows)
+            return result
+        with patch.object(pair, "native", side_effect=corrupt):
+            result = pair.execute()
+        self.assertFalse(result["passed"])
+        self.assertTrue(any(diff["path"].startswith("/timestamps/rust/output") for diff in result["diffs"]))
+        self.assertFalse(any(diff["path"].startswith("/result") for diff in result["diffs"]))
 
     def invalid_config_preserves_revision(self, project):
         config = project.root / "atlas.json"

@@ -62,6 +62,18 @@ fn python_decimal_lexical_forms_reach_actual_navigation() {
     assert_eq!(payload(fixture.invoke(&["children", "file:brew.py", "--offset", " +０_１ "]))["nodes"], json!([]));
 }
 #[test]
+fn relation_lists_strip_python_whitespace_and_normalize_each_part() {
+    let fixture = Fixture::new();
+    for whitespace in ['\u{1c}', '\u{1d}', '\u{1e}', '\u{1f}', '\u{85}', '\u{a0}', '\u{2003}'] {
+        let relations = format!("{whitespace}calls{whitespace}, {whitespace}, references, CALLS");
+        let result = payload(fixture.invoke(&["context", "brew", "--relations", &relations]));
+        assert_eq!(result["filters"]["relations"], json!(["CALLS", "REFERENCES"]));
+        let empty = fixture.invoke(&["context", "brew", "--relations", &whitespace.to_string()]);
+        assert_eq!(empty.status.code(), Some(2));
+        assert!(String::from_utf8(empty.stderr).unwrap().contains("Choose comma-separated relations"));
+    }
+}
+#[test]
 fn malformed_forms_and_bounded_overflow_match_click_errors() {
     let fixture = Fixture::new();
     for text in ["_1", "1_", "1__0", "²", "1.0", "0x10"] {

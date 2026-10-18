@@ -32,7 +32,7 @@ pub fn load_project_config(root: &Path) -> Result<Value> {
     let source = match fs::read_to_string(&path) {
         Ok(source) => source,
         Err(error) if error.kind() == ErrorKind::NotFound => return validate_project_config(&json!({})),
-        Err(error) => return Err(error.into()),
+        Err(error) => return Err(anyhow!("{}: {error}", path.display())),
     };
     let value = parse_project_source(&source).map_err(|error| {
         let message = validation_error("", (&format!("Invalid JSON: {error}"), "json_invalid"), &json!(source));

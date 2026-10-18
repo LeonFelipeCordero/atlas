@@ -73,8 +73,8 @@ fn standard_command(command: &str, tail: &[String]) -> Result<i32> {
         super::help::print(command, false);
         return Ok(0);
     }
-    options.arguments(&[], false)?;
     let format = options.choice("--format", "markdown", &["markdown", "json"])?;
+    options.arguments(&[], false)?;
     if command == "projects" {
         println!("{}", serde_json::to_string_pretty(&crate::bootstrap::repository_service(None)?.list()?)?);
         return Ok(0);

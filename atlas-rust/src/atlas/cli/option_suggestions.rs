@@ -1,8 +1,8 @@
-use super::options::usage;
+use super::{integers::repr, options::usage};
 
 pub fn unknown(command: &str, option: &str, spec: (&[&str], &[&str])) -> anyhow::Error {
     if let Some(character) = short_option(option) {
-        return usage(command, format!("No such option '-{character}'."));
+        return usage(command, format!("No such option {}.", repr(&format!("-{character}"))));
     }
     let mut candidates: Vec<_> = spec.0.iter().chain(spec.1).copied().chain(["--help"]).collect();
     if candidates.contains(&"--folder") {
@@ -10,10 +10,10 @@ pub fn unknown(command: &str, option: &str, spec: (&[&str], &[&str])) -> anyhow:
     }
     candidates.sort();
     candidates.dedup();
-    usage(command, format!("No such option '{option}'.{}", suggestions(option, &candidates)))
+    usage(command, format!("No such option {}.{}", repr(option), suggestions(option, &candidates)))
 }
 pub fn unknown_command(group: &str, command: &str, candidates: &[&str]) -> anyhow::Error {
-    usage(group, format!("No such command '{command}'.{}", suggestions(command, candidates)))
+    usage(group, format!("No such command {}.{}", repr(command), suggestions(command, candidates)))
 }
 fn suggestions(input: &str, candidates: &[&str]) -> String {
     let mut ranked: Vec<_> = candidates
@@ -24,7 +24,7 @@ fn suggestions(input: &str, candidates: &[&str]) -> String {
         .collect();
     ranked.sort_by(|a, b| b.partial_cmp(a).unwrap());
     ranked.truncate(3);
-    let mut names: Vec<_> = ranked.into_iter().map(|(_, name)| format!("'{name}'")).collect();
+    let mut names: Vec<_> = ranked.into_iter().map(|(_, name)| repr(name)).collect();
     names.sort();
     match names.len() {
         0 => String::new(),

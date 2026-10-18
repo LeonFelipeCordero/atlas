@@ -27,6 +27,7 @@ impl GraphOptions {
         if options.has("--help") {
             return Ok(None);
         }
+        options.validate_options(|name| validate_option(&options, name))?;
         options.arguments(argument_names(command), command == "source")?;
         let text = options.choice("--format", "json", &["json", "text"])? == "text";
         Ok(Some(Self { operation: Operation::parse(command, options)?, text }))
@@ -97,10 +98,22 @@ fn argument_names(command: &str) -> &'static [&'static str] {
 }
 fn traversal_request(command: &str, options: &Options, key: &str) -> Result<TraversalRequest> {
     let direction = options.choice("--direction", "out", &["out", "in", "both"])?;
+    let relations = relation_list(options)?;
+    let (depth_flag, default_depth) = depth_option(command);
+    Ok(TraversalRequest {
+        key: key.into(),
+        direction: direction.into(),
+        relations,
+        depth: options.number(depth_flag, default_depth, (0, 20))?,
+        max_nodes: options.number("--max-nodes", 30, (1, 300))?,
+        max_edges: options.number("--max-edges", 100, (1, 1000))?,
+    })
+}
+fn relation_list(options: &Options) -> Result<Vec<String>> {
     let relations: BTreeSet<_> = options
         .get("--relations", "CALLS,REFERENCES")
         .split(',')
-        .map(|p| p.trim().to_uppercase())
+        .map(|p| p.trim_matches(|c: char| c.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&c)).to_uppercase())
         .filter(|p| !p.is_empty())
         .collect();
     if relations.is_empty() || relations.iter().any(|r| !RELATIONS.contains(&r.as_str())) {
@@ -108,15 +121,39 @@ fn traversal_request(command: &str, options: &Options, key: &str) -> Result<Trav
             options.invalid("--relations", format!("Choose comma-separated relations from {}", RELATIONS.join(", ")))
         );
     }
-    let (depth_flag, default_depth) = depth_option(command);
-    Ok(TraversalRequest {
-        key: key.into(),
-        direction: direction.into(),
-        relations: relations.into_iter().collect(),
-        depth: options.number(depth_flag, default_depth, (0, 20))?,
-        max_nodes: options.number("--max-nodes", 30, (1, 300))?,
-        max_edges: options.number("--max-edges", 100, (1, 1000))?,
-    })
+    Ok(relations.into_iter().collect())
+}
+fn validate_option(options: &Options, name: &str) -> Result<()> {
+    match name {
+        "--direction" => {
+            options.choice(name, "out", &["out", "in", "both"])?;
+        }
+        "--format" => {
+            options.choice(name, "json", &["json", "text"])?;
+        }
+        "--relations" => {
+            relation_list(options)?;
+        }
+        "--offset" | "--start-line" => {
+            options.integer(name, 0, usize::from(name == "--start-line"))?;
+        }
+        _ => {
+            if let Some(bounds) = numeric_bounds(name) {
+                options.number(name, 0, bounds)?;
+            }
+        }
+    }
+    Ok(())
+}
+fn numeric_bounds(name: &str) -> Option<(usize, usize)> {
+    match name {
+        "--limit" => Some((1, 100)),
+        "--depth" | "--max-depth" => Some((0, 20)),
+        "--max-nodes" => Some((1, 300)),
+        "--max-edges" => Some((1, 1000)),
+        "--max-lines" => Some((1, 500)),
+        _ => None,
+    }
 }
 pub fn depth_option(command: &str) -> (&'static str, usize) {
     if command == "path" { ("--max-depth", 6) } else { ("--depth", 2) }

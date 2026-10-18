@@ -32,7 +32,8 @@ def format_cases(root: Path) -> list[Case]:
 
 
 def analysis_cases(root: Path) -> list[Case]:
-    return [Case("projects", ("projects",)), *folder_cases(root), *format_cases(root),
+    from lifecycle import cases
+    return [*cases(), Case("projects", ("projects",)), *folder_cases(root), *format_cases(root),
             Case("mutations.rules", ("mutations", "--rules")),
             Case("mutations.saved", ("mutations", "--saved", "-f", str(root))),
             Case("migrate.fresh", (), True, True), Case("migrate.repeat", (), True, True), *option_cases(root)]
@@ -57,6 +58,8 @@ def navigation_cases(root: Path, keys: tuple[str, str, str, str], revision: str)
                ("children", file, "--limit", "100", "--offset", "200"),
                ("context", first), ("path", first, second)]
     result = [Case(f"graph.{arguments[0]}.default.{index}", prefix + arguments) for index, arguments in enumerate(queries)]
+    result.extend(Case(f"graph.relations.whitespace.{ord(space):x}", prefix + ("context", first, "--relations", f"{space}CALLS{space}, REFERENCES"))
+                  for space in ("\u001c", "\u001d", "\u001e", "\u001f", "\u0085", "\u00a0"))
     result.extend(traversal_cases((prefix, first, second)))
     result.extend(source_cases((prefix, first, second)))
     result.extend(numeric_cases((prefix, file, first)))
@@ -162,4 +165,19 @@ def usage_cases() -> list[Case]:
                Case("invalid.command.suggest.root", ("reports",), valid=False),
                Case("invalid.command.suggest.graph", ("graph", "contexts"), valid=False),
                Case("invalid.command.suggest.unicode", ("réports",), valid=False)]
-    return help_cases() + invalid_bounds() + list(traversals) + invalid_usage() + formats + literal
+    return help_cases() + invalid_bounds() + list(traversals) + invalid_usage() + formats + literal + competing_errors()
+
+
+def competing_errors() -> list[Case]:
+    arguments = [("graph", "find", "brew", "--limit", "bad", "--bogus"),
+                 ("graph", "find", "brew", "--bogus", "--limit", "bad"),
+                 ("graph", "path", "--max-depth", "bad"),
+                 ("graph", "overview", "extra", "--bogus"),
+                 ("report", "--format", "yaml", "--bogus"),
+                 ("graph", "context", "brew", "--depth", "bad", "--direction", "wrong")]
+    result = [Case(f"invalid.competing.{index}", args, valid=False) for index, args in enumerate(arguments)]
+    for index, value in enumerate(("a'b", 'a"b', "a\\b", "a\nb", "a\tb", "a\rb", "a\x1bb")):
+        result.extend([Case(f"invalid.quoted.command.{index}", (value,), valid=False),
+                       Case(f"invalid.quoted.option.{index}", ("report", "--format", value), valid=False),
+                       Case(f"invalid.quoted.numeric.{index}", ("graph", "find", "brew", "--limit", value), valid=False)])
+    return result

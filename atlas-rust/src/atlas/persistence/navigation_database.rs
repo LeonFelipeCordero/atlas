@@ -57,7 +57,15 @@ pub fn readonly_session(path: Option<&Path>) -> Result<SqliteConnection> {
             target.display()
         ))
     };
-    let mut connection = SqliteConnection::establish(&uri_path(&target)).map_err(|e| read_error(e.to_string()))?;
+    let mut connection = SqliteConnection::establish(&uri_path(&target)).map_err(|e| {
+        let message = match e {
+            diesel::ConnectionError::BadConnection(message) => format!(
+                "(sqlite3.OperationalError) {message}\n(Background on this error at: https://sqlalche.me/e/21/e3q8)"
+            ),
+            other => other.to_string(),
+        };
+        read_error(message)
+    })?;
     connection.batch_execute("PRAGMA query_only=ON; BEGIN;").map_err(|e| read_error(e.to_string()))?;
     check_schema(&mut connection)?;
     Ok(connection)
