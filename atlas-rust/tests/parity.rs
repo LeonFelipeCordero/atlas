@@ -1,4 +1,4 @@
-//! Strict Python snapshots. No Python process or snapshot update path exists here.
+//! Python reference snapshots restricted to the Rust importer's dedicated language catalog.
 mod support;
 use atlas::{
     indexer,

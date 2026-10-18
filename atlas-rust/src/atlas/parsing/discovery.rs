@@ -1,5 +1,5 @@
 //! Source discovery with nested Git and Atlas ignore rules, without Git.
-use super::catalog::LANGUAGES;
+pub use super::catalog::LANGUAGES as SUPPORTED_LANGUAGES;
 use super::ignore_spec::IgnoreSpec;
 use crate::domain::models::SourceFile;
 use anyhow::{Context, Result, anyhow, bail};
@@ -13,7 +13,6 @@ use std::{
     sync::OnceLock,
 };
 
-pub const EXCLUDED_LANGUAGES: &[&str] = &["c", "cpp", "csharp", "php", "phpdoc", "ruby", "rbs"];
 pub const IGNORED_DIRECTORIES: &[&str] = &[
     ".git",
     ".idea",
@@ -31,14 +30,7 @@ pub const IGNORED_DIRECTORIES: &[&str] = &[
 
 pub fn supported_languages() -> &'static HashSet<String> {
     static CATALOG: OnceLock<HashSet<String>> = OnceLock::new();
-    CATALOG.get_or_init(|| {
-        LANGUAGES
-            .iter()
-            .map(|s| s.to_string())
-            .chain(tree_sitter_language_pack::available_languages())
-            .filter(|s| !EXCLUDED_LANGUAGES.contains(&s.as_str()))
-            .collect()
-    })
+    CATALOG.get_or_init(|| SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect())
 }
 
 pub fn is_supported_language(language: &str) -> bool {
@@ -47,7 +39,7 @@ pub fn is_supported_language(language: &str) -> bool {
 
 pub fn require_supported_language(language: &str) -> Result<()> {
     if !is_supported_language(language) {
-        bail!("Unsupported Python importer language: {language}");
+        bail!("Unsupported Rust importer language: {language}");
     }
     Ok(())
 }
@@ -248,15 +240,47 @@ pub fn discover_files(root: &Path) -> Result<Vec<SourceFile>> {
 mod tests {
     use super::*;
     #[test]
-    fn catalog_excludes_companion_and_unsupported_grammars() {
-        for language in EXCLUDED_LANGUAGES {
-            assert!(!is_supported_language(language));
+    fn catalog_only_supports_dedicated_languages() -> Result<()> {
+        let files = [
+            ("file.py", "python"),
+            ("file.js", "javascript"),
+            ("file.jsx", "javascript"),
+            ("file.ts", "typescript"),
+            ("file.tsx", "tsx"),
+            ("file.java", "java"),
+            ("file.kt", "kotlin"),
+            ("file.go", "go"),
+            ("file.rs", "rust"),
+            ("file.ex", "elixir"),
+        ];
+        assert_eq!(supported_languages().len(), files.len());
+        assert!(is_supported_language("jsx"));
+        let temp = tempfile::tempdir()?;
+        for (path, language) in files {
+            assert!(is_supported_language(language));
+            assert_eq!(detect_language(Path::new(path)).as_deref(), Some(language));
+            fs::write(temp.path().join(path), "")?;
         }
-        assert!(is_supported_language("ziggy_schema"));
-        assert_eq!(detect_language(Path::new("file.py")).as_deref(), Some("python"));
-        assert_eq!(detect_language(Path::new("file.cpp")), None);
-        assert_eq!(detect_language(Path::new(".gitignore")), None);
-        assert_eq!(detect_language(Path::new("Makefile")), None);
+        for path in [
+            "file.c",
+            "file.cpp",
+            "file.cs",
+            "file.php",
+            "file.rb",
+            "file.lua",
+            "file.json",
+            "file.csv",
+            ".gitignore",
+            "Makefile",
+        ] {
+            assert_eq!(detect_language(Path::new(path)), None);
+            fs::write(temp.path().join(path), "")?;
+        }
+        assert_eq!(discover_files(temp.path())?.len(), files.len());
+        for language in ["c", "cpp", "csharp", "php", "phpdoc", "ruby", "rbs", "lua", "json", "csv", "ziggy_schema"] {
+            assert!(require_supported_language(language).is_err());
+        }
+        Ok(())
     }
     #[test]
     fn validation_resolves_missing_parent_segments() -> Result<()> {

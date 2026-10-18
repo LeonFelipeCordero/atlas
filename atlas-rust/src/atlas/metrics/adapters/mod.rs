@@ -21,8 +21,7 @@ pub mod typescript;
 pub use base::{MetricAdapter, MetricPolicy};
 pub use resolution_policy::ResolutionAdapter;
 
-pub const DEDICATED_LANGUAGES: &[&str] =
-    &["python", "javascript", "jsx", "typescript", "tsx", "java", "kotlin", "go", "rust", "elixir"];
+pub const DEDICATED_LANGUAGES: &[&str] = crate::parsing::discovery::SUPPORTED_LANGUAGES;
 pub fn adapter_for_language(language: &str) -> ResolutionAdapter {
     ResolutionAdapter { language: language.into() }
 }
@@ -32,7 +31,7 @@ pub fn get_resolution_adapter(language: &str) -> ResolutionAdapter {
 pub fn metric_adapter_for_language(language: &str) -> MetricAdapter {
     assert!(
         crate::parsing::discovery::is_supported_language(language),
-        "Unsupported Python importer language: {language}"
+        "Unsupported Rust importer language: {language}"
     );
     MetricAdapter::new(language)
 }

@@ -95,10 +95,8 @@ fn rust_external_modules_and_opaque_shadowed_targets() -> Result<()> {
 }
 
 #[test]
-fn generic_grammars_keep_calls_and_suppress_syntax_diagnostics() -> Result<()> {
-    let file = parse("lua", "function brew() return helper() end")?;
-    assert!(file.calls.iter().any(|call| call.name == "helper"));
-    assert!(file.symbols.iter().any(|symbol| symbol.name == "brew"));
-    assert!(parse("json", "{invalid")?.parse_error.is_none());
-    Ok(())
+fn unsupported_grammars_are_rejected() {
+    for language in ["lua", "json", "csv", "c", "cpp", "csharp", "php", "ruby"] {
+        assert!(parse(language, "").is_err(), "{language}");
+    }
 }

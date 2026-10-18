@@ -430,34 +430,6 @@ mod tests {
         assert_eq!(imports, cloned.imports());
     }
     #[test]
-    fn csv_resolution_does_not_materialize_a_tree_but_explicit_root_parses_real_data() {
-        use crate::domain::models::ParsedRepository;
-        use crate::metrics::resolver::CallResolver;
-        let file = crate::parsing::parser::parse_file(parsed("csv", b"name,value\na,1\nb,2\n").source).unwrap();
-        assert!(file.symbols.is_empty());
-        assert!(file.calls.is_empty());
-        let path = file.source.path.clone();
-        let resolver = CallResolver::new(&ParsedRepository { files: vec![file] });
-        let syntax = &resolver.syntax[&path];
-        let contexts = [
-            &resolver.modules.syntax,
-            &resolver.imports.syntax,
-            &resolver.imports.modules.syntax,
-            &resolver.identity.syntax,
-        ];
-        assert!(contexts.iter().all(|context| Arc::ptr_eq(&syntax.cache, &context[&path].cache)));
-        assert!(syntax.cache.tree.get().is_none());
-        assert!(syntax.cache.index.get().is_none());
-        assert!(crate::metrics::resolver::resolve_connections(&resolver.repository).unwrap().connections.is_empty());
-        assert!(syntax.cache.tree.get().is_none());
-        let root = syntax.root().unwrap();
-        assert_eq!(root.end_byte(), syntax.source.len());
-        assert!(root.named_child_count() > 0);
-        assert!(syntax.cache.index.get().is_none());
-        assert!(syntax.node(0, syntax.source.len()).is_some());
-        assert!(syntax.cache.index.get().is_some());
-    }
-    #[test]
     fn shadowing_filters_names_and_scope_ranges_before_restoring_nodes() {
         use std::sync::atomic::Ordering::Relaxed;
         let source = (0..500).map(|index| format!("def f{index}(value):\n return value\n")).collect::<String>();

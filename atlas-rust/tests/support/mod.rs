@@ -1,4 +1,4 @@
-//! Shared, lossless access to the unchanged Python fixtures and goldens.
+//! Shared access to Python fixtures and reference goldens for the dedicated language catalog.
 use serde_json::Value;
 use std::{
     collections::BTreeSet,

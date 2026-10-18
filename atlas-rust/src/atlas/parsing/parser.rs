@@ -137,52 +137,9 @@ fn parse_tree(source: &SourceFile, adapter: LanguageAdapter<'_>) -> Result<Optio
     if needed { Ok(Some(syntax::parse(&source.language, &source.source)?)) } else { Ok(None) }
 }
 
-fn record_free_csv(language: &str) -> Result<bool> {
-    if language != "csv" {
-        return Ok(false);
-    }
-    // The pinned CSV vocabulary cannot match intel::structure_kind_at or import_at.
-    // Retain grammar lookup failures and fall back if a custom/new grammar adds nodes.
-    const KINDS: &[&str] = &[
-        "end",
-        "document_token1",
-        ",",
-        "number_token1",
-        "number_token2",
-        "float_token1",
-        "float_token2",
-        "true",
-        "false",
-        "text",
-        "document",
-        "row",
-        "field",
-        "number",
-        "float",
-        "boolean",
-        "document_repeat1",
-        "row_repeat1",
-    ];
-    let grammar = tree_sitter_language_pack::get_language(language)?;
-    Ok(declaration_query(language)?.is_none()
-        && (0..grammar.node_kind_count())
-            .all(|index| grammar.node_kind_for_id(index as u16).is_some_and(|kind| KINDS.contains(&kind))))
-}
-
 pub fn parse_file(source: SourceFile) -> Result<ParsedFile> {
     let adapter = get_adapter(&source.language)?;
     let content_hash = format!("{:x}", Sha256::digest(&source.source));
-    if record_free_csv(&source.language)? {
-        return Ok(ParsedFile {
-            source,
-            content_hash,
-            parse_error: None,
-            calls: vec![],
-            imports: vec![],
-            symbols: vec![],
-            inheritances: vec![],
-        });
-    }
     let text = String::from_utf8_lossy(&source.source).into_owned();
     let syntax_source = SourceFile { source: text.as_bytes().to_vec(), ..source.clone() };
     let tree = parse_tree(&syntax_source, adapter)?;
@@ -214,41 +171,4 @@ pub fn parse_file(source: SourceFile) -> Result<ParsedFile> {
 
 pub fn parse_files(files: Vec<SourceFile>) -> Result<ParsedRepository> {
     Ok(ParsedRepository { files: files.into_iter().map(parse_file).collect::<Result<Vec<_>>>()? })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn csv_fast_path_preserves_bytes_hash_and_native_empty_records() -> Result<()> {
-        assert!(record_free_csv("csv")?);
-        assert!(!record_free_csv("json")?);
-        let cases: &[&[u8]] = &[
-            b"",
-            b"function_definition,import_statement,class\n",
-            b"a,\"quoted\nmultiline\",c\r\n1,\"two, fields\",3",
-            b"\xff,invalid\0,\n\"unclosed",
-            b"class Demo extends Base { run(); }\nimport os\n",
-        ];
-        for bytes in cases {
-            let native = process(&String::from_utf8_lossy(bytes), &ProcessConfig::new("csv"))?;
-            assert!(native.structure.is_empty());
-            assert!(native.imports.is_empty());
-            let source = SourceFile {
-                path: "data.csv".to_owned(),
-                absolute_path: "data.csv".into(),
-                language: "csv".to_owned(),
-                source: bytes.to_vec(),
-            };
-            let parsed = parse_file(source.clone())?;
-            assert_eq!(parsed.source.source, source.source);
-            assert_eq!(parsed.content_hash, format!("{:x}", Sha256::digest(bytes)));
-            assert!(parsed.symbols.is_empty());
-            assert!(parsed.imports.is_empty());
-            assert!(parsed.calls.is_empty());
-            assert!(parsed.inheritances.is_empty());
-            assert!(parsed.parse_error.is_none());
-        }
-        Ok(())
-    }
 }
