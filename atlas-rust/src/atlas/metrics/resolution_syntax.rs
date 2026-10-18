@@ -24,13 +24,16 @@ pub const PARAMETERS: &[&str] = &[
 pub const IDENTIFIERS: &[&str] =
     &["identifier", "simple_identifier", "field_identifier", "shorthand_property_identifier_pattern"];
 
+/// Return the first existing child field in `fields` order, or `None`.
 pub fn field<'a>(node: Node<'a>, fields: &[&str]) -> Option<Node<'a>> {
     fields.iter().find_map(|name| node.child_by_field_name(name))
 }
+/// Collect direct named children in source order, excluding unnamed tokens.
 pub fn children(node: Node<'_>) -> Vec<Node<'_>> {
     let mut cursor = node.walk();
     node.named_children(&mut cursor).collect()
 }
+/// Collect `node` and its named descendants in root-first source order without recursion.
 pub fn walk(node: Node<'_>) -> Vec<Node<'_>> {
     let mut result = Vec::new();
     let mut pending = vec![node];
@@ -40,6 +43,8 @@ pub fn walk(node: Node<'_>) -> Vec<Node<'_>> {
     }
     result
 }
+/// Extract unique declared names from a binding pattern using matching source bytes.
+/// Missing or unsupported patterns, member targets, and subscripts produce no names.
 pub fn names(node: Option<Node<'_>>, source: &[u8]) -> BTreeSet<String> {
     let Some(node) = node else {
         return BTreeSet::new();
@@ -136,6 +141,8 @@ pub struct Syntax {
     pub receiver_scope_cache: Arc<Mutex<BTreeMap<String, ReceiverScopeData>>>,
 }
 impl Syntax {
+    /// Retain a file and policy with replacement-decoded UTF-8 source; defer parsing until needed.
+    /// Clones share the syntax tree and lazy indexes.
     pub fn new(file: &ParsedFile, adapter: ResolutionAdapter) -> Self {
         let source = String::from_utf8_lossy(&file.source.source).into_owned().into_bytes();
         Self {
@@ -147,6 +154,7 @@ impl Syntax {
             receiver_scope_cache: Arc::new(Mutex::new(BTreeMap::new())),
         }
     }
+    /// Parse and cache the source tree on first access; return `None` if parser setup or parsing fails.
     pub fn root(&self) -> Option<Node<'_>> {
         self.cache.tree.get_or_init(|| self.parse_tree()).as_ref().map(Tree::root_node)
     }
@@ -159,9 +167,14 @@ impl Syntax {
     fn index(&self) -> &NodeIndex {
         self.cache.index.get_or_init(|| NodeIndex::new(self.root()))
     }
+    /// Return a tree-relative handle that remains valid across shared cache clones.
+    ///
+    /// # Panics
+    /// Panic if `node` does not belong to this syntax tree.
     pub fn reference(&self, node: Node<'_>) -> NodeRef {
         *self.index().node_paths.get(&node.id()).expect("Node must belong to this syntax tree")
     }
+    /// Restore a handle from this tree or a shared clone; return `None` for an invalid path.
     pub fn dereference(&self, reference: &NodeRef) -> Option<Node<'_>> {
         #[cfg(test)]
         self.cache.dereferences.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -179,23 +192,30 @@ impl Syntax {
         }
         Some(node)
     }
+    /// Return root-first named nodes, or an empty vector if parsing failed.
     pub fn nodes(&self) -> Vec<Node<'_>> {
         self.root().map(walk).unwrap_or_default()
     }
+    /// Return named nodes whose start bytes fall in the half-open `span`, in traversal order.
     pub fn nodes_in(&self, span: (usize, usize)) -> Vec<Node<'_>> {
         self.root().map(|root| walk_range(root, span)).unwrap_or_default()
     }
+    /// Copy the replacement-decoded source text at `node`'s byte range.
+    /// The node must use this source's byte offsets.
     pub fn text(&self, node: Node<'_>) -> String {
         String::from_utf8_lossy(&self.source[node.byte_range()]).into_owned()
     }
+    /// Find an exact half-open UTF-8 byte span, or return `None`; later duplicate spans win.
     pub fn node(&self, start: usize, end: usize) -> Option<Node<'_>> {
         self.index().spans.get(&(start, end)).and_then(|reference| self.dereference(reference))
     }
+    /// Find the nearest enclosing adapter scope, excluding `node`, then fall back to root or node.
     pub fn scope<'a>(&'a self, node: Node<'a>) -> Node<'a> {
         std::iter::successors(node.parent(), Node::parent)
             .find(|parent| self.adapter.scopes().contains(&parent.kind()))
             .unwrap_or_else(|| self.root().unwrap_or(node))
     }
+    /// Return cached adapter-provided `(imported name, scope node)` entries.
     pub fn imports(&self) -> Vec<(String, Node<'_>)> {
         self.cache
             .imports
@@ -225,6 +245,7 @@ impl Syntax {
                 .collect()
         })
     }
+    /// Return cached lexical bindings as `(name, scope, declaration)` tuples in traversal order.
     pub fn bindings(&self) -> Vec<(String, Node<'_>, Node<'_>)> {
         self.binding_index()
             .entries
@@ -234,9 +255,12 @@ impl Syntax {
             })
             .collect()
     }
+    /// Return `(scope, declaration)` pairs for `name`, preserving binding order.
     pub fn bindings_named(&self, name: &str) -> Vec<(Node<'_>, Node<'_>)> {
         self.binding_index().named(name).map(|binding| self.restore_binding(binding)).collect()
     }
+    /// Return named `(scope, declaration)` pairs whose half-open scope contains byte `position`.
+    /// This range filter does not apply additional adapter visibility rules.
     pub fn bindings_at(&self, name: &str, position: usize) -> Vec<(Node<'_>, Node<'_>)> {
         self.binding_index()
             .named(name)
@@ -277,6 +301,7 @@ impl Syntax {
             names(node, &self.source)
         }
     }
+    /// Test half-open scope containment at byte `position` and adapter visibility restrictions.
     pub fn visible(&self, scope: Node<'_>, position: usize) -> bool {
         scope.start_byte() <= position && position < scope.end_byte() && self.adapter.visible(self, scope, position)
     }
@@ -284,6 +309,8 @@ impl Syntax {
         allowed.iter().any(|s| lookup.node.start_byte() <= s.start_byte && s.end_byte <= lookup.node.end_byte())
             || self.adapter.declaration_allowed(self, lookup)
     }
+    /// Test for a conflicting visible binding of `name` at UTF-8 byte `position`.
+    /// Exempt declarations containing `allowed` symbols and apply adapter import rules.
     pub fn shadowed(&self, name: &str, position: usize, allowed: &[Symbol]) -> bool {
         if self.adapter.import_shadowed(self, name, position) {
             return true;
@@ -297,6 +324,8 @@ impl Syntax {
             !self.declaration_allowed(&DeclarationLookup { name, node, position }, allowed)
         })
     }
+    /// Find one import on a one-based `line`, preferring normalized matches to optional `source`.
+    /// Return `None` if no unique candidate remains.
     pub fn import_node(&self, line: usize, source: Option<&str>) -> Option<Node<'_>> {
         let mut candidates: Vec<_> = self
             .nodes()
@@ -315,9 +344,11 @@ impl Syntax {
         }
         if candidates.len() == 1 { Some(candidates[0]) } else { None }
     }
+    /// Return the matched import's enclosing scope, or the tree root if no import is unique.
     pub fn import_scope(&self, line: usize, source: Option<&str>) -> Option<Node<'_>> {
         self.import_node(line, source).map(|n| self.scope(n)).or_else(|| self.root())
     }
+    /// Test whether `name` is rebound directly in `symbol`'s class body, excluding nested scopes.
     pub fn class_rebound(&self, symbol: &Symbol, name: &str) -> bool {
         self.binding_index()
             .named(name)
@@ -340,6 +371,7 @@ impl Syntax {
                 false
             })
     }
+    /// Cache and borrow member-write target spellings with all whitespace removed.
     pub fn written_members(&self) -> &HashSet<String> {
         self.cache.written_members.get_or_init(|| {
             self.nodes()
@@ -357,9 +389,11 @@ impl Syntax {
                 .collect()
         })
     }
+    /// Test whether a cached write target exactly matches `qualifier.name`.
     pub fn member_rebound(&self, qualifier: &str, name: &str) -> bool {
         self.written_members().contains(&format!("{qualifier}.{name}"))
     }
+    /// Apply language-specific static-member detection to `symbol` using this file's syntax.
     pub fn static_symbol(&self, symbol: &Symbol) -> bool {
         self.adapter.static_symbol(self, symbol)
     }

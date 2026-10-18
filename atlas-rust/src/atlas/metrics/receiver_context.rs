@@ -9,13 +9,16 @@ pub(super) struct ReceiverInference<'resolver> {
 }
 
 impl<'resolver> ReceiverInference<'resolver> {
+    /// Borrow the resolver and its shared receiver indexes for one inference context.
     pub(super) fn new(resolver: &'resolver CallResolver) -> Self {
         Self { resolver }
     }
 
+    /// Find receiver bindings named `name` in `path` whose scopes contain byte `position`.
     pub(super) fn bindings_at(&self, path: &str, name: &str, position: usize) -> Vec<ReceiverBinding<'resolver>> {
         self.resolver.receivers.bindings_at(&self.resolver.syntax[path], name, position)
     }
+    /// Find receiver bindings named `name` in `path` with declaration starts in half-open `span`.
     pub(super) fn bindings_within(
         &self,
         path: &str,
@@ -29,6 +32,8 @@ impl<'resolver> ReceiverInference<'resolver> {
         self.resolver.receivers.bindings_for(&self.resolver.syntax[path])
     }
 
+    /// Split a dotted or `::` type name and resolve it as a qualified request.
+    /// Return no candidates if the name has no nonempty qualifier.
     pub(super) fn qualified_type(&self, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
         let separator = if request.name.contains("::") { "::" } else { "." };
         let Some((qualifier, name)) = request.name.rsplit_once(separator).filter(|(q, _)| !q.is_empty()) else {

@@ -11,6 +11,10 @@ use std::{
 
 pub const MAX_FILE_BYTES: usize = 8 * 1024 * 1024;
 pub const MAX_EXCERPT_BYTES: usize = 16 * 1024;
+/// Read a bounded local excerpt only after matching the indexed file's SHA-256.
+/// Use `options` for one-based line paging within `node`'s span; return a status without
+/// source for external/pathless, unverified, changed, unsafe, or otherwise unavailable files.
+/// Propagate reader errors; local filesystem failures become statuses. Do not write files.
 pub fn source_excerpt(reader: &mut dyn NavigationReader, node: &Value, options: &SourceOptions) -> Result<Value> {
     let Some(path) = node["path"].as_str().filter(|p| !p.is_empty()) else {
         return Ok(json!({"status": "unavailable"}));
@@ -32,6 +36,7 @@ pub fn source_excerpt(reader: &mut dyn NavigationReader, node: &Value, options: 
     }
     Ok(verified_excerpt(node, &data, options))
 }
+/// Return a status/path record, adding file and excerpt byte caps for `too_large`.
 pub fn source_status(status: &str, path: &str) -> Value {
     let mut value = json!({"status": status, "path": path});
     if status == "too_large" {
@@ -40,9 +45,14 @@ pub fn source_status(status: &str, path: &str) -> Value {
     }
     value
 }
+/// Borrow UTF-8 lines from `data`, splitting only on LF and removing trailing CR.
+/// Omit a trailing empty row; return an error for invalid UTF-8 without replacing bytes.
 pub fn source_lines(data: &[u8]) -> std::result::Result<Vec<&str>, std::str::Utf8Error> {
     Ok(std::str::from_utf8(data)?.split_terminator('\n').map(|line| line.strip_suffix('\r').unwrap_or(line)).collect())
 }
+/// Format already hash-verified `data` as a span/line-bounded excerpt using `options`.
+/// Return statuses for invalid UTF-8, absent symbol spans, or excerpts above 16 KiB.
+/// Do not verify the hash or enforce the whole-file byte cap here.
 pub fn verified_excerpt(node: &Value, data: &[u8], options: &SourceOptions) -> Value {
     let path = node["path"].as_str().unwrap_or("");
     let Ok(lines) = source_lines(data) else {
@@ -55,6 +65,10 @@ pub fn verified_excerpt(node: &Value, data: &[u8], options: &SourceOptions) -> V
     let bytes: usize = excerpt["lines"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().len()).sum();
     if bytes > MAX_EXCERPT_BYTES { source_status("too_large", path) } else { excerpt }
 }
+/// Return a one-based line page bounded by the node span, available `lines`, and `options`.
+/// File nodes use the whole file. Clamp start to the span's first line and include
+/// continuation metadata; assume valid indexed spans and positive line limits.
+/// Do not enforce byte limits or read files.
 pub fn excerpt_lines(node: &Value, lines: &[&str], options: &SourceOptions) -> Value {
     let (first, last) = if node["level"] == "file" {
         (1, lines.len())
@@ -81,6 +95,9 @@ fn requested_start(first: usize, requested: Option<&serde_json::Number>) -> serd
     }
     number.clone()
 }
+/// Read at most 8 MiB from a regular file beneath resolved `root` using a relative path.
+/// Reject absolute paths, parent components, and escapes; return status/bytes without writing.
+/// Unsafe, missing, unreadable, or oversized files yield empty bytes rather than errors.
 pub fn local_bytes(root: &str, relative: &str) -> (&'static str, Vec<u8>) {
     let relative = Path::new(relative);
     if relative.is_absolute() || relative.components().any(|c| c == Component::ParentDir) {
@@ -103,6 +120,12 @@ pub fn local_bytes(root: &str, relative: &str) -> (&'static str, Vec<u8>) {
         Err(_) => ("unreadable", vec![]),
     }
 }
+/// Read a regular `target` after the caller verifies canonical containment within `root`.
+/// Pin directory descriptors and reject symlink swaps; return `ok` with at most 8 MiB,
+/// or `unreadable`/`too_large` with empty bytes. Do not write files.
+///
+/// # Errors
+/// Propagate path, open, metadata, and read errors for the caller to classify.
 #[cfg(unix)]
 pub fn contained_bytes(root: &Path, target: &Path) -> io::Result<(&'static str, Vec<u8>)> {
     use std::{

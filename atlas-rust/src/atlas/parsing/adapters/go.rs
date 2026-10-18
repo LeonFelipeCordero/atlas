@@ -25,6 +25,8 @@ fn binding(node: Node<'_>, source: &[u8]) -> Option<String> {
     names.get(index).filter(|name| name.kind() == "identifier").map(|name| text(Some(*name), source))
 }
 
+/// Mark function literals as callbacks, using the identifier at their assignment/spec position if present.
+/// Keep other declaration names; `source` must match the node's syntax tree.
 pub fn declaration<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarrier<'tree> {
     if node.kind() == "func_literal" {
         callback_carrier(node, binding(node, source), source)

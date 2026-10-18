@@ -11,6 +11,8 @@ pub struct Walk {
     pub cutoffs: Map<String, Value>,
 }
 impl Walk {
+    /// Return visited nodes/edges and expandable cutoffs or non-expandable external boundaries.
+    /// Only traversal cutoffs set `truncated`; external nodes alone do not.
     pub fn output(&self) -> Value {
         let mut external: Vec<_> = self.nodes.iter().filter(|(_, n)| n["external"] == true).map(|(k, _)| k).collect();
         external.sort();
@@ -87,11 +89,17 @@ impl Traversal<'_> {
         Ok(())
     }
 }
+/// Return breadth-first state using `request` direction, relations, depth, and budgets.
+/// Always include the starting node; do not expand external nodes. Record budget/depth
+/// cutoffs and first-discovery parents; propagate missing-node and reader errors.
 pub fn traverse(reader: &mut dyn NavigationReader, request: &TraversalRequest) -> Result<Walk> {
     let mut walk = Walk::default();
     walk.nodes.insert(request.key.clone(), reader.node(&request.key)?);
     Traversal { reader, request, walk, frontier: VecDeque::from([(request.key.clone(), 0)]) }.run()
 }
+/// Reconstruct a discovered route from a `walk` rooted at `start` to `target`.
+/// Return ordered keys/edges with `found`, or empty paths with `unknown` after cutoffs
+/// and `not_found` after exhaustion. Require consistent parent/edge maps or panic.
 pub fn route(walk: &Walk, start: &str, target: &str) -> Value {
     if !walk.nodes.contains_key(target) {
         return json!({"status": if walk.cutoffs.is_empty() { "not_found" } else { "unknown" }, "path": [], "pathEdges": []});

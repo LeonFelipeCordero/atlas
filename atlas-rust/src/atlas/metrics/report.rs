@@ -103,6 +103,12 @@ fn cycle_measurements(groups: &[Value], nodes: &[Value]) -> Result<Vec<Value>> {
     }).collect()
 }
 
+/// Build ordered measurements, file summaries, and cycle summaries from an artifact.
+/// Recompute dependency views and detect cycles if the stored cycle section is absent or empty.
+/// Preserve diagnostics and mutation candidates without modifying `artifact`.
+///
+/// # Errors
+/// Reject malformed arrays, cycle data, diagnostics, or measured complexity values.
 pub fn build_artifact_report(artifact: &Value) -> Result<Value> {
     let empty = Vec::new();
     let nodes = optional_array(artifact, "nodes")?.unwrap_or(&empty);
@@ -153,7 +159,11 @@ fn record_node(node: &Value) -> Value {
     result
 }
 
-/// Saved graph facts use flat metrics; normalize them to the artifact interface.
+/// Normalize saved graph facts with flat metrics and return an artifact-style report.
+/// Prefer nonempty `edges` over legacy `imports`; preserve diagnostics and mutation candidates.
+///
+/// # Errors
+/// Return an error if nodes or normalized report data are malformed.
 pub fn build_report(graph: &Value) -> Result<Value> {
     let nodes: Vec<_> =
         graph["nodes"].as_array().ok_or_else(|| anyhow!("nodes must be an array"))?.iter().map(record_node).collect();

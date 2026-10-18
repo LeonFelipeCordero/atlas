@@ -51,9 +51,12 @@ pub struct Assignment {
     pub position: usize,
 }
 impl Assignment {
+    /// Start argument assignment for `parameters` with no assigned slots and position zero.
     pub fn new(parameters: Vec<Parameter>) -> Self {
         Self { parameters, assigned: BTreeSet::new(), position: 0 }
     }
+    /// Locate a unique named parameter or the next positional slot for `argument`.
+    /// Advance past non-variadic positional slots; return `None` for missing/ambiguous names or excess inputs.
     pub fn index(&mut self, argument: &Argument<'_>) -> Option<usize> {
         if let Some(name) = &argument.name {
             let indexes: Vec<_> =
@@ -67,6 +70,7 @@ impl Assignment {
         }
         Some(index)
     }
+    /// Record an assignment to a valid parameter `index`; reject repeats except for variadic slots.
     pub fn assign(&mut self, index: usize) -> bool {
         if self.assigned.contains(&index) && !self.parameters[index].variadic {
             return false;
@@ -74,6 +78,7 @@ impl Assignment {
         self.assigned.insert(index);
         true
     }
+    /// Test whether every required, non-variadic parameter has an assignment.
     pub fn complete(&self) -> bool {
         self.parameters.iter().enumerate().all(|(i, p)| self.assigned.contains(&i) || p.default || p.variadic)
     }
@@ -81,6 +86,9 @@ impl Assignment {
 fn sole(matches: Vec<Symbol>) -> Vec<Symbol> {
     if matches.len() == 1 { matches } else { vec![] }
 }
+/// Return the sole viable JVM callable for `request`, or no candidates if ambiguity remains.
+/// Retain candidates with unknown signatures or types; absent argument syntax requires an already unique match.
+/// `identity` must contain syntax for the request and candidate files.
 pub fn select_callable(
     identity: &CallableIdentity,
     request: &ResolutionRequest<'_>,
@@ -110,6 +118,9 @@ pub fn select_callable(
             .collect(),
     )
 }
+/// Read Java/Kotlin invocation arguments using `source` for Kotlin names.
+/// Retain direct name/spread tokens; return `None` for missing, invalid, or unsupported syntax,
+/// including Kotlin trailing lambdas.
 pub fn call_arguments<'a>(node: Option<Node<'a>>, source: &[u8]) -> Option<Vec<Argument<'a>>> {
     let node = node.filter(|n| !n.has_error())?;
     if ["method_invocation", "object_creation_expression"].contains(&node.kind()) {
@@ -145,6 +156,8 @@ pub fn call_arguments<'a>(node: Option<Node<'a>>, source: &[u8]) -> Option<Vec<A
         })
         .collect()
 }
+/// Read Java/Kotlin parameter names, annotations, defaults, and variadic flags from matching `source`.
+/// Return `None` for missing/error syntax, unsupported containers, or explicit receiver parameters.
 pub fn callable_parameters(node: Option<Node<'_>>, source: &[u8]) -> Option<Vec<Parameter>> {
     let node = node.filter(|n| !n.has_error())?;
     let container = field(node, &["parameters"]).or_else(|| child(node, &["function_value_parameters"]))?;
@@ -189,6 +202,9 @@ fn parameter(children: &[Node<'_>], index: usize, source: &[u8]) -> Option<Param
             .is_some_and(|n| text(Some(*n), source).split_whitespace().any(|s| s == "vararg")),
     })
 }
+/// Test argument assignment and proven type compatibility using source/target `context`.
+/// Honor defaults, named arguments, and variadic parameters; unknown types remain viable.
+/// A spread argument keeps the candidate viable without further shape checks.
 pub fn accepts(context: &CallContext<'_>, parameters: Vec<Parameter>, arguments: &[Argument<'_>]) -> bool {
     if arguments.iter().any(|a| a.spread) {
         return true;
@@ -216,6 +232,8 @@ fn accept_argument(context: &CallContext<'_>, assignment: &mut Assignment, argum
     }
     !incompatible(actual.as_deref(), expected.as_deref(), context.source.syntax.adapter.family())
 }
+/// Infer a supported literal or uniquely declared identifier's type in `context`.
+/// Return `None` when the type cannot be established conservatively.
 pub fn expression_type(context: &TypeContext<'_>, node: Node<'_>) -> Option<String> {
     let kotlin = context.syntax.adapter.family() == "kotlin";
     match node.kind() {
@@ -266,6 +284,9 @@ const JAVA_NUMERIC: &[&str] = &["byte", "short", "int", "long", "float", "double
 const JAVA_PRIMITIVES: &[&str] = &["byte", "short", "int", "long", "float", "double", "char", "boolean"];
 const JAVA_STRINGS: &[&str] = &["String", "java.lang.String"];
 const KOTLIN_CLOSED: &[&str] = &["String", "Char", "Boolean", "Int", "Long", "Float", "Double", "Byte", "Short"];
+/// Retain an annotation only when declaration syntax and context establish it conservatively.
+/// Missing inputs, ambiguous names, imports, and generic/nullable syntax can yield `None`;
+/// Java primitive annotations are accepted directly when a declaration node is present.
 pub fn proven_type(context: &TypeContext<'_>, annotation: Option<&str>, node: Option<Node<'_>>) -> Option<String> {
     let annotation = annotation?;
     let node = node?;
@@ -303,6 +324,8 @@ fn python_word(value: Option<char>) -> bool {
     static WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A[\p{L}\p{N}_]\z").unwrap());
     value.is_some_and(|c| WORD.is_match(c.encode_utf8(&mut [0; 4])))
 }
+/// Test only proven conflicts between closed built-in types in the requested JVM `family`.
+/// Unknown types and allowed numeric conversions are not conflicts; non-Kotlin families use Java rules.
 pub fn incompatible(actual: Option<&str>, expected: Option<&str>, family: &str) -> bool {
     let (Some(actual), Some(expected)) = (actual, expected) else {
         return false;

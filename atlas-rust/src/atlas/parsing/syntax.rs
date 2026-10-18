@@ -38,6 +38,7 @@ pub struct CallSite<'tree> {
     pub parents: Vec<(Node<'tree>, &'tree [u8])>,
 }
 impl<'tree> CallSite<'tree> {
+    /// Create a site at the node's original byte offsets, without synthetic payload context.
     pub fn new(node: Node<'tree>) -> Self {
         Self { node, offset: 0, opaque: false, parents: vec![] }
     }
@@ -45,6 +46,11 @@ impl<'tree> CallSite<'tree> {
 pub type CallTarget = (Option<String>, bool, Option<String>);
 pub type CallVisitor<'a> = dyn FnMut(CallSite<'_>, &[u8]) + 'a;
 
+/// Parse in-memory source bytes with the requested language-pack grammar.
+/// Syntax errors remain in the returned tree rather than causing an error.
+///
+/// # Errors
+/// Returns an error if grammar lookup, parser configuration, or parsing fails.
 pub fn parse(language: &str, source: &[u8]) -> Result<Tree> {
     let mut parser = tree_sitter::Parser::new();
     parser.set_language(&tree_sitter_language_pack::get_language(language)?)?;
@@ -56,10 +62,13 @@ pub struct ParsedSyntax<'a> {
     pub root: Node<'a>,
 }
 
+/// Return `REFERENCES` for method/callable references and `CALLS` for other sites.
 pub fn relationship(site: &CallSite<'_>) -> &'static str {
     if REFERENCES.contains(&site.node.kind()) { "REFERENCES" } else { "CALLS" }
 }
 
+/// Return trimmed member text from `source`, falling back to the complete target.
+/// `source` must correspond to the target's syntax tree.
 pub fn call_member(target: Node<'_>, source: &[u8]) -> String {
     text(Some(field(target, &["property", "attribute", "field", "name", "method", "right"]).unwrap_or(target)), source)
         .trim()
@@ -87,6 +96,10 @@ fn callee_node(node: Node<'_>) -> Option<Node<'_>> {
     }
 }
 
+/// Extract the optional target name, bare-name flag, and optional syntactic qualifier.
+/// Handle constructor references and dotted/scoped names without resolving symbols.
+/// Use `member` for other target names; return `(None, false, None)` if no callee exists.
+/// `source` must correspond to the node's syntax tree.
 pub fn call_target(node: Node<'_>, source: &[u8], member: fn(Node<'_>, &[u8]) -> String) -> CallTarget {
     if REFERENCES.contains(&node.kind()) {
         return reference_target(node, source);
@@ -114,10 +127,14 @@ pub fn call_target(node: Node<'_>, source: &[u8], member: fn(Node<'_>, &[u8]) ->
     ((!name.is_empty()).then_some(name), bare, None)
 }
 
+/// Extract the site's target name, bare-name flag, and qualifier using shared syntax.
+/// `source` must match the site's tree; offsets and synthetic scope data are not used.
 pub fn normalize_call(site: &CallSite<'_>, source: &[u8]) -> CallTarget {
     call_target(site.node, source, call_member)
 }
 
+/// Return optional visibility and annotation text from the node's direct modifiers.
+/// Recognize visibility modifier nodes and values in `words`, using matching `source` bytes.
 pub fn modifier_metadata(node: Node<'_>, source: &[u8], words: &[&str]) -> (Option<String>, Vec<String>) {
     let modifiers = named_children(node).into_iter().find(|child| child.kind() == "modifiers");
     let mut visibility = None;
@@ -134,6 +151,8 @@ pub fn modifier_metadata(node: Node<'_>, source: &[u8], words: &[&str]) -> (Opti
     (visibility, decorators)
 }
 
+/// Return explicit visibility and annotations using the shared visibility vocabulary.
+/// `source` must correspond to the node's syntax tree; no default visibility is inferred.
 pub fn metadata(node: Node<'_>, source: &[u8]) -> (Option<String>, Vec<String>) {
     modifier_metadata(node, source, &["public", "private", "protected", "internal", "pub"])
 }
@@ -146,6 +165,8 @@ pub struct DeclarationCarrier<'tree> {
     pub decorators: Vec<String>,
 }
 
+/// Keep the declaration node and read its optional `name` field from matching `source` bytes.
+/// Leave kind and decorators unset.
 pub fn named_carrier<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarrier<'tree> {
     DeclarationCarrier {
         node,
@@ -155,6 +176,8 @@ pub fn named_carrier<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarr
     }
 }
 
+/// Mark the node as a function carrier, preferring a nonempty `binding` to its own name.
+/// Read the fallback name from `source`, which must match the node's tree.
 pub fn callback_carrier<'tree>(node: Node<'tree>, binding: Option<String>, source: &[u8]) -> DeclarationCarrier<'tree> {
     let mut carrier = named_carrier(node, source);
     carrier.name = binding.filter(|s| !s.is_empty()).or(carrier.name);
@@ -166,6 +189,8 @@ fn expression_children(node: Node<'_>) -> Vec<Node<'_>> {
     named_children(node).into_iter().filter(|child| child.kind() != "comment").collect()
 }
 
+/// Return a callback's variable, assignment target, or pair key from matching `source` bytes.
+/// Unwrap single-expression parentheses; return `None` for unsupported parent shapes.
 pub fn callback_binding(mut node: Node<'_>, source: &[u8]) -> Option<String> {
     while let Some(parent) = node.parent().filter(|p| p.kind() == "parenthesized_expression") {
         if expression_children(parent) != vec![node] {
@@ -195,6 +220,9 @@ pub struct ImportPolicy<'a> {
     pub accept: fn(Node<'_>) -> bool,
 }
 
+/// Add imports accepted by `policy` from the root and its matching source bytes.
+/// Entries contain text and one-based lines. Deduplicate additions by trimmed text and line,
+/// preserve native entries, and sort by line. Return `imports` unchanged if no node type is set.
 pub fn supplement_imports(
     (root, source): (Node<'_>, &[u8]),
     mut imports: Vec<(String, usize)>,

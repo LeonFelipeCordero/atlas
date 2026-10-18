@@ -2,10 +2,15 @@ use super::graph_metadata::optional_mapping;
 pub use crate::domain::models::SOURCE_METRIC_NAMES as METRIC_NAMES;
 use anyhow::{Result, ensure};
 use serde_json::Value;
+/// Borrow array field `name`, or return an empty slice if it is absent or not an array.
+/// This accessor does not validate collection shapes.
 pub fn collection<'a>(value: &'a Value, name: &str) -> &'a [Value] {
     value[name].as_array().map(Vec::as_slice).unwrap_or(&[])
 }
 
+/// Check artifact objects, collection/record shapes, scalar fields, and decorator containers.
+/// Return an error for invalid shapes without writing to storage. Required field types,
+/// parent cycles, and database constraints need separate checks.
 pub fn validate_artifact(artifact: &Value) -> Result<()> {
     ensure!(artifact.is_object(), "Graph artifact must be an object");
     optional_mapping(&artifact["repository"], "repository")?;

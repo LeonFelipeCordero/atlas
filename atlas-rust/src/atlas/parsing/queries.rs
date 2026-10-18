@@ -67,6 +67,8 @@ const TAGS: &[(&str, &str)] = &[
     ("udev", include_str!("queries/udev.scm")),
 ];
 
+/// Return bundled tags query text for the exact language ID, or `None` if no asset exists.
+/// This lookup does not validate importer support or compile the query.
 pub fn tags_query(language: &str) -> Option<&'static str> {
     TAGS.iter().find(|(name, _)| *name == language).map(|(_, query)| *query)
 }

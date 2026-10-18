@@ -20,6 +20,11 @@ pub struct Interrupt {
     previous: Vec<(libc::c_int, libc::sigaction)>,
 }
 impl Interrupt {
+    /// Reset interruption state and install Unix SIGINT/SIGTERM handlers.
+    ///
+    /// The guard restores previous signal dispositions on drop. Installation
+    /// errors propagate; callers must serialize guards because state is global.
+    /// On non-Unix platforms, this only resets the shared state.
     pub fn new() -> Result<Self> {
         INTERRUPTED.store(false, Ordering::Relaxed);
         let mut interrupt = Self {
@@ -42,6 +47,7 @@ impl Interrupt {
         }
         Ok(interrupt)
     }
+    /// Return an error if a handled signal requested cancellation; otherwise succeed.
     pub fn check(&self) -> Result<()> {
         if INTERRUPTED.load(Ordering::Relaxed) {
             bail!("Mutation run interrupted");
@@ -50,6 +56,7 @@ impl Interrupt {
     }
 }
 impl Drop for Interrupt {
+    /// Restore saved Unix signal dispositions, ignoring restoration failures.
     fn drop(&mut self) {
         #[cfg(unix)]
         for (signal, action) in self.previous.drain(..).rev() {
@@ -63,6 +70,7 @@ impl Drop for Interrupt {
 #[derive(Debug)]
 pub struct InvalidCommand;
 impl std::fmt::Display for InvalidCommand {
+    /// Write the embedded-NUL diagnostic; propagate formatter errors.
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str("embedded null byte")
     }
@@ -71,6 +79,7 @@ impl std::error::Error for InvalidCommand {}
 
 struct Process(Child);
 impl Drop for Process {
+    /// Kill and reap the child, also killing its Unix process group; ignore errors.
     fn drop(&mut self) {
         #[cfg(unix)]
         unsafe {
@@ -81,6 +90,19 @@ impl Drop for Process {
     }
 }
 
+/// Run a trusted, validated target and return its outcome, exit code, log, and duration.
+///
+/// `paths` contains the working directory and log destination. Replace the log,
+/// combine stdout/stderr there, and use a temporary Python bytecode cache. Execute
+/// the argument vector directly, without a shell or workspace isolation. Reap the
+/// child on exit; on Unix also kill its process group, including remaining children.
+/// Timeouts kill the process and return `timeout`; zero/nonzero exits return
+/// `survived`/`killed`. Unix signal exits use a negative signal number.
+///
+/// # Errors
+/// Propagate interruption and embedded NUL arguments. Record other execution or
+/// I/O failures as an `error` outcome. The caller must supply a nonempty command
+/// and a positive integer timeout; values above `u64::MAX` use that maximum.
 pub fn run_command(target: &MutationTarget, paths: (&Path, &Path), interrupt: &Interrupt) -> Result<Value> {
     let (cwd, log) = paths;
     let started = Instant::now();

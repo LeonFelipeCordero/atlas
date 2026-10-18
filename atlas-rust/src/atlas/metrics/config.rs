@@ -15,18 +15,29 @@ pub const LIMITS: [&str; 9] = [
     "maxInstability",
 ];
 
+/// Return default check limits; null limits disable change-impact and instability checks.
 pub fn default_config() -> Value {
     json!({"maxFileLines": 600, "maxFunctionLines": 100, "maxParameters": 3, "maxWeightedComplexity": 8,
         "maxDecisionDepth": 3, "maxNestedLoops": 0, "maxCircularImportGroups": 0,
         "maxChangeImpact": null, "maxInstability": null})
 }
 
+/// Read `root/atlas.json` and return check limits, excluding validated mutation settings.
+/// Use defaults if the file is absent; do not search parent directories.
+///
+/// # Errors
+/// Return file-reading, JSON, or project-setting validation errors.
 pub fn load_config(root: &Path) -> Result<Value> {
     let mut config = load_project_config(root)?;
     config.as_object_mut().unwrap().remove("mutations");
     Ok(config)
 }
 
+/// Read `root/atlas.json` into validated check and mutation settings, filling omitted defaults.
+/// A missing file uses defaults; no parent directories are searched.
+///
+/// # Errors
+/// Return an error for unreadable files, invalid JSON, or invalid settings.
 pub fn load_project_config(root: &Path) -> Result<Value> {
     let path = root.join("atlas.json");
     let source = match fs::read_to_string(&path) {
@@ -121,9 +132,18 @@ fn restore_nonfinite(value: &mut Value, marker: &str) {
     }
 }
 
+/// Validate check limits and fill omitted defaults without modifying `value`.
+/// Null limits disable their checks.
+///
+/// # Errors
+/// Reject unknown fields, wrong types, negative limits, and instability outside 0..=1.
 pub fn validate_config(value: &Value) -> Result<Value> {
     validate(value, false)
 }
+/// Validate project check and mutation settings and return a default-filled copy.
+///
+/// # Errors
+/// Reject unknown fields, invalid limits, and invalid mutation settings.
 pub fn validate_project_config(value: &Value) -> Result<Value> {
     validate(value, true)
 }
@@ -205,6 +225,8 @@ fn numeric_type_error(name: &str, input: &Value) -> Option<String> {
     };
     (!valid).then(|| validation_error(name, message, input))
 }
+/// Borrow a JSON number's integer spelling, including `-0`, or return `None`.
+/// Decimal and exponent spellings are not integers for strict configuration validation.
 pub(crate) fn integer_text(value: &Value) -> Option<&str> {
     let text = value.as_number()?.as_str();
     let digits = text.strip_prefix('-').unwrap_or(text);

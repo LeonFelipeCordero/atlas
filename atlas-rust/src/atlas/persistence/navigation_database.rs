@@ -46,11 +46,13 @@ async fn check_schema(connection: &DatabaseTransaction) -> Result<()> {
 pub struct ReadTransaction(Option<DatabaseTransaction>);
 impl std::ops::Deref for ReadTransaction {
     type Target = DatabaseTransaction;
+    /// Borrow the active read transaction; panic if its internal transaction is absent.
     fn deref(&self) -> &Self::Target {
         self.0.as_ref().expect("Read transaction")
     }
 }
 impl Drop for ReadTransaction {
+    /// Drop the transaction inside Tokio so SQLx can schedule rollback and pool cleanup.
     fn drop(&mut self) {
         // SQLx needs Tokio to schedule rollback and return the connection to its pool.
         run(async {
@@ -58,6 +60,12 @@ impl Drop for ReadTransaction {
         });
     }
 }
+/// Open the supplied/default database in read-only mode and retain one read transaction.
+/// Check required graph tables/indexes; never create or migrate a database. Dropping
+/// the returned guard schedules rollback and releases its connection.
+///
+/// # Errors
+/// Return path, connection, query, or missing-schema errors with migration/indexing guidance.
 pub fn readonly_session(path: Option<&Path>) -> Result<ReadTransaction> {
     let target = database_path(path)?;
     run(async {

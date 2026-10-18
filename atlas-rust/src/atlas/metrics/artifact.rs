@@ -189,6 +189,9 @@ fn projected_key(key: &str, level: &str, lookup: &BTreeMap<&str, &Value>) -> Opt
     None
 }
 
+/// Project graph dependencies onto module, file, type, and callable ancestors.
+/// Exclude containment and same-node projections; aggregate counts by endpoint pair.
+/// `nodes` must provide the hierarchy and stable keys used by `edges`.
 pub fn build_dependency_views(nodes: &[Value], edges: &[Value]) -> Value {
     let mut views = json!({});
     for level in LEVELS {
@@ -250,6 +253,13 @@ fn add_dependency_metrics(nodes: &mut [Value], views: &Value) {
     }
 }
 
+/// Assemble a validated version-2 graph artifact from `repo` and resolved `graph`.
+/// Use `root` for repository metadata and record the current UTC indexing time.
+/// Include hierarchy, dependency metrics, runtime import cycles, and mutation candidates;
+/// return the artifact without writing it to disk.
+///
+/// # Errors
+/// Return serialization, hierarchy, missing-reference, mutation extraction, or validation errors.
 pub fn build_artifact(root: &Path, repo: &ParsedRepository, graph: ResolvedGraph) -> Result<GraphArtifact> {
     let name = root.file_name().unwrap_or_default().to_string_lossy();
     let nodes =
@@ -306,6 +316,11 @@ pub fn build_artifact(root: &Path, repo: &ParsedRepository, graph: ResolvedGraph
     Ok(artifact)
 }
 
+/// Check unique node keys, parent/edge references, and dependency property values.
+/// Do not modify `artifact`.
+///
+/// # Errors
+/// Reject malformed arrays, missing references, duplicate keys, or invalid dependency metrics.
 pub fn validate_references(artifact: &Value) -> Result<()> {
     let nodes = artifact["nodes"].as_array().ok_or_else(|| anyhow!("nodes must be an array"))?;
     let keys: BTreeSet<_> = nodes.iter().filter_map(|node| node["stableKey"].as_str()).collect();
@@ -347,6 +362,10 @@ fn validate_edge_references(edge: &Value, keys: &BTreeSet<&str>) -> Result<()> {
     Ok(())
 }
 
+/// Validate version-2 artifact fields, optional sections, and graph references without modifying them.
+///
+/// # Errors
+/// Return an error for unsupported fields, invalid types or values, or broken references.
 pub fn validate_artifact(artifact: &Value) -> Result<()> {
     reject_extra(
         artifact,

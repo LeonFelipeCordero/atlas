@@ -26,6 +26,13 @@ pub enum ProjectSelector<'a> {
     Name(&'a str),
     Directory(&'a Path),
 }
+/// Open one read-only graph snapshot at the supplied/default database path.
+/// `project` selects an ID/name or the nearest containing local registration;
+/// `revision`, when set, must match the saved revision. Never create or migrate storage.
+///
+/// # Errors
+/// Reject absent/ambiguous projects, unindexed graphs, stale revisions, missing schema,
+/// or path/database failures. The returned reader retains its transaction until dropped.
 pub fn navigation_reader(
     project: ProjectSelector<'_>,
     revision: Option<&str>,
@@ -97,9 +104,12 @@ fn values(rows: Vec<(GraphNodeRow, Option<GraphSymbolRow>)>) -> Vec<Value> {
     rows.into_iter().map(|(n, s)| node_value(n, s)).collect()
 }
 impl NavigationReader for GraphReader {
+    /// Borrow the identity and revision fixed when this read transaction opened.
     fn snapshot(&self) -> &GraphSnapshot {
         &self.snapshot
     }
+    /// Read level/relation counts and up to 30 key-sorted roots with a truncation flag.
+    /// Propagate query errors without modifying storage.
     fn overview(&mut self) -> Result<Value> {
         run(async {
             let id = &self.snapshot.repository_id;
@@ -142,6 +152,8 @@ impl NavigationReader for GraphReader {
             Ok(json!({"levels": levels, "relations": relations, "roots": roots, "truncated": truncated}))
         })
     }
+    /// Read up to `limit` ranked literal name/path matches or exact stable-key matches.
+    /// Use SQLite case folding for names/paths, preferring exact keys and paths; propagate query errors.
     fn find(&mut self, query: &str, limit: usize) -> Result<Vec<Value>> {
         run(async {
             let matches = Condition::any().add(graph_nodes::Column::NodeKey.eq(query));
@@ -180,6 +192,8 @@ impl NavigationReader for GraphReader {
             ))
         })
     }
+    /// Read stable-key details with metrics, file hash, and up to 100 ordered decorators.
+    /// Mark external nodes and decorator truncation; fail for absent keys or query errors.
     fn node(&mut self, key: &str) -> Result<Value> {
         run(async {
             let id = &self.snapshot.repository_id;
@@ -216,6 +230,9 @@ impl NavigationReader for GraphReader {
             Ok(node)
         })
     }
+    /// Read up to `limit` direct children of `key` after `offset`, in artifact order.
+    /// Reject offsets outside SQLite's signed integer range; propagate query errors.
+    /// An absent parent yields no rows rather than a missing-node error.
     fn children(&mut self, key: &str, limit: usize, offset: usize) -> Result<Vec<Value>> {
         run(async {
             Ok(values(
@@ -233,6 +250,10 @@ impl NavigationReader for GraphReader {
             ))
         })
     }
+    /// Read adjacency filtered by request direction/relations, capped at its limit.
+    /// Deduplicate by ordinal and return artifact order; empty relations yield no rows.
+    /// `out` selects outgoing, `both` selects both, and other directions select incoming;
+    /// propagate query errors without validating the request.
     fn edges(&mut self, request: &EdgeRequest) -> Result<Vec<Value>> {
         run(async {
             let directions = match request.direction.as_str() {
@@ -255,6 +276,7 @@ impl NavigationReader for GraphReader {
             Ok(selected.into_values().take(request.limit).collect())
         })
     }
+    /// Read diagnostics for exact `paths` in artifact order up to `limit`; propagate query errors.
     fn diagnostics(&mut self, paths: &[String], limit: usize) -> Result<Vec<Value>> {
         run(async {
             Ok(graph_diagnostics::Entity::find()
@@ -269,6 +291,8 @@ impl NavigationReader for GraphReader {
                 .collect())
         })
     }
+    /// Read up to two key/hash records for exact `path`, sorted by key to detect ambiguity.
+    /// Propagate query errors; do not access local source files.
     fn file(&mut self, path: &str) -> Result<Vec<Value>> {
         run(async {
             Ok(graph_nodes::Entity::find()

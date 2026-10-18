@@ -18,6 +18,8 @@ static IMPORT: LazyLock<Regex> =
 static PACKAGE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?:\A|[^\p{L}\p{N}_])package\s+([\p{L}\p{N}_.]+)").unwrap());
 
+/// Count Java inputs excluding receiver parameters; a single lambda identifier counts as one.
+/// Missing/error containers yield `None`; the source argument is unused.
 pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     let parameters = parameter_node(node, &[]);
     if parameters.is_some_and(|n| n.kind() == "identifier") {
@@ -26,6 +28,7 @@ pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     count_parameters(parameters, &["receiver_parameter"])
 }
 
+/// Extract the package name from Java/Kotlin syntax, or an empty string when absent.
 pub fn package(syntax: &Syntax) -> String {
     let source = syntax
         .nodes()
@@ -36,15 +39,21 @@ pub fn package(syntax: &Syntax) -> String {
     PACKAGE.captures(&source).map(|m| m[1].to_owned()).unwrap_or_default()
 }
 
+/// Extract the last quoted path or Java import name, including static imports.
+/// Fall back to trimmed `source` when no pattern matches.
 pub fn import_path(source: &str) -> String {
     quoted_path(source)
         .unwrap_or_else(|| IMPORT.captures(source).map(|m| m[1].to_owned()).unwrap_or_else(|| source.trim().into()))
 }
 
+/// Return the sole viable JVM callable after conservative argument-shape and proven-type filtering.
+/// Unknown signatures remain viable; unresolved ambiguity yields no targets.
 pub fn select(identity: &CallableIdentity, request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     super::callable_selection::select_callable(identity, request, matches)
 }
 
+/// Return `(callee, receiver)` for Java calls, constructors, and two-part method references.
+/// Constructors have no receiver; other shapes use shared extraction with `adapter` metadata.
 pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (Option<Node<'a>>, Option<Node<'a>>) {
     if let Some(node) = node {
         if node.kind() == "object_creation_expression" {
@@ -58,6 +67,8 @@ pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (
     generic::default_call_target(adapter, node)
 }
 
+/// Extract Java binding targets, giving enhanced-for declarations the loop node as scope.
+/// Catch parameters retain the input scope; other forms use shared extraction.
 pub fn binding<'a>(
     adapter: &ResolutionAdapter,
     syntax: &'a Syntax,
@@ -70,14 +81,17 @@ pub fn binding<'a>(
     }
 }
 
+/// Return `symbol`'s package-qualified identity using Java/Kotlin `syntax`; the file argument is unused.
 pub fn module_identity(_file: &ParsedFile, symbol: &Symbol, syntax: &Syntax) -> String {
     identity_in_package(symbol, &package(syntax))
 }
+/// Join `package` with the final `::` component of the symbol's qualified name, omitting empty parts.
 pub fn identity_in_package(symbol: &Symbol, package: &str) -> String {
     let name = symbol.qualified_name.rsplit("::").next().unwrap_or("");
     [package, name].into_iter().filter(|part| !part.is_empty()).collect::<Vec<_>>().join(".")
 }
 
+/// Find declarations named `name` in `source`'s indexed package and language, preserving ambiguity.
 pub fn same_package(modules: &Modules, source: &ParsedFile, name: &str) -> Vec<Symbol> {
     let Some(package) = modules.packages.get(&source.source.path) else {
         return vec![];
@@ -86,10 +100,13 @@ pub fn same_package(modules: &Modules, source: &ParsedFile, name: &str) -> Vec<S
     modules.declared(source, &identity)
 }
 
+/// Extract a Java import's qualified name from `source`, using `path` as fallback.
 pub fn import_name(source: &str, path: &str) -> String {
     IMPORT.captures(source).map(|m| m[1].to_owned()).unwrap_or_else(|| path.into())
 }
 
+/// Return the unique imported declaration key, or `None` for missing or ambiguous targets.
+/// Kotlin uses the request path directly; Java parses the directive's qualified name.
 pub fn import_key(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<String> {
     let path = if request.file.source.language == "kotlin" {
         request.path.clone()
@@ -100,15 +117,20 @@ pub fn import_key(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<S
     (targets.len() == 1).then(|| targets[0].key.clone())
 }
 
+/// Return one `(terminal import name, declaration targets, false)` binding for the request.
+/// Preserve unresolved and ambiguous declaration targets.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     let path = import_name(&request.source, &request.path);
     vec![(path.rsplit('.').next().unwrap_or("").into(), ctx.modules.declared(request.file, &path), false)]
 }
 
+/// Resolve dotted request names through the module declaration index; otherwise retain `matches`.
 pub fn qualify_class(resolver: &CallResolver, request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     if request.name.contains('.') { resolver.modules.declared(request.file, &request.name) } else { matches }
 }
 
+/// Resolve dotted inherited names through package declarations and `::` names through class lookup.
+/// Retain `matches` for unqualified names.
 pub fn inheritance(resolver: &CallResolver, request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     if request.name.contains('.') {
         return resolver.modules.declared(request.file, &request.name);

@@ -20,7 +20,13 @@ fn output(options: &Options) -> Result<Value> {
     build_mutation_report(&root, &report, &config)
 }
 
-/// Errors propagate to the CLI boundary.
+/// Print the rule catalog or verified manifests, or dispatch a mutation run.
+///
+/// Manifest generation reads fresh or saved candidates without saving a graph
+/// or editing sources. The `run` subcommand executes trusted commands and writes
+/// results while temporarily editing sources. Return its status, or 0 after
+/// printing JSON. Reject `--rules` with a subcommand; propagate configuration,
+/// database, filesystem, and candidate-validation errors to the CLI boundary.
 pub fn run(matches: &clap::ArgMatches) -> Result<i32> {
     let options = Options::from_matches("mutations", matches);
     if let Some(("run", child)) = matches.subcommand() {

@@ -4,6 +4,11 @@ use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
 
+/// Project fresh or saved report candidates into a schema-versioned manifest list.
+///
+/// Use `config.rules` to select edits and read current sources under `root` to
+/// verify all candidates. Do not write sources or save a graph. Reject missing or
+/// nonarray `mutationCandidates`; propagate validation and generation errors.
 pub fn build_mutation_report(root: &Path, report: &Value, config: &MutationConfig) -> Result<Value> {
     let candidates = report
         .get("mutationCandidates")
@@ -12,6 +17,9 @@ pub fn build_mutation_report(root: &Path, report: &Value, config: &MutationConfi
     Ok(json!({"schemaVersion": 1, "mutations": generate_manifest_values(root, candidates, &config.rules)?}))
 }
 
+/// Format a Markdown table code span, flattening line breaks and escaping pipes.
+///
+/// Choose a backtick fence longer than any run in the text and pad edge backticks.
 pub fn code(value: &str) -> String {
     let value = value.replace(['\n', '\r'], " ").replace('|', "\\|");
     let mut fence = "`".to_owned();
@@ -22,7 +30,11 @@ pub fn code(value: &str) -> String {
     format!("{fence}{padding}{value}{padding}{fence}")
 }
 
-/// Return an empty string for absent or empty candidates, with no trailing newline.
+/// Render candidate counts and byte-column locations as a Markdown table.
+///
+/// Use report data only; do not generate edits, read sources, or run tests.
+/// Return an empty string for missing, nonarray, or empty candidates. Nonempty
+/// output has no trailing newline and preserves candidate row order.
 pub fn render_candidates_markdown(report: &Value) -> String {
     let Some(candidates) = report.get("mutationCandidates").and_then(Value::as_array).filter(|items| !items.is_empty())
     else {

@@ -19,6 +19,8 @@ static DOT_IMPORT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\s*\.\s+['\
 static IMPORT_ALIAS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^\s*([A-Za-z_$][\p{L}\p{N}_$]*)\s+['\"]"#).unwrap());
 
+/// Count Go inputs, expanding grouped names and counting each unnamed/variadic declaration once.
+/// Missing, invalid, or unsupported headers yield `None`; the source argument is unused.
 pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     let parameters = parameter_node(node, &[]).filter(|n| !n.has_error())?;
     let entries = parameter_children(parameters);
@@ -36,6 +38,8 @@ pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     )
 }
 
+/// Return `(repository-relative directory, package-clause text)` as a Go package identity.
+/// Missing syntax or a missing clause uses empty clause text.
 pub fn package(syntax: &BTreeMap<String, Syntax>, file: &ParsedFile) -> (String, String) {
     let directory = file.source.path.rsplit_once('/').map(|(parent, _)| parent).unwrap_or("").to_owned();
     let clause = syntax
@@ -45,6 +49,7 @@ pub fn package(syntax: &BTreeMap<String, Syntax>, file: &ParsedFile) -> (String,
     (directory, clause)
 }
 
+/// Return retained Go files with the same directory and package clause as `source`.
 pub fn package_files(
     repository: &ParsedRepository,
     syntax: &BTreeMap<String, Syntax>,
@@ -59,10 +64,13 @@ pub fn package_files(
         .collect()
 }
 
+/// Collect all symbols from files in `source`'s Go package, preserving file and symbol order.
 pub fn package_symbols(resolver: &CallResolver, source: &ParsedFile) -> Vec<Symbol> {
     package_files(&resolver.repository, &resolver.syntax, source).into_iter().flat_map(|file| file.symbols).collect()
 }
 
+/// Test whether `symbol` is a Go method whose normalized receiver type name matches `parent`.
+/// Missing syntax and non-method symbols return false.
 pub fn receiver_method(resolver: &CallResolver, symbol: &Symbol, parent: &Symbol) -> bool {
     if symbol.kind != "method" {
         return false;
@@ -78,6 +86,8 @@ pub fn receiver_method(resolver: &CallResolver, symbol: &Symbol, parent: &Symbol
     annotation.as_deref() == Some(parent.name.as_str())
 }
 
+/// Find named methods in the type's package whose receiver annotation names `parent`.
+/// Return no candidates if the parent file is absent.
 pub fn instance_members(resolver: &CallResolver, parent: &Symbol, name: &str) -> Vec<Symbol> {
     let Some(source) = resolver.files.get(&parent.file_path) else {
         return vec![];
@@ -88,6 +98,7 @@ pub fn instance_members(resolver: &CallResolver, parent: &Symbol, name: &str) ->
         .collect()
 }
 
+/// Return Go type declarations named `name` in `source`'s package, retaining ambiguous matches.
 pub fn same_package(modules: &Modules, source: &ParsedFile, name: &str) -> Vec<Symbol> {
     package_files(&modules.repository, &modules.syntax, source)
         .into_iter()
@@ -96,10 +107,13 @@ pub fn same_package(modules: &Modules, source: &ParsedFile, name: &str) -> Vec<S
         .collect()
 }
 
+/// Extract the last quoted Go import path, or trimmed `source` when none exists.
 pub fn import_path(source: &str) -> String {
     quoted_path(source).unwrap_or_else(|| source.trim().into())
 }
 
+/// Return a Go `(local name, top-level targets, namespace flag)` import binding.
+/// Reject dot imports, honor explicit aliases, and retain unresolved names with empty targets.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     if DOT_IMPORT.is_match(&request.source) {
         return vec![];
@@ -119,6 +133,8 @@ pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(St
     vec![(binding, symbols, true)]
 }
 
+/// Extract Go binding targets and scopes, keeping `:= range` declarations in the loop scope.
+/// Plain range assignments use the enclosing scope; other forms use shared extraction.
 pub fn binding<'a>(
     adapter: &ResolutionAdapter,
     syntax: &'a Syntax,
@@ -135,6 +151,8 @@ pub fn binding<'a>(
     generic::binding(adapter, syntax, (node, scope))
 }
 
+/// Return `(callee, receiver)` for Go calls, composite literals, and address-of composite literals.
+/// Reject other unary receivers; use shared extraction for remaining forms.
 pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (Option<Node<'a>>, Option<Node<'a>>) {
     if let Some(node) = node {
         if node.kind() == "unary_expression" {

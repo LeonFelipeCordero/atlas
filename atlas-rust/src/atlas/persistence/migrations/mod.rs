@@ -14,6 +14,7 @@ pub const REVISIONS: &[(&str, &str)] = &[
 pub struct Migrator;
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
+    /// Return the ordered SQL revisions shared with Python, without applying them.
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         REVISIONS
             .iter()
@@ -26,12 +27,15 @@ struct Revision {
     sql: &'static str,
 }
 impl MigrationName for Revision {
+    /// Return the revision identifier used in migration history.
     fn name(&self) -> &str {
         self.revision
     }
 }
 #[async_trait::async_trait]
 impl MigrationTrait for Revision {
+    /// Execute this revision's SQL and update/initialize the Alembic version row.
+    /// Propagate database failures; transaction control belongs to the migration caller.
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
         db.execute_unprepared(self.sql).await?;
@@ -50,11 +54,18 @@ impl MigrationTrait for Revision {
         .await?;
         Ok(())
     }
+    /// Reject every downgrade with a database error; use Python/Alembic instead.
     async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
         Err(DbErr::Custom("Use Python/Alembic for schema downgrades".into()))
     }
 }
 
+/// Enable WAL and atomically adopt compatible Alembic history and apply pending SQL revisions.
+///
+/// # Errors
+/// Reject unknown, multiple, or inconsistent revision histories. Roll back failed
+/// schema transactions; retry SQLite busy errors for up to 30 seconds, then fail.
+/// WAL mode is set outside the schema transaction and is not rolled back.
 pub async fn migrate(db: &DatabaseConnection) -> Result<()> {
     // SeaORM 1.1 cannot request BEGIN IMMEDIATE; retry with a new snapshot after rollback.
     tokio::time::timeout(std::time::Duration::from_secs(30), async {

@@ -10,6 +10,11 @@ use std::{
 
 pub use home::expand_home;
 
+/// Expand home markers and resolve `path` against cwd, following existing symlinks before `..`.
+/// Permit nonexistent components without creating files or directories.
+///
+/// # Errors
+/// Propagate home lookup, cwd, or symlink-read failures; reject symlink loops with `ELOOP`.
 pub fn absolute_path(path: &Path) -> Result<PathBuf> {
     let expanded = expand_home(path)?;
     let absolute = if expanded.is_absolute() { expanded } else { env::current_dir()?.join(expanded) };

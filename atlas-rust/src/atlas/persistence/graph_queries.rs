@@ -5,9 +5,13 @@ use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFi
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
+/// Read repository `id`'s graph metadata, returning `None` if absent or unrevisioned.
+/// Propagate database errors; do not start or commit a transaction.
 pub async fn graph_row(connection: &impl ConnectionTrait, id: &str) -> Result<Option<RepositoryGraphRow>> {
     Ok(repository_graphs::Entity::find_by_id(id).one(connection).await?.filter(|g| g.graph_revision.is_some()))
 }
+/// Combine `row` metadata with stored node, symbol, edge, and parse-error counts.
+/// Propagate query errors; the caller supplies a transaction for a consistent revision.
 pub async fn graph_summary(connection: &impl ConnectionTrait, row: RepositoryGraphRow) -> Result<GraphDto> {
     let id = &row.repository_id;
     let levels: HashMap<String, i64> = graph_nodes::Entity::find()
@@ -53,6 +57,9 @@ pub async fn graph_summary(connection: &impl ConnectionTrait, row: RepositoryGra
         },
     })
 }
+/// Read ordered nodes, non-containment edges, diagnostics, and saved mutations for `row`.
+/// Include an imports subset and graph revision. Return query or candidate-JSON errors;
+/// the caller supplies a transaction for consistency. Do not read local sources.
 pub async fn report_facts(connection: &impl ConnectionTrait, row: RepositoryGraphRow) -> Result<Value> {
     let id = &row.repository_id;
     let metrics: HashMap<_, _> = graph_node_metrics::Entity::find()

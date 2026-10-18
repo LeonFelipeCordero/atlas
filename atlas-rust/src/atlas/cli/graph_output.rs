@@ -1,5 +1,9 @@
 use serde_json::{Value, json};
 
+/// Recursively copy navigation JSON and label stored external identities as unresolved.
+///
+/// Preserve stable keys and the input value. Change CLI labels and ambiguity
+/// reasons only; this does not update stored graph facts.
 pub fn graph_output(value: &Value) -> Value {
     match value {
         Value::Array(items) => Value::Array(items.iter().map(graph_output).collect()),

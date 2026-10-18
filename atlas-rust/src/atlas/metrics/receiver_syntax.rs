@@ -46,10 +46,12 @@ fn wrapped_type_name(node: Node<'_>, source: &[u8]) -> Option<String> {
     if entries.len() == 1 { type_name(Some(entries[0]), source) } else { None }
 }
 
+/// Return the first direct named child with a kind in `kinds`, or `None`.
 pub fn child<'tree>(node: Node<'tree>, kinds: &[&str]) -> Option<Node<'tree>> {
     named_children(node).into_iter().find(|c| kinds.contains(&c.kind()))
 }
 
+/// Return the nearest ancestor with a kind in `kinds`, excluding `node`, or `None`.
 pub fn enclosing<'tree>(node: Node<'tree>, kinds: &[&str]) -> Option<Node<'tree>> {
     std::iter::successors(node.parent(), Node::parent).find(|parent| kinds.contains(&parent.kind()))
 }
@@ -62,6 +64,9 @@ pub struct Declaration<'tree> {
     pub member: bool,
 }
 
+/// Build one receiver binding from `details`, or none if its name or scope is missing.
+/// Members use an enclosing type scope; missing annotations and Java `var` permit
+/// conservative constructor or injected-parameter inference using `syntax`.
 pub fn declaration<'tree>(
     syntax: &'tree Syntax,
     node: Node<'tree>,
@@ -106,10 +111,13 @@ fn constructed_annotation(syntax: &Syntax, value: Option<Node<'_>>) -> Option<St
     if receiver.is_none() { type_name(callee, &syntax.source) } else { None }
 }
 
+/// Test whether the left-hand target is an attribute or member expression.
 pub fn member_assignment(node: Node<'_>) -> bool {
     field(node, &["left"]).is_some_and(|target| matches!(target.kind(), "attribute" | "member_expression"))
 }
 
+/// Detect static tokens or modifiers on a declaration or its variable-declarator parent.
+/// Read modifier spellings from the matching `source` bytes.
 pub fn static_field(node: Node<'_>, source: &[u8]) -> bool {
     let owner = if node.kind() == "variable_declarator" { node.parent() } else { Some(node) };
     owner.is_some_and(|owner| {
@@ -120,11 +128,15 @@ pub fn static_field(node: Node<'_>, source: &[u8]) -> bool {
     })
 }
 
+/// Test whether the nearest function or method is named `__init__` or `constructor`.
+/// Read its name from matching `source` bytes.
 pub fn constructor(node: Node<'_>, source: &[u8]) -> bool {
     enclosing(node, &["function_definition", "method_definition"])
         .is_some_and(|method| matches!(text(field(method, &["name"]), source).as_str(), "__init__" | "constructor"))
 }
 
+/// Return the unique enclosing parameter's annotation for `name`, or `None`.
+/// Reject parameters reassigned anywhere in the enclosing method.
 pub fn injected_parameter(syntax: &Syntax, node: Node<'_>, name: &str) -> Option<String> {
     let method = enclosing(node, &["function_definition", "method_definition"])?;
     let parameters = field(method, &["parameters"])?;
@@ -148,6 +160,8 @@ fn parameter_written(syntax: &Syntax, method: Node<'_>, name: &str) -> bool {
     })
 }
 
+/// Extract Java parameter, local, or field receiver bindings from `node` in `syntax`.
+/// Return no bindings for unsupported nodes.
 pub fn java_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<ReceiverBinding<'tree>> {
     if node.kind() == "formal_parameter" {
         return declaration(
@@ -175,6 +189,8 @@ pub fn java_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<Rec
     )
 }
 
+/// Extract Kotlin parameter/property receiver bindings, including `val`/`var` class parameters.
+/// Plain class parameters and unsupported nodes in `syntax` produce no bindings.
 pub fn kotlin_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<ReceiverBinding<'tree>> {
     if !matches!(node.kind(), "class_parameter" | "parameter" | "variable_declaration") {
         return vec![];
@@ -197,6 +213,8 @@ fn kotlin_property(node: Node<'_>, member: bool) -> (Option<Node<'_>>, bool) {
     (None, member)
 }
 
+/// Extract Python typed parameters, simple assignments, and `self` or class field bindings.
+/// Use `syntax` for annotations and inference; unsupported targets produce no bindings.
 pub fn python_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<ReceiverBinding<'tree>> {
     if matches!(node.kind(), "typed_parameter" | "typed_default_parameter") {
         return declaration(
@@ -240,6 +258,8 @@ pub fn python_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<R
     )
 }
 
+/// Extract JavaScript/TypeScript parameters, variables, fields, and `this` assignments.
+/// Use `syntax` for type inference; unsupported nodes produce no bindings.
 pub fn script_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<ReceiverBinding<'tree>> {
     if node.kind() == "assignment_expression" {
         let target = field(node, &["left"]);
@@ -282,6 +302,8 @@ pub fn script_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<R
     )
 }
 
+/// Extract Go parameter, variable, field, and short-declaration receiver bindings in `syntax`.
+/// Pair short-declaration values only when counts match; unsupported nodes yield no bindings.
 pub fn go_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<ReceiverBinding<'tree>> {
     if node.kind() == "short_var_declaration" {
         return go_short_bindings(syntax, node);
@@ -327,6 +349,8 @@ fn go_short_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<Rec
         .collect()
 }
 
+/// Extract Rust parameter, simple `let`, and field receiver bindings using `syntax`.
+/// Destructured `let` targets and unsupported nodes produce no bindings.
 pub fn rust_bindings<'tree>(syntax: &'tree Syntax, node: Node<'tree>) -> Vec<ReceiverBinding<'tree>> {
     if !matches!(node.kind(), "parameter" | "let_declaration" | "field_declaration") {
         return vec![];

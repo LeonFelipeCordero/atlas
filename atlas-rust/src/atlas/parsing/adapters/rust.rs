@@ -29,6 +29,8 @@ const EXPRESSION_MACROS: &[&str] = &[
     "panic",
 ];
 
+/// Mark closures as callbacks with supported bindings; keep other declaration names.
+/// `source` must correspond to the node's syntax tree.
 pub fn declaration<'tree>(node: Node<'tree>, source: &[u8]) -> DeclarationCarrier<'tree> {
     if node.kind() == "closure_expression" {
         callback_carrier(node, callback_binding(node, source), source)
@@ -163,6 +165,9 @@ fn payload_unshadowed(site: &CallSite<'_>, source: &[u8], name: &str) -> bool {
     !roots.into_iter().any(|(root, source)| walk(root).any(|decl| payload_binding(decl, source, name)))
 }
 
+/// Return the optional target name, bare-name flag, and qualifier using matching source bytes.
+/// Preserve macro names with `!`; clear bare-name and qualifier evidence for synthetic
+/// payload targets that have object receivers or potentially shadowing bindings.
 pub fn normalize_call(site: &CallSite<'_>, source: &[u8]) -> CallTarget {
     if site.node.kind() == "macro_invocation" {
         return (Some(format!("{}!", text(field(site.node, &["macro"]), source))), false, None);
@@ -196,6 +201,10 @@ struct Traversal<'a> {
     parents: Vec<(Node<'a>, &'a [u8])>,
 }
 
+/// Invoke `visitor` for calls and macros, including recognized unshadowed evaluating macro payloads.
+/// `source` must match `root`. Synthetic sites carry byte shifts and enclosing payload scopes;
+/// the visitor receives the matching synthetic bytes. Skip payloads that cannot parse cleanly.
+/// Parse payloads only; do not expand macros or execute source.
 pub fn visit_calls<'a>(root: Node<'a>, source: &'a [u8], visitor: &mut CallVisitor<'_>) {
     visit(
         Traversal { root, source, origin: (root, source), offset: 0, opaque: false, parents: vec![] },

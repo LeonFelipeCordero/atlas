@@ -18,15 +18,19 @@ pub const METRIC_LABELS: [(&str, &str); 14] = [
     ("measuredFunctionCount", "Measured functions/methods"),
     ("weightedComplexitySum", "Weighted complexity sum"),
 ];
+/// Return the display label for a metric key, or `name` for unknown keys.
 pub fn metric_label(name: &str) -> &str {
     METRIC_LABELS.iter().find_map(|(key, label)| (*key == name).then_some(*label)).unwrap_or(name)
 }
 
+/// Format a report node's path with its optional line, using `Unknown file` for a missing path.
 pub fn location(node: &Value) -> String {
     let path = node["path"].as_str().filter(|path| !path.is_empty()).unwrap_or("Unknown file");
     if !node["line"].is_null() { format!("{path}:{}", node["line"]) } else { path.to_owned() }
 }
 
+/// Format report values: null as `N/A`, floats to two decimals, and booleans as Python text.
+/// Return strings unchanged and serialize other values as JSON.
 pub fn value_text(value: &Value) -> String {
     match value {
         Value::Null => "N/A".into(),
@@ -121,6 +125,8 @@ fn array<'a>(value: &'a Value, field: &str) -> &'a [Value] {
     value[field].as_array().map(Vec::as_slice).unwrap_or_default()
 }
 
+/// Render summary, measurement tables, cycles, diagnostics, and mutation candidates as Markdown.
+/// Missing or non-array report sections are treated as empty; no output is written to disk.
 pub fn render_markdown(report: &Value) -> String {
     let summary = report["summary"]
         .as_object()
