@@ -137,10 +137,11 @@ fn migration_lock_timeout_rolls_back_and_leaves_connection_reusable() {
     execute(&writer, "PRAGMA journal_mode=WAL");
     let db = create_engine(Some(&path)).unwrap();
     let before = snapshot(&db);
+    execute(&db, "PRAGMA busy_timeout=10");
     let tx = run(writer.get_sqlite_connection_pool().begin_with("BEGIN IMMEDIATE")).unwrap();
-    let error = run(super::migrations::migrate(&db)).unwrap_err();
+    let error = run(super::migrations::migrate_with_timeout(&db, std::time::Duration::from_millis(100))).unwrap_err();
     run(tx.commit()).unwrap();
-    assert!(error.to_string().contains("after 30 seconds"), "{error:#}");
+    assert!(error.to_string().contains("after 0.1 seconds"), "{error:#}");
     assert_eq!(snapshot(&db), before);
     assert_eq!(scalar(&db, "SELECT version_num AS value FROM alembic_version"), "0001_initial");
     assert_eq!(

@@ -67,8 +67,11 @@ impl MigrationTrait for Revision {
 /// schema transactions; retry SQLite busy errors for up to 30 seconds, then fail.
 /// WAL mode is set outside the schema transaction and is not rolled back.
 pub async fn migrate(db: &DatabaseConnection) -> Result<()> {
+    migrate_with_timeout(db, std::time::Duration::from_secs(30)).await
+}
+pub(super) async fn migrate_with_timeout(db: &DatabaseConnection, timeout: std::time::Duration) -> Result<()> {
     // SeaORM 1.1 cannot request BEGIN IMMEDIATE; retry with a new snapshot after rollback.
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+    tokio::time::timeout(timeout, async {
         loop {
             match migrate_once(db).await {
                 Err(error) if sqlite_busy(&error) => {
@@ -79,7 +82,9 @@ pub async fn migrate(db: &DatabaseConnection) -> Result<()> {
         }
     })
     .await
-    .context("Timed out waiting for SQLite migration write lock after 30 seconds")?
+    .with_context(|| {
+        format!("Timed out waiting for SQLite migration write lock after {} seconds", timeout.as_secs_f64())
+    })?
 }
 fn sqlite_busy(error: &anyhow::Error) -> bool {
     error.chain().filter_map(|cause| cause.downcast_ref::<sea_orm::SqlxError>()).any(|error| {

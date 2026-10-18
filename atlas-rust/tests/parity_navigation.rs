@@ -10,7 +10,7 @@ use atlas::{
 };
 use serde_json::{Map, Value, json};
 use std::path::Path;
-use support::{assert_json, fixtures, snapshot};
+use support::{assert_artifact, assert_json, fixtures, snapshot};
 
 fn traversal(filters: &Value, path: bool) -> TraversalRequest {
     TraversalRequest {
@@ -103,6 +103,7 @@ fn navigation_snapshot(language: &str) {
     let database = directory.path().join("atlas.sqlite");
     migrate_database(Some(&database)).unwrap();
     let graph = analyze_repository(&root).unwrap();
+    assert_artifact(language, &graph);
     let saved = repository_service(Some(&database)).unwrap().save_folder(&root, &graph).unwrap();
     let metadata = json!({"repositoryId": saved.repository_id, "graphRevision": saved.graph_revision, "indexedAt": saved.indexed_at});
     let mut service = navigation_service(Some(&saved.repository_id), None, Some(&database)).unwrap();
