@@ -31,19 +31,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: atlas-rust
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: atlas/pyproject.toml
-          python-version: "3.14"
-      - run: uv sync --project atlas --group dev
       - run: cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
       - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
-      - run: uv run --project atlas python -m unittest discover -s atlas-rust/scripts -p 'test_*.py'
-        env:
-          ATLAS_RUST_BINARY: ${{ github.workspace }}/atlas-rust/target/release/atlas
-      - run: uv run --project atlas python atlas-rust/scripts/parity.py --variants --warmups 0 --repetitions 1
-      - run: git diff --exit-code -- atlas/tests
 
   checks:
     name: Checks
@@ -56,13 +45,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: atlas-rust
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: atlas/pyproject.toml
-          python-version: "3.14"
-      - run: uv sync --project atlas --group dev
       - run: cargo fmt --manifest-path atlas-rust/Cargo.toml --check
       - run: cargo clippy --manifest-path atlas-rust/Cargo.toml --locked --all-targets -- -D warnings
-      - run: uv run --project atlas ruff check atlas-rust/scripts
-      - run: uv run --project atlas pyright atlas-rust/scripts

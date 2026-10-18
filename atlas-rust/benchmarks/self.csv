@@ -1,3 +1,0 @@
-project,case,status,python_ms,rust_ms,speedup_python_over_rust
-atlas-current,report,passed,20574.040000,9862.522000,2.086083
-atlas-current,check,passed,20964.211000,10318.932000,2.031626

@@ -24,7 +24,7 @@ cargo test --locked --manifest-path atlas-rust/Cargo.toml
 uv run --project atlas atlas check --f .
 ```
 
-See [PARITY.md](PARITY.md) for differential tests and [BENCHMARKS.md](BENCHMARKS.md) for frozen-build results. Benchmark evidence identifies failed comparisons and reference timeouts; a faster failed result is not a verified speedup.
+See [PARITY.md](PARITY.md) for native snapshot tests against the Python golden files.
 
 ## Compatibility limits
 
