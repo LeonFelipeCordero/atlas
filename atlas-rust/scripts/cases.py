@@ -13,6 +13,8 @@ class Case:
     writes: bool = False
     migration: bool = False
     valid: bool = True
+    presentation: bool = False
+    native_exit_code: int | None = None
 
 
 def folder_cases(root: Path) -> list[Case]:
@@ -41,11 +43,11 @@ def analysis_cases(root: Path) -> list[Case]:
 def option_cases(root: Path) -> list[Case]:
     return [Case("report.folder.attached", ("report", f"-f{root}", "--format=json")),
             Case("mutations.folder.attached", ("mutations", f"-f{root}")),
-            Case("projects.group.terminator", ("--", "projects")),
+            Case("projects.group.terminator", ("--", "projects"), presentation=True, native_exit_code=2),
             Case("report.help.folder.value", ("report", "--folder", "--help"), valid=False),
-            Case("report.help.format.value", ("report", "--format", "--help"), valid=False),
+            Case("report.help.format.value", ("report", "--format", "--help"), valid=False, presentation=True),
             Case("mutations.help.folder.value", ("mutations", "--folder", "--help"), valid=False),
-            Case("mutations.help.literal", ("mutations", "--", "--help"), valid=False)]
+            Case("mutations.help.literal", ("mutations", "--", "--help"), valid=False, presentation=True)]
 
 
 def navigation_cases(root: Path, keys: tuple[str, str, str, str], revision: str) -> list[Case]:
@@ -67,8 +69,8 @@ def navigation_cases(root: Path, keys: tuple[str, str, str, str], revision: str)
                    Case("graph.revision.valid", prefix + ("--revision", revision, "overview")),
                    Case("graph.revision.stale", prefix + ("--revision", "stale", "overview"), valid=False),
                    Case("graph.project.missing", ("graph", "--project", "missing", "overview"), valid=False),
-                   Case("graph.group.terminator", prefix + ("--", "overview")),
-                   Case("graph.group.root.terminator", ("--", "graph", "--", "overview")),
+                   Case("graph.group.terminator", prefix + ("--", "overview"), presentation=True, native_exit_code=2),
+                   Case("graph.group.root.terminator", ("--", "graph", "--", "overview"), presentation=True, native_exit_code=2),
                    Case("graph.find.literal.help", prefix + ("find", "--", "--help"))])
     return result
 
@@ -83,7 +85,7 @@ def numeric_cases(selection: tuple) -> list[Case]:
               Case("graph.numeric.source.huge.json", prefix + ("source", first, "--start-line", huge, "--format", "json")),
               Case("graph.numeric.source.huge.text", prefix + ("source", first, "--start-line", huge, "--format", "text"))]
     invalid = [("double-underscore", "1__0"), ("non-decimal", "²"), ("hexadecimal", "0x10"), ("overflow", "9" * 100)]
-    result.extend(Case(f"graph.numeric.invalid.limit.{name}", prefix + ("find", first, "--limit", value), valid=False)
+    result.extend(Case(f"graph.numeric.invalid.limit.{name}", prefix + ("find", first, "--limit", value), valid=False, presentation=True)
                   for name, value in invalid)
     return result
 
@@ -115,12 +117,12 @@ def source_cases(selection: tuple) -> list[Case]:
 def help_cases() -> list[Case]:
     groups = [(), ("index",), ("projects",), ("report",), ("check",), ("mutations",), ("graph",)]
     groups += [("graph", command) for command in ("overview", "find", "show", "children", "context", "source", "path")]
-    return [Case("help." + (".".join(group) or "atlas"), group + ("--help",)) for group in groups]
+    return [Case("help." + (".".join(group) or "atlas"), group + ("--help",), presentation=True) for group in groups]
 
 
 def expand_invalid(definition: tuple) -> list[Case]:
     command, option, values = definition
-    return [Case(f"invalid.{command[0]}.{option}.{value}", ("graph",) + command + (option, value), valid=False) for value in values]
+    return [Case(f"invalid.{command[0]}.{option}.{value}", ("graph",) + command + (option, value), valid=False, presentation=True) for value in values]
 
 
 def invalid_bounds() -> list[Case]:
@@ -146,20 +148,20 @@ def invalid_traversal_definition(combination: tuple) -> tuple:
 def invalid_usage() -> list[Case]:
     missing = [("find",), ("show",), ("children",), ("context",), ("source",), ("path",), ("path", "brew"),
                ("overview", "extra"), ("overview", "--project", "coffee"), ("unknown",)]
-    return [Case("invalid.usage." + ".".join(arguments), ("graph",) + arguments, valid=False) for arguments in missing]
+    return [Case("invalid.usage." + ".".join(arguments), ("graph",) + arguments, valid=False, presentation=True) for arguments in missing]
 
 
 def usage_cases() -> list[Case]:
     combinations = product(("context", "path"), ("--direction", "--relations", "--max-nodes", "--max-edges"))
     traversals = chain.from_iterable(map(expand_invalid, map(invalid_traversal_definition, combinations)))
-    formats = [Case(f"invalid.{action}.format", (action, "--format", "yaml"), valid=False) for action in ("report", "check")]
-    literal = [Case("help.group.terminator", ("--", "--help")),
-               Case("help.graph.group.selector", ("graph", "--", "--project", "missing", "--help")),
-               Case("invalid.group.help.trailing.flag", ("--", "--help", "--bogus"), valid=False),
-               Case("invalid.graph.group.help.trailing.value", ("graph", "--", "--help", "--project"), valid=False),
-               Case("invalid.group.option.command", ("--", "--bogus"), valid=False),
-               Case("invalid.graph.group.option.command", ("graph", "--", "--project", "missing"), valid=False),
-               Case("invalid.command.suggest.root", ("reports",), valid=False),
-               Case("invalid.command.suggest.graph", ("graph", "contexts"), valid=False),
-               Case("invalid.command.suggest.unicode", ("réports",), valid=False)]
+    formats = [Case(f"invalid.{action}.format", (action, "--format", "yaml"), valid=False, presentation=True) for action in ("report", "check")]
+    literal = [Case("help.group.terminator", ("--", "--help"), presentation=True, native_exit_code=2),
+               Case("help.graph.group.selector", ("graph", "--", "--project", "missing", "--help"), presentation=True, native_exit_code=2),
+               Case("invalid.group.help.trailing.flag", ("--", "--help", "--bogus"), valid=False, presentation=True),
+               Case("invalid.graph.group.help.trailing.value", ("graph", "--", "--help", "--project"), valid=False, presentation=True),
+               Case("invalid.group.option.command", ("--", "--bogus"), valid=False, presentation=True),
+               Case("invalid.graph.group.option.command", ("graph", "--", "--project", "missing"), valid=False, presentation=True),
+               Case("invalid.command.suggest.root", ("reports",), valid=False, presentation=True),
+               Case("invalid.command.suggest.graph", ("graph", "contexts"), valid=False, presentation=True),
+               Case("invalid.command.suggest.unicode", ("réports",), valid=False, presentation=True)]
     return help_cases() + invalid_bounds() + list(traversals) + invalid_usage() + formats + literal

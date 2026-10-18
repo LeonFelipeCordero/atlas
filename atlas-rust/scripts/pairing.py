@@ -66,11 +66,25 @@ class Pair:
 
     def outcome_diffs(self, python: dict, rust: dict) -> list[dict]:
         root = self.project.root
-        diffs = differences(result_value(python, root), result_value(rust, root), "/result")
+        diffs = (self.presentation_diffs(python, rust) if self.case.presentation else
+                 differences(result_value(python, root), result_value(rust, root), "/result"))
         if python["timeout"] or rust["timeout"]:
             diffs.append({"path": "/result/timeout", "error": "timeouts never pass parity"})
         if self.case.valid and not self.valid_reference(python):
             diffs.append({"path": "/reference", "error": "unexpected reference failure"})
+        return diffs
+
+    def presentation_diffs(self, python: dict, rust: dict) -> list[dict]:
+        """Click and clap intentionally have different help and usage diagnostics."""
+        expected_code = self.case.native_exit_code
+        if expected_code is None:
+            expected_code = python["exit_code"]
+        diffs = differences(expected_code, rust["exit_code"], "/result/exit_code")
+        channel, empty = ("stdout", "stderr") if expected_code == 0 else ("stderr", "stdout")
+        diffs.extend(differences("", rust[empty], f"/result/{empty}"))
+        marker = "Usage:" if expected_code == 0 else "error:"
+        if marker not in rust[channel] or "--help" not in rust[channel]:
+            diffs.append({"path": f"/result/{channel}", "error": "expected clap help or usage diagnostic"})
         return diffs
 
     def valid_reference(self, result: dict) -> bool:

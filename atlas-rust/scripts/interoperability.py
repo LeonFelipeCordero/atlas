@@ -1,6 +1,8 @@
 """Read the same Python-produced and Rust-produced databases with both runtimes."""
 from __future__ import annotations
 
+from dataclasses import replace
+
 from cases import Case, navigation_cases
 from common import SAMPLES, Process
 from database import backup, keys, revision, uuid_fixture
@@ -41,7 +43,7 @@ def native_case(case: Case, revisions: tuple[str | None, str | None]) -> Case:
     arguments = case.args
     if case.name == "graph.revision.valid":
         arguments = tuple(native if argument == original else argument for argument in arguments)
-    return Case("interop.native." + case.name, arguments, valid=case.valid)
+    return replace(case, name="interop.native." + case.name, args=arguments)
 
 
 def compare(project, cases: list[Case]) -> None:

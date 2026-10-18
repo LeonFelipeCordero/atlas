@@ -20,6 +20,7 @@ path = "src/atlas/migrate.rs"
 [dependencies]
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
+clap = "4.5"
 diesel = { version = "2.3", default-features = false, features = ["sqlite", "chrono", "32-column-tables"] }
 getrandom = "0.4"
 libc = "0.2"

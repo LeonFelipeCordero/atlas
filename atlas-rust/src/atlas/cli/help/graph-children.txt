@@ -1,8 +1,0 @@
-Usage: atlas graph children [OPTIONS] KEY
-
-  Print a page of direct children using key, limit, and offset options.
-
-Options:
-  --limit INTEGER RANGE   [default: 30; 1<=x<=100]
-  --offset INTEGER RANGE  [default: 0; x>=0]
-  --help                  Show this message and exit.

@@ -5,14 +5,6 @@ use anyhow::Result;
 use serde_json::{Value, json};
 use std::path::Path;
 
-fn options(args: &[String]) -> Result<Options> {
-    let options = Options::parse("mutations", args, (&["--folder"], &["--saved", "--rules", "--help"]))?;
-    if !options.has("--help") {
-        options.arguments(&[], false)?;
-    }
-    Ok(options)
-}
-
 fn output(options: &Options) -> Result<Value> {
     if options.has("--rules") {
         return Ok(json!({"rules": &*REGISTRY}));
@@ -28,13 +20,9 @@ fn output(options: &Options) -> Result<Value> {
     build_mutation_report(&root, &report, &config)
 }
 
-/// Arguments exclude the `mutations` command name. Errors propagate to the CLI boundary.
-pub fn run(args: &[String]) -> Result<i32> {
-    let options = options(args)?;
-    if options.has("--help") {
-        super::help::print("mutations", false);
-        return Ok(0);
-    }
+/// Errors propagate to the CLI boundary.
+pub fn run(matches: &clap::ArgMatches) -> Result<i32> {
+    let options = Options::from_matches("mutations", matches);
     println!("{}", serde_json::to_string_pretty(&output(&options)?)?);
     Ok(0)
 }
@@ -42,16 +30,17 @@ pub fn run(args: &[String]) -> Result<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn options(args: &[String]) -> Result<Options> {
+        let matches = super::super::schema::cli()
+            .try_get_matches_from(["atlas", "mutations"].into_iter().chain(args.iter().map(String::as_str)))?;
+        Ok(Options::from_matches("mutations", matches.subcommand_matches("mutations").unwrap()))
+    }
     #[test]
-    fn help_tokens_are_flags_only_outside_values_and_literal_arguments() {
+    fn help_tokens_are_values_only_when_consumed_by_options() {
         let value = options(&["--folder".into(), "--help".into()]).unwrap();
         assert_eq!(value.get("--folder", "."), "--help");
-        assert!(!value.has("--help"));
-        assert_eq!(
-            options(&["--".into(), "--help".into()]).err().unwrap().to_string(),
-            "Got unexpected extra argument (--help)"
-        );
-        assert!(options(&["--help".into()]).unwrap().has("--help"));
+        assert!(options(&["--".into(), "--help".into()]).is_err());
+        assert!(options(&["--help".into()]).is_err());
     }
     #[test]
     fn rules_bypass_every_boundary() -> Result<()> {
@@ -100,7 +89,9 @@ mod tests {
             assert_eq!(options.get("--folder", "."), "~/sub/..");
             assert!(options.has("--saved"));
         }
-        assert!(super::super::help::text("mutations").contains("mutations.rules is a list of rule IDs"));
+        let mut cli = super::super::schema::cli();
+        let help = cli.find_subcommand_mut("mutations").unwrap().render_long_help().to_string();
+        assert!(help.contains("mutations.rules is a list of rule IDs"));
         Ok(())
     }
 }

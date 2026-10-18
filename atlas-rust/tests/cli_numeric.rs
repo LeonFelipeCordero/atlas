@@ -62,7 +62,7 @@ fn python_decimal_lexical_forms_reach_actual_navigation() {
     assert_eq!(payload(fixture.invoke(&["children", "file:brew.py", "--offset", " +０_１ "]))["nodes"], json!([]));
 }
 #[test]
-fn malformed_forms_and_bounded_overflow_match_click_errors() {
+fn malformed_forms_and_bounded_overflow_use_clap_usage_errors() {
     let fixture = Fixture::new();
     for text in ["_1", "1_", "1__0", "²", "1.0", "0x10"] {
         let result = fixture.invoke(&["find", "brew", "--limit", text]);
@@ -71,7 +71,7 @@ fn malformed_forms_and_bounded_overflow_match_click_errors() {
         assert!(
             String::from_utf8(result.stderr)
                 .unwrap()
-                .ends_with(&format!("Error: Invalid value for '--limit': '{text}' is not a valid integer range.\n"))
+                .contains(&format!("Invalid value for '--limit': '{text}' is not a valid integer range."))
         );
     }
     for (text, number) in [(" -０_１０ ".into(), "-10".into()), ("9".repeat(100), "9".repeat(100))] {
@@ -81,7 +81,7 @@ fn malformed_forms_and_bounded_overflow_match_click_errors() {
         assert!(
             String::from_utf8(result.stderr)
                 .unwrap()
-                .ends_with(&format!("Error: Invalid value for '--limit': {number} is not in the range 1<=x<=100.\n"))
+                .contains(&format!("Invalid value for '--limit': {number} is not in the range 1<=x<=100."))
         );
     }
 }

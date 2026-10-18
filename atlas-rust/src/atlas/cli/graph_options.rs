@@ -22,14 +22,10 @@ pub enum Operation {
     Source(Vec<String>, SourceOptions),
 }
 impl GraphOptions {
-    pub fn parse(command: &str, args: &[String]) -> Result<Option<Self>> {
-        let options = Options::parse(&format!("graph {command}"), args, (flags(command), &["--help"]))?;
-        if options.has("--help") {
-            return Ok(None);
-        }
-        options.arguments(argument_names(command), command == "source")?;
-        let text = options.choice("--format", "json", &["json", "text"])? == "text";
-        Ok(Some(Self { operation: Operation::parse(command, options)?, text }))
+    pub fn from_matches(command: &str, matches: &clap::ArgMatches) -> Result<Self> {
+        let options = Options::from_matches(&format!("graph {command}"), matches);
+        let text = options.get("--format", "json") == "text";
+        Ok(Self { operation: Operation::parse(command, options)?, text })
     }
 }
 impl Operation {
@@ -76,27 +72,8 @@ fn source_options(options: &Options) -> Result<SourceOptions> {
         start_line: if options.has("--start-line") { Some(options.integer("--start-line", 1, 1)?) } else { None },
     })
 }
-fn flags(command: &str) -> &'static [&'static str] {
-    match command {
-        "find" => &["--limit"],
-        "children" => &["--limit", "--offset"],
-        "context" => &["--depth", "--direction", "--relations", "--max-nodes", "--max-edges"],
-        "path" => &["--max-depth", "--direction", "--relations", "--max-nodes", "--max-edges"],
-        "source" => &["--max-lines", "--start-line", "--format"],
-        _ => &[],
-    }
-}
-fn argument_names(command: &str) -> &'static [&'static str] {
-    match command {
-        "overview" => &[],
-        "find" => &["QUERY"],
-        "path" => &["FROM", "TO"],
-        "source" => &["KEYS..."],
-        _ => &["KEY"],
-    }
-}
 fn traversal_request(command: &str, options: &Options, key: &str) -> Result<TraversalRequest> {
-    let direction = options.choice("--direction", "out", &["out", "in", "both"])?;
+    let direction = options.get("--direction", "out");
     let relations: BTreeSet<_> = options
         .get("--relations", "CALLS,REFERENCES")
         .split(',')

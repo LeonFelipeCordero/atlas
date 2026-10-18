@@ -1,7 +1,0 @@
-Usage: atlas graph find [OPTIONS] QUERY
-
-  Print ranked node matches for a name, path, or stable key, up to limit.
-
-Options:
-  --limit INTEGER RANGE  [default: 10; 1<=x<=100]
-  --help                 Show this message and exit.

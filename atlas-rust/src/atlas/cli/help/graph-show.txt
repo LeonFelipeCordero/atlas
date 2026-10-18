@@ -1,6 +1,0 @@
-Usage: atlas graph show [OPTIONS] KEY
-
-  Print node details and bounded ancestors for an indexed stable key.
-
-Options:
-  --help  Show this message and exit.

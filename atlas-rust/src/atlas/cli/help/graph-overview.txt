@@ -1,6 +1,0 @@
-Usage: atlas graph overview [OPTIONS]
-
-  Print graph counts and bounded root nodes for the selected project.
-
-Options:
-  --help  Show this message and exit.

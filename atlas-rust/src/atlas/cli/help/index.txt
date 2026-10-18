@@ -1,7 +1,0 @@
-Usage: atlas index [OPTIONS]
-
-  Analyze a folder and save its graph in SQLite
-
-Options:
-  -f, --f, --folder PATH  Folder to index  [default: .]
-  --help                  Show this message and exit.

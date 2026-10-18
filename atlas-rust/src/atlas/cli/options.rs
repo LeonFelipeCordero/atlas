@@ -21,88 +21,36 @@ pub struct Options {
     pub positional: Vec<String>,
 }
 impl Options {
-    pub fn parse(command: &str, args: &[String], spec: (&[&str], &[&str])) -> Result<Self> {
+    pub fn from_matches(command: &str, matches: &clap::ArgMatches) -> Self {
         let mut result = Self { command: command.into(), values: BTreeMap::new(), positional: vec![] };
-        let mut args = args.iter();
-        let mut literal = false;
-        while let Some(argument) = args.next() {
-            if !literal && argument == "--" {
-                literal = true;
-                continue;
-            }
-            if literal || !argument.starts_with('-') || argument == "-" {
-                result.positional.push(argument.clone());
-                continue;
-            }
-            result.consume_option(argument, &mut args, spec)?;
+        let mut schema = super::schema::cli();
+        for name in command.split_whitespace() {
+            schema = schema.find_subcommand(name).expect("known CLI command").clone();
         }
-        Ok(result)
-    }
-    pub fn parse_group<'a>(
-        command: &str,
-        arguments: &'a [String],
-        spec: (&[&str], &[&str]),
-    ) -> Result<(Self, &'a [String])> {
-        let mut result = Self { command: command.into(), values: BTreeMap::new(), positional: vec![] };
-        let mut args = arguments.iter();
-        loop {
-            let remaining = args.as_slice();
-            let Some(argument) = args.next() else {
-                return Ok((result, remaining));
-            };
-            if argument == "--" {
-                return Ok((result, args.as_slice()));
-            }
-            if !argument.starts_with('-') || argument == "-" {
-                return Ok((result, remaining));
-            }
-            result.consume_option(argument, &mut args, spec)?;
+        for argument in schema.get_arguments().filter(|arg| arg.get_id() != "help") {
+            result.insert_match(argument, matches);
         }
+        result
     }
-    fn consume_option(
-        &mut self,
-        argument: &str,
-        args: &mut std::slice::Iter<'_, String>,
-        spec: (&[&str], &[&str]),
-    ) -> Result<()> {
-        let (spelling, inline) = split_option(argument, spec.0);
-        let (valued, flags) = spec;
-        let option = normalize_option(spelling, valued);
-        let value = if flags.contains(&option) {
-            if inline.is_some() {
-                return Err(usage(&self.command, format!("Option '{spelling}' does not take a value.")));
+    fn insert_match(&mut self, argument: &clap::Arg, matches: &clap::ArgMatches) {
+        let id = argument.get_id().as_str();
+        if matches!(argument.get_action(), clap::ArgAction::SetTrue) {
+            if matches.get_flag(id) {
+                self.values.insert(format!("--{id}"), "true".into());
             }
-            "true".into()
-        } else {
-            if !valued.contains(&option) {
-                return Err(super::option_suggestions::unknown(&self.command, option, spec));
+        } else if let Some(mut values) = matches.get_many::<String>(id) {
+            if argument.is_positional() {
+                self.positional.extend(values.cloned());
+            } else {
+                self.values.insert(format!("--{id}"), values.next_back().unwrap().clone());
             }
-            inline
-                .map(str::to_owned)
-                .or_else(|| args.next().cloned())
-                .ok_or_else(|| usage(&self.command, format!("Option '{spelling}' requires an argument.")))?
-        };
-        self.values.insert(option.into(), value);
-        Ok(())
+        }
     }
     pub fn get<'a>(&'a self, name: &str, default: &'a str) -> &'a str {
         self.values.get(name).map(String::as_str).unwrap_or(default)
     }
     pub fn has(&self, name: &str) -> bool {
         self.values.contains_key(name)
-    }
-    pub fn choice<'a>(&'a self, name: &str, default: &'a str, choices: &[&str]) -> Result<&'a str> {
-        let value = self.get(name, default);
-        if !choices.contains(&value) {
-            return Err(self.invalid(
-                name,
-                format!(
-                    "'{value}' is not one of {}.",
-                    choices.iter().map(|c| format!("'{c}'")).collect::<Vec<_>>().join(", ")
-                ),
-            ));
-        }
-        Ok(value)
     }
     pub fn number(&self, name: &str, default: usize, range: (usize, usize)) -> Result<usize> {
         Ok(self.checked_integer(name, default, (range.0, Some(range.1)))?.to_string().parse()?)
@@ -128,30 +76,6 @@ impl Options {
     pub fn invalid(&self, name: &str, message: impl fmt::Display) -> anyhow::Error {
         usage(&self.command, format!("Invalid value for '{name}': {message}"))
     }
-    pub fn arguments(&self, names: &[&str], variadic: bool) -> Result<()> {
-        if self.positional.len() < names.len() {
-            return Err(usage(&self.command, format!("Missing argument '{}'.", names[self.positional.len()])));
-        }
-        if !variadic && self.positional.len() > names.len() {
-            let extras = &self.positional[names.len()..];
-            let message = if extras.len() == 1 {
-                format!("Got unexpected extra argument ({})", extras[0])
-            } else {
-                format!("Got unexpected extra arguments ({})", extras.join(" "))
-            };
-            return Err(usage(&self.command, message));
-        }
-        Ok(())
-    }
-}
-fn split_option<'a>(argument: &'a str, valued: &[&str]) -> (&'a str, Option<&'a str>) {
-    if valued.contains(&"--folder") && argument.starts_with("-f") && argument.len() > 2 {
-        return ("-f", Some(&argument[2..]));
-    }
-    argument.split_once('=').map_or((argument, None), |(a, b)| (a, Some(b)))
-}
-fn normalize_option<'a>(spelling: &'a str, valued: &[&str]) -> &'a str {
-    if valued.contains(&"--folder") && matches!(spelling, "-f" | "--f") { "--folder" } else { spelling }
 }
 pub fn json_dump(value: &serde_json::Value) -> String {
     let compact = serde_json::to_string(value).expect("JSON value serialization");

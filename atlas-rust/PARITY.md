@@ -35,6 +35,8 @@ Artifact normalization matches `coffee_snapshot`: remove `repository.indexedAt`;
 
 ## CLI parity and timing
 
+The native CLI uses clap. Commands, options, data output, database effects, and runtime errors retain Python parity. Help text and usage diagnostics use clap's generated format, not Click's format. Cases marked `presentation` check exit status, output channel, and generated help or diagnostic markers instead of exact text; database comparison remains strict. Rust rejects `--` before a subcommand, which Click accepts. Those five cases explicitly require native exit code 2. A `--` after a leaf command still introduces literal positional arguments. Native binary tests cover help for every command and validation without database access.
+
 ```sh
 uv sync --project atlas --group dev
 cargo build --manifest-path atlas-rust/Cargo.toml --release --bins

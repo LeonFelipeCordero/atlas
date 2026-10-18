@@ -7,24 +7,10 @@ use super::{
 use anyhow::Result;
 use serde_json::Value;
 
-const COMMANDS: &[&str] = &["children", "context", "find", "overview", "path", "show", "source"];
-pub fn run(args: &[String]) -> Result<i32> {
-    let (selection, tail) = Options::parse_group("graph", args, (&["--project", "--revision"], &["--help"]))?;
-    if selection.has("--help") {
-        super::help::print("graph", false);
-        return Ok(0);
-    }
-    let Some(command) = tail.first().map(String::as_str) else {
-        return super::commands::missing_command(args, "graph");
-    };
-    if !COMMANDS.contains(&command) {
-        return super::commands::unknown_group_command("graph", tail, (&["--project", "--revision"], COMMANDS));
-    }
-    let tail = &tail[1..];
-    let Some(options) = GraphOptions::parse(command, tail)? else {
-        super::help::print(&format!("graph {command}"), false);
-        return Ok(0);
-    };
+pub fn run(matches: &clap::ArgMatches) -> Result<i32> {
+    let selection = Options::from_matches("graph", matches);
+    let (command, matches) = matches.subcommand().expect("clap requires a graph command");
+    let options = GraphOptions::from_matches(command, matches)?;
     emit(execute(options, &selection))
 }
 fn emit(output: Result<(Value, bool)>) -> Result<i32> {
