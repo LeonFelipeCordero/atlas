@@ -22,142 +22,142 @@
     ],
     "targets": {
       "entrypoints": {
-        "sources": ["atlas/src/atlas/*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/test_coffee_pipeline.py", "tests/cli/test_commands.py", "tests/services/test_storage_contracts.py", "tests/parsing/test_campaign_core_regressions.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/*.rs", "atlas-rust/src/atlas/paths/*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "cli", "--test", "parity_pipeline", "--test", "reindex"],
+        "timeoutSeconds": 300
       },
       "cli-commands": {
-        "sources": ["atlas/src/atlas/cli/__init__.py", "atlas/src/atlas/cli/commands.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/cli/test_commands.py", "tests/test_coffee_check_snapshots.py", "tests/test_coffee_report_snapshots.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/cli/commands.rs", "atlas-rust/src/atlas/cli/mod.rs", "atlas-rust/src/atlas/cli/options.rs", "atlas-rust/src/atlas/cli/schema.rs", "atlas-rust/src/atlas/cli/integers.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "cli", "--test", "cli_validation", "--test", "cli_numeric", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "cli-graph": {
-        "sources": ["atlas/src/atlas/cli/graph*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/cli/test_graph.py", "tests/cli/test_graph_output.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/cli/graph*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_navigation", "--test", "navigation_budget", "--test", "cli_validation"],
+        "timeoutSeconds": 300
       },
       "cli-mutations": {
-        "sources": ["atlas/src/atlas/cli/mutations.py", "atlas/src/atlas/cli/mutation_targets.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/cli/test_mutations.py", "tests/cli/test_mutation_run.py", "tests/test_coffee_mutation_manifest_snapshots.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/cli/mutations.rs", "atlas-rust/src/atlas/cli/mutation_targets.rs", "atlas-rust/src/atlas/cli/mutation_run.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "mutation_safety", "--test", "parity", "--test", "cli_validation"],
+        "timeoutSeconds": 300
       },
       "domain-models": {
-        "sources": ["atlas/src/atlas/domain/__init__.py", "atlas/src/atlas/domain/models.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/parsing", "tests/metrics/test_artifact.py", "tests/test_coffee_pipeline.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/domain/mod.rs", "atlas-rust/src/atlas/domain/models.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       },
       "domain-navigation": {
-        "sources": ["atlas/src/atlas/domain/navigation.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/services/test_navigation.py", "tests/services/test_navigation_limits.py", "tests/cli/test_graph.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/domain/navigation.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_navigation", "--test", "navigation_budget"],
+        "timeoutSeconds": 300
       },
       "domain-repositories": {
-        "sources": ["atlas/src/atlas/domain/repositories.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/services/test_repositories.py", "tests/services/test_storage_contracts.py", "tests/cli/test_commands.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/domain/repositories.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_inventory"],
+        "timeoutSeconds": 300
       },
       "mutation-candidates": {
-        "sources": ["atlas/src/atlas/domain/mutation_candidates.py", "atlas/src/atlas/parsing/mutation_candidates.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/mutations", "tests/test_coffee_mutation_candidate_snapshots.py", "tests/parsing/test_campaign_core_regressions.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/domain/mutation_candidates.rs", "atlas-rust/src/atlas/parsing/mutation_candidates.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "discovery": {
-        "sources": ["atlas/src/atlas/parsing/__init__.py", "atlas/src/atlas/parsing/discovery.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/parsing/test_discovery.py", "tests/test_coffee_edge_cases.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/parsing/mod.rs", "atlas-rust/src/atlas/parsing/discovery*.rs", "atlas-rust/src/atlas/parsing/ignore_spec.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "discovery_failures", "--test", "parity_families"],
+        "timeoutSeconds": 300
       },
       "parsing": {
-        "sources": ["atlas/src/atlas/parsing/parser.py", "atlas/src/atlas/parsing/structure.py", "atlas/src/atlas/parsing/syntax.py", "atlas/src/atlas/parsing/adapters/*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/parsing", "tests/test_coffee_pipeline.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/parsing/parser.rs", "atlas-rust/src/atlas/parsing/structure.rs", "atlas-rust/src/atlas/parsing/syntax.rs", "atlas-rust/src/atlas/parsing/catalog.rs", "atlas-rust/src/atlas/parsing/inheritance.rs", "atlas-rust/src/atlas/parsing/queries.rs", "atlas-rust/src/atlas/parsing/adapters/*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_pipeline", "--test", "parity_families"],
+        "timeoutSeconds": 300
       },
       "persistence": {
-        "sources": ["atlas/src/atlas/persistence/*.py", "atlas/src/atlas/persistence/migrations/*", "atlas/src/atlas/persistence/migrations/versions/*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/services", "tests/test_coffee_mutation_candidate_snapshots.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/persistence/*.rs", "atlas-rust/src/atlas/persistence/migrations/*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_navigation", "--test", "parity_inventory"],
+        "timeoutSeconds": 300
       },
       "repository-services": {
-        "sources": ["atlas/src/atlas/services/__init__.py", "atlas/src/atlas/services/factories.py", "atlas/src/atlas/services/repositories.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/services/test_repositories.py", "tests/services/test_storage_contracts.py", "tests/test_coffee_mutation_candidate_snapshots.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/services/mod.rs", "atlas-rust/src/atlas/services/factories.rs", "atlas-rust/src/atlas/services/repositories.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_inventory", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "navigation-services": {
-        "sources": ["atlas/src/atlas/services/navigation*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/services/test_navigation.py", "tests/services/test_navigation_limits.py", "tests/services/test_source_contracts.py", "tests/services/test_symbol_contracts.py", "tests/services/test_campaign_storage_walk_regressions.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/services/navigation*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_navigation", "--test", "navigation_budget"],
+        "timeoutSeconds": 300
       },
       "mutations": {
-        "sources": ["atlas/src/atlas/mutations/*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/mutations", "tests/cli/test_mutations.py", "tests/cli/test_mutation_run.py", "tests/test_coffee_mutation_manifest_snapshots.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/mutations/*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "mutation_safety", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "artifacts": {
-        "sources": ["atlas/src/atlas/metrics/__init__.py", "atlas/src/atlas/metrics/artifact.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_artifact.py", "tests/test_coffee.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/metrics/mod.rs", "atlas-rust/src/atlas/metrics/artifact.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "callables": {
-        "sources": ["atlas/src/atlas/metrics/callables.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_callables.py", "tests/test_jvm_callable_selection_snapshots.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/metrics/callables.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_families", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       },
       "complexity": {
-        "sources": ["atlas/src/atlas/metrics/complexity.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_complexity.py"],
-        "timeoutSeconds": 30
+        "sources": ["atlas-rust/src/atlas/metrics/complexity.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       },
       "checks": {
-        "sources": ["atlas/src/atlas/metrics/check.py", "atlas/src/atlas/metrics/config.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_check.py", "tests/metrics/test_config.py", "tests/test_coffee_check_snapshots.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/metrics/check.rs", "atlas-rust/src/atlas/metrics/config.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "dependency-metrics": {
-        "sources": ["atlas/src/atlas/metrics/cycles.py", "atlas/src/atlas/metrics/dependency_metrics.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_cycles.py", "tests/metrics/test_dependency_metrics.py", "tests/metrics/test_campaign_other_regressions.py"],
-        "timeoutSeconds": 30
+        "sources": ["atlas-rust/src/atlas/metrics/cycles.rs", "atlas-rust/src/atlas/metrics/dependency_metrics.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       },
       "reports": {
-        "sources": ["atlas/src/atlas/metrics/report.py", "atlas/src/atlas/metrics/report_markdown.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_report.py", "tests/metrics/test_report_markdown.py", "tests/test_coffee_report_snapshots.py", "tests/metrics/test_campaign_other_regressions.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/metrics/report.rs", "atlas-rust/src/atlas/metrics/report_markdown.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity"],
+        "timeoutSeconds": 300
       },
       "receivers": {
-        "sources": ["atlas/src/atlas/metrics/receiver_*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_receiver_bindings.py", "tests/metrics/test_receiver_resolution.py", "tests/metrics/test_receiver_syntax.py", "tests/test_coffee_go_rust_receiver_snapshots.py", "tests/metrics/test_receiver_mutation_regressions.py", "tests/metrics/test_receiver_ownership_regressions.py", "tests/metrics/test_shared_syntax_mutation_regressions.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/metrics/receiver_*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_families", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       },
       "resolution": {
-        "sources": ["atlas/src/atlas/metrics/resolver.py", "atlas/src/atlas/metrics/resolution_*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_resolver.py", "tests/metrics/test_resolution_contract.py", "tests/metrics/test_resolution_members.py", "tests/metrics/test_resolution_syntax.py", "tests/test_coffee_safety_review_snapshots.py", "tests/metrics/test_shared_syntax_mutation_regressions.py", "tests/metrics/test_campaign_other_regressions.py"],
-        "timeoutSeconds": 60
+        "sources": ["atlas-rust/src/atlas/metrics/resolver*.rs", "atlas-rust/src/atlas/metrics/resolution_*.rs", "atlas-rust/src/atlas/metrics/pattern_bindings.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics_patterns", "--test", "parity_families", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       },
       "metric-adapters": {
-        "sources": ["atlas/src/atlas/metrics/adapters/*.py"],
-        "cwd": "atlas",
-        "command": ["uv", "run", "pytest", "tests/metrics/test_adapter_binding_indexes.py", "tests/metrics/test_adapter_elixir_syntax.py", "tests/metrics/test_adapter_imports.py", "tests/metrics/test_adapter_inheritance.py", "tests/metrics/test_adapter_metrics.py", "tests/metrics/test_adapter_parameters.py", "tests/metrics/test_adapter_paths.py", "tests/metrics/test_adapter_policy.py", "tests/metrics/test_adapter_python_modules.py", "tests/metrics/test_adapter_receivers.py", "tests/metrics/test_adapter_resolution.py", "tests/metrics/test_adapter_rust_modules.py", "tests/metrics/test_adapter_script_members.py", "tests/metrics/test_adapter_selection.py", "tests/metrics/test_adapter_syntax.py", "tests/test_script_member_coffee_snapshots.py", "tests/test_jvm_callable_selection_snapshots.py", "tests/metrics/test_adapter_python_mutation_regressions.py", "tests/metrics/test_adapter_regression_contracts_a.py", "tests/metrics/test_adapter_regression_syntax_a.py", "tests/metrics/test_adapter_rust_mutation_regressions.py", "tests/metrics/test_adapter_script_mutation_regressions.py"],
-        "timeoutSeconds": 120
+        "sources": ["atlas-rust/src/atlas/metrics/adapters/*.rs"],
+        "cwd": "atlas-rust",
+        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_families", "--test", "parity_pipeline"],
+        "timeoutSeconds": 300
       }
     }
   }
