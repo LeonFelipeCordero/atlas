@@ -9,6 +9,7 @@ use crate::domain::{
 };
 use crate::parsing::mutation_candidates::extract_candidates;
 use anyhow::{Result, bail};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -32,21 +33,6 @@ pub struct MutationManifest {
     pub original_bytes: String,
     pub replacement: String,
     pub replacement_bytes: String,
-}
-
-fn base64(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut encoded = String::new();
-    for chunk in bytes.chunks(3) {
-        let bits = ((chunk[0] as u32) << 16)
-            | ((chunk.get(1).copied().unwrap_or(0) as u32) << 8)
-            | chunk.get(2).copied().unwrap_or(0) as u32;
-        encoded.push(ALPHABET[(bits >> 18) as usize] as char);
-        encoded.push(ALPHABET[((bits >> 12) & 63) as usize] as char);
-        encoded.push(if chunk.len() > 1 { ALPHABET[((bits >> 6) & 63) as usize] as char } else { '=' });
-        encoded.push(if chunk.len() > 2 { ALPHABET[(bits & 63) as usize] as char } else { '=' });
-    }
-    encoded
 }
 
 fn read_source(root: &Path, candidate: &MutationCandidate) -> Result<SourceFile> {
@@ -109,9 +95,9 @@ fn manifest(candidate: &MutationCandidate, rule: &MutationRule, replacement: &st
         path: candidate.path.clone(),
         span: candidate.span.clone(),
         original_text: candidate.original_text.clone(),
-        original_bytes: base64(candidate.original_text.as_bytes()),
+        original_bytes: STANDARD.encode(candidate.original_text.as_bytes()),
         replacement: replacement.into(),
-        replacement_bytes: base64(replacement.as_bytes()),
+        replacement_bytes: STANDARD.encode(replacement.as_bytes()),
     };
     let mut payload = serde_json::to_value(&item)?;
     payload.as_object_mut().unwrap().shift_remove("id");
@@ -175,11 +161,11 @@ fn source_inventory(root: &Path, candidate: &MutationCandidate) -> Result<Verifi
     let source = read_source(root, candidate)?;
     let extracted = extract_candidates(&source)?
         .into_iter()
-        .map(serde_json::from_value::<MutationCandidate>)
-        .collect::<std::result::Result<Vec<_>, _>>()?
-        .into_iter()
-        .map(|item| (item.id.clone(), item))
-        .collect::<HashMap<_, _>>();
+        .map(|value| {
+            let item: MutationCandidate = serde_json::from_value(value)?;
+            Ok((item.id.clone(), item))
+        })
+        .collect::<Result<HashMap<_, _>>>()?;
     let binary = if extracted.is_empty() { HashSet::new() } else { binary_spans(&source)? };
     Ok(VerifiedSource { source, extracted, binary })
 }

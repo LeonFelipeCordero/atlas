@@ -1,9 +1,8 @@
 //! Native clap validation and runtime error regressions through the executable.
-use std::process::{Command, Output};
-
-fn invoke(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_atlas")).env("COLUMNS", "80").args(args).output().unwrap()
-}
+#[path = "support/cli.rs"]
+mod cli_support;
+use cli_support::invoke;
+use std::process::Command;
 fn usage_error(args: &[&str], marker: &str) {
     let output = invoke(args);
     assert_eq!(output.status.code(), Some(2), "{args:?}: {output:?}");

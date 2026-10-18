@@ -18,19 +18,9 @@ pub fn digest(bytes: &[u8]) -> String {
 
 /// Python json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False).
 pub fn canonical_json(value: &Value) -> String {
-    match value {
-        Value::Object(object) => {
-            let mut keys: Vec<_> = object.keys().collect();
-            keys.sort();
-            let fields: Vec<_> = keys
-                .iter()
-                .map(|key| format!("{}:{}", serde_json::to_string(key).unwrap(), canonical_json(&object[*key])))
-                .collect();
-            format!("{{{}}}", fields.join(","))
-        }
-        Value::Array(items) => format!("[{}]", items.iter().map(canonical_json).collect::<Vec<_>>().join(",")),
-        _ => value.to_string(),
-    }
+    let mut sorted = value.clone();
+    sorted.sort_all_objects();
+    sorted.to_string()
 }
 
 #[cfg(test)]

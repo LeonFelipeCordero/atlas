@@ -5,7 +5,7 @@ use crate::syntax::{children, named_children, text};
 use anyhow::Result;
 use serde_json::{Value, json};
 use std::collections::HashSet;
-use tree_sitter::{Node, Parser};
+use tree_sitter::Node;
 
 fn expressions(language: &str) -> &'static [&'static str] {
     match language {
@@ -346,14 +346,7 @@ pub fn extract_candidates(source: &SourceFile) -> Result<Vec<Value>> {
     if std::str::from_utf8(&source.source).is_err() || expressions(&source.language).is_empty() {
         return Ok(vec![]);
     }
-    let Ok(language) = tree_sitter_language_pack::get_language(&source.language) else {
-        return Ok(vec![]);
-    };
-    let mut parser = Parser::new();
-    if parser.set_language(&language).is_err() {
-        return Ok(vec![]);
-    }
-    let Some(tree) = parser.parse(&source.source, None) else {
+    let Ok(tree) = super::syntax::parse(&source.language, &source.source) else {
         return Ok(vec![]);
     };
     if tree.root_node().has_error() {

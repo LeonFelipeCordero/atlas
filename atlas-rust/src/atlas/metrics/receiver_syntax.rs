@@ -51,14 +51,7 @@ pub fn child<'tree>(node: Node<'tree>, kinds: &[&str]) -> Option<Node<'tree>> {
 }
 
 pub fn enclosing<'tree>(node: Node<'tree>, kinds: &[&str]) -> Option<Node<'tree>> {
-    let mut parent = node.parent();
-    while let Some(current) = parent {
-        if kinds.contains(&current.kind()) {
-            return Some(current);
-        }
-        parent = current.parent();
-    }
-    None
+    std::iter::successors(node.parent(), Node::parent).find(|parent| kinds.contains(&parent.kind()))
 }
 
 #[derive(Debug, Clone, Default)]

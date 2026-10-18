@@ -55,15 +55,15 @@ impl Operation {
             Self::Children(key, limit, offset) => service.children(&key, limit, offset),
             Self::Context(request) => service.context(&request),
             Self::Path(request) => service.path(&request),
-            Self::Source(keys, options) => source(service, &keys, &options),
+            Self::Source(keys, options) => source(service, &keys, options),
         }
     }
 }
-fn source(service: &mut NavigationService, keys: &[String], options: &SourceOptions) -> Result<Value> {
+fn source(service: &mut NavigationService, keys: &[String], options: SourceOptions) -> Result<Value> {
     if keys.len() == 1 {
-        service.source(&keys[0], options.max_lines, options.start_line.clone())
+        service.source(&keys[0], options.max_lines, options.start_line)
     } else {
-        service.sources(keys, options.max_lines, options.start_line.clone())
+        service.sources(keys, options.max_lines, options.start_line)
     }
 }
 fn source_options(options: &Options) -> Result<SourceOptions> {

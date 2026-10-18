@@ -55,13 +55,6 @@ pub async fn graph_summary(connection: &impl ConnectionTrait, row: RepositoryGra
 }
 pub async fn report_facts(connection: &impl ConnectionTrait, row: RepositoryGraphRow) -> Result<Value> {
     let id = &row.repository_id;
-    let symbols: HashMap<_, _> = graph_symbols::Entity::find()
-        .filter(graph_symbols::Column::RepositoryId.eq(id))
-        .all(connection)
-        .await?
-        .into_iter()
-        .map(|s| (s.node_key.clone(), s))
-        .collect();
     let metrics: HashMap<_, _> = graph_node_metrics::Entity::find()
         .filter(graph_node_metrics::Column::RepositoryId.eq(id))
         .all(connection)
@@ -70,12 +63,13 @@ pub async fn report_facts(connection: &impl ConnectionTrait, row: RepositoryGrap
         .map(|m| (m.node_key.clone(), metric_value(m)))
         .collect();
     let nodes = graph_nodes::Entity::find()
+        .find_also_related(graph_symbols::Entity)
         .filter(graph_nodes::Column::RepositoryId.eq(id))
         .order_by_asc(graph_nodes::Column::Ordinal)
         .all(connection)
         .await?
         .into_iter()
-        .map(|n| report_node(n, &symbols, &metrics))
+        .map(|(n, s)| report_node(n, s, &metrics))
         .collect::<Vec<_>>();
     let edges: Vec<Value> = graph_edges::Entity::find()
         .filter(graph_edges::Column::RepositoryId.eq(id))
@@ -109,9 +103,8 @@ pub async fn report_facts(connection: &impl ConnectionTrait, row: RepositoryGrap
     Ok(json!({"graphRevision": row.graph_revision, "nodes": nodes, "edges": edges, "imports": imports,
         "diagnostics": diagnostics, "mutationCandidates": candidates}))
 }
-fn report_node(n: GraphNodeRow, symbols: &HashMap<String, GraphSymbolRow>, metrics: &HashMap<String, Value>) -> Value {
-    let symbol = symbols.get(&n.node_key).cloned();
-    let metric = metrics.get(&n.node_key).cloned().unwrap_or_else(|| json!({}));
+fn report_node(n: GraphNodeRow, symbol: Option<GraphSymbolRow>, metrics: &HashMap<String, Value>) -> Value {
+    let metric = metrics.get(&n.node_key).unwrap_or(&Value::Null);
     let mut value = node_value(n, symbol);
     for field in ["language", "startColumn", "endLine", "endColumn", "signature", "visibility"] {
         value.as_object_mut().unwrap().remove(field);

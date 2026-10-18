@@ -58,10 +58,8 @@ pub fn io_error(error: std::io::Error) -> anyhow::Error {
 }
 
 pub fn command_error(error: std::io::Error, command: &str) -> anyhow::Error {
-    let Some(code) = error.raw_os_error() else {
+    if error.raw_os_error().is_none() {
         return error.into();
-    };
-    let message = error.to_string();
-    let message = message.split(" (os error ").next().unwrap();
-    anyhow::anyhow!("[Errno {code}] {message}: {}", repr(command))
+    }
+    anyhow::anyhow!("{}: {}", io_error(error), repr(command))
 }

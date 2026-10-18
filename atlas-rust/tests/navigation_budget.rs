@@ -1,32 +1,20 @@
 //! Traversal budgets count unseen edges, not previously visited adjacency rows.
+#[path = "support/project.rs"]
+mod project;
 use atlas::{
-    bootstrap::{migrate_database, navigation_service, repository_service},
+    bootstrap::navigation_service,
     domain::navigation::{PathRequest, TraversalRequest},
-    indexer::analyze_repository,
 };
+use project::Project;
 use serde_json::json;
-use std::fs;
 
 #[test]
 fn repeated_calls_use_exact_budget_and_report_real_truncation() -> anyhow::Result<()> {
-    let workspace = tempfile::tempdir()?;
-    let root = workspace.path().join("repo");
-    fs::create_dir(&root)?;
-    fs::write(
-        root.join("main.py"),
+    let project = Project::new(
         "def a():\n    b()\n    b()\n    b()\n    c()\n\ndef b():\n    d()\n\ndef c():\n    pass\n\ndef d():\n    pass\n",
-    )?;
-    let graph = analyze_repository(&root)?;
-    let key = |name: &str| {
-        graph["nodes"].as_array().unwrap().iter()
-        .find(|n| n["name"] == name && n["kind"] == "function")
-        .unwrap()["stableKey"].as_str().unwrap().to_owned()
-    };
-    let (a, b, d) = (key("a"), key("b"), key("d"));
-    let database = workspace.path().join("atlas.sqlite");
-    migrate_database(Some(&database))?;
-    let saved = repository_service(Some(&database))?.save_folder(&root, &graph)?;
-    let mut service = navigation_service(Some(&saved.repository_id), None, Some(&database))?;
+    );
+    let (a, b, d) = (project.key("a").to_owned(), project.key("b").to_owned(), project.key("d").to_owned());
+    let mut service = navigation_service(Some(&project.saved.repository_id), None, Some(&project.database))?;
     let request = TraversalRequest {
         key: a.clone(),
         direction: "both".into(),

@@ -23,9 +23,10 @@ pub struct Options {
 impl Options {
     pub fn from_matches(command: &str, matches: &clap::ArgMatches) -> Self {
         let mut result = Self { command: command.into(), values: BTreeMap::new(), positional: vec![] };
-        let mut schema = super::schema::cli();
+        let cli = super::schema::cli();
+        let mut schema = &cli;
         for name in command.split_whitespace() {
-            schema = schema.find_subcommand(name).expect("known CLI command").clone();
+            schema = schema.find_subcommand(name).expect("known CLI command");
         }
         for argument in schema.get_arguments().filter(|arg| arg.get_id() != "help") {
             result.insert_match(argument, matches);

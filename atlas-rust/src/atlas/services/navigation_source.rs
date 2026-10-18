@@ -41,11 +41,7 @@ pub fn source_status(status: &str, path: &str) -> Value {
     value
 }
 pub fn source_lines(data: &[u8]) -> std::result::Result<Vec<&str>, std::str::Utf8Error> {
-    let mut lines: Vec<_> = std::str::from_utf8(data)?.split('\n').collect();
-    if lines.last() == Some(&"") {
-        lines.pop();
-    }
-    Ok(lines.into_iter().map(|line| line.strip_suffix('\r').unwrap_or(line)).collect())
+    Ok(std::str::from_utf8(data)?.split_terminator('\n').map(|line| line.strip_suffix('\r').unwrap_or(line)).collect())
 }
 pub fn verified_excerpt(node: &Value, data: &[u8], options: &SourceOptions) -> Value {
     let path = node["path"].as_str().unwrap_or("");

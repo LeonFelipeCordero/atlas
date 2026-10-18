@@ -16,7 +16,7 @@ macro_rules! kind_set {
                     })
                     .collect()
             });
-            &SETS[self.policy_language()]
+            &SETS[self.family()]
         }
     };
 }
@@ -37,7 +37,7 @@ impl ResolutionAdapter {
     kind_set!(rebound_declarations, rebound_declarations_raw);
     kind_set!(single_parameter_functions, single_parameter_functions_raw);
     kind_set!(macro_nodes, macro_nodes_raw);
-    fn policy_language(&self) -> &'static str {
+    pub fn family(&self) -> &str {
         match self.language.as_str() {
             "python" => "python",
             "javascript" | "jsx" | "typescript" | "tsx" => "javascript",
@@ -46,13 +46,6 @@ impl ResolutionAdapter {
             "go" => "go",
             "rust" => "rust",
             "elixir" => "elixir",
-            _ => "",
-        }
-    }
-    pub fn family(&self) -> &str {
-        match self.language.as_str() {
-            "jsx" | "typescript" | "tsx" => "javascript",
-            "python" | "javascript" | "java" | "kotlin" | "go" | "rust" | "elixir" => &self.language,
             _ => "",
         }
     }
@@ -65,23 +58,26 @@ impl ResolutionAdapter {
     pub fn jvm(&self) -> bool {
         ["java", "kotlin"].contains(&self.language.as_str())
     }
-    fn scopes_raw(&self) -> &[&'static str] {
-        match self.language.as_str() {
-            "python" => &[
-                "function_definition",
-                "lambda",
-                "class_definition",
-                "list_comprehension",
-                "set_comprehension",
-                "dictionary_comprehension",
-                "generator_expression",
-            ],
-            "rust" => RUST_SCOPES,
-            "java" => JAVA_SCOPES,
-            "kotlin" => KOTLIN_SCOPES,
-            "go" => GO_SCOPES,
-            _ => SCOPES,
-        }
+    fn scopes_raw(&self) -> Vec<&'static str> {
+        let extra: &[&str] = match self.family() {
+            "python" => {
+                return vec![
+                    "function_definition",
+                    "lambda",
+                    "class_definition",
+                    "list_comprehension",
+                    "set_comprehension",
+                    "dictionary_comprehension",
+                    "generator_expression",
+                ];
+            }
+            "rust" => &["declaration_list"],
+            "java" => &["for_statement", "enhanced_for_statement", "catch_clause"],
+            "kotlin" => &["secondary_constructor", "function_body", "control_structure_body", "for_statement"],
+            "go" => &["for_statement"],
+            _ => &[],
+        };
+        SCOPES.iter().chain(extra).copied().collect()
     }
     fn import_nodes_raw(&self) -> &[&'static str] {
         match self.language.as_str() {
@@ -224,116 +220,6 @@ impl ResolutionAdapter {
         }
     }
 }
-const RUST_SCOPES: &[&str] = &[
-    "function_definition",
-    "function_declaration",
-    "function_expression",
-    "arrow_function",
-    "method_definition",
-    "method_declaration",
-    "constructor_declaration",
-    "function_item",
-    "lambda",
-    "lambda_expression",
-    "lambda_literal",
-    "closure_expression",
-    "func_literal",
-    "method",
-    "singleton_method",
-    "class_definition",
-    "class_declaration",
-    "class_specifier",
-    "struct_specifier",
-    "block",
-    "statement_block",
-    "compound_statement",
-    "do_block",
-    "declaration_list",
-];
-const JAVA_SCOPES: &[&str] = &[
-    "function_definition",
-    "function_declaration",
-    "function_expression",
-    "arrow_function",
-    "method_definition",
-    "method_declaration",
-    "constructor_declaration",
-    "function_item",
-    "lambda",
-    "lambda_expression",
-    "lambda_literal",
-    "closure_expression",
-    "func_literal",
-    "method",
-    "singleton_method",
-    "class_definition",
-    "class_declaration",
-    "class_specifier",
-    "struct_specifier",
-    "block",
-    "statement_block",
-    "compound_statement",
-    "do_block",
-    "for_statement",
-    "enhanced_for_statement",
-    "catch_clause",
-];
-const KOTLIN_SCOPES: &[&str] = &[
-    "function_definition",
-    "function_declaration",
-    "function_expression",
-    "arrow_function",
-    "method_definition",
-    "method_declaration",
-    "constructor_declaration",
-    "function_item",
-    "lambda",
-    "lambda_expression",
-    "lambda_literal",
-    "closure_expression",
-    "func_literal",
-    "method",
-    "singleton_method",
-    "class_definition",
-    "class_declaration",
-    "class_specifier",
-    "struct_specifier",
-    "block",
-    "statement_block",
-    "compound_statement",
-    "do_block",
-    "secondary_constructor",
-    "function_body",
-    "control_structure_body",
-    "for_statement",
-];
-const GO_SCOPES: &[&str] = &[
-    "function_definition",
-    "function_declaration",
-    "function_expression",
-    "arrow_function",
-    "method_definition",
-    "method_declaration",
-    "constructor_declaration",
-    "function_item",
-    "lambda",
-    "lambda_expression",
-    "lambda_literal",
-    "closure_expression",
-    "func_literal",
-    "method",
-    "singleton_method",
-    "class_definition",
-    "class_declaration",
-    "class_specifier",
-    "struct_specifier",
-    "block",
-    "statement_block",
-    "compound_statement",
-    "do_block",
-    "for_statement",
-];
-
 #[cfg(test)]
 mod tests {
     use super::*;

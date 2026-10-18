@@ -33,12 +33,12 @@ fn open_child(parent: &File, name: &Path, directory: bool) -> io::Result<File> {
 
 fn open_relative(root: &File, relative: &Path, directory: bool) -> io::Result<File> {
     let mut descriptor = root.try_clone()?;
-    let parts: Vec<_> = relative.components().collect();
-    for (index, part) in parts.iter().enumerate() {
+    let mut parts = relative.components().peekable();
+    while let Some(part) = parts.next() {
         let Component::Normal(name) = part else {
             return Err(io::Error::other("Unsafe source path"));
         };
-        descriptor = open_child(&descriptor, Path::new(name), directory || index + 1 < parts.len())?;
+        descriptor = open_child(&descriptor, Path::new(name), directory || parts.peek().is_some())?;
     }
     Ok(descriptor)
 }

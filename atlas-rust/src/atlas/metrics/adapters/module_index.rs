@@ -101,13 +101,7 @@ impl ModuleIndex {
             return vec![];
         };
         if body.parent().is_none() {
-            return scope
-                .file
-                .symbols
-                .iter()
-                .filter(|s| s.parent_key == file_key(&scope.file.source.path))
-                .cloned()
-                .collect();
+            return super::resolution_paths::top_symbols(&scope.file);
         }
         let spans: BTreeSet<_> = named_children(body).into_iter().map(|n| (n.start_byte(), n.end_byte())).collect();
         scope.file.symbols.iter().filter(|s| spans.contains(&(s.start_byte, s.end_byte))).cloned().collect()

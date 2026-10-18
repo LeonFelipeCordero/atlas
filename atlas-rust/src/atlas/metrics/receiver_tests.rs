@@ -1,9 +1,8 @@
 use super::*;
-use crate::domain::models::{Call, ParsedFile, ParsedRepository, SourceFile, file_key};
+use crate::domain::models::{Call, ParsedFile, ParsedRepository, SourceFile};
 use crate::metrics::adapters::get_resolution_adapter;
 use crate::metrics::receiver_syntax::{self, ReceiverBinding};
 use crate::syntax::{named_children, walk};
-use tree_sitter::Node;
 
 fn parsed(language: &str, source: &str) -> ParsedFile {
     ParsedFile {
@@ -34,62 +33,8 @@ fn binding<'a>(entries: &'a [ReceiverBinding<'a>], name: &str) -> &'a ReceiverBi
     entries.iter().find(|b| b.name == name).unwrap_or_else(|| panic!("Missing receiver {name}: {entries:?}"))
 }
 
-fn symbol_kind(node: Node<'_>, syntax: &Syntax) -> Option<&'static str> {
-    match node.kind() {
-        "class_definition" | "class_declaration" => Some("class"),
-        "function_definition" => {
-            let class = receiver_syntax::enclosing(node, &["class_definition"]);
-            Some(if class.is_some() { "method" } else { "function" })
-        }
-        "function_declaration" => Some("function"),
-        "method_definition" | "method_declaration" => {
-            Some(if text(field(node, &["name"]), &syntax.source) == "constructor" { "constructor" } else { "method" })
-        }
-        "constructor_declaration" => Some("constructor"),
-        _ => None,
-    }
-}
-
-fn symbol(syntax: &Syntax, node: Node<'_>, kind: &str) -> Symbol {
-    let name = text(field(node, &["name"]), &syntax.source);
-    Symbol {
-        key: format!("{}:{}:{}", syntax.file.source.path, name, node.start_byte()),
-        file_path: syntax.file.source.path.clone(),
-        language: syntax.language.clone(),
-        name: name.clone(),
-        qualified_name: name,
-        kind: kind.to_owned(),
-        parent_key: file_key(&syntax.file.source.path),
-        start_byte: node.start_byte(),
-        end_byte: node.end_byte(),
-        start_line: node.start_position().row + 1,
-        start_column: node.start_position().column,
-        end_line: node.end_position().row + 1,
-        end_column: node.end_position().column,
-        signature: None,
-        visibility: None,
-        decorators: vec![],
-        complexity: None,
-        line_count: None,
-        parameter_count: None,
-    }
-}
-
 fn resolver(language: &str, source: &str) -> CallResolver {
-    let syntax = syntax(language, source);
-    let mut file = syntax.file.as_ref().clone();
-    file.symbols =
-        syntax.nodes().into_iter().filter_map(|n| symbol_kind(n, &syntax).map(|k| symbol(&syntax, n, k))).collect();
-    let all = file.symbols.clone();
-    for symbol in &mut file.symbols {
-        if let Some(parent) = all
-            .iter()
-            .filter(|p| p.key != symbol.key && p.start_byte <= symbol.start_byte && symbol.end_byte <= p.end_byte)
-            .min_by_key(|p| p.end_byte - p.start_byte)
-        {
-            symbol.parent_key = parent.key.clone();
-        }
-    }
+    let file = crate::parsing::parser::parse_file(parsed(language, source).source).unwrap();
     CallResolver::new(&ParsedRepository { files: vec![file] })
 }
 

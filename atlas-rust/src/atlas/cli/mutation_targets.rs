@@ -26,11 +26,7 @@ fn parse(value: &str, targets: &Map<String, Value>) -> Result<Map<String, Value>
     if let Some(message) = error {
         return Err(usage("mutations run", format!("Invalid value for --target: {message}")));
     }
-    let mut selected = Map::new();
-    for name in names {
-        selected.insert(name.to_owned(), targets[name].clone());
-    }
-    Ok(selected)
+    Ok(names.into_iter().map(|name| (name.to_owned(), targets[name].clone())).collect())
 }
 
 pub fn select(project: &mut Value, options: &Options) -> Result<bool> {

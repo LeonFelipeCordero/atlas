@@ -12,8 +12,8 @@ use std::path::Path;
 pub fn analyze_folder(root: &Path) -> Result<Value> {
     crate::indexer::analyze_repository(root)
 }
-fn required_text(value: &Value, field: &str, maximum: usize) -> Result<String> {
-    let text = value.as_str().unwrap_or("").trim();
+fn required_text(value: &str, field: &str, maximum: usize) -> Result<String> {
+    let text = value.trim();
     if text.is_empty() {
         return Err(RepositoryError::new(format!("{field} is required"), 400).into());
     }
@@ -34,15 +34,15 @@ impl RepositoryService {
             return Err(RepositoryError::new("Expected an object with name and location", 400).into());
         }
         self.repository.register(
-            &required_text(&input["name"], "name", 200)?,
-            &required_text(&input["location"], "location", 4096)?,
+            &required_text(input["name"].as_str().unwrap_or(""), "name", 200)?,
+            &required_text(input["location"].as_str().unwrap_or(""), "location", 4096)?,
         )
     }
     pub fn list(&mut self) -> Result<Vec<RepositoryDto>> {
         self.repository.list()
     }
     fn identifier(&mut self, identifier: &str) -> Result<String> {
-        let id = required_text(&json!(identifier), "repositoryId", 200)?;
+        let id = required_text(identifier, "repositoryId", 200)?;
         if !self.repository.exists(&id)? {
             return Err(RepositoryError::new("Repository not found", 404).into());
         }
@@ -57,7 +57,7 @@ impl RepositoryService {
         self.repository.report_facts(&id)
     }
     pub fn report(&mut self, project_name: &str) -> Result<Value> {
-        let name = required_text(&json!(project_name), "project name", 200)?;
+        let name = required_text(project_name, "project name", 200)?;
         let id = self.repository.resolve(&name)?.ok_or_else(|| RepositoryError::new("Repository not found", 404))?;
         let facts = self
             .repository
@@ -88,7 +88,7 @@ impl RepositoryService {
         self.repository.save_new(&name, &root.to_string_lossy(), artifact)
     }
     pub fn index(&mut self, project_name: &str, root: &Path) -> Result<GraphDto> {
-        let name = required_text(&json!(project_name), "project name", 200)?;
+        let name = required_text(project_name, "project name", 200)?;
         let id = self.repository.resolve(&name)?.ok_or_else(|| RepositoryError::new("Repository not found", 404))?;
         let artifact = analyze_folder(root)?;
         self.repository.save(&id, &artifact)

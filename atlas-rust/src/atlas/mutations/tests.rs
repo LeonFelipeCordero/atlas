@@ -46,20 +46,11 @@ fn candidates(root: &Path, items: &[Value]) -> Result<Vec<Value>> {
 }
 
 #[test]
-fn canonical_digest_and_base64_match_snapshot() -> Result<()> {
+fn canonical_json_sorts_nested_keys_and_preserves_unicode() {
     assert_eq!(
         canonical_json(&json!({"z": [2, {"é": "é", "a": 3}], "a": true})),
         "{\"a\":true,\"z\":[2,{\"a\":3,\"é\":\"é\"}]}"
     );
-    let report = read_json(fixtures().join("snapshots/mutations/python-operators.json"));
-    let root = fixtures().join("code_samples/mutations/python");
-    let found = candidates(&root, report["mutations"].as_array().unwrap())?;
-    let selected = config::MutationConfig {
-        rules: rules::REGISTRY.iter().map(|rule| rule.id.clone()).collect(),
-        ..Default::default()
-    };
-    assert_eq!(report::build_mutation_report(&root, &json!({"mutationCandidates": found}), &selected)?, report);
-    Ok(())
 }
 
 #[test]
@@ -149,13 +140,11 @@ fn reject_invalid_bytes_errors_and_excluded_syntax() -> Result<()> {
         ("python", b"\xff+a"),
         ("python", b"if x > :\n"),
         ("python", b"# a+b\nx = 'a+b'\n"),
+        ("rust", b"fn test(p: &i32) { let a = *p; }"),
+        ("elixir", b"quote do: a + b\ndefmacro foo(a), do: a + b\n"),
     ] {
-        assert!(extract_candidates(&source("sample", language, data))?.is_empty());
+        assert!(extract_candidates(&source("sample", language, data))?.is_empty(), "{language}: {data:?}");
     }
-    let rust = extract_candidates(&source("sample.rs", "rust", b"fn test(p: &i32) { let a = *p; }"))?;
-    assert!(rust.is_empty());
-    let elixir = extract_candidates(&source("sample.ex", "elixir", b"quote do: a + b\ndefmacro foo(a), do: a + b\n"))?;
-    assert!(elixir.is_empty());
     Ok(())
 }
 

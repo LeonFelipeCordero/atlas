@@ -267,11 +267,7 @@ fn build_item(index: usize, declarations: &[Declaration<'_>], children: &[Vec<us
 }
 
 fn declared_parent(node: Node<'_>, by_node: &HashMap<usize, usize>) -> Option<usize> {
-    let mut parent = node.parent();
-    while parent.is_some_and(|parent| !by_node.contains_key(&parent.id())) {
-        parent = parent.unwrap().parent();
-    }
-    parent.map(|parent| by_node[&parent.id()])
+    std::iter::successors(node.parent(), |parent| parent.parent()).find_map(|parent| by_node.get(&parent.id()).copied())
 }
 
 fn structure_hierarchy(declarations: Vec<Declaration<'_>>) -> Vec<StructureItem> {

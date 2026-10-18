@@ -96,24 +96,19 @@ pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n:
         graph_files::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     if is_symbol(n) {
-        insert_symbol(connection, id, n).await?;
+        graph_symbols::Entity::insert(symbol_record(id, &key, n).into_active_model()).exec(connection).await?;
+        for (ordinal, decorator) in collection(&n["properties"], "decorators").iter().enumerate() {
+            let row = GraphNodeDecoratorRow {
+                repository_id: id.into(),
+                node_key: key.clone(),
+                ordinal: ordinal as i64,
+                decorator: decorator.as_str().ok_or_else(|| anyhow!("Graph decorators must contain strings"))?.into(),
+            };
+            graph_node_decorators::Entity::insert(row.into_active_model()).exec(connection).await?;
+        }
     }
     if METRIC_NAMES.iter().any(|name| n["properties"].get(name).is_some()) {
         graph_node_metrics::Entity::insert(metric_record(id, &key, n).into_active_model()).exec(connection).await?;
-    }
-    Ok(())
-}
-async fn insert_symbol(connection: &impl ConnectionTrait, id: &str, n: &Value) -> Result<()> {
-    let key = required(n, "stableKey")?;
-    graph_symbols::Entity::insert(symbol_record(id, &key, n).into_active_model()).exec(connection).await?;
-    for (ordinal, decorator) in collection(&n["properties"], "decorators").iter().enumerate() {
-        let row = GraphNodeDecoratorRow {
-            repository_id: id.into(),
-            node_key: key.clone(),
-            ordinal: ordinal as i64,
-            decorator: decorator.as_str().ok_or_else(|| anyhow!("Graph decorators must contain strings"))?.into(),
-        };
-        graph_node_decorators::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     Ok(())
 }

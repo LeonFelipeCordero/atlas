@@ -294,14 +294,7 @@ pub fn static_symbol(syntax: &Syntax, symbol: &Symbol) -> bool {
             .filter(|c| c.kind() == "decorator")
             .any(|c| ["@staticmethod", "@classmethod"].contains(&syntax.text(c).trim()));
     }
-    if let Some(node) = node {
-        return children(node).into_iter().any(|c| {
-            adapter.static_nodes().contains(&c.kind())
-                || adapter.static_containers().contains(&c.kind())
-                    && syntax.text(c).split_whitespace().any(|w| w == "static")
-        });
-    }
-    symbol.signature.as_deref().unwrap_or("").split('(').next().unwrap_or("").split_whitespace().any(|w| w == "static")
+    adapter.default_static_symbol(syntax, symbol)
 }
 
 fn import_node<'a>(ctx: &'a ImportBindings, request: &ImportRequest<'_>) -> Option<Node<'a>> {

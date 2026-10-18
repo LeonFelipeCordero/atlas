@@ -12,11 +12,13 @@ pub fn run_args(args: &[String]) -> Result<i32> {
         Ok(code) => Ok(code),
         Err(error) => {
             if let Some(error) = error.downcast_ref::<UsageError>() {
-                let mut command = super::schema::cli();
+                let mut schema = super::schema::cli();
+                let mut command = &mut schema;
                 for name in error.command.split_whitespace() {
-                    command = command.find_subcommand_mut(name).expect("known command").clone();
+                    command = command.find_subcommand_mut(name).expect("known command");
                 }
                 command
+                    .clone()
                     .bin_name(format!("atlas {}", error.command))
                     .error(clap::error::ErrorKind::ValueValidation, &error.message)
                     .print()?;
@@ -51,9 +53,6 @@ fn standard_command(command: &str, matches: &clap::ArgMatches) -> Result<i32> {
         println!("{}", serde_json::to_string_pretty(&crate::bootstrap::repository_service(None)?.list()?)?);
         return Ok(0);
     }
-    analyze_command(command, &options, format)
-}
-fn analyze_command(command: &str, options: &Options, format: &str) -> Result<i32> {
     let root = absolute_path(Path::new(options.get("--folder", ".")))?;
     let config = if command == "check" { Some(crate::metrics::config::load_config(&root)?) } else { None };
     let artifact = analyze_folder(&root)?;

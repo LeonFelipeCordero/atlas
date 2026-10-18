@@ -1,19 +1,7 @@
 //! Exercise clap through the real binary without touching the caller's database.
-use std::process::{Command, Output};
-
-fn invoke(args: &[&str]) -> Output {
-    let root = tempfile::tempdir().unwrap();
-    let database = root.path().join("must-not-exist.sqlite");
-    let result = Command::new(env!("CARGO_BIN_EXE_atlas"))
-        .current_dir(root.path())
-        .env("DATABASE_PATH", &database)
-        .env("NO_COLOR", "1")
-        .args(args)
-        .output()
-        .unwrap();
-    assert!(!database.exists(), "help and validation must not open the database");
-    result
-}
+#[path = "support/cli.rs"]
+mod cli_support;
+use cli_support::invoke;
 
 #[test]
 fn all_commands_offer_generated_help_without_side_effects() {

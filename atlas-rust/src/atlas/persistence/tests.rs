@@ -2,7 +2,7 @@ use super::database::run;
 use super::{
     database::migrate_database,
     navigation::{ProjectSelector, navigation_reader},
-    repositories::repository_store,
+    repositories::{RepositoryStore, repository_store},
 };
 use crate::{
     domain::{
@@ -17,7 +17,15 @@ use crate::{
 use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+fn database() -> (tempfile::TempDir, PathBuf, RepositoryStore) {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("db.sqlite");
+    migrate_database(Some(&path)).unwrap();
+    let store = repository_store(Some(&path)).unwrap();
+    (root, path, store)
+}
 
 fn artifact(root: &Path) -> Value {
     let bytes = b"def brew():\n    return 1\n";
@@ -33,12 +41,9 @@ fn artifact(root: &Path) -> Value {
 }
 #[test]
 fn roundtrip_normalized_rows_and_transaction_replacement() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
+    let (temp, db, mut store) = database();
     migrate_database(Some(&db)).unwrap();
     let payload = artifact(temp.path());
-    let mut store = repository_store(Some(&db)).unwrap();
     let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &payload).unwrap();
     assert_eq!(saved.stats.files, 1);
     assert_eq!(saved.stats.symbols, 1);
@@ -64,6 +69,24 @@ fn roundtrip_normalized_rows_and_transaction_replacement() {
     }
 }
 #[test]
+fn replacing_one_repository_preserves_another_repository_with_the_same_stable_keys() {
+    let (temp, _, mut store) = database();
+    let payload = artifact(temp.path());
+    let first = store.save_new("Coffee", "/coffee", &payload).unwrap();
+    let second = store.save_new("Tea", "/tea", &payload).unwrap();
+    let before = store.report_facts(&second.repository_id).unwrap().unwrap();
+
+    store.save(&first.repository_id, &json!({})).unwrap();
+
+    let first_facts = store.report_facts(&first.repository_id).unwrap().unwrap();
+    for name in ["nodes", "edges", "diagnostics", "mutationCandidates"] {
+        assert_eq!(first_facts[name], json!([]), "{name}");
+    }
+    assert_eq!(store.report_facts(&second.repository_id).unwrap().unwrap(), before);
+    assert_eq!(store.graph(&second.repository_id).unwrap().unwrap().graph_revision, second.graph_revision);
+    assert_eq!(store.list().unwrap().len(), 2);
+}
+#[test]
 fn graph_save_waits_for_an_existing_writer_with_numeric_metadata() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("locked.sqlite");
@@ -87,27 +110,8 @@ fn graph_save_waits_for_an_existing_writer_with_numeric_metadata() {
     assert_eq!(store.graph(&replacement.repository_id).unwrap().unwrap().graph_revision, replacement.graph_revision);
 }
 #[test]
-fn invalid_artifact_roots_preserve_the_saved_graph() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
-    let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &artifact(temp.path())).unwrap();
-    let before = store.report_facts(&saved.repository_id).unwrap().unwrap();
-    for invalid in [Value::Null, json!([]), json!(42), json!("not an object"), json!(true)] {
-        assert!(store.save(&saved.repository_id, &invalid).is_err());
-        assert!(store.save_new("Invalid", "/invalid", &invalid).is_err());
-        assert_eq!(store.graph(&saved.repository_id).unwrap().unwrap().graph_revision, saved.graph_revision);
-        assert_eq!(store.report_facts(&saved.repository_id).unwrap().unwrap(), before);
-        assert_eq!(store.list().unwrap().len(), 1);
-    }
-}
-#[test]
-fn malformed_record_mappings_and_fields_preserve_saved_rows() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
+fn invalid_artifacts_preserve_saved_rows_and_do_not_register_repositories() {
+    let (temp, _, mut store) = database();
     let original = artifact(temp.path());
     let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &original).unwrap();
     let before = store.report_facts(&saved.repository_id).unwrap().unwrap();
@@ -125,6 +129,7 @@ fn malformed_record_mappings_and_fields_preserve_saved_rows() {
     }
 }
 fn invalid_record_shapes() -> Vec<(&'static str, Value)> {
+    let roots = [Value::Null, json!([]), json!(42), json!("not an object"), json!(true)];
     let mappings = ["/repository", "/nodes/0/properties"];
     let records = ["/nodes/0", "/edges/0", "/diagnostics/0", "/mutationCandidates/0"];
     let fields = [
@@ -139,12 +144,10 @@ fn invalid_record_shapes() -> Vec<(&'static str, Value)> {
         "/diagnostics/0/message",
         "/mutationCandidates/0/operator",
     ];
-    let mut invalid: Vec<_> = mappings
-        .into_iter()
-        .flat_map(|pointer| {
-            [json!(true), json!(42), json!("bad"), json!([1])].into_iter().map(move |value| (pointer, value))
-        })
-        .collect();
+    let mut invalid: Vec<_> = roots.into_iter().map(|value| ("", value)).collect();
+    invalid.extend(mappings.into_iter().flat_map(|pointer| {
+        [json!(true), json!(42), json!("bad"), json!([1])].into_iter().map(move |value| (pointer, value))
+    }));
     invalid.extend(records.into_iter().flat_map(|pointer| {
         [Value::Null, json!(false), json!([]), json!("bad")].into_iter().map(move |value| (pointer, value))
     }));
@@ -155,10 +158,7 @@ fn invalid_record_shapes() -> Vec<(&'static str, Value)> {
 }
 #[test]
 fn metadata_scalar_conversions_and_falsey_mapping_defaults_match_python() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
+    let (temp, _, mut store) = database();
     let saved = store
         .save_new(
             "Coffee",
@@ -203,10 +203,7 @@ fn nonexistent_database_paths_resolve_symlinks_before_parents() {
 }
 #[test]
 fn malformed_graphs_and_new_registration_roll_back() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
+    let (temp, _, mut store) = database();
     let payload = artifact(temp.path());
     for field in ["nodes", "edges", "diagnostics", "mutationCandidates"] {
         let mut broken = payload.clone();
@@ -224,10 +221,7 @@ fn malformed_graphs_and_new_registration_roll_back() {
 }
 #[test]
 fn navigation_order_source_verification_and_revision_errors() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
+    let (temp, db, mut store) = database();
     let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &artifact(temp.path())).unwrap();
     let reader = navigation_reader(ProjectSelector::Name("COFFEE"), Some(&saved.graph_revision), Some(&db)).unwrap();
     let mut service = NavigationService::new(reader);
@@ -264,10 +258,7 @@ fn navigation_order_source_verification_and_revision_errors() {
 }
 #[test]
 fn huge_source_start_lines_remain_exact_and_offsets_do_not_wrap() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
+    let (temp, db, mut store) = database();
     let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &artifact(temp.path())).unwrap();
     let reader = navigation_reader(ProjectSelector::Name("Coffee"), None, Some(&db)).unwrap();
     let mut service = NavigationService::new(reader);
@@ -329,10 +320,7 @@ fn read_snapshot_survives_replacement_and_rejects_writes() {
 }
 #[test]
 fn repository_order_and_literal_case_insensitive_lookup_are_preserved() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
-    let mut store = repository_store(Some(&db)).unwrap();
+    let (temp, db, mut store) = database();
     let first = store.register("Coffee'_%", "/one").unwrap();
     let second = store.register("Tea", "/two").unwrap();
     run(store.connection.execute_unprepared("UPDATE repositories SET created_at=1")).unwrap();
@@ -364,9 +352,7 @@ fn migrations_upgrade_legacy_revision_without_backfilling() {
 }
 #[test]
 fn migration_schema_sql_matches_python_exactly() {
-    let temp = tempfile::tempdir().unwrap();
-    let db = temp.path().join("db.sqlite");
-    migrate_database(Some(&db)).unwrap();
+    let (_temp, db, _store) = database();
     let connection = super::database::create_engine(Some(&db)).unwrap();
     let rows = run(connection.query_all(Statement::from_string(
         DbBackend::Sqlite,

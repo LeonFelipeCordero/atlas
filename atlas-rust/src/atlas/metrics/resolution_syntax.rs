@@ -192,14 +192,9 @@ impl Syntax {
         self.index().spans.get(&(start, end)).and_then(|reference| self.dereference(reference))
     }
     pub fn scope<'a>(&'a self, node: Node<'a>) -> Node<'a> {
-        let mut parent = node.parent();
-        while let Some(candidate) = parent {
-            if self.adapter.scopes().contains(&candidate.kind()) {
-                return candidate;
-            }
-            parent = candidate.parent();
-        }
-        self.root().unwrap_or(node)
+        std::iter::successors(node.parent(), Node::parent)
+            .find(|parent| self.adapter.scopes().contains(&parent.kind()))
+            .unwrap_or_else(|| self.root().unwrap_or(node))
     }
     pub fn imports(&self) -> Vec<(String, Node<'_>)> {
         self.cache

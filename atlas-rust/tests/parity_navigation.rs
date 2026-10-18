@@ -119,38 +119,12 @@ fn navigation_snapshot(language: &str) {
     assert_json(&actual.into(), &expected, "");
 }
 
-#[test]
-fn java() {
-    navigation_snapshot("java");
+macro_rules! navigation_tests {
+    ($($language:ident),+ $(,)?) => {$ (
+        #[test] fn $language() { navigation_snapshot(stringify!($language)); }
+    )+};
 }
-#[test]
-fn kotlin() {
-    navigation_snapshot("kotlin");
-}
-#[test]
-fn go() {
-    navigation_snapshot("go");
-}
-#[test]
-fn rust() {
-    navigation_snapshot("rust");
-}
-#[test]
-fn javascript() {
-    navigation_snapshot("javascript");
-}
-#[test]
-fn typescript() {
-    navigation_snapshot("typescript");
-}
-#[test]
-fn elixir() {
-    navigation_snapshot("elixir");
-}
-#[test]
-fn python() {
-    navigation_snapshot("python");
-}
+navigation_tests!(java, kotlin, go, rust, javascript, typescript, elixir, python);
 
 #[test]
 fn normalization_preserves_graph_content_and_array_order() {

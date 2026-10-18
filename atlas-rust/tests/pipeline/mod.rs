@@ -34,13 +34,3 @@ pub fn project(root: &Path) -> Bundle {
     graph["nodes"][0]["properties"]["absolutePath"] = json!(canonical);
     Bundle { extraction, analysis, graph }
 }
-
-pub fn structure_seam(extraction: &Value, seam: &str) -> Value {
-    extraction["structures"]
-        .as_object()
-        .unwrap()
-        .iter()
-        .map(|(path, structures)| (path.clone(), json!({(seam): structures[seam]})))
-        .collect::<Map<_, _>>()
-        .into()
-}

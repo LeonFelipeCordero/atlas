@@ -76,27 +76,22 @@ pub fn extract_calls(file: &SourceFile, root: Node<'_>, adapter: LanguageAdapter
     calls
 }
 
-struct StructureParent<'a> {
-    key: &'a str,
-    ancestors: &'a [String],
-}
-
-fn add_structure(file: &mut ParsedFile, item: &StructureItem, parent: StructureParent<'_>) -> Result<()> {
+fn add_structure(file: &mut ParsedFile, item: &StructureItem, (parent, ancestors): (&str, &[String])) -> Result<()> {
     let span = &item.span;
     let name = item.name.as_deref().filter(|name| !name.is_empty()).unwrap_or("<anonymous>").to_owned();
-    let mut names = parent.ancestors.to_vec();
+    let mut names = ancestors.to_vec();
     names.push(name.clone());
     let qualified_name = format!("{}::{}", file.source.path, names.join("."));
     let key = format!("symbol:{qualified_name}:{}", span.start_byte);
     let kind = kind_name(&item.kind);
-    let symbol = Symbol {
+    file.symbols.push(Symbol {
         key: key.clone(),
         file_path: file.source.path.clone(),
         language: file.source.language.clone(),
         name,
         qualified_name,
         kind: kind.clone(),
-        parent_key: parent.key.to_owned(),
+        parent_key: parent.to_owned(),
         start_byte: span.start_byte,
         end_byte: span.end_byte,
         start_line: span.start_line + 1,
@@ -109,8 +104,7 @@ fn add_structure(file: &mut ParsedFile, item: &StructureItem, parent: StructureP
         complexity: None,
         line_count: None,
         parameter_count: None,
-    };
-    file.symbols.push(symbol);
+    });
     let adapter = get_adapter(&file.source.language)?;
     let signature = item.signature.as_deref().unwrap_or_default();
     for target_name in
@@ -126,7 +120,7 @@ fn add_structure(file: &mut ParsedFile, item: &StructureItem, parent: StructureP
         });
     }
     for child in &item.children {
-        add_structure(file, child, StructureParent { key: &key, ancestors: &names })?;
+        add_structure(file, child, (&key, &names))?;
     }
     Ok(())
 }
@@ -164,7 +158,7 @@ pub fn parse_file(source: SourceFile) -> Result<ParsedFile> {
     let mut file =
         ParsedFile { source, content_hash, parse_error, calls, imports, symbols: vec![], inheritances: vec![] };
     for item in &structure {
-        add_structure(&mut file, item, StructureParent { key: &parent, ancestors: &[] })?;
+        add_structure(&mut file, item, (&parent, &[]))?;
     }
     Ok(file)
 }
