@@ -1,6 +1,6 @@
-use super::{models::*, schema::*};
+use super::models::*;
 use anyhow::{Result, anyhow, ensure};
-use diesel::prelude::*;
+use sea_orm::{ConnectionTrait, EntityTrait, IntoActiveModel};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
@@ -84,7 +84,7 @@ fn metric_record(id: &str, key: &str, n: &Value) -> GraphNodeMetricRow {
         max_decision_depth: p["maxDecisionDepth"].as_i64(),
     }
 }
-pub fn insert_node_details(connection: &mut SqliteConnection, id: &str, n: &Value) -> Result<()> {
+pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n: &Value) -> Result<()> {
     let key = required(n, "stableKey")?;
     if n["level"] == "file" {
         let row = GraphFileRow {
@@ -93,19 +93,19 @@ pub fn insert_node_details(connection: &mut SqliteConnection, id: &str, n: &Valu
             byte_count: n["properties"]["bytes"].as_i64(),
             sha256: text(&n["properties"], "sha256"),
         };
-        diesel::insert_into(graph_files::table).values(row).execute(connection)?;
+        graph_files::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     if is_symbol(n) {
-        insert_symbol(connection, id, n)?;
+        insert_symbol(connection, id, n).await?;
     }
     if METRIC_NAMES.iter().any(|name| n["properties"].get(name).is_some()) {
-        diesel::insert_into(graph_node_metrics::table).values(metric_record(id, &key, n)).execute(connection)?;
+        graph_node_metrics::Entity::insert(metric_record(id, &key, n).into_active_model()).exec(connection).await?;
     }
     Ok(())
 }
-fn insert_symbol(connection: &mut SqliteConnection, id: &str, n: &Value) -> Result<()> {
+async fn insert_symbol(connection: &impl ConnectionTrait, id: &str, n: &Value) -> Result<()> {
     let key = required(n, "stableKey")?;
-    diesel::insert_into(graph_symbols::table).values(symbol_record(id, &key, n)).execute(connection)?;
+    graph_symbols::Entity::insert(symbol_record(id, &key, n).into_active_model()).exec(connection).await?;
     for (ordinal, decorator) in collection(&n["properties"], "decorators").iter().enumerate() {
         let row = GraphNodeDecoratorRow {
             repository_id: id.into(),
@@ -113,11 +113,11 @@ fn insert_symbol(connection: &mut SqliteConnection, id: &str, n: &Value) -> Resu
             ordinal: ordinal as i64,
             decorator: decorator.as_str().ok_or_else(|| anyhow!("Graph decorators must contain strings"))?.into(),
         };
-        diesel::insert_into(graph_node_decorators::table).values(row).execute(connection)?;
+        graph_node_decorators::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     Ok(())
 }
-pub fn insert_edges(connection: &mut SqliteConnection, id: &str, artifact: &Value) -> Result<()> {
+pub async fn insert_edges(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
     for (ordinal, e) in collection(artifact, "edges").iter().enumerate() {
         let row = GraphEdgeRow {
             repository_id: id.into(),
@@ -131,11 +131,11 @@ pub fn insert_edges(connection: &mut SqliteConnection, id: &str, artifact: &Valu
             line: e["line"].as_i64(),
             type_only: e["typeOnly"] == true,
         };
-        diesel::insert_into(graph_edges::table).values(row).execute(connection)?;
+        graph_edges::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     Ok(())
 }
-pub fn insert_diagnostics(connection: &mut SqliteConnection, id: &str, artifact: &Value) -> Result<()> {
+pub async fn insert_diagnostics(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
     for (ordinal, d) in collection(artifact, "diagnostics").iter().enumerate() {
         let row = GraphDiagnosticRow {
             repository_id: id.into(),
@@ -145,11 +145,11 @@ pub fn insert_diagnostics(connection: &mut SqliteConnection, id: &str, artifact:
             language: required(d, "language")?,
             message: required(d, "message")?,
         };
-        diesel::insert_into(graph_diagnostics::table).values(row).execute(connection)?;
+        graph_diagnostics::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     Ok(())
 }
-pub fn insert_candidates(connection: &mut SqliteConnection, id: &str, artifact: &Value) -> Result<()> {
+pub async fn insert_candidates(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
     let files: HashMap<_, _> = collection(artifact, "nodes")
         .iter()
         .filter(|n| n["level"] == "file")
@@ -169,7 +169,7 @@ pub fn insert_candidates(connection: &mut SqliteConnection, id: &str, artifact: 
             operator: text(c, "operator"),
             payload: serde_json::to_string(c)?,
         };
-        diesel::insert_into(graph_mutation_candidates::table).values(row).execute(connection)?;
+        graph_mutation_candidates::Entity::insert(row.into_active_model()).exec(connection).await?;
     }
     Ok(())
 }

@@ -10,7 +10,7 @@ from cases import Case
 from common import require
 from database import connect, quote
 
-REVISIONS = ("0001_initial", "0002_graph_nodes", "0003_graph_relations", "0004_drop_graph_artifact")
+REVISIONS = ("0001_initial", "0002_graph_nodes", "0003_graph_relations", "0004_drop_graph_artifact", "0005_mutation_candidates")
 
 
 def cases() -> list[Case]:

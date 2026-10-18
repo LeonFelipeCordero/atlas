@@ -87,7 +87,7 @@ class HistoricalTests(unittest.TestCase):
             self.assertTrue(snapshot["data"]["graph_edges"])
         with sqlite3.connect(target) as database:
             columns = [row[1] for row in database.execute("PRAGMA table_info(repository_graphs)")]
-        self.assertEqual("artifact" in columns, revision != REVISIONS[-1])
+        self.assertEqual("artifact" in columns, revision in REVISIONS[:3])
 
 
 if __name__ == "__main__":

@@ -65,11 +65,16 @@ class Pair:
     def database_diffs(self, paths: tuple[Path, Path]) -> list[dict]:
         expected, actual = map(contents, paths)
         root = self.project.root
-        diffs = differences(normalize(expected, root), normalize(actual, root), "/database")
+        diffs = []
         if not self.case.writes:
             original = contents(self.project.baseline)
             diffs.extend(differences(original, actual, "/read_only/rust"))
             diffs.extend(differences(original, expected, "/read_only/python"))
+        # SeaORM owns Rust migration tracking; all shared schema and data must still match.
+        for section in (expected.get("schema", {}), expected.get("data", {}),
+                        actual.get("schema", {}), actual.get("data", {})):
+            section.pop("seaql_migrations", None)
+        diffs.extend(differences(normalize(expected, root), normalize(actual, root), "/database"))
         return diffs
 
     def outcome_diffs(self, python: dict, rust: dict) -> list[dict]:

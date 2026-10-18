@@ -1,25 +1,21 @@
 use crate::domain::repositories::RepositoryError;
-use anyhow::{Context, Result};
-use diesel::{connection::SimpleConnection, prelude::*, sql_types::Text};
+use anyhow::Result;
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use std::{
     env,
+    future::Future,
     path::{Path, PathBuf},
+    sync::OnceLock,
+    time::Duration,
 };
 
-const MIGRATIONS: &[(&str, &str)] = &[
-    ("0001_initial", include_str!("migrations/versions/0001_initial.sql")),
-    ("0002_graph_nodes", include_str!("migrations/versions/0002_graph_nodes.sql")),
-    ("0003_graph_relations", include_str!("migrations/versions/0003_graph_relations.sql")),
-    ("0004_drop_graph_artifact", include_str!("migrations/versions/0004_drop_graph_artifact.sql")),
-    ("0005_mutation_candidates", include_str!("migrations/versions/0005_mutation_candidates.sql")),
-];
-#[derive(QueryableByName)]
-struct Revision {
-    #[diesel(sql_type = Text)]
-    version_num: String,
-}
-
 pub use crate::paths::{absolute_path, expand_home};
+
+// Keep the async pool alive across synchronous CLI/repository calls.
+pub(crate) fn run<F: Future>(future: F) -> F::Output {
+    static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    RUNTIME.get_or_init(|| tokio::runtime::Runtime::new().expect("Tokio runtime")).block_on(future)
+}
 pub fn default_database_path() -> Result<PathBuf> {
     if let Some(path) = env::var_os("DATABASE_PATH").filter(|s| !s.is_empty()) {
         return expand_home(Path::new(&path));
@@ -36,53 +32,29 @@ pub fn database_path(path: Option<&Path>) -> Result<PathBuf> {
         None => default_database_path()?,
     })
 }
-pub fn create_engine(path: Option<&Path>) -> Result<SqliteConnection> {
+pub(crate) async fn connect(target: &Path, readonly: bool) -> Result<DatabaseConnection> {
+    let encoded = target.to_string_lossy().replace('%', "%25").replace('?', "%3F").replace('#', "%23");
+    let mut options = ConnectOptions::new(format!("sqlite://{encoded}?mode={}", if readonly { "ro" } else { "rwc" }));
+    options.max_connections(1).min_connections(1).sqlx_logging(false).connect_timeout(Duration::from_secs(30));
+    let db = Database::connect(options).await.map_err(storage_error)?;
+    use sea_orm::ConnectionTrait;
+    db.execute_unprepared("PRAGMA busy_timeout=30000; PRAGMA foreign_keys=ON;").await.map_err(storage_error)?;
+    Ok(db)
+}
+pub fn create_engine(path: Option<&Path>) -> Result<DatabaseConnection> {
     let target = database_path(path)?;
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let mut connection = SqliteConnection::establish(&target.to_string_lossy()).map_err(storage_error)?;
-    connection.batch_execute("PRAGMA busy_timeout=30000; PRAGMA foreign_keys=ON;").map_err(storage_error)?;
-    Ok(connection)
+    run(connect(&target, false))
 }
 pub fn storage_error(error: impl std::fmt::Display) -> anyhow::Error {
     RepositoryError::new(error.to_string(), 500).into()
 }
 pub fn migrate_database(path: Option<&Path>) -> Result<()> {
-    let mut connection = create_engine(path)?;
-    connection.batch_execute("PRAGMA journal_mode=WAL;").map_err(storage_error)?;
-    connection
-        .immediate_transaction::<_, anyhow::Error, _>(|connection| {
-            connection.batch_execute(&include_str!("migrations/alembic_version.sql").replacen(
-                "CREATE TABLE",
-                "CREATE TABLE IF NOT EXISTS",
-                1,
-            ))?;
-            let revisions =
-                diesel::sql_query("SELECT version_num FROM alembic_version").load::<Revision>(connection)?;
-            anyhow::ensure!(revisions.len() <= 1, "Multiple Alembic revisions are not supported");
-            let current = revisions.first().map(|r| r.version_num.as_str());
-            let start = match current {
-                None => 0,
-                Some(revision) => {
-                    MIGRATIONS
-                        .iter()
-                        .position(|(id, _)| *id == revision)
-                        .with_context(|| format!("Unknown Alembic revision: {revision}"))?
-                        + 1
-                }
-            };
-            for (revision, sql) in &MIGRATIONS[start..] {
-                connection.batch_execute(sql)?;
-                diesel::sql_query("DELETE FROM alembic_version").execute(connection)?;
-                diesel::sql_query("INSERT INTO alembic_version(version_num) VALUES (?)")
-                    .bind::<Text, _>(revision)
-                    .execute(connection)?;
-            }
-            Ok(())
-        })
-        .map_err(storage_error)
+    let connection = create_engine(path)?;
+    run(super::migrations::migrate(&connection)).map_err(storage_error)
 }
-pub fn repository_session(path: Option<&Path>) -> Result<SqliteConnection> {
+pub fn repository_session(path: Option<&Path>) -> Result<DatabaseConnection> {
     create_engine(path)
 }

@@ -1,8 +1,5 @@
 use anyhow::{Result, bail, ensure};
-use diesel::{
-    prelude::*,
-    sql_types::{Double, Text},
-};
+use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::Value;
 
 pub struct GraphMetadata {
@@ -26,35 +23,38 @@ pub fn optional_mapping(value: &Value, name: &str) -> Result<()> {
     Ok(())
 }
 impl GraphMetadata {
-    pub fn read(connection: &mut SqliteConnection, artifact: &Value) -> Result<Self> {
+    pub async fn read(connection: &impl ConnectionTrait, artifact: &Value) -> Result<Self> {
         let repository = &artifact["repository"];
         optional_mapping(repository, "repository")?;
         Ok(Self {
             schema_version: integer(&artifact["schemaVersion"])?,
-            indexed_at: scalar_text(connection, &repository["indexedAt"])?,
-            root_name: scalar_text(connection, &repository["name"])?,
-            root_path: scalar_text(connection, &repository["path"])?,
+            indexed_at: scalar_text(connection, &repository["indexedAt"]).await?,
+            root_name: scalar_text(connection, &repository["name"]).await?,
+            root_path: scalar_text(connection, &repository["path"]).await?,
         })
     }
 }
-fn scalar_text(connection: &mut SqliteConnection, value: &Value) -> Result<Option<String>> {
+async fn scalar_text(connection: &impl ConnectionTrait, value: &Value) -> Result<Option<String>> {
     let result = match value {
         Value::Null => return Ok(None),
         Value::String(value) => value.clone(),
         Value::Bool(value) => i32::from(*value).to_string(),
-        Value::Number(number) => numeric_text(connection, number)?,
+        Value::Number(number) => numeric_text(connection, number).await?,
         _ => bail!("Graph metadata fields must be SQLite scalar values or null"),
     };
     Ok(Some(result))
 }
-fn numeric_text(connection: &mut SqliteConnection, number: &serde_json::Number) -> Result<String> {
+async fn numeric_text(connection: &impl ConnectionTrait, number: &serde_json::Number) -> Result<String> {
     if let Some(integer) = number.as_i64() {
         return Ok(integer.to_string());
     }
     ensure!(number.to_string().contains(['.', 'e', 'E']), "Graph metadata integer exceeds SQLite range");
     let real = number.as_f64().ok_or_else(|| anyhow::anyhow!("Graph metadata number exceeds SQLite range"))?;
-    Ok(diesel::select(diesel::dsl::sql::<Text>("CAST(").bind::<Double, _>(real).sql(" AS TEXT)"))
-        .get_result(connection)?)
+    Ok(connection
+        .query_one(Statement::from_sql_and_values(DbBackend::Sqlite, "SELECT CAST(? AS TEXT) AS value", [real.into()]))
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Missing SQLite scalar"))?
+        .try_get("", "value")?)
 }
 fn integer(value: &Value) -> Result<Option<i64>> {
     match value {

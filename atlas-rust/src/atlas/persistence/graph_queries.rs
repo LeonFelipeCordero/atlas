@@ -1,34 +1,37 @@
-use super::{models::*, navigation_queries::*, schema::*};
+use super::{models::*, navigation_queries::*};
 use crate::domain::repositories::{GraphDto, GraphStatsDto};
 use anyhow::Result;
-use diesel::prelude::*;
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
-pub fn graph_row(connection: &mut SqliteConnection, id: &str) -> Result<Option<RepositoryGraphRow>> {
-    Ok(repository_graphs::table
-        .find(id)
-        .first::<RepositoryGraphRow>(connection)
-        .optional()?
-        .filter(|g| g.graph_revision.is_some()))
+pub async fn graph_row(connection: &impl ConnectionTrait, id: &str) -> Result<Option<RepositoryGraphRow>> {
+    Ok(repository_graphs::Entity::find_by_id(id).one(connection).await?.filter(|g| g.graph_revision.is_some()))
 }
-pub fn graph_summary(connection: &mut SqliteConnection, row: RepositoryGraphRow) -> Result<GraphDto> {
+pub async fn graph_summary(connection: &impl ConnectionTrait, row: RepositoryGraphRow) -> Result<GraphDto> {
     let id = &row.repository_id;
-    let levels: HashMap<String, i64> = graph_nodes::table
-        .filter(graph_nodes::repository_id.eq(id))
-        .group_by(graph_nodes::level)
-        .select((graph_nodes::level, diesel::dsl::count_star()))
-        .load(connection)?
+    let levels: HashMap<String, i64> = graph_nodes::Entity::find()
+        .filter(graph_nodes::Column::RepositoryId.eq(id))
+        .select_only()
+        .column(graph_nodes::Column::Level)
+        .column_as(graph_nodes::Column::NodeKey.count(), "count")
+        .group_by(graph_nodes::Column::Level)
+        .into_tuple::<(String, i64)>()
+        .all(connection)
+        .await?
         .into_iter()
         .collect();
     let level = |name: &str| *levels.get(name).unwrap_or(&0);
-    let symbols = graph_symbols::table.filter(graph_symbols::repository_id.eq(id)).count().get_result(connection)?;
-    let edges = graph_edges::table.filter(graph_edges::repository_id.eq(id)).count().get_result(connection)?;
-    let parse_errors = graph_diagnostics::table
-        .filter(graph_diagnostics::repository_id.eq(id))
-        .filter(graph_diagnostics::severity.eq("error"))
-        .count()
-        .get_result(connection)?;
+    let symbols =
+        graph_symbols::Entity::find().filter(graph_symbols::Column::RepositoryId.eq(id)).count(connection).await?
+            as i64;
+    let edges =
+        graph_edges::Entity::find().filter(graph_edges::Column::RepositoryId.eq(id)).count(connection).await? as i64;
+    let parse_errors = graph_diagnostics::Entity::find()
+        .filter(graph_diagnostics::Column::RepositoryId.eq(id))
+        .filter(graph_diagnostics::Column::Severity.eq("error"))
+        .count(connection)
+        .await? as i64;
     Ok(GraphDto {
         repository_id: row.repository_id,
         graph_revision: row.graph_revision.unwrap_or_default(),
@@ -50,48 +53,56 @@ pub fn graph_summary(connection: &mut SqliteConnection, row: RepositoryGraphRow)
         },
     })
 }
-pub fn report_facts(connection: &mut SqliteConnection, row: RepositoryGraphRow) -> Result<Value> {
+pub async fn report_facts(connection: &impl ConnectionTrait, row: RepositoryGraphRow) -> Result<Value> {
     let id = &row.repository_id;
-    let symbols: HashMap<_, _> = graph_symbols::table
-        .filter(graph_symbols::repository_id.eq(id))
-        .load::<GraphSymbolRow>(connection)?
+    let symbols: HashMap<_, _> = graph_symbols::Entity::find()
+        .filter(graph_symbols::Column::RepositoryId.eq(id))
+        .all(connection)
+        .await?
         .into_iter()
         .map(|s| (s.node_key.clone(), s))
         .collect();
-    let metrics: HashMap<_, _> = graph_node_metrics::table
-        .filter(graph_node_metrics::repository_id.eq(id))
-        .load::<GraphNodeMetricRow>(connection)?
+    let metrics: HashMap<_, _> = graph_node_metrics::Entity::find()
+        .filter(graph_node_metrics::Column::RepositoryId.eq(id))
+        .all(connection)
+        .await?
         .into_iter()
         .map(|m| (m.node_key.clone(), metric_value(m)))
         .collect();
-    let nodes = graph_nodes::table
-        .filter(graph_nodes::repository_id.eq(id))
-        .order(graph_nodes::ordinal)
-        .load::<GraphNodeRow>(connection)?
+    let nodes = graph_nodes::Entity::find()
+        .filter(graph_nodes::Column::RepositoryId.eq(id))
+        .order_by_asc(graph_nodes::Column::Ordinal)
+        .all(connection)
+        .await?
         .into_iter()
         .map(|n| report_node(n, &symbols, &metrics))
         .collect::<Vec<_>>();
-    let edges: Vec<Value> = graph_edges::table
-        .filter(graph_edges::repository_id.eq(id))
-        .filter(graph_edges::relationship.ne("CONTAINS"))
-        .order(graph_edges::ordinal)
-        .load::<GraphEdgeRow>(connection)?
+    let edges: Vec<Value> = graph_edges::Entity::find()
+        .filter(graph_edges::Column::RepositoryId.eq(id))
+        .filter(graph_edges::Column::Relationship.ne("CONTAINS"))
+        .order_by_asc(graph_edges::Column::Ordinal)
+        .all(connection)
+        .await?
         .into_iter()
         .map(|e| edge_value(e, false))
         .collect();
     let imports: Vec<_> = edges.iter().filter(|e| e["type"] == "IMPORTS").cloned().collect();
-    let diagnostics: Vec<_> = graph_diagnostics::table
-        .filter(graph_diagnostics::repository_id.eq(id))
-        .order(graph_diagnostics::ordinal)
-        .load::<GraphDiagnosticRow>(connection)?
+    let diagnostics: Vec<_> = graph_diagnostics::Entity::find()
+        .filter(graph_diagnostics::Column::RepositoryId.eq(id))
+        .order_by_asc(graph_diagnostics::Column::Ordinal)
+        .all(connection)
+        .await?
         .into_iter()
         .map(diagnostic_value)
         .collect();
-    let candidates = graph_mutation_candidates::table
-        .filter(graph_mutation_candidates::repository_id.eq(id))
-        .order(graph_mutation_candidates::ordinal)
-        .select(graph_mutation_candidates::payload)
-        .load::<String>(connection)?
+    let candidates = graph_mutation_candidates::Entity::find()
+        .filter(graph_mutation_candidates::Column::RepositoryId.eq(id))
+        .order_by_asc(graph_mutation_candidates::Column::Ordinal)
+        .select_only()
+        .column(graph_mutation_candidates::Column::Payload)
+        .into_tuple::<String>()
+        .all(connection)
+        .await?
         .into_iter()
         .map(|s| serde_json::from_str::<Value>(&s))
         .collect::<std::result::Result<Vec<_>, _>>()?;

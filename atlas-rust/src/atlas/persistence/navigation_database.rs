@@ -1,7 +1,7 @@
-use super::database::database_path;
+use super::database::{connect, database_path, run};
 use crate::domain::navigation::error;
 use anyhow::Result;
-use diesel::{connection::SimpleConnection, prelude::*, sql_types::Text};
+use sea_orm::{ConnectionTrait, DatabaseTransaction, DbBackend, Statement, TransactionTrait};
 use std::{collections::BTreeSet, path::Path};
 
 const REQUIRED_TABLES: &[&str] = &[
@@ -23,17 +23,16 @@ const REQUIRED_INDEXES: &[&str] = &[
     "graph_edges_target",
     "graph_diagnostics_path",
 ];
-#[derive(QueryableByName)]
-struct SchemaName {
-    #[diesel(sql_type = Text)]
-    name: String,
-}
-fn check_schema(connection: &mut SqliteConnection) -> Result<()> {
-    let names: BTreeSet<String> = diesel::sql_query("SELECT name FROM sqlite_master WHERE type IN ('table','index')")
-        .load::<SchemaName>(connection)?
+async fn check_schema(connection: &DatabaseTransaction) -> Result<()> {
+    let names: BTreeSet<String> = connection
+        .query_all(Statement::from_string(
+            DbBackend::Sqlite,
+            "SELECT name FROM sqlite_master WHERE type IN ('table','index')",
+        ))
+        .await?
         .into_iter()
-        .map(|s| s.name)
-        .collect();
+        .map(|s| s.try_get("", "name"))
+        .collect::<Result<_, _>>()?;
     let missing: BTreeSet<&str> =
         REQUIRED_TABLES.iter().chain(REQUIRED_INDEXES).copied().filter(|n| !names.contains(*n)).collect();
     if !missing.is_empty() {
@@ -44,29 +43,34 @@ fn check_schema(connection: &mut SqliteConnection) -> Result<()> {
     }
     Ok(())
 }
-fn uri_path(path: &Path) -> String {
-    let text = path.to_string_lossy();
-    let encoded = text.replace('%', "%25").replace('?', "%3F").replace('#', "%23");
-    format!("file:{encoded}?mode=ro")
+pub struct ReadTransaction(Option<DatabaseTransaction>);
+impl std::ops::Deref for ReadTransaction {
+    type Target = DatabaseTransaction;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("Read transaction")
+    }
 }
-pub fn readonly_session(path: Option<&Path>) -> Result<SqliteConnection> {
+impl Drop for ReadTransaction {
+    fn drop(&mut self) {
+        // SQLx needs Tokio to schedule rollback and return the connection to its pool.
+        run(async {
+            drop(self.0.take());
+        });
+    }
+}
+pub fn readonly_session(path: Option<&Path>) -> Result<ReadTransaction> {
     let target = database_path(path)?;
-    let read_error = |e: String| {
-        error(format!(
-            "Cannot read graph database {}: {e}. Index the project after explicitly migrating the database.",
-            target.display()
-        ))
-    };
-    let mut connection = SqliteConnection::establish(&uri_path(&target)).map_err(|e| {
-        let message = match e {
-            diesel::ConnectionError::BadConnection(message) => format!(
-                "(sqlite3.OperationalError) {message}\n(Background on this error at: https://sqlalche.me/e/21/e3q8)"
-            ),
-            other => other.to_string(),
-        };
-        read_error(message)
-    })?;
-    connection.batch_execute("PRAGMA query_only=ON; BEGIN;").map_err(|e| read_error(e.to_string()))?;
-    check_schema(&mut connection)?;
-    Ok(connection)
+    run(async {
+        let db = connect(&target, true).await.map_err(|e| {
+            let message = e.to_string();
+            let detail = if message.contains("unable to open database") {
+                "(sqlite3.OperationalError) unable to open database file\n(Background on this error at: https://sqlalche.me/e/21/e3q8)".to_owned()
+            } else { message };
+            error(format!("Cannot read graph database {}: {detail}. Index the project after explicitly migrating the database.", target.display()))
+        })?;
+        db.execute_unprepared("PRAGMA query_only=ON").await?;
+        let tx = db.begin().await?;
+        check_schema(&tx).await?;
+        Ok(ReadTransaction(Some(tx)))
+    })
 }
