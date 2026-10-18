@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - dashboard/**
+      - atlas-rust/**
       - .github/workflows/dashboard-ci.yml
   push:
     branches: [main]
     paths:
       - dashboard/**
+      - atlas-rust/**
       - .github/workflows/dashboard-ci.yml
 
 permissions:
@@ -28,12 +30,12 @@ jobs:
         working-directory: dashboard
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          enable-cache: true
-          cache-dependency-glob: atlas/pyproject.toml
-          python-version: "3.14"
-      - run: uv sync --project ../atlas --no-dev
+          workspaces: |
+            atlas-rust
+            dashboard/tests/rust-fixture
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.1"

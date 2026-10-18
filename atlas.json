@@ -82,7 +82,7 @@
         "timeoutSeconds": 300
       },
       "persistence": {
-        "sources": ["atlas-rust/src/atlas/persistence/*.rs", "atlas-rust/src/atlas/persistence/migrations/*.rs"],
+        "sources": ["atlas-rust/src/atlas/persistence/*.rs", "atlas-rust/src/atlas/persistence/migrations/*.rs", "atlas-rust/src/atlas/persistence/migrations/versions/*.sql"],
         "cwd": "atlas-rust",
         "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_navigation", "--test", "parity_inventory"],
         "timeoutSeconds": 300

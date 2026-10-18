@@ -19,14 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          enable-cache: true
-          cache-dependency-glob: atlas/pyproject.toml
-          python-version: "3.14"
-      - run: uv sync --project atlas --no-dev
+          workspaces: atlas-rust
+      - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
       - name: Require all configured checks to pass across the entire repository
         shell: bash
         run: |
           set -o pipefail
-          uv run --project atlas --no-dev atlas check --f . --format json | tee "$RUNNER_TEMP/atlas-check.json"
+          atlas-rust/target/release/atlas check --f . --format json | tee "$RUNNER_TEMP/atlas-check.json"

@@ -1,5 +1,9 @@
 # Full mutation validation on PR #47
 
+Historical report for the removed Python importer. Paths, commands, and timings
+below describe that revision, not the current Rust importer. Use `AGENTS.md` for
+current checks and mutation commands.
+
 Base: `optimize-slow-tests`, commit `436d146f70910a48a6672ca45322c37ebbe8f217`.
 This change targets that branch, not `autonomous-mutation-testing`.
 

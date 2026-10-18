@@ -240,5 +240,4 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 /atlas/coffee.json
-/atlas/tests/coffee-output/
 /dashboard/src/routeTree.gen.ts

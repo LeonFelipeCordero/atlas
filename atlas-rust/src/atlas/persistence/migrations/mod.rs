@@ -56,7 +56,7 @@ impl MigrationTrait for Revision {
     }
     /// Reject every downgrade with a database error; use Python/Alembic instead.
     async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
-        Err(DbErr::Custom("Use Python/Alembic for schema downgrades".into()))
+        Err(DbErr::Custom("Schema downgrades are not supported; restore a database backup instead".into()))
     }
 }
 

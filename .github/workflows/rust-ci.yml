@@ -5,13 +5,11 @@ on:
     branches: [main]
     paths:
       - atlas-rust/**
-      - atlas/**
       - .github/workflows/rust-ci.yml
   push:
     branches: [main]
     paths:
       - atlas-rust/**
-      - atlas/**
       - .github/workflows/rust-ci.yml
 
 permissions:
