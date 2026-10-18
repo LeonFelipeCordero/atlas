@@ -235,7 +235,19 @@ fn store_edits(output: &mut HashMap<EditKey, MutationManifest>, edits: Vec<Mutat
     }
 }
 
-/// Verify every candidate, including unselected sites, and return sorted unique edits.
+/// Verify every candidate against current sources and return sorted, unique edits.
+///
+/// Resolve `root` and read candidate files beneath it, even for unselected sites
+/// or an empty rule selection. Re-extraction checks candidate identity, hashes,
+/// spans, text, and grammar provenance. Deduplicate equivalent byte edits and sort
+/// by path, byte span, rule, replacement, and ID. Each edit applies independently
+/// to its source hash; no source or database writes occur.
+///
+/// # Errors
+/// Reject unknown rules even with no candidates, unsafe paths, unreadable or stale
+/// sources, invalid candidates, and replacements that fail syntactic verification.
+/// Propagate parsing and serialization failures; never return partial results.
+/// Syntactic verification does not guarantee type or runtime validity.
 pub fn generate_manifests(
     root: &Path,
     candidates: &[MutationCandidate],
@@ -281,6 +293,11 @@ mod path_tests {
     }
 }
 
+/// Validate JSON candidates and return JSON manifests for the selected rule IDs.
+///
+/// Use [`generate_manifests`] to read and verify current sources under `root`
+/// without applying or saving edits. Propagate candidate-schema, generation, and
+/// serialization errors; no partial manifest list is returned.
 pub fn generate_manifest_values(root: &Path, candidates: &[Value], rules: &[String]) -> Result<Vec<Value>> {
     let candidates =
         candidates.iter().map(crate::domain::mutation_candidates::validate_candidate).collect::<Result<Vec<_>>>()?;

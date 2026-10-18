@@ -4,9 +4,20 @@ use anyhow::Result;
 use serde_json::json;
 use std::path::Path;
 
+/// Execute the CLI with process arguments, excluding the executable name.
+///
+/// Return the exit status from [`run_args`] without terminating the process.
+/// Commands can print output, read sources, update SQLite, or run mutations.
+/// Diagnostic output failures propagate as errors.
 pub fn run() -> Result<i32> {
     run_args(&std::env::args().skip(1).collect::<Vec<_>>())
 }
+/// Parse and execute arguments that exclude the executable name.
+///
+/// Commands print results and diagnostics. Indexing and `--save` persist graphs
+/// in SQLite; mutation runs edit and restore sources and execute trusted commands.
+/// Return 0 on success/help, 2 for usage errors, or 1 for command failures or
+/// check findings. Diagnostic output failures propagate instead of an exit status.
 pub fn run_args(args: &[String]) -> Result<i32> {
     match dispatch(args) {
         Ok(code) => Ok(code),

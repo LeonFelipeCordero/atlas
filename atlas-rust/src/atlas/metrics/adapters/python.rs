@@ -22,6 +22,8 @@ static IMPORT_PATH: LazyLock<Regex> = LazyLock::new(|| {
 pub const COMPREHENSIONS: &[&str] =
     &["list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"];
 
+/// Recognize wildcard/capture patterns and supported wrappers that cannot reject a Python match.
+/// Unsupported pattern shapes are treated as refutable.
 pub fn irrefutable_pattern(pattern: Node<'_>) -> bool {
     let named = named_children(pattern);
     let single = || single_pattern(pattern);
@@ -48,9 +50,13 @@ fn single_pattern(pattern: Node<'_>) -> bool {
 fn capture_pattern(pattern: Node<'_>) -> bool {
     pattern.named_child_count() == 1 && pattern.named_child(0).is_some_and(|n| n.kind() == "identifier")
 }
+/// Count a Python case as a decision unless its case pattern is recognized as irrefutable.
+/// A missing case pattern still counts as a decision.
 pub fn case_decision(node: Node<'_>) -> bool {
     named_children(node).into_iter().find(|c| c.kind() == "case_pattern").is_none_or(|p| !irrefutable_pattern(p))
 }
+/// Count explicit Python inputs, excluding separators and the first receiver of non-static methods.
+/// Use matching `source` for decorators; missing/error headers yield `None`, except bare lambdas yield zero.
 pub fn parameter_count(node: Node<'_>, source: &[u8]) -> Option<usize> {
     let Some(parameters) = parameter_node(node, &[]) else {
         return (node.kind() == "lambda").then_some(0);
@@ -80,6 +86,8 @@ fn python_receiver(mut node: Node<'_>) -> bool {
     ["identifier", "default_parameter", "typed_default_parameter"].contains(&node.kind())
 }
 
+/// Extract the last quoted path or Python from/import module name from `source`.
+/// Fall back to trimmed directive text when no pattern matches.
 pub fn import_path(source: &str) -> String {
     quoted_path(source).unwrap_or_else(|| {
         IMPORT_PATH
@@ -89,9 +97,13 @@ pub fn import_path(source: &str) -> String {
             .unwrap_or_else(|| source.trim().into())
     })
 }
+/// Find named Python instance members through a supported single-base chain.
+/// Reject decorated classes, unsafe mutations, masking fields, and ambiguous inheritance.
 pub fn instance_members(resolver: &CallResolver, parent: &Symbol, name: &str) -> Vec<Symbol> {
     inherited_members(resolver, parent, name)
 }
+/// Select Python runtime callables, rejecting unbound `self` calls and typing-only overloads.
+/// Multiple candidates must share a declaration group with one final non-overload implementation.
 pub fn select(identity: &CallableIdentity, request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     if request.qualifier.as_deref().is_some_and(|q| q.split('.').next() == Some("self")) {
         let syntax = &identity.syntax[&request.file.source.path];
@@ -138,6 +150,9 @@ fn package_root(mut package: PathBuf, packages: &BTreeSet<PathBuf>) -> PathBuf {
     }
     package
 }
+/// Map Python module identities to retained `.py` files, preserving ambiguous identities.
+/// Derive roots from package initializers, `src` directories, and the repository root;
+/// the syntax argument is unused.
 pub fn module_index(
     repository: &ParsedRepository,
     _syntax: &BTreeMap<String, Syntax>,
@@ -165,6 +180,8 @@ fn package_parent(files: &[ParsedFile]) -> bool {
     files.is_empty()
         || files.len() == 1 && Path::new(&files[0].source.path).file_name().is_some_and(|n| n == "__init__.py")
 }
+/// Resolve a unique Python module through `ctx`'s module index or relative-path lookup.
+/// Reject ambiguous modules and absolute paths whose indexed parents are not packages.
 pub fn import_files(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<ParsedFile> {
     if request.path.starts_with('.') {
         return ctx.path_files(request.file, &request.path);
@@ -179,6 +196,8 @@ pub fn import_files(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<Pa
     let matches = index.get(&request.path).cloned().unwrap_or_default();
     if matches.len() == 1 { matches } else { vec![] }
 }
+/// Match Python module names to `.py` or `__init__.py` files, relative to `source` for leading dots.
+/// Return all matching retained files; path normalization may query filesystem metadata.
 pub fn paths(source: &ParsedFile, name: &str, files: &[ParsedFile]) -> Vec<ParsedFile> {
     let dots = name.len() - name.trim_start_matches('.').len();
     let module = name[dots..].replace('.', "/");
@@ -195,6 +214,7 @@ pub fn paths(source: &ParsedFile, name: &str, files: &[ParsedFile]) -> Vec<Parse
     files.iter().filter(|f| targets.contains(&resolve_path(&f.source.absolute_path))).cloned().collect()
 }
 
+/// Return `(local import name, enclosing scope)` pairs from Python import syntax for shadowing checks.
 pub fn lexical_imports(syntax: &Syntax) -> Vec<(String, Node<'_>)> {
     let adapter = &syntax.adapter;
     syntax
@@ -214,6 +234,8 @@ pub fn lexical_imports(syntax: &Syntax) -> Vec<(String, Node<'_>)> {
         })
         .collect()
 }
+/// Extract Python declaration, exception, assignment, or loop targets with their binding scope.
+/// Move named-expression bindings outside comprehension scopes; unsupported nodes have no target.
 pub fn binding<'a>(
     adapter: &ResolutionAdapter,
     syntax: &'a Syntax,
@@ -239,6 +261,8 @@ pub fn binding<'a>(
     }
     (target, scope)
 }
+/// Apply Python scope restrictions at byte `position` after range containment is checked by the caller.
+/// Hide comprehension captures in the first iterable and class locals inside nested executable bodies.
 pub fn visible(syntax: &Syntax, scope: Node<'_>, position: usize) -> bool {
     if COMPREHENSIONS.contains(&scope.kind()) {
         let iterable =
@@ -270,6 +294,7 @@ fn hides_class_scope(syntax: &Syntax, node: Node<'_>, position: usize) -> bool {
     }
     COMPREHENSIONS.contains(&node.kind()) && syntax.visible(node, position)
 }
+/// Exempt a class declaration from shadowing unless a same-name import is visible at the lookup position.
 pub fn declaration_allowed(syntax: &Syntax, lookup: &DeclarationLookup<'_>) -> bool {
     lookup.node.kind() == "class_definition"
         && !syntax
@@ -277,6 +302,7 @@ pub fn declaration_allowed(syntax: &Syntax, lookup: &DeclarationLookup<'_>) -> b
             .into_iter()
             .any(|(alias, scope)| alias == lookup.name && syntax.visible(scope, lookup.position))
 }
+/// Detect a class-scope import named `name` that is hidden from a nested body at byte `position`.
 pub fn import_shadowed(syntax: &Syntax, name: &str, position: usize) -> bool {
     syntax.imports().into_iter().any(|(alias, scope)| {
         alias == name
@@ -285,6 +311,7 @@ pub fn import_shadowed(syntax: &Syntax, name: &str, position: usize) -> bool {
             && !syntax.visible(scope, position)
     })
 }
+/// Treat exact `@staticmethod`/`@classmethod` decorators as static, otherwise use shared modifier detection.
 pub fn static_symbol(syntax: &Syntax, symbol: &Symbol) -> bool {
     let adapter = &syntax.adapter;
     let node = syntax.node(symbol.start_byte, symbol.end_byte);
@@ -338,6 +365,8 @@ fn child_module_files(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &
 fn module_symbols(ctx: &ImportBindings, file: &ParsedFile, path: &str) -> Vec<Symbol> {
     ctx.files(file, path, None).iter().flat_map(top_symbols).collect()
 }
+/// Return `(module path, optional graph key)` dependencies for Python import directives.
+/// Expand imported child modules when appropriate and retain unresolved dependencies with `None` keys.
 pub fn import_targets(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Option<String>)> {
     let adapter = &ctx.syntax[&request.file.source.path].adapter;
     let Some(node) = import_node(ctx, request) else {
@@ -380,6 +409,9 @@ fn from_import_target(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &
     }
     (request.path.clone(), adapter.import_key(ctx, request))
 }
+/// Return `(local name, targets, namespace flag)` entries for Python imports at the request position.
+/// Prefer from-import members over child modules; unresolved recognized names retain empty targets.
+/// A missing directive node yields no bindings.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     let Some(node) = import_node(ctx, request) else {
         return vec![];
@@ -402,6 +434,8 @@ pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(St
         })
         .collect()
 }
+/// Permit `self` only when it is the method's first parameter and has no conflicting visible binding.
+/// Requests with other qualifiers are permitted without extra checks.
 pub fn implicit_receiver(resolver: &CallResolver, request: &ResolutionRequest<'_>, method: &Symbol) -> bool {
     if request.qualifier.as_deref() != Some("self") {
         return true;

@@ -5,6 +5,11 @@ const MAX_DECIMAL_DIGITS: usize = 4300; // CPython's default integer-string conv
 static DECIMAL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A\p{Nd}\z").unwrap());
 static NONPRINTING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A[\p{C}\p{Z}]\z").unwrap());
 
+/// Normalize a Python-style signed decimal to ASCII, removing leading zeros.
+///
+/// Accept surrounding Unicode whitespace, Unicode decimal digits, and single
+/// underscores between digits. Return `None` for invalid syntax or more than
+/// 4300 digits before zero removal; normalize negative zero to `0`.
 pub fn normalize(value: &str) -> Option<String> {
     let value = value.trim_matches(char::is_whitespace);
     let (negative, body) = sign(value);
@@ -50,6 +55,10 @@ fn decimal_digit(character: char) -> Option<char> {
 fn matches(pattern: &Regex, character: char) -> bool {
     pattern.is_match(character.encode_utf8(&mut [0; 4]))
 }
+/// Test a normalized decimal against inclusive bounds without integer overflow.
+///
+/// `value` must be canonical ASCII decimal as returned by [`normalize`]. Negative
+/// values fail; `None` for the upper bound means no maximum.
 pub fn in_range(value: &str, range: (usize, Option<usize>)) -> bool {
     !value.starts_with('-')
         && magnitude(value, range.0) != Ordering::Less
@@ -59,12 +68,16 @@ fn magnitude(value: &str, bound: usize) -> Ordering {
     let bound = bound.to_string();
     value.len().cmp(&bound.len()).then_with(|| value.cmp(&bound))
 }
+/// Format inclusive bounds as `min<=x<=max`, or `x>=min` without a maximum.
 pub fn range_description(range: (usize, Option<usize>)) -> String {
     match range {
         (minimum, Some(maximum)) => format!("{minimum}<=x<={maximum}"),
         (minimum, None) => format!("x>={minimum}"),
     }
 }
+/// Quote a value for CLI validation errors using Python-style string escapes.
+///
+/// Escape backslashes, the selected quote, and nonprinting Unicode characters.
 pub fn repr(value: &str) -> String {
     let quote = if value.contains('\'') && !value.contains('"') { '"' } else { '\'' };
     let contents: String = value.chars().map(|character| escaped(character, quote)).collect();

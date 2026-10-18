@@ -5,6 +5,8 @@ use tree_sitter::Node;
 
 type ScopedBindings<'a> = Vec<(String, Node<'a>, Node<'a>)>;
 
+/// Return `(name, scope, declaration)` bindings for Python cases and Rust scoped patterns.
+/// `None` delegates to ordinary binding extraction; `Some([])` is a recognized pattern without captures.
 pub fn scoped<'a>(syntax: &'a Syntax, node: Node<'a>) -> Option<ScopedBindings<'a>> {
     if syntax.language == "python" && node.kind() == "case_clause" {
         let captures = children(node)
@@ -45,6 +47,8 @@ fn condition_scopes(node: Node<'_>) -> Vec<Node<'_>> {
     scopes
 }
 
+/// Extract Rust capture names from `node` and matching source, excluding type paths and guards.
+/// Missing nodes and nonbinding pattern parts produce no names.
 pub fn rust_names(node: Option<Node<'_>>, source: &[u8]) -> BTreeSet<String> {
     let Some(node) = node else { return BTreeSet::new() };
     match node.kind() {

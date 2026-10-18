@@ -21,9 +21,12 @@ pub use rust_modules::{RustModules, path_attributes};
 use std::sync::LazyLock;
 use tree_sitter::Node;
 
+/// Count a Rust match arm unless its pattern text in `source` is exactly the wildcard `_`.
 pub fn match_decision(node: Node<'_>, source: &[u8]) -> bool {
     field(node, &["pattern"]).is_none_or(|n| text(Some(n), source).trim() != "_")
 }
+/// Count Rust inputs excluding `self` receivers and attributes; missing/error headers yield `None`.
+/// The source argument is unused.
 pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     let parameters = parameter_node(node, &[]).filter(|n| !n.has_error())?;
     Some(
@@ -36,6 +39,7 @@ pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
             .count(),
     )
 }
+/// Test whether a Rust callable's parameter list contains an explicit `self` receiver.
 pub fn has_self_node(node: Node<'_>) -> bool {
     field(node, &["parameters"]).is_some_and(|p| {
         named_children(p)
@@ -43,6 +47,8 @@ pub fn has_self_node(node: Node<'_>) -> bool {
             .any(|c| c.kind() == "self_parameter" || field(c, &["pattern"]).unwrap_or(c).kind() == "self")
     })
 }
+/// Classify an impl function as static when it lacks `self`.
+/// Return `None` for missing syntax or other declaration shapes so shared detection can run.
 pub fn static_symbol(syntax: &Syntax, symbol: &Symbol) -> Option<bool> {
     let node = syntax.node(symbol.start_byte, symbol.end_byte)?;
     if node.kind() == "function_item"
@@ -54,6 +60,8 @@ pub fn static_symbol(syntax: &Syntax, symbol: &Symbol) -> Option<bool> {
     }
     None
 }
+/// Extract Rust struct constructors or generic-function targets, removing turbofish wrappers.
+/// Return `Some((callee, receiver))` for handled shapes; `None` delegates to shared extraction.
 pub fn call_target<'a>(
     adapter: &super::resolution_policy::ResolutionAdapter,
     node: Node<'a>,
@@ -74,16 +82,21 @@ pub fn call_target<'a>(
         (Some(function), None)
     })
 }
+/// Extract a quoted path or Rust use/mod name from `source`, falling back to trimmed directive text.
 pub fn import_path(source: &str) -> String {
     static PATH: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?:^|[^\p{L}\p{N}_])(?:use|mod)[\s\x1c-\x1f]+([\p{L}\p{N}_:]+)").unwrap());
     quoted_path(source)
         .unwrap_or_else(|| PATH.captures(source).map(|c| c[1].to_owned()).unwrap_or_else(|| source.trim().into()))
 }
+/// Reject explicit receiver nodes with simple Rust-like qualifiers, except `this`.
+/// Missing receivers or qualifiers do not trigger this rejection.
 pub fn receiver_rejected(receiver: Option<Node<'_>>, qualifier: Option<&str>) -> bool {
     static SIMPLE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A[\p{L}\p{N}_:]+\z").unwrap());
     receiver.is_some() && qualifier != Some("this") && qualifier.is_some_and(|q| SIMPLE.is_match(q))
 }
+/// Prefer a non-namespace import's targets when local and named candidates contain only impl symbols.
+/// Otherwise retain `matches` for shared type filtering.
 pub fn qualify_class(resolver: &CallResolver, request: &ResolutionRequest<'_>, matches: Vec<Symbol>) -> Vec<Symbol> {
     let local = resolver.lexical(request.file, &request.name, request.owner);
     let binding = resolver.imports.get(request.file, &request.name, request.call.start_byte);
@@ -145,6 +158,8 @@ fn inherent_impl(resolver: &CallResolver, symbol: &Symbol, parent: &Symbol) -> b
     let types = impl_types(resolver, symbol, &name);
     types.len() == 1 && types[0].key == parent.key
 }
+/// Find direct named members and members of inherent impl blocks that uniquely resolve to `parent`.
+/// Trait impls are excluded from this lookup.
 pub fn instance_members(resolver: &CallResolver, parent: &Symbol, name: &str) -> Vec<Symbol> {
     let implementations: std::collections::BTreeSet<_> = resolver
         .symbols
@@ -162,6 +177,8 @@ pub fn instance_members(resolver: &CallResolver, parent: &Symbol, name: &str) ->
     );
     result
 }
+/// Resolve the enclosing impl type for a function with an explicit `self` parameter.
+/// Missing method/impl syntax or invalid receiver context yields no types.
 pub fn receiver_owner(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
     let ancestors = resolver.ancestors(request.owner);
     let Some(method) = ancestors.iter().find(|s| s.kind == "function") else {
@@ -183,6 +200,7 @@ pub fn receiver_owner(resolver: &CallResolver, request: &ResolutionRequest<'_>) 
         syntax.node(owner.start_byte, owner.end_byte).and_then(|n| type_name(field(n, &["type"]), &syntax.source));
     name.map(|n| impl_types(resolver, owner, &n)).unwrap_or_default()
 }
+/// Test whether every nonempty local candidate is a Rust module declaration in retained syntax.
 pub fn local_namespace(resolver: &CallResolver, local: &[Symbol]) -> bool {
     !local.is_empty()
         && local.iter().all(|s| {
@@ -193,6 +211,8 @@ pub fn local_namespace(resolver: &CallResolver, local: &[Symbol]) -> bool {
                 .is_some_and(|n| n.kind() == "mod_item")
         })
 }
+/// Find the requested member in the unique lexical Rust module named by its qualifier.
+/// Missing module indexes and unresolved/ambiguous modules yield no candidates.
 pub fn qualified(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Vec<Symbol> {
     resolver
         .modules
@@ -207,6 +227,7 @@ pub fn qualified(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Ve
         })
         .unwrap_or_default()
 }
+/// Resolve a unique external module file at the request's lexical position; inline modules yield none.
 pub fn import_files(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<ParsedFile> {
     ctx.modules
         .rust
@@ -214,6 +235,7 @@ pub fn import_files(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<Pa
         .map(|index| index.rust_import(request.file, &request.path, request.position))
         .unwrap_or_default()
 }
+/// Return declarations named `name` directly inside the unique requested Rust module scope.
 pub fn members(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &str) -> Vec<Symbol> {
     ctx.modules
         .rust
@@ -227,6 +249,8 @@ pub fn members(ctx: &ImportBindings, request: &ImportRequest<'_>, name: &str) ->
         })
         .unwrap_or_default()
 }
+/// Return a unique Rust module key, or a unique terminal symbol key when the path names a member.
+/// Missing or ambiguous module/member targets yield `None`.
 pub fn import_key(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<String> {
     let key = ctx.modules.rust.as_ref()?.rust_key(request.file, &request.path, request.position);
     if key.is_some() {
@@ -236,6 +260,9 @@ pub fn import_key(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<S
     let targets = members(ctx, &ImportRequest { path: module.into(), ..request.clone() }, name);
     if targets.len() == 1 { Some(targets[0].key.clone()) } else { None }
 }
+/// Return `(local alias, targets, namespace flag)` for a recognized Rust use path.
+/// Module paths bind namespaces; terminal symbol imports bind values, retaining empty unresolved targets.
+/// Unsupported directives or a missing module index yield no entries.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     static USE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"(?:^|[^\p{L}\p{N}_])use[\s\x1c-\x1f]+([\p{L}\p{N}_:]+)(?:[\s\x1c-\x1f]+as[\s\x1c-\x1f]+([\p{L}\p{N}_]+))?").unwrap()
@@ -262,6 +289,8 @@ pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(St
         false,
     )]
 }
+/// Build implicit namespace bindings for Rust mod declarations in `file`.
+/// Use each declaration's parent byte range, with `source_length` as fallback end; missing indexes yield none.
 pub fn module_bindings(ctx: &ImportBindings, file: &ParsedFile, source_length: usize) -> Vec<Binding> {
     let Some(syntax) = ctx.syntax.get(&file.source.path) else {
         return vec![];

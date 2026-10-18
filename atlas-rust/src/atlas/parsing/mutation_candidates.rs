@@ -341,7 +341,12 @@ impl Extraction<'_> {
     }
 }
 
-/// Unsupported grammars, non-UTF-8 bytes, and syntax errors yield no candidates.
+/// Extract stable mutation candidates as JSON values from exact source bytes without executing them.
+/// Sort by byte span, kind, and ID; retain original text and the enclosing callable when known.
+/// Unsupported grammars, non-UTF-8 bytes, parser failures, and syntax errors yield no candidates.
+///
+/// # Errors
+/// Returns an error if a candidate cannot be serialized to JSON.
 pub fn extract_candidates(source: &SourceFile) -> Result<Vec<Value>> {
     if std::str::from_utf8(&source.source).is_err() || expressions(&source.language).is_empty() {
         return Ok(vec![]);

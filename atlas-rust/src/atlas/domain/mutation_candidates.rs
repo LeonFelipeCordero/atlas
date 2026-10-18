@@ -30,6 +30,7 @@ pub enum MutationKind {
     Assignment,
 }
 impl MutationKind {
+    /// Return the lowercase mutation kind used in serialized candidate records.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Condition => "condition",
@@ -64,7 +65,11 @@ pub struct MutationCandidateAnalysis {
     pub candidates: Vec<MutationCandidate>,
 }
 
-/// Serde accepts positional structs; Python's strict models require objects.
+/// Deserialize a candidate with object-shaped spans, ignoring unknown fields.
+///
+/// # Errors
+/// Return an error for non-object candidates, spans, or callable records, or
+/// fields that fail Serde type/required-field checks. Do not check source contents.
 pub fn validate_candidate(value: &serde_json::Value) -> anyhow::Result<MutationCandidate> {
     anyhow::ensure!(value.is_object(), "Mutation candidate must be an object");
     for field in ["span", "expressionSpan"] {

@@ -5,6 +5,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Expand leading `~` using `HOME` or the current user's passwd entry, and `~user` via passwd.
+/// Leave other paths unchanged; do not resolve symlinks or create filesystem entries.
+/// Return an error for unknown users, invalid username bytes, or failed home lookup.
 pub fn expand_home(path: &Path) -> Result<PathBuf> {
     let bytes = path.as_os_str().as_bytes();
     if !bytes.starts_with(b"~") {

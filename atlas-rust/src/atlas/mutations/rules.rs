@@ -120,6 +120,9 @@ fn assignment_rules() -> Vec<MutationRule> {
 pub static REGISTRY: LazyLock<Vec<MutationRule>> =
     LazyLock::new(|| [arithmetic_rules(), comparison_rules(), logical_rules(), assignment_rules()].concat());
 
+/// Reject the first rule ID absent from the versioned registry.
+///
+/// Accept empty selections and duplicates without changing their order or input.
 pub fn validate_rules(rules: &[String]) -> Result<()> {
     for id in rules {
         if !REGISTRY.iter().any(|rule| rule.id == *id) {
@@ -129,6 +132,10 @@ pub fn validate_rules(rules: &[String]) -> Result<()> {
     Ok(())
 }
 
+/// Read a JSON array of known string rule IDs, preserving order and duplicates.
+///
+/// Return an empty vector for an empty array. Reject nonarrays, nonstring items,
+/// and unknown rule IDs without returning a partial selection.
 pub fn validate_rules_value(value: &Value) -> Result<Vec<String>> {
     let Some(items) = value.as_array() else {
         bail!("Mutation rules must be a list of rule IDs");

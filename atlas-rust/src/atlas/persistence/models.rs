@@ -15,6 +15,7 @@ pub mod repositories {
 }
 pub use repositories::Model as RepositoryRow;
 impl sea_orm::Related<repository_graphs::Entity> for repositories::Entity {
+    /// Define the registration-to-graph join by repository ID without executing a query.
     fn to() -> sea_orm::RelationDef {
         use sea_orm::EntityTrait;
         repositories::Entity::belongs_to(repository_graphs::Entity)
@@ -68,6 +69,7 @@ pub mod graph_nodes {
 }
 pub use graph_nodes::Model as GraphNodeRow;
 impl sea_orm::Related<graph_symbols::Entity> for graph_nodes::Entity {
+    /// Define the node-to-symbol join by repository ID and node key without querying.
     fn to() -> sea_orm::RelationDef {
         use sea_orm::EntityTrait;
         graph_nodes::Entity::belongs_to(graph_symbols::Entity)
@@ -77,6 +79,7 @@ impl sea_orm::Related<graph_symbols::Entity> for graph_nodes::Entity {
     }
 }
 impl sea_orm::Related<graph_files::Entity> for graph_nodes::Entity {
+    /// Define the node-to-file join by repository ID and node key without querying.
     fn to() -> sea_orm::RelationDef {
         use sea_orm::EntityTrait;
         graph_nodes::Entity::belongs_to(graph_files::Entity)

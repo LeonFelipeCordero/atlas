@@ -22,6 +22,10 @@ pub enum Operation {
     Source(Vec<String>, SourceOptions),
 }
 impl GraphOptions {
+    /// Convert matches for a known graph subcommand into an operation and format.
+    ///
+    /// Reject invalid numeric ranges and empty or unknown relation selections.
+    /// `matches` must come from the schema for `command`.
     pub fn from_matches(command: &str, matches: &clap::ArgMatches) -> Result<Self> {
         let options = Options::from_matches(&format!("graph {command}"), matches);
         let text = options.get("--format", "json") == "text";
@@ -47,6 +51,10 @@ impl Operation {
             _ => unreachable!(),
         })
     }
+    /// Execute this read operation and return the service's JSON payload.
+    ///
+    /// Use the service's graph snapshot; source operations also read local files.
+    /// Propagate lookup, traversal, database, and source-verification errors.
     pub fn execute(self, service: &mut NavigationService) -> Result<Value> {
         match self {
             Self::Overview => service.overview(),
@@ -95,6 +103,8 @@ fn traversal_request(command: &str, options: &Options, key: &str) -> Result<Trav
         max_edges: options.number("--max-edges", 100, (1, 1000))?,
     })
 }
+/// Return the depth flag and default: `--max-depth`/6 for `path`, otherwise
+/// `--depth`/2. This does not validate the command name or a depth value.
 pub fn depth_option(command: &str) -> (&'static str, usize) {
     if command == "path" { ("--max-depth", 6) } else { ("--depth", 2) }
 }

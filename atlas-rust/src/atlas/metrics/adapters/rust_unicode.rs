@@ -1,6 +1,9 @@
 //! Strict Unicode 16 name/alias lookup from the parent's pinned unicode_names2 =1.3.0.
 //! Python's database depends on its interpreter version; local Python 3.11 uses Unicode 14.
 //! Algorithmic CJK/Hangul names are case-sensitive in Python, unlike ordinary names/aliases.
+/// Look up a Unicode 16 character name or alias, returning `None` for invalid spellings.
+/// Enforce Python-style case sensitivity for algorithmic Hangul and CJK names;
+/// ordinary names and aliases use the pinned Unicode database's lookup rules.
 pub fn character(name: &str) -> Option<char> {
     let value = unicode_names2::character(name)?;
     let canonical = unicode_names2::name(value).map(|name| name.to_string()).unwrap_or_default();

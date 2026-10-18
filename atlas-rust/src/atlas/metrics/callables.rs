@@ -2,6 +2,11 @@ use super::{adapters::get_metric_adapter, complexity::calculate_complexity};
 use crate::domain::models::{ParsedFile, ParsedRepository};
 use anyhow::{Result, anyhow};
 
+/// Populate function and method metrics in `file` from retained source, without disk reads.
+/// Missing syntax leaves complexity and parameter counts unchanged; line counts are updated.
+///
+/// # Errors
+/// Return an error if the grammar cannot load or parsing fails.
 pub fn callable_metrics(file: &mut ParsedFile) -> Result<()> {
     if !file.symbols.iter().any(|symbol| matches!(symbol.kind.as_str(), "function" | "method")) {
         return Ok(());
@@ -26,6 +31,10 @@ pub fn callable_metrics(file: &mut ParsedFile) -> Result<()> {
     Ok(())
 }
 
+/// Enrich each repository file's function and method symbols in place.
+///
+/// # Errors
+/// Propagate parser errors; earlier files can remain enriched after failure.
 pub fn add_callable_metrics(repo: &mut ParsedRepository) -> Result<()> {
     for file in &mut repo.files {
         callable_metrics(file)?;

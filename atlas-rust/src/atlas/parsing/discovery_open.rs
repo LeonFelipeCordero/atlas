@@ -44,12 +44,21 @@ fn open_relative(root: &File, relative: &Path, directory: bool) -> io::Result<Fi
 }
 
 impl SourceRoot {
+    /// Pin a descriptor for an absolute, resolved root directory until this value is dropped.
+    ///
+    /// # Errors
+    /// Returns an I/O error for non-absolute paths, unsafe components, symlinks, or failed opens.
     pub(super) fn new(root: &Path) -> io::Result<Self> {
         let filesystem = OpenOptions::new().read(true).custom_flags(libc::O_DIRECTORY).open("/")?;
         let descriptor = open_relative(&filesystem, root.strip_prefix("/").map_err(io::Error::other)?, true)?;
         Ok(Self { path: root.to_owned(), descriptor })
     }
 
+    /// Resolve `path` and read regular-file bytes relative to the pinned root descriptor.
+    /// Return `None` if the resolved target is outside the root; reject symlink swaps on open.
+    ///
+    /// # Errors
+    /// Returns an I/O error if resolution, secure opening, file validation, or reading fails.
     pub(super) fn read(&self, path: &Path) -> io::Result<Option<Vec<u8>>> {
         let target = fs::canonicalize(path)?;
         let Ok(relative) = target.strip_prefix(&self.path) else {

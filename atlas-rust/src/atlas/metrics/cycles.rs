@@ -4,7 +4,11 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 pub type Adjacency = BTreeMap<String, Vec<String>>;
 
-/// Iterative Kosaraju traversal, with source-first component order.
+/// Return sorted members of each strongly connected component in source-first order.
+/// Traverse `adjacency` iteratively with Kosaraju's algorithm.
+///
+/// # Panics
+/// Panic if an edge target has no entry in `adjacency`.
 pub fn strongly_connected_components(adjacency: &Adjacency) -> Vec<Vec<String>> {
     let mut visited = BTreeSet::new();
     let mut finished = Vec::new();
@@ -189,6 +193,10 @@ fn cycle_path(start: &str, parents: &BTreeMap<String, Option<String>>) -> Vec<St
     path
 }
 
+/// Return version-1 runtime import cycle groups projected onto owning files.
+/// Exclude external and type-only imports; include direct file self-imports.
+/// Each group has a stable hash ID, member keys, an example cycle, and internal edges.
+/// `nodes` supplies the parent hierarchy for the relationships in `edges`.
 pub fn circular_dependencies(nodes: &[Value], edges: &[Value]) -> Value {
     let projected = import_edges(nodes, edges);
     let mut neighbors: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
@@ -222,7 +230,8 @@ pub fn circular_dependencies(nodes: &[Value], edges: &[Value]) -> Value {
     json!({"version": 1, "groups": groups})
 }
 
-/// Python json.dumps defaults: ASCII strings and spaced separators.
+/// Serialize `value` with Python-style ASCII strings and spaced separators.
+/// Sort object keys recursively when `sort_keys` is true; otherwise retain map order.
 pub(crate) fn python_json(value: &Value, sort_keys: bool) -> String {
     match value {
         Value::String(text) => ascii_string(text),

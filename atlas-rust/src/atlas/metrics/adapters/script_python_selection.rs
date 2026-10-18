@@ -5,6 +5,8 @@ use crate::syntax::{field, named_children, text};
 use std::collections::{BTreeMap, BTreeSet};
 use tree_sitter::Node;
 
+/// Extract Python `(imported name, alias)` pairs in directive order using matching `source`.
+/// Missing aliases are empty strings.
 pub fn import_names(node: Node<'_>, source: &[u8]) -> Vec<(String, String)> {
     let mut cursor = node.walk();
     node.children_by_field_name("name", &mut cursor)
@@ -33,6 +35,8 @@ fn overload_target(imported: Node<'_>, (name, local): (&str, &str), source: &[u8
     String::new()
 }
 
+/// Recognize `symbol` as a typing overload through a unique earlier visible import or alias.
+/// Reject shadowed providers and rebound `.overload` members; missing syntax returns false.
 pub fn typing_overload(syntax: &Syntax, symbol: &Symbol) -> bool {
     let Some(node) = syntax.node(symbol.start_byte, symbol.end_byte) else {
         return false;
@@ -65,6 +69,8 @@ fn add_providers(providers: &mut BTreeMap<String, Vec<String>>, imported: Node<'
     }
 }
 
+/// Return the final non-overload symbol when every preceding source-ordered symbol is a typing overload.
+/// `ordered` must belong to `syntax`; invalid groups or empty input yield no targets.
 pub fn overload_implementation(syntax: &Syntax, ordered: Vec<Symbol>) -> Vec<Symbol> {
     let Some(last) = ordered.last() else {
         return vec![];
@@ -109,6 +115,8 @@ fn instance_owner(syntax: &Syntax, node: Node<'_>) -> bool {
     owner.and_then(|n| n.parent()).is_some_and(|n| n.kind() == "class_definition")
 }
 
+/// Test whether the nearest enclosing Python function has an unwritten first `self` parameter.
+/// Require an instance method, excluding static/class descriptors; missing syntax returns false.
 pub fn bound_self(syntax: &Syntax, mut node: Option<Node<'_>>) -> bool {
     while node.is_some_and(|n| n.kind() != "function_definition") {
         node = node.and_then(|n| n.parent());

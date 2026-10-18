@@ -13,6 +13,10 @@ use sha2::{Digest, Sha256};
 use tree_sitter::Node;
 use tree_sitter_language_pack::{ProcessConfig, StructureItem, process};
 
+/// Test whether the grammar defines any shared call/reference node kind, caching the result.
+///
+/// # Errors
+/// Returns an error if the language-pack grammar cannot be loaded.
 pub fn has_call_nodes(language: &str) -> Result<bool> {
     use std::{
         collections::HashMap,
@@ -31,6 +35,8 @@ pub fn has_call_nodes(language: &str) -> Result<bool> {
     Ok(found)
 }
 
+/// Describe the first error or missing node in depth-first source order.
+/// Use one-based lines and byte columns; return `None` when no concrete error node is found.
 pub fn syntax_error(root: Node<'_>) -> Option<String> {
     if !root.has_error() {
         return None;
@@ -50,6 +56,9 @@ pub fn syntax_error(root: Node<'_>) -> Option<String> {
     None
 }
 
+/// Extract named call/reference records in adapter visitation order from `file` and its root.
+/// Map synthetic offsets back to file bytes, use one-based lines and exclusive end offsets,
+/// and retain at most 300 evidence characters. The root and adapter must match `file`.
 pub fn extract_calls(file: &SourceFile, root: Node<'_>, adapter: LanguageAdapter<'_>) -> Vec<Call> {
     let mut calls = vec![];
     let newlines: Vec<_> =
@@ -131,6 +140,14 @@ fn parse_tree(source: &SourceFile, adapter: LanguageAdapter<'_>) -> Result<Optio
     if needed { Ok(Some(syntax::parse(&source.language, &source.source)?)) } else { Ok(None) }
 }
 
+/// Parse in-memory source into graph records without reading the filesystem.
+/// Replace invalid UTF-8 for extraction, but hash and retain the original bytes.
+/// Record syntax diagnostics for dedicated adapters; leave callable metrics unset.
+/// Record lines and columns are one-based; byte offsets are zero-based with exclusive ends.
+///
+/// # Errors
+/// Returns an error for unsupported languages or failures in grammar lookup, parsing,
+/// native processing, or declaration query compilation. Syntax errors alone are diagnostics.
 pub fn parse_file(source: SourceFile) -> Result<ParsedFile> {
     let adapter = get_adapter(&source.language)?;
     let content_hash = format!("{:x}", Sha256::digest(&source.source));
@@ -163,6 +180,10 @@ pub fn parse_file(source: SourceFile) -> Result<ParsedFile> {
     Ok(file)
 }
 
+/// Parse sources sequentially, preserving input order without deduplication or resolution.
+///
+/// # Errors
+/// Propagates the first `parse_file` error without returning a partial repository.
 pub fn parse_files(files: Vec<SourceFile>) -> Result<ParsedRepository> {
     Ok(ParsedRepository { files: files.into_iter().map(parse_file).collect::<Result<Vec<_>>>()? })
 }

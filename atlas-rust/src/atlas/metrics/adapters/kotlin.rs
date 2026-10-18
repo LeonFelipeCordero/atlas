@@ -17,6 +17,7 @@ static IMPORT: LazyLock<Regex> =
 static ALIAS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?:\A|[^\p{L}\p{N}_])as\s*:?\s*([\p{L}\p{N}_]+)").unwrap());
 
+/// Identify a Kotlin `if` inside the control-structure body of an enclosing `if` alternative.
 pub fn alternative(node: Node<'_>) -> bool {
     let Some(parent) = node.parent() else {
         return false;
@@ -30,6 +31,9 @@ pub fn alternative(node: Node<'_>) -> bool {
         && owner.child_by_field_name("alternative") == Some(parent)
 }
 
+/// Count explicit Kotlin parameter declarations, counting destructuring as one input.
+/// An explicit empty lambda header yields zero; implicit/error headers yield `None`.
+/// The source argument is unused.
 pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     let Some(parameters) = parameter_node(node, &["function_value_parameters", "lambda_parameters"]) else {
         return (node.kind() == "lambda_literal" && children(node).iter().any(|n| n.kind() == "->")).then_some(0);
@@ -45,11 +49,14 @@ pub fn parameter_count(node: Node<'_>, _source: &[u8]) -> Option<usize> {
     )
 }
 
+/// Extract the last quoted path or Kotlin import name from `source`, with trimmed-source fallback.
 pub fn import_path(source: &str) -> String {
     quoted_path(source)
         .unwrap_or_else(|| IMPORT.captures(source).map(|m| m[1].to_owned()).unwrap_or_else(|| source.trim().into()))
 }
 
+/// Find a Kotlin write operand, rejecting prefix/postfix expressions without `++` or `--`.
+/// Other shapes use shared operand fields and first-child fallback.
 pub fn write_target(node: Node<'_>) -> Option<Node<'_>> {
     if ["prefix_expression", "postfix_expression"].contains(&node.kind())
         && !children(node).iter().any(|n| ["++", "--"].contains(&n.kind()))
@@ -59,6 +66,8 @@ pub fn write_target(node: Node<'_>) -> Option<Node<'_>> {
     generic::write_target(node)
 }
 
+/// Return `(callee, receiver)` with Kotlin navigation suffixes separated after Java-style extraction.
+/// Missing syntax retains empty target components.
 pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (Option<Node<'a>>, Option<Node<'a>>) {
     let (mut callee, mut receiver) = java::call_target(adapter, node);
     if let Some(navigation) = callee.filter(|n| n.kind() == "navigation_expression") {
@@ -72,6 +81,8 @@ pub fn call_target<'a>(adapter: &ResolutionAdapter, node: Option<Node<'a>>) -> (
     (callee, receiver)
 }
 
+/// Extract Kotlin property or loop-variable targets and scopes; loops use their own node as scope.
+/// Other forms use Java binding rules.
 pub fn binding<'a>(
     adapter: &ResolutionAdapter,
     syntax: &'a Syntax,
@@ -91,10 +102,13 @@ pub fn binding<'a>(
     }
 }
 
+/// Copy the normalized Kotlin import `path`; the directive source is unused.
 pub fn import_name(_source: &str, path: &str) -> String {
     path.into()
 }
 
+/// Return one `(alias or terminal name, declaration targets, false)` Kotlin import binding.
+/// Preserve unresolved and ambiguous targets from the module index.
 pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(String, Vec<Symbol>, bool)> {
     let name = ALIAS
         .captures(&request.source)
@@ -103,6 +117,7 @@ pub fn import_item(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Vec<(St
     vec![(name, ctx.modules.declared(request.file, &request.path), false)]
 }
 
+/// Allow module and object members during static lookup without an explicit static modifier.
 pub fn static_member(parent: &Symbol) -> bool {
     ["module", "object"].contains(&parent.kind.as_str())
 }
@@ -110,6 +125,7 @@ pub fn static_member(parent: &Symbol) -> bool {
 // Kotlin inherits these package, overload and qualified-name hooks without changes.
 pub use java::{inheritance, module_identity, package, qualify_class, same_package, select};
 
+/// Return the unique declaration key for the Kotlin request path, or `None` if unresolved or ambiguous.
 pub fn import_key(ctx: &ImportBindings, request: &ImportRequest<'_>) -> Option<String> {
     let targets = ctx.modules.declared(request.file, &request.path);
     (targets.len() == 1).then(|| targets[0].key.clone())

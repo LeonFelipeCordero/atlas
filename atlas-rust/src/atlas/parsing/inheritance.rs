@@ -42,6 +42,8 @@ pub struct InheritancePolicy {
     pub kotlin_base: bool,
 }
 impl Default for InheritancePolicy {
+    /// Use the broad fallback clauses, superclass field, and class heritage node.
+    /// Do not complete headers or enable Kotlin-specific base-name handling.
     fn default() -> Self {
         Self {
             clauses: &[
@@ -62,6 +64,7 @@ impl Default for InheritancePolicy {
     }
 }
 impl InheritancePolicy {
+    /// Create a policy for `clauses` with all optional extraction behavior disabled.
     pub const fn new(clauses: &'static [&'static str]) -> Self {
         Self { clauses, complete_header: false, superclass_field: None, heritage_clause: None, kotlin_base: false }
     }
@@ -157,6 +160,9 @@ fn header_names(root: Node<'_>, source: &[u8], policy: InheritancePolicy) -> Vec
     names
 }
 
+/// Extract syntactic base names from class, interface, struct, or trait headers.
+/// Exclude bodies and generic arguments; `policy` can retry a header with an empty body.
+/// Return an empty list for other kinds, empty signatures, or parser failures.
 pub fn inheritance_names(header: DeclarationHeader<'_>, policy: InheritancePolicy) -> Vec<String> {
     if !["class", "interface", "struct", "trait"].contains(&header.kind) || header.signature.is_empty() {
         return vec![];

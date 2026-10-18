@@ -6,6 +6,27 @@ use std::sync::LazyLock;
 const POLICY_LANGUAGES: &[&str] = &["", "python", "javascript", "java", "kotlin", "go", "rust", "elixir"];
 macro_rules! kind_set {
     ($name:ident,$raw:ident) => {
+        /// Return this hook's immutable grammar/name set for the canonical language family.
+        /// Initialize shared family sets on first access; unsupported hooks can be empty.
+        ///
+        /// | Hook | Set contents |
+        /// | --- | --- |
+        /// | `scopes` | Lexical scope boundaries. |
+        /// | `import_nodes` | Import directive node kinds. |
+        /// | `self_qualifiers` | Implicit receiver spellings such as `self` or `this`. |
+        /// | `constructors` | Constructor invocation node kinds. |
+        /// | `receiver_class_nodes` | Expressions eligible for constructor-based type inference. |
+        /// | `receiver_names` | Special receiver node kinds accepted by qualified lookup. |
+        /// | `assignments` | Assignment node kinds used for bindings and writes. |
+        /// | `declarations` | Variable declaration node kinds. |
+        /// | `loop_bindings` | Loop node kinds with binding targets. |
+        /// | `static_nodes` | Direct static marker node kinds. |
+        /// | `static_containers` | Modifier containers that can contain static text. |
+        /// | `member_writes` | Nodes that can replace or delete members. |
+        /// | `receiver_updates` | Update-expression node kinds that can modify receivers. |
+        /// | `rebound_declarations` | Declarations exempt from class-body rebinding checks. |
+        /// | `single_parameter_functions` | Functions with a possible bare parameter node. |
+        /// | `macro_nodes` | Macro invocation node kinds excluded from callable resolution. |
         pub fn $name(&self) -> &'static BTreeSet<&'static str> {
             static SETS: LazyLock<BTreeMap<&'static str, BTreeSet<&'static str>>> = LazyLock::new(|| {
                 POLICY_LANGUAGES
@@ -37,6 +58,7 @@ impl ResolutionAdapter {
     kind_set!(rebound_declarations, rebound_declarations_raw);
     kind_set!(single_parameter_functions, single_parameter_functions_raw);
     kind_set!(macro_nodes, macro_nodes_raw);
+    /// Return the canonical policy family, merging script aliases; unknown languages return an empty string.
     pub fn family(&self) -> &str {
         match self.language.as_str() {
             "python" => "python",
@@ -49,12 +71,15 @@ impl ResolutionAdapter {
             _ => "",
         }
     }
+    /// Test whether this language has a dedicated resolution family rather than generic fallback.
     pub fn dedicated(&self) -> bool {
         !self.family().is_empty()
     }
+    /// Test whether the policy belongs to the JavaScript/JSX/TypeScript/TSX family.
     pub fn script(&self) -> bool {
         self.family() == "javascript"
     }
+    /// Test whether this policy uses Java or Kotlin resolution rules.
     pub fn jvm(&self) -> bool {
         ["java", "kotlin"].contains(&self.language.as_str())
     }
@@ -90,9 +115,11 @@ impl ResolutionAdapter {
             _ => &[],
         }
     }
+    /// Indicate whether lexical lookup must skip type scopes, as in Python and script languages.
     pub fn skip_type_scope(&self) -> bool {
         self.language == "python" || self.script()
     }
+    /// Indicate whether import resolution requires a matched syntax node, as for Rust.
     pub fn require_import_node(&self) -> bool {
         self.language == "rust"
     }
@@ -128,12 +155,15 @@ impl ResolutionAdapter {
             _ => &[],
         }
     }
+    /// Allow bare field names to serve as instance receivers for JVM languages.
     pub fn bare_instance_fields(&self) -> bool {
         self.jvm()
     }
+    /// Indicate whether declared receiver annotations can be trusted without Python's extra checks.
     pub fn trust_receiver_annotations(&self) -> bool {
         self.language != "python"
     }
+    /// Require initializer compatibility checks for annotated Python and script receivers.
     pub fn validate_receiver_initializer(&self) -> bool {
         self.language == "python" || self.script()
     }
@@ -209,6 +239,8 @@ impl ResolutionAdapter {
     fn macro_nodes_raw(&self) -> &[&'static str] {
         if self.language == "rust" { &["macro_invocation"] } else { &[] }
     }
+    /// Return `(node kind, receiver fields, callee fields)` rules for member-expression extraction.
+    /// Families without shared member-node mappings return an empty slice.
     pub fn member_nodes(&self) -> &[(&str, &[&str], &[&str])] {
         match self.language.as_str() {
             "python" => &[("attribute", &["object"], &["attribute"])],

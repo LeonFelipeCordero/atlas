@@ -28,15 +28,21 @@ pub const IGNORED_DIRECTORIES: &[&str] = &[
     "vendor",
 ];
 
+/// Return the Rust importer's language IDs, initializing the shared catalog on first use.
 pub fn supported_languages() -> &'static HashSet<String> {
     static CATALOG: OnceLock<HashSet<String>> = OnceLock::new();
     CATALOG.get_or_init(|| SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect())
 }
 
+/// Test whether the exact language ID is in the Rust importer's catalog.
 pub fn is_supported_language(language: &str) -> bool {
     supported_languages().contains(language)
 }
 
+/// Accept a language ID supported by the Rust importer.
+///
+/// # Errors
+/// Returns an error if `language` is not in the importer catalog.
 pub fn require_supported_language(language: &str) -> Result<()> {
     if !is_supported_language(language) {
         bail!("Unsupported Rust importer language: {language}");
@@ -44,6 +50,11 @@ pub fn require_supported_language(language: &str) -> Result<()> {
     Ok(())
 }
 
+/// Resolve a relative or absolute repository directory; Git metadata is not required.
+/// Return its absolute path with symlinks and parent segments resolved.
+///
+/// # Errors
+/// Returns an error for a non-directory, failed filesystem inspection, or excessive symlink depth.
 pub fn validate_repository(root: &Path) -> Result<PathBuf> {
     let resolved = resolve_path(root, 0)?;
     if !metadata(&resolved)?.is_some_and(|info| info.is_dir()) {
@@ -91,6 +102,8 @@ fn resolve_symlink(resolved: &mut PathBuf, depth: usize) -> Result<()> {
     Ok(())
 }
 
+/// Detect a supported language ID from the basename without reading the file.
+/// Return `None` for missing or non-UTF-8 basenames, unknown names, or unsupported languages.
 pub fn detect_language(path: &Path) -> Option<String> {
     let name = path.file_name()?.to_str()?;
     let language = tree_sitter_language_pack::detect_language_from_path(name)?;
@@ -194,6 +207,13 @@ fn visit_entry(path: PathBuf, context: &DirectoryContext, paths: &mut Vec<PathBu
     Ok(())
 }
 
+/// Collect unsorted absolute file paths under `root` using discovery ignore rules.
+/// A root `.gitignore` enables nested Git rules; otherwise built-in directory exclusions apply.
+/// Always apply `.atlasignore`; skip Git metadata, directory symlinks, and external targets.
+///
+/// # Errors
+/// Returns an error if path resolution, traversal, ignore-file decoding or compilation,
+/// or filesystem inspection fails.
 pub fn repository_paths(root: &Path) -> Result<Vec<PathBuf>> {
     let root = resolve_path(root, 0)?;
     let mut paths = vec![];
@@ -213,6 +233,13 @@ pub fn repository_paths(root: &Path) -> Result<Vec<PathBuf>> {
     Ok(contained)
 }
 
+/// Read supported sources in sorted path order, applying repository discovery rules.
+/// Return raw bytes, absolute paths, and root-relative paths with `/` separators.
+/// Files whose resolved targets leave the root are skipped; no Git command runs.
+///
+/// # Errors
+/// Returns an error if path resolution, discovery, secure source reads, ignore-file
+/// decoding or compilation, or root-relative path conversion fails.
 pub fn discover_files(root: &Path) -> Result<Vec<SourceFile>> {
     let root = resolve_path(root, 0)?;
     let source_root = SourceRoot::new(&root)?;

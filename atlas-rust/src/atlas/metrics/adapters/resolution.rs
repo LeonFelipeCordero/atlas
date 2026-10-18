@@ -21,6 +21,7 @@ pub struct Binding {
     pub scope: Option<NodeRef>,
 }
 impl Binding {
+    /// Return alias-map members named `name`, or filter targets by name when no alias map exists.
     pub fn member(&self, name: &str) -> Vec<Symbol> {
         self.members
             .as_ref()
@@ -39,6 +40,7 @@ pub struct Modules {
     declarations: BTreeMap<(String, String), Vec<Symbol>>,
 }
 impl Modules {
+    /// Build language module, package, and declaration indexes from repository facts and syntax.
     pub fn new(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>) -> Self {
         let has = |language: &str| repository.files.iter().any(|f| f.source.language == language);
         let mut result = Self {
@@ -65,9 +67,12 @@ impl Modules {
             self.declarations.entry((file.source.language.clone(), identity)).or_default().push(symbol.clone());
         }
     }
+    /// Return declarations matching `source`'s language and exact module-qualified `name`.
+    /// Preserve repository order and ambiguity.
     pub fn declared(&self, source: &ParsedFile, name: &str) -> Vec<Symbol> {
         self.declarations.get(&(source.source.language.clone(), name.to_owned())).cloned().unwrap_or_default()
     }
+    /// Return named declarations implicitly visible in `source`'s package under its language policy.
     pub fn same_package(&self, source: &ParsedFile, name: &str) -> Vec<Symbol> {
         self.syntax[&source.source.path].adapter.same_package(self, source, name)
     }
@@ -86,9 +91,11 @@ pub struct CallableIdentity {
     pub clauses: BTreeMap<String, Clause>,
 }
 impl CallableIdentity {
+    /// Retain shared syntax and index Elixir clause arity/privacy metadata by symbol key.
     pub fn new(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>) -> Self {
         Self { syntax: syntax.clone(), clauses: elixir::clauses(repository, syntax) }
     }
+    /// Apply `file`'s callable-identity rules to `matches` at `call`; ambiguity can yield no targets.
     pub fn select(&self, file: &ParsedFile, call: &Call, matches: Vec<Symbol>) -> Vec<Symbol> {
         let request =
             ResolutionRequest { file, call, owner: None, name: call.name.clone(), qualifier: call.qualifier.clone() };
@@ -106,6 +113,8 @@ pub struct ImportBindings {
     paths: Arc<Mutex<ImportPathCache>>,
 }
 impl ImportBindings {
+    /// Build scoped import and implicit module bindings from retained facts, syntax, and module indexes.
+    /// Initialize a shared path-lookup cache; language path policies may query filesystem metadata.
     pub fn new(repository: &ParsedRepository, syntax: &BTreeMap<String, Syntax>, modules: &Modules) -> Self {
         let mut result = Self {
             repository: repository.clone(),
@@ -119,6 +128,8 @@ impl ImportBindings {
         }
         result
     }
+    /// Resolve `path` within `file`'s language family and cache results by importer and path.
+    /// Return retained file copies; path policies can query filesystem metadata.
     pub fn path_files(&self, file: &ParsedFile, path: &str) -> Vec<ParsedFile> {
         let key = (file.source.path.clone(), path.to_owned());
         if let Some(files) = self.paths.lock().unwrap().get(&key) {
@@ -140,13 +151,16 @@ impl ImportBindings {
         self.paths.lock().unwrap().insert(key, result.clone());
         result
     }
+    /// Resolve import files with language-specific module rules at optional byte `position`.
     pub fn files(&self, file: &ParsedFile, path: &str, position: Option<usize>) -> Vec<ParsedFile> {
         let request = ImportRequest { file, path: path.into(), position, source: String::new() };
         self.syntax[&file.source.path].adapter.import_files(self, &request)
     }
+    /// Find imported symbols named `name` using the request file's language policy.
     pub fn members(&self, request: &ImportRequest<'_>, name: &str) -> Vec<Symbol> {
         self.syntax[&request.file.source.path].adapter.members(self, request, name)
     }
+    /// Alias for [`Self::members`] used by import adapter helpers.
     pub fn _members(&self, request: &ImportRequest<'_>, name: &str) -> Vec<Symbol> {
         self.members(request, name)
     }
@@ -183,6 +197,8 @@ impl ImportBindings {
             })
             .collect()
     }
+    /// Return the narrowest visible import binding for `name` at byte `position` in `file`.
+    /// No binding yields `None`; equally narrow bindings yield an empty sentinel that blocks fallback.
     pub fn get(&self, file: &ParsedFile, name: &str, position: usize) -> Option<Binding> {
         let syntax = &self.syntax[&file.source.path];
         let matches: Vec<_> = self

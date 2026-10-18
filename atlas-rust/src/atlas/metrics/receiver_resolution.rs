@@ -19,11 +19,15 @@ use context::ReceiverInference;
 pub use index::ReceiverTypes;
 
 impl ReceiverTypes {
+    /// Resolve the request's receiver types, then find its instance member candidates.
+    /// `None` delegates to other lookup; `Some([])` rejects unsafe or unresolved typed lookup.
     pub fn resolve(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Option<Vec<Symbol>> {
         let inference = ReceiverInference::new(resolver);
         inference.receiver_types(request).map(|types| resolver.members(&types, &request.name, false))
     }
 
+    /// Infer receiver type symbols from lexical declarations and supported field paths.
+    /// `None` means no applicable inference; an empty vector means inference rejects resolution.
     pub fn infer(resolver: &CallResolver, request: &ResolutionRequest<'_>) -> Option<Vec<Symbol>> {
         ReceiverInference::new(resolver).receiver_types(request)
     }

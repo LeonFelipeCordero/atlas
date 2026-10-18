@@ -31,6 +31,8 @@ const KINDS: &[(&str, StructureKind)] = &[
 const DEFINITION_KINDS: &[&str] =
     &["class", "interface", "function", "method", "module", "struct", "trait", "enum", "type"];
 
+/// Return the lowercase graph kind, preserving `type` and `constructor` custom names.
+/// Other custom kinds use the lowercase JSON representation of `kind`.
 pub fn kind_name(kind: &StructureKind) -> String {
     match kind {
         StructureKind::Other(name) if matches!(name.as_str(), "type" | "constructor") => name.clone(),
@@ -47,6 +49,11 @@ fn structure_kind(kind: &str) -> StructureKind {
         .unwrap_or_else(|| StructureKind::Other(kind.to_owned()))
 }
 
+/// Return the cached query combining bundled tags and adapter declaration captures.
+/// Cache successful lookups, including `None` when neither source provides query text.
+///
+/// # Errors
+/// Returns an error for an unsupported language, failed grammar lookup, or invalid query.
 pub fn declaration_query(language: &str) -> Result<Option<Arc<Query>>> {
     static CACHE: OnceLock<Mutex<HashMap<String, Option<Arc<Query>>>>> = OnceLock::new();
     let cache = CACHE.get_or_init(Mutex::default);
@@ -286,6 +293,13 @@ fn structure_hierarchy(declarations: Vec<Declaration<'_>>) -> Vec<StructureItem>
     roots.into_iter().map(|index| build_item(index, &declarations, &children)).collect()
 }
 
+/// Merge native `existing` items with AST declarations from the supplied syntax tree.
+/// Rebuild source-ordered children under their nearest declared AST ancestor without
+/// mutating native items. Preserve native metadata except carrier name, kind, and span corrections.
+/// Return a copy of `existing` when no declaration query is available.
+///
+/// # Errors
+/// Returns an error if language validation, grammar lookup, or query compilation fails.
 pub fn extract_structure(syntax: &ParsedSyntax<'_>, existing: &[StructureItem]) -> Result<Vec<StructureItem>> {
     let Some(query) = declaration_query(&syntax.source.language)? else {
         return Ok(existing.to_vec());

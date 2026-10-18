@@ -2,6 +2,11 @@
 use super::config::{MutationConfig, MutationTarget};
 use indexmap::IndexMap;
 
+/// Borrow targets whose source globs match a project-relative POSIX path.
+///
+/// Preserve configuration order and include each target at most once. Match
+/// case-sensitively from the root; only a full `**` component crosses separators.
+/// This does not inspect files or validate the path or configuration.
 pub fn matching_targets<'a>(path: &str, config: &'a MutationConfig) -> IndexMap<&'a str, &'a MutationTarget> {
     config
         .targets
@@ -10,6 +15,11 @@ pub fn matching_targets<'a>(path: &str, config: &'a MutationConfig) -> IndexMap<
         .map(|(name, target)| (name.as_str(), target))
         .collect()
 }
+/// Match a whole POSIX path against a rooted, case-sensitive source glob.
+///
+/// `**` matches zero or more components. Within components, use Python
+/// `fnmatchcase`-style `*`, `?`, and bracket classes, including dot names.
+/// Split on `/` without normalizing paths or accessing the filesystem.
 pub fn matches(path: &str, pattern: &str) -> bool {
     let parts: Vec<_> = path.split('/').collect();
     let patterns: Vec<_> = pattern.split('/').collect();

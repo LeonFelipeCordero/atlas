@@ -20,9 +20,11 @@ pub struct ModuleScope {
     pub directory: PathBuf,
 }
 impl ModuleScope {
+    /// Restore this scope's body from its indexed syntax tree, or return `None` if unavailable.
     pub fn node<'a>(&self, syntax: &'a BTreeMap<String, Syntax>) -> Option<Node<'a>> {
         syntax.get(&self.file.source.path)?.dereference(&self.body)
     }
+    /// Test whether the restored scope body is a file root with no parent.
     pub fn is_root(&self, syntax: &BTreeMap<String, Syntax>) -> bool {
         self.node(syntax).is_some_and(|n| n.parent().is_none())
     }
@@ -34,9 +36,11 @@ pub struct ModuleIndex {
     pub file_scopes: BTreeMap<String, Vec<Arc<ModuleScope>>>,
 }
 impl ModuleIndex {
+    /// Create empty indexes by module identity and file path.
     pub fn new() -> Self {
         Self::default()
     }
+    /// Append owned scopes to both indexes without removing duplicates.
     pub fn add_scopes(&mut self, scopes: impl IntoIterator<Item = ModuleScope>) {
         for scope in scopes {
             let scope = Arc::new(scope);
@@ -44,6 +48,8 @@ impl ModuleIndex {
             self.file_scopes.entry(scope.file.source.path.clone()).or_default().push(scope);
         }
     }
+    /// Collect `root` and callback-provided descendants depth-first, using `syntax` for root checks.
+    /// Avoid repeated file roots along each path; sibling traversal follows stack order.
     pub fn walk_scopes(
         root: ModuleScope,
         syntax: &BTreeMap<String, Syntax>,
@@ -58,6 +64,8 @@ impl ModuleIndex {
         }
         result
     }
+    /// Return the narrowest scopes containing byte `position` in `source`, retaining ties.
+    /// With no position, return only file-root scopes recognized through `syntax`.
     pub fn scopes_at<'a>(
         &'a self,
         source: &ParsedFile,
@@ -73,6 +81,7 @@ impl ModuleIndex {
         let width = scopes.iter().map(|s| s.span.1 - s.span.0).min();
         scopes.into_iter().filter(|s| Some(s.span.1 - s.span.0) == width).collect()
     }
+    /// Resolve exactly one identity with exactly one indexed scope; otherwise return `None`.
     pub fn unique_scope(&self, identities: &[String]) -> Option<&ModuleScope> {
         if identities.len() != 1 {
             return None;
@@ -80,6 +89,8 @@ impl ModuleIndex {
         let scopes = self.scopes.get(&identities[0])?;
         if scopes.len() == 1 { scopes.first().map(Arc::as_ref) } else { None }
     }
+    /// Return the scope's file key or enclosing declaration key, or `None` if unavailable.
+    /// Restore the body from the corresponding tree in `syntax`.
     pub fn scope_key(scope: Option<&ModuleScope>, syntax: &BTreeMap<String, Syntax>) -> Option<String> {
         let scope = scope?;
         let body = scope.node(syntax)?;
@@ -93,6 +104,8 @@ impl ModuleIndex {
             .find(|s| s.start_byte == declaration.start_byte() && s.end_byte == declaration.end_byte())
             .map(|s| s.key.clone())
     }
+    /// Return direct declarations of a file or inline scope using `syntax` to restore its body.
+    /// Missing scopes or bodies produce no symbols.
     pub fn scope_symbols(scope: Option<&ModuleScope>, syntax: &BTreeMap<String, Syntax>) -> Vec<Symbol> {
         let Some(scope) = scope else {
             return vec![];
@@ -106,6 +119,7 @@ impl ModuleIndex {
         let spans: BTreeSet<_> = named_children(body).into_iter().map(|n| (n.start_byte(), n.end_byte())).collect();
         scope.file.symbols.iter().filter(|s| spans.contains(&(s.start_byte, s.end_byte))).cloned().collect()
     }
+    /// Return the unique file for `identity`; inline, missing, or ambiguous scopes yield no files.
     pub fn scope_files(&self, identity: &str, syntax: &BTreeMap<String, Syntax>) -> Vec<ParsedFile> {
         self.unique_scope(&[identity.to_owned()])
             .filter(|s| s.is_root(syntax))

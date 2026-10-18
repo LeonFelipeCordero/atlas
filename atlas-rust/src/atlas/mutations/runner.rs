@@ -25,8 +25,16 @@ pub struct MutationRunner<'a> {
     _project_locks: Vec<File>,
 }
 impl<'a> MutationRunner<'a> {
-    /// Lock the project before candidate analysis; keep this runner alive through restoration.
-    /// A competing runner fails immediately, including in the same process.
+    /// Validate configuration, resolve working directories, and lock the project.
+    ///
+    /// Hold directory locks until this runner is dropped. Shared ancestor locks
+    /// allow sibling campaigns but exclude overlapping roots. Create the runner
+    /// before candidate analysis and keep it alive through source restoration.
+    /// No sources are changed and no commands run during construction.
+    ///
+    /// # Errors
+    /// Reject invalid configuration, missing/escaping working directories, or
+    /// competing runners immediately. Propagate filesystem and locking failures.
     pub fn new(root: &Path, config: &'a MutationConfig) -> Result<Self> {
         config.validate()?;
         let root = root.canonicalize()?;
@@ -43,12 +51,32 @@ impl<'a> MutationRunner<'a> {
         Ok(Self { root, config, directories, _project_locks: project_locks })
     }
 
+    /// Execute independent mutations without progress notifications.
+    ///
+    /// Return outcome counts using [`Self::run_with_progress`]. Replace results
+    /// and reused logs, temporarily edit and restore sources, and execute trusted
+    /// commands. The same output, interruption, and restoration errors propagate.
     pub fn run(&self, manifests: &[Value], output: &Path) -> Result<Value> {
         self.run_with_progress(manifests, output, &mut |_| {})
     }
 
-    /// SIGINT/SIGTERM stop commands and restore source before returning an error.
-    /// SIGKILL and machine failure cannot be recovered. Commands are trusted.
+    /// Execute independent manifests sequentially and report progress to the callback.
+    ///
+    /// Validate each mapped source against its hash and byte span before writing.
+    /// Restore original bytes after its targets finish. Unmapped manifests skip
+    /// execution. Commands are trusted and may change other files; no baseline or
+    /// isolated workspace is provided. Serialize campaigns within this process.
+    ///
+    /// Replace `output` (relative to the process working directory if not absolute)
+    /// and flush one JSONL result per manifest. Replace reused command logs in the
+    /// adjacent `.logs` directory. Return counts keyed by outcome; source-validation
+    /// and ordinary command failures are recorded per mutation rather than aborting.
+    ///
+    /// # Errors
+    /// Reject symlink/protected output paths. Propagate output and setup failures,
+    /// embedded-NUL command errors, interruption, and source-restoration failures.
+    /// On Unix, SIGINT/SIGTERM stop commands and trigger restoration before return.
+    /// SIGKILL, machine failure, or restoration I/O errors can leave sources modified.
     pub fn run_with_progress(
         &self,
         manifests: &[Value],

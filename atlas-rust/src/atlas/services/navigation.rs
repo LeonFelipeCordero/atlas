@@ -11,9 +11,15 @@ pub struct NavigationService {
     reader: Box<dyn NavigationReader>,
 }
 impl NavigationService {
+    /// Own an existing snapshot reader without querying it or accessing source files.
     pub fn new(reader: impl NavigationReader + 'static) -> Self {
         Self { reader: Box::new(reader) }
     }
+    /// Merge snapshot metadata, `filters`, and object `payload`, adding up to 30 diagnostics for `nodes` paths.
+    /// Propagate diagnostic read errors; set a truncation flag after lookahead.
+    ///
+    /// # Panics
+    /// Panic if `payload` is not a JSON object.
     pub fn response(&mut self, payload: Value, filters: Value, nodes: &[Value]) -> Result<Value> {
         let paths: Vec<_> = nodes
             .iter()
@@ -31,17 +37,23 @@ impl NavigationService {
         value["diagnosticsTruncated"] = json!(truncated);
         Ok(value)
     }
+    /// Return graph counts and bounded roots with snapshot metadata and diagnostics.
+    /// Propagate reader errors without writing storage.
     pub fn overview(&mut self) -> Result<Value> {
         let payload = self.reader.overview()?;
         let nodes = payload["roots"].as_array().cloned().unwrap_or_default();
         self.response(payload, json!({"rootLimit": 30}), &nodes)
     }
+    /// Return up to `limit` ranked matches for `query` with metadata and a lookahead truncation flag.
+    /// Propagate node/diagnostic read errors; callers must supply a limit that permits `limit + 1`.
     pub fn find(&mut self, query: &str, limit: usize) -> Result<Value> {
         let mut nodes = self.reader.find(query, limit + 1)?;
         let truncated = nodes.len() > limit;
         nodes.truncate(limit);
         self.response(json!({"nodes": nodes, "truncated": truncated}), json!({"query": query, "limit": limit}), &nodes)
     }
+    /// Return nearest-first parents and whether a cycle or the 100-parent cap stopped traversal.
+    /// Propagate missing-parent/read errors; require a string `stableKey` in `node` or panic.
     pub fn ancestors(&mut self, node: &Value) -> Result<(Vec<Value>, bool)> {
         let mut nodes = vec![];
         let mut seen = BTreeSet::from([node["stableKey"].as_str().unwrap().to_owned()]);
@@ -54,6 +66,8 @@ impl NavigationService {
         }
         Ok((nodes, parent.is_some()))
     }
+    /// Return stable-key details, bounded ancestors, metadata, and diagnostics.
+    /// Propagate missing-node, missing-parent, or other reader errors.
     pub fn show(&mut self, key: &str) -> Result<Value> {
         let node = self.reader.node(key)?;
         let (ancestors, truncated) = self.ancestors(&node)?;
@@ -65,6 +79,9 @@ impl NavigationService {
             &nodes,
         )
     }
+    /// Return a child page for `key` with truncation, continuation offset, and diagnostics.
+    /// Require a nonnegative SQLite-range integer `offset` and a `limit` allowing lookahead.
+    /// Return errors for absent parents, invalid offsets, or reader failures.
     pub fn children(&mut self, key: &str, limit: usize, offset: serde_json::Number) -> Result<Value> {
         let node = self.reader.node(key)?;
         let database_offset = offset
@@ -79,12 +96,17 @@ impl NavigationService {
         self.response(json!({"nodes": rows, "truncated": truncated, "nextOffset": if truncated { Some(database_offset + limit) } else { None }}),
             json!({"key": key, "limit": limit, "offset": offset}), &nodes)
     }
+    /// Return bounded breadth-first context, cutoff reasons, metadata, and diagnostics.
+    /// Use `request` bounds and filters as supplied; propagate missing-node/read errors.
     pub fn context(&mut self, request: &TraversalRequest) -> Result<Value> {
         let walk = traverse(self.reader.as_mut(), request)?;
         let filters = json!({"key": request.key, "direction": request.direction, "relations": request.relations,
             "depth": request.depth, "maxNodes": request.max_nodes, "maxEdges": request.max_edges});
         self.response(walk.output(), filters, &walk.nodes.into_values().collect::<Vec<_>>())
     }
+    /// Return a shortest discovered route with traversal bounds, metadata, and diagnostics.
+    /// Validate both endpoint keys through the reader; propagate reader errors.
+    /// Unreached targets are `unknown` after cutoffs, otherwise `not_found`.
     pub fn path(&mut self, request: &PathRequest) -> Result<Value> {
         self.reader.node(&request.target)?;
         let options = &request.traversal;
@@ -98,6 +120,9 @@ impl NavigationService {
             .extend(route(&walk, &options.key, &request.target).as_object().unwrap().clone());
         self.response(payload, filters, &walk.nodes.into_values().collect::<Vec<_>>())
     }
+    /// Read a hash-verified local excerpt for `key`, with metadata and per-source status.
+    /// Bound output by the node span, `max_lines`, and byte limits; use one-based
+    /// `start_line` or the span start. Propagate missing-key/read errors; never return unverified source.
     pub fn source(&mut self, key: &str, max_lines: usize, start_line: Option<serde_json::Number>) -> Result<Value> {
         let node = self.reader.node(key)?;
         let excerpt =
@@ -108,6 +133,9 @@ impl NavigationService {
             &[node],
         )
     }
+    /// Read verified local excerpts for `keys` in input order with individual statuses.
+    /// Apply one-based `start_line` and `max_lines` within each node's span and byte caps.
+    /// Resolve all keys before reading files; propagate missing-key or reader errors.
     pub fn sources(
         &mut self,
         keys: &[String],

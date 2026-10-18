@@ -4,6 +4,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const METRIC_NAMES: [&str; 3] = ["fanIn", "fanOut", "transitiveChangeImpact"];
 
+/// Return distinct fan-in, fan-out, transitive dependent counts, and instability per view node.
+/// Edges run from dependent to dependency. Ignore self-edges and endpoints outside `view`.
+/// Impact excludes self; isolated nodes have zero counts and null instability.
+/// Instability is fan-out / (fan-in + fan-out). The view is not modified.
 pub fn dependency_metrics(view: &Value) -> BTreeMap<String, Value> {
     let mut neighbors: BTreeMap<String, BTreeSet<String>> = view["nodes"]
         .as_array()
