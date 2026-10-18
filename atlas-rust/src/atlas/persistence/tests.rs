@@ -1,3 +1,4 @@
+use super::database::run;
 use super::{
     database::migrate_database,
     navigation::{ProjectSelector, navigation_reader},
@@ -5,7 +6,7 @@ use super::{
 };
 use crate::{
     domain::{
-        navigation::{PathRequest, TraversalRequest},
+        navigation::{NavigationReader, PathRequest, TraversalRequest},
         repositories::RepositoryProtocol,
     },
     services::{
@@ -13,7 +14,7 @@ use crate::{
         navigation_source::{local_bytes, source_lines, verified_excerpt},
     },
 };
-use diesel::connection::SimpleConnection;
+use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -61,6 +62,29 @@ fn roundtrip_normalized_rows_and_transaction_replacement() {
     for name in ["nodes", "edges", "diagnostics", "mutationCandidates"] {
         assert_eq!(facts[name], json!([]));
     }
+}
+#[test]
+fn graph_save_waits_for_an_existing_writer_with_numeric_metadata() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("locked.sqlite");
+    migrate_database(Some(&path)).unwrap();
+    let mut store = repository_store(Some(&path)).unwrap();
+    let saved = store.save_new("Coffee", "/coffee", &json!({})).unwrap();
+    let writer = super::database::create_engine(Some(&path)).unwrap();
+    let tx = run(writer.get_sqlite_connection_pool().begin_with("BEGIN IMMEDIATE")).unwrap();
+    let (send, receive) = std::sync::mpsc::channel();
+    let worker = std::thread::spawn(move || {
+        let result = store.save(&saved.repository_id, &json!({"repository": {"name": 1.25}}));
+        send.send(result).unwrap();
+        store
+    });
+    let early = receive.recv_timeout(std::time::Duration::from_millis(250));
+    run(tx.commit()).unwrap();
+    let mut store = worker.join().unwrap();
+    assert!(matches!(early, Err(std::sync::mpsc::RecvTimeoutError::Timeout)), "{early:?}");
+    let replacement = receive.recv().unwrap().unwrap();
+    assert_eq!(replacement.root_name.as_deref(), Some("1.25"));
+    assert_eq!(store.graph(&replacement.repository_id).unwrap().unwrap().graph_revision, replacement.graph_revision);
 }
 #[test]
 fn invalid_artifact_roots_preserve_the_saved_graph() {
@@ -286,12 +310,52 @@ fn read_only_navigation_does_not_create_or_migrate() {
     );
 }
 #[test]
+fn read_snapshot_survives_replacement_and_rejects_writes() {
+    let temp = tempfile::tempdir().unwrap();
+    let db = temp.path().join("graph%?#.sqlite");
+    migrate_database(Some(&db)).unwrap();
+    let mut store = repository_store(Some(&db)).unwrap();
+    let saved = store.save_new("Coffee", &temp.path().to_string_lossy(), &artifact(temp.path())).unwrap();
+    let mut reader = navigation_reader(ProjectSelector::Name("Coffee"), None, Some(&db)).unwrap();
+    let replacement = store.save(&saved.repository_id, &json!({})).unwrap();
+    assert_eq!(reader.node("brew").unwrap()["name"], "brew");
+    assert_eq!(reader.snapshot().revision, saved.graph_revision);
+    let mut current = navigation_reader(ProjectSelector::Name("Coffee"), None, Some(&db)).unwrap();
+    assert_eq!(current.snapshot().revision, replacement.graph_revision);
+    assert!(current.node("brew").is_err());
+    let readonly = super::navigation_database::readonly_session(Some(&db)).unwrap();
+    assert!(run(readonly.execute_unprepared("DELETE FROM repositories")).is_err());
+    assert!(store.exists(&saved.repository_id).unwrap());
+}
+#[test]
+fn repository_order_and_literal_case_insensitive_lookup_are_preserved() {
+    let temp = tempfile::tempdir().unwrap();
+    let db = temp.path().join("db.sqlite");
+    migrate_database(Some(&db)).unwrap();
+    let mut store = repository_store(Some(&db)).unwrap();
+    let first = store.register("Coffee'_%", "/one").unwrap();
+    let second = store.register("Tea", "/two").unwrap();
+    run(store.connection.execute_unprepared("UPDATE repositories SET created_at=1")).unwrap();
+    let mut expected = vec![first.id.clone(), second.id];
+    expected.sort();
+    assert_eq!(store.list().unwrap().into_iter().map(|r| r.id).collect::<Vec<_>>(), expected);
+    assert_eq!(store.resolve("COFFEE'_%").unwrap(), Some(first.id.clone()));
+    assert_eq!(store.resolve("' OR 1=1 --").unwrap(), None);
+    assert!(!store.exists("missing").unwrap());
+    let mut reader_payload = artifact(temp.path());
+    reader_payload["nodes"][1]["name"] = json!("brew'_%");
+    store.save(&first.id, &reader_payload).unwrap();
+    let mut reader = navigation_reader(ProjectSelector::Name("Coffee'_%"), None, Some(&db)).unwrap();
+    assert_eq!(reader.find("'_%", 10).unwrap().len(), 1);
+    assert!(reader.find("' OR 1=1 --", 10).unwrap().is_empty());
+}
+#[test]
 fn migrations_upgrade_legacy_revision_without_backfilling() {
     let temp = tempfile::tempdir().unwrap();
     let db = temp.path().join("db.sqlite");
-    let mut connection = super::database::create_engine(Some(&db)).unwrap();
-    connection.batch_execute(include_str!("migrations/versions/0001_initial.sql")).unwrap();
-    connection.batch_execute("CREATE TABLE alembic_version(version_num VARCHAR(32) NOT NULL PRIMARY KEY); INSERT INTO alembic_version VALUES('0001_initial'); INSERT INTO repositories VALUES('id','old','/old',1); INSERT INTO repository_graphs VALUES('id','{}',2);").unwrap();
+    let connection = super::database::create_engine(Some(&db)).unwrap();
+    run(connection.execute_unprepared(include_str!("migrations/versions/0001_initial.sql"))).unwrap();
+    run(connection.execute_unprepared("CREATE TABLE alembic_version(version_num VARCHAR(32) NOT NULL PRIMARY KEY); INSERT INTO alembic_version VALUES('0001_initial'); INSERT INTO repositories VALUES('id','old','/old',1); INSERT INTO repository_graphs VALUES('id','{}',2);")).unwrap();
     drop(connection);
     migrate_database(Some(&db)).unwrap();
     let mut store = repository_store(Some(&db)).unwrap();
@@ -300,22 +364,20 @@ fn migrations_upgrade_legacy_revision_without_backfilling() {
 }
 #[test]
 fn migration_schema_sql_matches_python_exactly() {
-    use diesel::{prelude::*, sql_types::Text};
-    #[derive(QueryableByName)]
-    struct SchemaSql {
-        #[diesel(sql_type = Text)]
-        name: String,
-        #[diesel(sql_type = Text)]
-        sql: String,
-    }
     let temp = tempfile::tempdir().unwrap();
     let db = temp.path().join("db.sqlite");
     migrate_database(Some(&db)).unwrap();
-    let mut connection = super::database::create_engine(Some(&db)).unwrap();
-    let rows = diesel::sql_query("SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name")
-        .load::<SchemaSql>(&mut connection)
-        .unwrap();
-    let actual = json!(rows.into_iter().map(|r| vec![r.name, r.sql]).collect::<Vec<_>>());
+    let connection = super::database::create_engine(Some(&db)).unwrap();
+    let rows = run(connection.query_all(Statement::from_string(
+        DbBackend::Sqlite,
+        "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name != 'seaql_migrations' ORDER BY name",
+    )))
+    .unwrap();
+    let actual = json!(
+        rows.into_iter()
+            .map(|r| vec![r.try_get::<String>("", "name").unwrap(), r.try_get::<String>("", "sql").unwrap()])
+            .collect::<Vec<_>>()
+    );
     let expected: Value = serde_json::from_str(include_str!("migrations/schema.json")).unwrap();
     assert_eq!(actual, expected);
 }

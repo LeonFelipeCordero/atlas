@@ -133,6 +133,22 @@ class DatabaseTests(unittest.TestCase):
             diffs = pair.database_diffs((python, rust))
             self.assertTrue(any(diff["path"].startswith("/read_only/rust") for diff in diffs))
 
+    def test_seaorm_tracking_is_separate_but_read_only_changes_are_not_masked(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            baseline = folder / "baseline.sqlite"
+            with sqlite3.connect(baseline) as database:
+                database.execute("CREATE TABLE item(id INTEGER)")
+            project = Project(Run(argparse.Namespace()), folder, folder)
+            project.baseline = baseline
+            pair = Pair(project, Case("migrate.repeat", (), True, True), folder)
+            python, rust = pair.databases()
+            with sqlite3.connect(rust) as database:
+                database.executescript("CREATE TABLE seaql_migrations(version TEXT PRIMARY KEY, applied_at INTEGER); INSERT INTO seaql_migrations VALUES('0001_initial',1);")
+            self.assertEqual(pair.database_diffs((python, rust)), [])
+            pair.case = Case("projects", ("projects",))
+            self.assertTrue(any(diff["path"].startswith("/read_only/rust") for diff in pair.database_diffs((python, rust))))
+
     def test_invalid_revision_is_not_masked(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "database.sqlite"

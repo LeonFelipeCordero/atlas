@@ -1,29 +1,25 @@
 use super::{
-    database::absolute_path, models::*, navigation_database::readonly_session, navigation_queries::*, schema::*,
+    database::{absolute_path, run},
+    models::*,
+    navigation_database::{ReadTransaction, readonly_session},
+    navigation_queries::*,
 };
 use crate::domain::navigation::{EdgeRequest, GraphSnapshot, NavigationReader, error};
 use anyhow::Result;
-use diesel::{
-    prelude::*,
-    sql_types::{Bool, Integer, Text},
+use sea_orm::{
+    ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+    sea_query::{Expr, Func},
 };
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
 
-macro_rules! node_query {
-    ($id:expr) => {
-        graph_nodes::table
-            .left_join(
-                graph_symbols::table.on(graph_symbols::repository_id
-                    .eq(graph_nodes::repository_id)
-                    .and(graph_symbols::node_key.eq(graph_nodes::node_key))),
-            )
-            .filter(graph_nodes::repository_id.eq($id))
-            .select((GraphNodeRow::as_select(), Option::<GraphSymbolRow>::as_select()))
-    };
+fn node_query(id: &str) -> sea_orm::SelectTwo<graph_nodes::Entity, graph_symbols::Entity> {
+    graph_nodes::Entity::find()
+        .find_also_related(graph_symbols::Entity)
+        .filter(graph_nodes::Column::RepositoryId.eq(id))
 }
 pub struct GraphReader {
-    connection: SqliteConnection,
+    connection: ReadTransaction,
     pub snapshot: GraphSnapshot,
 }
 pub enum ProjectSelector<'a> {
@@ -35,12 +31,9 @@ pub fn navigation_reader(
     revision: Option<&str>,
     path: Option<&Path>,
 ) -> Result<GraphReader> {
-    let mut connection = readonly_session(path)?;
-    let (id, location) = select_project(&mut connection, project)?;
-    let graph = repository_graphs::table
-        .find(&id)
-        .first::<RepositoryGraphRow>(&mut connection)
-        .optional()?
+    let connection = readonly_session(path)?;
+    let (id, location) = run(select_project(&connection, project))?;
+    let graph = run(repository_graphs::Entity::find_by_id(&id).one(&*connection))?
         .filter(|g| g.graph_revision.is_some())
         .ok_or_else(|| error("Project has no normalized graph; index it first"))?;
     let snapshot = GraphSnapshot {
@@ -54,32 +47,35 @@ pub fn navigation_reader(
     }
     Ok(GraphReader { connection, snapshot })
 }
-fn select_project(connection: &mut SqliteConnection, project: ProjectSelector<'_>) -> Result<(String, String)> {
+async fn select_project(connection: &DatabaseTransaction, project: ProjectSelector<'_>) -> Result<(String, String)> {
     let rows = match project {
-        ProjectSelector::Name(name) => repositories::table
+        ProjectSelector::Name(name) => repositories::Entity::find()
             .filter(
-                repositories::id.eq(name).or(diesel::dsl::sql::<Text>("lower(name)").eq(diesel::dsl::sql::<Text>(
-                    "lower(",
-                )
-                .bind::<Text, _>(name)
-                .sql(")"))),
+                Condition::any().add(repositories::Column::Id.eq(name)).add(super::repositories::name_matches(name)),
             )
-            .order(repositories::id)
+            .order_by_asc(repositories::Column::Id)
             .limit(2)
-            .select((repositories::id, repositories::location))
-            .load(connection)?,
-        ProjectSelector::Directory(directory) => containing_projects(connection, directory)?,
+            .all(connection)
+            .await?
+            .into_iter()
+            .map(|r| (r.id, r.location))
+            .collect(),
+        ProjectSelector::Directory(directory) => containing_projects(connection, directory).await?,
     };
     if rows.len() != 1 {
         return Err(error("Project not found or ambiguous; use an explicit registered project ID with --project"));
     }
     Ok(rows.into_iter().next().unwrap())
 }
-fn containing_projects(connection: &mut SqliteConnection, directory: &Path) -> Result<Vec<(String, String)>> {
+async fn containing_projects(connection: &DatabaseTransaction, directory: &Path) -> Result<Vec<(String, String)>> {
     let current = absolute_path(directory)?;
     let mut matches = Vec::new();
-    for (id, location) in
-        repositories::table.select((repositories::id, repositories::location)).load::<(String, String)>(connection)?
+    for (id, location) in repositories::Entity::find()
+        .select_only()
+        .columns([repositories::Column::Id, repositories::Column::Location])
+        .into_tuple::<(String, String)>()
+        .all(connection)
+        .await?
     {
         if location.contains("://") {
             continue;
@@ -105,171 +101,201 @@ impl NavigationReader for GraphReader {
         &self.snapshot
     }
     fn overview(&mut self) -> Result<Value> {
-        let id = &self.snapshot.repository_id;
-        let levels: Vec<_> = graph_nodes::table
-            .filter(graph_nodes::repository_id.eq(id))
-            .group_by(graph_nodes::level)
-            .select((graph_nodes::level, diesel::dsl::count_star()))
-            .order(graph_nodes::level)
-            .load::<(String, i64)>(&mut self.connection)?
-            .into_iter()
-            .map(|(level, count)| json!({"level": level, "count": count}))
-            .collect();
-        let relations: Vec<_> = graph_edges::table
-            .filter(graph_edges::repository_id.eq(id))
-            .group_by(graph_edges::relationship)
-            .select((graph_edges::relationship, diesel::dsl::count_star()))
-            .order(graph_edges::relationship)
-            .load::<(String, i64)>(&mut self.connection)?
-            .into_iter()
-            .map(|(relation, count)| json!({"type": relation, "count": count}))
-            .collect();
-        let mut roots = values(
-            node_query!(id)
-                .filter(graph_nodes::parent_key.is_null())
-                .order(graph_nodes::node_key)
-                .limit(31)
-                .load(&mut self.connection)?,
-        );
-        let truncated = roots.len() > 30;
-        roots.truncate(30);
-        Ok(json!({"levels": levels, "relations": relations, "roots": roots, "truncated": truncated}))
+        run(async {
+            let id = &self.snapshot.repository_id;
+            let levels: Vec<_> = graph_nodes::Entity::find()
+                .filter(graph_nodes::Column::RepositoryId.eq(id))
+                .select_only()
+                .column(graph_nodes::Column::Level)
+                .column_as(graph_nodes::Column::RepositoryId.count(), "count")
+                .group_by(graph_nodes::Column::Level)
+                .order_by_asc(graph_nodes::Column::Level)
+                .into_tuple::<(String, i64)>()
+                .all(&*self.connection)
+                .await?
+                .into_iter()
+                .map(|(level, count)| json!({"level": level, "count": count}))
+                .collect();
+            let relations: Vec<_> = graph_edges::Entity::find()
+                .filter(graph_edges::Column::RepositoryId.eq(id))
+                .select_only()
+                .column(graph_edges::Column::Relationship)
+                .column_as(graph_edges::Column::RepositoryId.count(), "count")
+                .group_by(graph_edges::Column::Relationship)
+                .order_by_asc(graph_edges::Column::Relationship)
+                .into_tuple::<(String, i64)>()
+                .all(&*self.connection)
+                .await?
+                .into_iter()
+                .map(|(relation, count)| json!({"type": relation, "count": count}))
+                .collect();
+            let mut roots = values(
+                node_query(id)
+                    .filter(graph_nodes::Column::ParentKey.is_null())
+                    .order_by_asc(graph_nodes::Column::NodeKey)
+                    .limit(31)
+                    .all(&*self.connection)
+                    .await?,
+            );
+            let truncated = roots.len() > 30;
+            roots.truncate(30);
+            Ok(json!({"levels": levels, "relations": relations, "roots": roots, "truncated": truncated}))
+        })
     }
     fn find(&mut self, query: &str, limit: usize) -> Result<Vec<Value>> {
-        let matches = diesel::dsl::sql::<Bool>("(instr(lower(graph_nodes.path),lower(")
-            .bind::<Text, _>(query)
-            .sql("))>0 OR instr(lower(graph_nodes.name),lower(")
-            .bind::<Text, _>(query)
-            .sql("))>0 OR instr(lower(graph_nodes.qualified_name),lower(")
-            .bind::<Text, _>(query)
-            .sql("))>0 OR graph_nodes.node_key=")
-            .bind::<Text, _>(query)
-            .sql(")");
-        let rank = diesel::dsl::sql::<Integer>("CASE WHEN graph_nodes.node_key=")
-            .bind::<Text, _>(query)
-            .sql(" THEN 0 WHEN lower(graph_nodes.path)=lower(")
-            .bind::<Text, _>(query)
-            .sql(") THEN CASE WHEN graph_nodes.level='file' THEN 1 ELSE 2 END WHEN lower(graph_nodes.name)=lower(")
-            .bind::<Text, _>(query)
-            .sql(") THEN 3 WHEN lower(graph_nodes.qualified_name)=lower(")
-            .bind::<Text, _>(query)
-            .sql(") THEN 4 ELSE 5 END");
-        Ok(values(
-            node_query!(&self.snapshot.repository_id)
-                .filter(matches)
-                .order((
-                    rank,
-                    graph_nodes::level.eq("external"),
-                    diesel::dsl::sql::<Text>("coalesce(graph_nodes.path,'')"),
-                    graph_nodes::name,
-                    graph_nodes::node_key,
-                ))
-                .limit(limit as i64)
-                .load(&mut self.connection)?,
-        ))
+        run(async {
+            let matches = Condition::any().add(graph_nodes::Column::NodeKey.eq(query));
+            let matches = [graph_nodes::Column::Path, graph_nodes::Column::Name, graph_nodes::Column::QualifiedName]
+                .into_iter()
+                .fold(matches, |condition, column| {
+                    condition.add(Expr::cust_with_exprs(
+                        "instr(lower(?),lower(?))>0",
+                        [Expr::col((graph_nodes::Entity, column)).into(), Expr::val(query).into()],
+                    ))
+                });
+            let rank = Expr::cust_with_values(
+                "CASE WHEN graph_nodes.node_key=? THEN 0 WHEN lower(graph_nodes.path)=lower(?) THEN CASE WHEN graph_nodes.level='file' THEN 1 ELSE 2 END WHEN lower(graph_nodes.name)=lower(?) THEN 3 WHEN lower(graph_nodes.qualified_name)=lower(?) THEN 4 ELSE 5 END",
+                [query, query, query, query],
+            );
+            Ok(values(
+                node_query(&self.snapshot.repository_id)
+                    .filter(matches)
+                    .order_by(rank, sea_orm::Order::Asc)
+                    .order_by(
+                        Expr::col((graph_nodes::Entity, graph_nodes::Column::Level)).eq("external"),
+                        sea_orm::Order::Asc,
+                    )
+                    .order_by(
+                        Expr::expr(Func::coalesce([
+                            Expr::col((graph_nodes::Entity, graph_nodes::Column::Path)).into(),
+                            Expr::val("").into(),
+                        ])),
+                        sea_orm::Order::Asc,
+                    )
+                    .order_by_asc(graph_nodes::Column::Name)
+                    .order_by_asc(graph_nodes::Column::NodeKey)
+                    .limit(limit as u64)
+                    .all(&*self.connection)
+                    .await?,
+            ))
+        })
     }
     fn node(&mut self, key: &str) -> Result<Value> {
-        let id = &self.snapshot.repository_id;
-        let row = node_query!(id)
-            .filter(graph_nodes::node_key.eq(key))
-            .first::<(GraphNodeRow, Option<GraphSymbolRow>)>(&mut self.connection)
-            .optional()?
-            .ok_or_else(|| error(format!("Node not found: {key}. Use find to obtain a stableKey.")))?;
-        let mut node = node_value(row.0, row.1);
-        node["external"] = json!(node["level"] == "external");
-        node["metrics"] = graph_node_metrics::table
-            .find((id, key))
-            .first::<GraphNodeMetricRow>(&mut self.connection)
-            .optional()?
-            .map(metric_value)
-            .unwrap_or(Value::Null);
-        node["file"] = graph_files::table
-            .find((id, key))
-            .first::<GraphFileRow>(&mut self.connection)
-            .optional()?
-            .map(|f| json!({"bytes": f.byte_count, "sha256": f.sha256}))
-            .unwrap_or(Value::Null);
-        let mut decorators = graph_node_decorators::table
-            .filter(graph_node_decorators::repository_id.eq(id))
-            .filter(graph_node_decorators::node_key.eq(key))
-            .select(graph_node_decorators::decorator)
-            .order(graph_node_decorators::ordinal)
-            .limit(101)
-            .load::<String>(&mut self.connection)?;
-        node["decoratorsTruncated"] = json!(decorators.len() > 100);
-        decorators.truncate(100);
-        node["decorators"] = json!(decorators);
-        Ok(node)
+        run(async {
+            let id = &self.snapshot.repository_id;
+            let row = node_query(id)
+                .filter(graph_nodes::Column::NodeKey.eq(key))
+                .one(&*self.connection)
+                .await?
+                .ok_or_else(|| error(format!("Node not found: {key}. Use find to obtain a stableKey.")))?;
+            let mut node = node_value(row.0, row.1);
+            node["external"] = json!(node["level"] == "external");
+            node["metrics"] = graph_node_metrics::Entity::find_by_id((id.clone(), key.to_owned()))
+                .one(&*self.connection)
+                .await?
+                .map(metric_value)
+                .unwrap_or(Value::Null);
+            node["file"] = graph_files::Entity::find_by_id((id.clone(), key.to_owned()))
+                .one(&*self.connection)
+                .await?
+                .map(|f| json!({"bytes": f.byte_count, "sha256": f.sha256}))
+                .unwrap_or(Value::Null);
+            let mut decorators = graph_node_decorators::Entity::find()
+                .filter(graph_node_decorators::Column::RepositoryId.eq(id))
+                .filter(graph_node_decorators::Column::NodeKey.eq(key))
+                .select_only()
+                .column(graph_node_decorators::Column::Decorator)
+                .order_by_asc(graph_node_decorators::Column::Ordinal)
+                .limit(101)
+                .into_tuple::<String>()
+                .all(&*self.connection)
+                .await?;
+            node["decoratorsTruncated"] = json!(decorators.len() > 100);
+            decorators.truncate(100);
+            node["decorators"] = json!(decorators);
+            Ok(node)
+        })
     }
     fn children(&mut self, key: &str, limit: usize, offset: usize) -> Result<Vec<Value>> {
-        Ok(values(
-            node_query!(&self.snapshot.repository_id)
-                .filter(graph_nodes::parent_key.eq(key))
-                .order((graph_nodes::ordinal, graph_nodes::node_key))
-                .limit(limit as i64)
-                .offset(i64::try_from(offset).map_err(|_| error("Python int too large to convert to SQLite INTEGER"))?)
-                .load(&mut self.connection)?,
-        ))
+        run(async {
+            Ok(values(
+                node_query(&self.snapshot.repository_id)
+                    .filter(graph_nodes::Column::ParentKey.eq(key))
+                    .order_by_asc(graph_nodes::Column::Ordinal)
+                    .order_by_asc(graph_nodes::Column::NodeKey)
+                    .limit(limit as u64)
+                    .offset(
+                        i64::try_from(offset).map_err(|_| error("Python int too large to convert to SQLite INTEGER"))?
+                            as u64,
+                    )
+                    .all(&*self.connection)
+                    .await?,
+            ))
+        })
     }
     fn edges(&mut self, request: &EdgeRequest) -> Result<Vec<Value>> {
-        let directions = match request.direction.as_str() {
-            "both" => vec![true, false],
-            "out" => vec![true],
-            _ => vec![false],
-        };
-        let mut selected = BTreeMap::new();
-        let batches = directions
-            .into_iter()
-            .flat_map(|outgoing| request.relations.iter().map(move |relation| (outgoing, relation)));
-        for (outgoing, relation) in batches {
-            selected.extend(
-                self.adjacency(request, outgoing, relation)?
-                    .into_iter()
-                    .map(|edge| (edge.ordinal, edge_value(edge, true))),
-            );
-        }
-        Ok(selected.into_values().take(request.limit).collect())
+        run(async {
+            let directions = match request.direction.as_str() {
+                "both" => vec![true, false],
+                "out" => vec![true],
+                _ => vec![false],
+            };
+            let mut selected = BTreeMap::new();
+            let batches = directions
+                .into_iter()
+                .flat_map(|outgoing| request.relations.iter().map(move |relation| (outgoing, relation)));
+            for (outgoing, relation) in batches {
+                selected.extend(
+                    self.adjacency(request, outgoing, relation)
+                        .await?
+                        .into_iter()
+                        .map(|edge| (edge.ordinal, edge_value(edge, true))),
+                );
+            }
+            Ok(selected.into_values().take(request.limit).collect())
+        })
     }
     fn diagnostics(&mut self, paths: &[String], limit: usize) -> Result<Vec<Value>> {
-        Ok(graph_diagnostics::table
-            .filter(graph_diagnostics::repository_id.eq(&self.snapshot.repository_id))
-            .filter(graph_diagnostics::path.eq_any(paths))
-            .order(graph_diagnostics::ordinal)
-            .limit(limit as i64)
-            .load::<GraphDiagnosticRow>(&mut self.connection)?
-            .into_iter()
-            .map(diagnostic_value)
-            .collect())
+        run(async {
+            Ok(graph_diagnostics::Entity::find()
+                .filter(graph_diagnostics::Column::RepositoryId.eq(&self.snapshot.repository_id))
+                .filter(graph_diagnostics::Column::Path.is_in(paths.iter().cloned()))
+                .order_by_asc(graph_diagnostics::Column::Ordinal)
+                .limit(limit as u64)
+                .all(&*self.connection)
+                .await?
+                .into_iter()
+                .map(diagnostic_value)
+                .collect())
+        })
     }
     fn file(&mut self, path: &str) -> Result<Vec<Value>> {
-        Ok(graph_nodes::table
-            .inner_join(
-                graph_files::table.on(graph_files::repository_id
-                    .eq(graph_nodes::repository_id)
-                    .and(graph_files::node_key.eq(graph_nodes::node_key))),
-            )
-            .filter(graph_nodes::repository_id.eq(&self.snapshot.repository_id))
-            .filter(graph_nodes::path.eq(path))
-            .order(graph_nodes::node_key)
-            .select((graph_nodes::node_key, graph_files::sha256))
-            .limit(2)
-            .load::<(String, Option<String>)>(&mut self.connection)?
-            .into_iter()
-            .map(|(key, hash)| json!({"stableKey": key, "sha256": hash}))
-            .collect())
+        run(async {
+            Ok(graph_nodes::Entity::find()
+                .find_also_related(graph_files::Entity)
+                .filter(graph_nodes::Column::RepositoryId.eq(&self.snapshot.repository_id))
+                .filter(graph_nodes::Column::Path.eq(path))
+                .filter(graph_files::Column::NodeKey.is_not_null())
+                .order_by_asc(graph_nodes::Column::NodeKey)
+                .limit(2)
+                .all(&*self.connection)
+                .await?
+                .into_iter()
+                .map(|(n, f)| json!({"stableKey": n.node_key, "sha256": f.and_then(|f| f.sha256)}))
+                .collect())
+        })
     }
 }
 impl GraphReader {
-    fn adjacency(&mut self, request: &EdgeRequest, outgoing: bool, relation: &str) -> Result<Vec<GraphEdgeRow>> {
-        let mut query = graph_edges::table
-            .filter(graph_edges::repository_id.eq(&self.snapshot.repository_id))
-            .filter(graph_edges::relationship.eq(relation))
-            .into_boxed();
+    async fn adjacency(&mut self, request: &EdgeRequest, outgoing: bool, relation: &str) -> Result<Vec<GraphEdgeRow>> {
+        let mut query = graph_edges::Entity::find()
+            .filter(graph_edges::Column::RepositoryId.eq(&self.snapshot.repository_id))
+            .filter(graph_edges::Column::Relationship.eq(relation));
         query = if outgoing {
-            query.filter(graph_edges::source_key.eq(&request.key))
+            query.filter(graph_edges::Column::SourceKey.eq(&request.key))
         } else {
-            query.filter(graph_edges::target_key.eq(&request.key))
+            query.filter(graph_edges::Column::TargetKey.eq(&request.key))
         };
-        Ok(query.order(graph_edges::ordinal).limit(request.limit as i64).load(&mut self.connection)?)
+        Ok(query.order_by_asc(graph_edges::Column::Ordinal).limit(request.limit as u64).all(&*self.connection).await?)
     }
 }
