@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Network } from 'lucide-react'
 import { GraphSidebar } from './graph-sidebar'
 import { GraphNavigation } from './graph-navigation'
-import { GraphFileComplexity } from './graph-file-complexity'
+import { RepositoryReport } from './repository-report'
 import type { ComponentProps } from 'react'
-import type { Architecture, GraphView, ViewCycle } from '@/lib/graph-data'
+import type { Architecture, GraphView } from '@/lib/graph-data'
 import type { GraphNode, GraphScope } from '@/lib/project-graph'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -67,23 +67,14 @@ function GraphWorkspace({
   navigate: (index: number) => void
   selected: string | null
   focusId: string | null
-  activeCycle: ViewCycle | null
   onSelect: (id: string | null) => void
   onOpen: (node: GraphNode) => void
-  onCycle: (cycle: ViewCycle) => void
-  onCycleScope: (cycle: ViewCycle) => void
 }) {
-  const { trail, graph, cycles, details } = view
+  const { trail, graph, details } = view
   const current = trail[trail.length - 1]
   return (
     <section className="explorer" aria-label="Project graph">
       <GraphNavigation trail={trail} navigate={navigate} />
-      {current.scope.kind === 'file' && (
-        <GraphFileComplexity
-          sum={details.fileComplexities[current.scope.key]}
-          compact
-        />
-      )}
       <div className="graph-workspace">
         <div
           className="graph-canvas"
@@ -95,7 +86,7 @@ function GraphWorkspace({
             graph={graph}
             selected={actions.selected}
             focusId={actions.focusId}
-            activeCycle={actions.activeCycle}
+            activeCycle={null}
             onSelect={actions.onSelect}
             onOpen={actions.onOpen}
             isFile={current.scope.kind === 'file'}
@@ -105,11 +96,15 @@ function GraphWorkspace({
           />
         </div>
         <GraphSidebar
+          structureOnly
           key={JSON.stringify(current.scope)}
           graph={graph}
           details={details}
           scope={current.scope}
-          cycles={cycles}
+          cycles={undefined}
+          activeCycle={null}
+          onCycle={() => {}}
+          onCycleScope={() => {}}
           {...actions}
         />
       </div>
@@ -118,10 +113,112 @@ function GraphWorkspace({
 }
 
 export function GraphExplorer({ initial }: { initial: GraphView }) {
+  const [report, setReport] = useState(true)
+  const [expandedCycles, setExpandedCycles] = useState<Array<string>>([])
+  const [returnContext, setReturnContext] = useState({
+    scope: initial.scope,
+    scroll: 0,
+    originId: 'report-title',
+  })
   const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
   const [selected, setSelected] = useState<string | null>(null)
-  const [cycleId, setCycleId] = useState<string | null>(null)
-  const view = useQuery({
+  const view = useGraphView(initial, scope)
+  if (
+    view.error ||
+    (view.data && view.data.state !== 'ready') ||
+    view.data === null
+  )
+    return (
+      <GraphLoadError
+        message={view.error?.message}
+        retry={() => {
+          void view.refetch()
+        }}
+        back={() => setScope({ kind: 'repository' })}
+      />
+    )
+  if (!view.data)
+    return (
+      <div className="loading-state" role="status">
+        Loading the repository graph…
+      </div>
+    )
+  const data = view.data
+  const open = (node: GraphNode) => {
+    const destination = node.destination
+    const nextScope = destination?.scope ?? node.scope
+    if (!nextScope) return
+    setScope(nextScope)
+    setSelected(destination?.focusId ?? null)
+  }
+  const navigate = (index: number) => {
+    setScope(data.trail[index].scope)
+    setSelected(null)
+  }
+  const explore = (destination: GraphScope, focus: string | null = null) => {
+    setReturnContext({
+      scope,
+      scroll: window.scrollY,
+      originId: document.activeElement?.id || 'report-title',
+    })
+    setScope(destination)
+    setSelected(focus)
+    setReport(false)
+    window.scrollTo(0, 0)
+  }
+  if (report)
+    return (
+      <RepositoryReport
+        view={data}
+        navigate={navigate}
+        onScope={setScope}
+        onExplore={explore}
+        expandedCycles={expandedCycles}
+        onToggleCycle={(id, expanded) =>
+          setExpandedCycles((ids) =>
+            expanded
+              ? [...new Set([...ids, id])]
+              : ids.filter((key) => key !== id),
+          )
+        }
+      />
+    )
+  return (
+    <>
+      <div className="project-return">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setScope(returnContext.scope)
+            setReport(true)
+            restoreReadingPosition(returnContext.scroll, returnContext.originId)
+          }}
+        >
+          Return to report
+        </Button>
+        <p>Project map · folders, files, functions, and connections</p>
+      </div>
+      <GraphWorkspace
+        view={data}
+        navigate={navigate}
+        selected={selected}
+        focusId={selected}
+        onSelect={setSelected}
+        onOpen={open}
+      />
+    </>
+  )
+}
+
+function restoreReadingPosition(scroll: number, originId: string) {
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scroll)
+    document.getElementById(originId)?.focus({ preventScroll: true })
+  })
+}
+
+function useGraphView(initial: GraphView, scope: GraphScope) {
+  return useQuery({
     queryKey: [
       'graph-view',
       initial.repositoryId,
@@ -139,72 +236,26 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
     initialData: scope.kind === 'repository' ? initial : undefined,
     retry: false,
   })
-  if (
-    view.error ||
-    (view.data && view.data.state !== 'ready') ||
-    view.data === null
-  )
-    return (
-      <div className="error-message" role="alert">
-        <p>{view.error?.message ?? 'This graph needs to be re-indexed.'}</p>
-        <Button
-          variant="outline"
-          onClick={() => {
-            void view.refetch()
-          }}
-        >
-          Try again
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setScope({ kind: 'repository' })}
-        >
-          Back to repository
-        </Button>
-      </div>
-    )
-  if (!view.data)
-    return (
-      <div className="loading-state" role="status">
-        Loading the repository graph…
-      </div>
-    )
-  const data = view.data
-  const activeCycle =
-    data.cycles.find((cycle) => cycle.group.id === cycleId) ?? null
-  const select = (id: string | null) => {
-    setCycleId(null)
-    setSelected(id)
-  }
-  const open = (node: GraphNode) => {
-    const destination = node.destination
-    const nextScope = destination?.scope ?? node.scope
-    if (!nextScope) return
-    setScope(nextScope)
-    setCycleId(null)
-    setSelected(destination?.focusId ?? null)
-  }
-  const navigate = (index: number) => {
-    setScope(data.trail[index].scope)
-    select(null)
-  }
+}
+
+function GraphLoadError({
+  message,
+  retry,
+  back,
+}: {
+  message?: string
+  retry: () => void
+  back: () => void
+}) {
   return (
-    <GraphWorkspace
-      view={data}
-      navigate={navigate}
-      selected={selected}
-      focusId={cycleId !== null ? null : selected}
-      activeCycle={activeCycle}
-      onSelect={select}
-      onOpen={open}
-      onCycle={(cycle) => {
-        setCycleId(cycle.group.id)
-      }}
-      onCycleScope={(cycle) => {
-        setScope(cycle.scope)
-        setSelected(null)
-        setCycleId(cycle.group.id)
-      }}
-    />
+    <div className="error-message" role="alert">
+      <p>{message ?? 'This graph needs to be re-indexed.'}</p>
+      <Button variant="outline" onClick={retry}>
+        Try again
+      </Button>
+      <Button variant="outline" onClick={back}>
+        Back to repository
+      </Button>
+    </div>
   )
 }

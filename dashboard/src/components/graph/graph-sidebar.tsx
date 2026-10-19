@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 type Props = CycleProps & {
+  structureOnly?: boolean
   graph: ProjectGraph
   details: GraphDetails
   selected: string | null
@@ -32,6 +33,7 @@ type Props = CycleProps & {
 export function GraphSidebar({
   graph,
   details,
+  structureOnly = false,
   selected,
   scope,
   onSelect,
@@ -44,6 +46,7 @@ export function GraphSidebar({
     return (
       <NodeDetails
         {...cycleProps}
+        structureOnly={structureOnly}
         item={item}
         graph={graph}
         details={details}
@@ -64,7 +67,7 @@ export function GraphSidebar({
   )
   return (
     <aside className="graph-sidebar" aria-label="Graph contents">
-      {file && (
+      {file && !structureOnly && (
         <div className="sidebar-file-summary">
           <p className="eyebrow">{file.name}</p>
           <GraphFileComplexity sum={details.fileComplexities[file.stableKey]} />
@@ -102,7 +105,7 @@ export function GraphSidebar({
           </p>
         )}
       </div>
-      <GraphCycles {...cycleProps} />
+      {!structureOnly && <GraphCycles {...cycleProps} />}
     </aside>
   )
 }
@@ -157,11 +160,13 @@ function NodeSummary({
   item,
   details,
   original,
+  structureOnly,
   onOpen,
 }: {
   item: GraphNode
   details: GraphDetails
   original: ArtifactNode | undefined
+  structureOnly?: boolean
   onOpen: Props['onOpen']
 }) {
   return (
@@ -177,10 +182,10 @@ function NodeSummary({
           <ArrowRight />
         </Button>
       )}
-      {item.kind === 'file' && (
+      {!structureOnly && item.kind === 'file' && (
         <GraphFileComplexity sum={details.fileComplexities[item.id]} />
       )}
-      <NodeMetrics node={original} />
+      {!structureOnly && <NodeMetrics node={original} />}
     </>
   )
 }
@@ -206,6 +211,7 @@ function NodeDetails({
   details,
   onSelect,
   onOpen,
+  structureOnly,
   ...cycleProps
 }: Omit<Props, 'selected'> & { item: GraphNode }) {
   const original = details.nodes.find((node) => node.stableKey === item.id)
@@ -228,6 +234,7 @@ function NodeDetails({
         item={item}
         details={details}
         original={original}
+        structureOnly={structureOnly}
         onOpen={onOpen}
       />
       <div className="section-heading">
@@ -258,7 +265,7 @@ function NodeDetails({
           </p>
         )}
       </div>
-      <GraphCycles item={item} {...cycleProps} />
+      {!structureOnly && <GraphCycles item={item} {...cycleProps} />}
     </aside>
   )
 }
