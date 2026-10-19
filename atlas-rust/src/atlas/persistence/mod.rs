@@ -11,7 +11,9 @@ pub mod navigation_queries;
 pub mod repositories;
 
 #[cfg(test)]
-mod migration_tests;
+#[path = "../../../tests/integration/persistence/migrations.rs"]
+mod migration_integration_tests;
 
 #[cfg(test)]
-mod tests;
+#[path = "../../../tests/integration/persistence/contracts.rs"]
+mod integration_tests;

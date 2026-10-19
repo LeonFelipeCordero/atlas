@@ -1,5 +1,5 @@
 //! Python reference snapshots restricted to the Rust importer's dedicated language catalog.
-mod support;
+use crate::support;
 use atlas::{
     indexer,
     metrics::{check, config, report},

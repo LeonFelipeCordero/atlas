@@ -1,4 +1,6 @@
-//! Shared access to Python fixtures and reference goldens for the dedicated language catalog.
+//! Shared sample, snapshot, process, and database helpers for integration tests.
+pub mod cli;
+pub mod project;
 use serde_json::{Value, json};
 use std::{
     collections::BTreeSet,

@@ -308,5 +308,5 @@ pub fn extract_structure(syntax: &ParsedSyntax<'_>, existing: &[StructureItem]) 
 }
 
 #[cfg(test)]
-#[path = "structure_tests.rs"]
+#[path = "../../../tests/unit/parsing/structure_tests.rs"]
 mod tests;

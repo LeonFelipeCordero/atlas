@@ -342,7 +342,9 @@ fn migrations_upgrade_legacy_revision_without_backfilling() {
     let temp = tempfile::tempdir().unwrap();
     let db = temp.path().join("db.sqlite");
     let connection = super::database::create_engine(Some(&db)).unwrap();
-    run(connection.execute_unprepared(include_str!("migrations/versions/0001_initial.sql"))).unwrap();
+    run(connection
+        .execute_unprepared(include_str!("../../../src/atlas/persistence/migrations/versions/0001_initial.sql")))
+    .unwrap();
     run(connection.execute_unprepared("CREATE TABLE alembic_version(version_num VARCHAR(32) NOT NULL PRIMARY KEY); INSERT INTO alembic_version VALUES('0001_initial'); INSERT INTO repositories VALUES('id','old','/old',1); INSERT INTO repository_graphs VALUES('id','{}',2);")).unwrap();
     drop(connection);
     migrate_database(Some(&db)).unwrap();
@@ -364,7 +366,8 @@ fn migration_schema_sql_matches_python_exactly() {
             .map(|r| vec![r.try_get::<String>("", "name").unwrap(), r.try_get::<String>("", "sql").unwrap()])
             .collect::<Vec<_>>()
     );
-    let expected: Value = serde_json::from_str(include_str!("migrations/schema.json")).unwrap();
+    let expected: Value =
+        serde_json::from_str(include_str!("../../../src/atlas/persistence/migrations/schema.json")).unwrap();
     assert_eq!(actual, expected);
 }
 #[test]

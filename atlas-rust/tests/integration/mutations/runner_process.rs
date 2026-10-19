@@ -111,7 +111,7 @@ fn signals_restore_source_and_previous_handlers() -> Result<()> {
         let mut child = Command::new(std::env::current_exe()?)
             .args([
                 "--exact",
-                "mutations::runner_process_tests::signals_restore_source_and_previous_handlers",
+                "mutations::runner_process_integration_tests::signals_restore_source_and_previous_handlers",
                 "--nocapture",
             ])
             .env("ATLAS_RUNNER_SIGNAL_CHILD", root)

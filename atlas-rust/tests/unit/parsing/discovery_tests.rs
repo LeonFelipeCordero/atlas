@@ -1,0 +1,69 @@
+//! Rule-policy tests need paths and ignore specs, not a filesystem or parser.
+use super::*;
+
+fn rules(base: &str, text: &str) -> Rules {
+    Rules { base: base.into(), spec: IgnoreSpec::new(text).unwrap() }
+}
+
+#[test]
+fn nested_rules_only_override_matching_parent_rules() {
+    let inherited = vec![rules("/repo", "*.py\ncache/\n")];
+    let mut nested = inherited.clone();
+    nested.push(rules("/repo/src", "!keep.py\nunrelated.txt\n"));
+    for (name, directory, ignored) in [
+        ("keep.py", false, false),
+        ("drop.py", false, true),
+        ("other.txt", false, false),
+        ("cache", true, true),
+        ("cache", false, false),
+    ] {
+        let path = Path::new("/repo/src").join(name);
+        assert_eq!(is_ignored(&path, &nested, directory), ignored, "{name}");
+    }
+    assert!(is_ignored(Path::new("/repo/src/keep.py"), &inherited, false));
+}
+
+#[test]
+fn git_mode_replaces_defaults_but_cannot_override_atlas_or_metadata_exclusions() {
+    assert_directory_policy(false);
+    assert_directory_policy(true);
+}
+
+fn assert_directory_policy(use_gitignore: bool) {
+    let context = DirectoryContext {
+        base: "/repo".into(),
+        git: vec![rules("/repo", "git-only/\n!atlas-only/\n!.git/\n")],
+        atlas: vec![rules("/repo", "atlas-only/\n!node_modules/\n")],
+        use_gitignore,
+    };
+    for (name, expected) in [
+        (".git", false),
+        ("node_modules", use_gitignore),
+        ("my-generated-code", use_gitignore),
+        ("git-only", !use_gitignore),
+        ("atlas-only", false),
+        ("src", true),
+    ] {
+        assert_eq!(context.include_directory(&context.base.join(name)), expected, "{name}");
+    }
+    if !use_gitignore {
+        for name in IGNORED_DIRECTORIES {
+            assert!(!context.include_directory(&context.base.join(name)), "{name}");
+        }
+    }
+}
+
+#[test]
+fn files_require_both_rule_sets_to_allow_them() {
+    let context = DirectoryContext {
+        base: "/repo".into(),
+        git: vec![rules("/repo", "*.py\n!keep.py\n!atlas.py\n")],
+        atlas: vec![rules("/repo", "atlas.py\n!drop.py\n!.git\n")],
+        use_gitignore: true,
+    };
+    for (name, included) in
+        [(".git", false), ("keep.py", true), ("drop.py", false), ("atlas.py", false), ("note.txt", true)]
+    {
+        assert_eq!(context.include_file(&context.base.join(name)), included, "{name}");
+    }
+}

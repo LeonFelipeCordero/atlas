@@ -348,8 +348,8 @@ impl CallResolver {
 }
 
 #[cfg(test)]
-#[path = "resolver_tests.rs"]
-mod integration_tests;
+#[path = "../../../tests/unit/metrics/resolver_tests.rs"]
+mod contract_tests;
 
 #[cfg(test)]
 mod tests {

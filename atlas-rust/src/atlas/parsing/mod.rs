@@ -9,4 +9,5 @@ mod queries;
 pub mod structure;
 pub mod syntax;
 #[cfg(test)]
+#[path = "../../../tests/unit/parsing/tests.rs"]
 mod tests;

@@ -1,6 +1,7 @@
 //! Complete extraction, analysis, and graph parity, including structures and grammar variants.
+#[path = "helpers.rs"]
 mod pipeline;
-mod support;
+use crate::support;
 use support::{assert_json, fixtures, snapshot};
 
 macro_rules! pipeline_tests {

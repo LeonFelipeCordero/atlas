@@ -1,5 +1,9 @@
 # Rust CLI testing strategy
 
+Put isolated logic tests in `atlas-rust/tests/unit/`, with folders that mirror `src/atlas/`. Use in-memory records and fake boundary outputs. CLI option tests must call the parser directly, not start the binary or index a project. Keep small inline Rust unit tests beside their functions.
+
+Put real process, filesystem, database, and pipeline contracts in `atlas-rust/tests/integration/`. Module-private integration tests use `#[path]` and module names containing `integration_tests`, so the fast command can exclude them. Do not add that name to unit-test modules. The external integration tests share one test binary and common support helpers.
+
 Use code samples and snapshot tests to cover language features without many separate tests. Add new language features and metrics to the samples in `atlas-rust/tests/code_samples/`. Keep the checked-in snapshots in `atlas-rust/tests/snapshots/`. Python samples are analyzer inputs, not a Python importer.
 
 # Checks
@@ -13,6 +17,16 @@ Run commands from the repository root. Run only checks for changed components an
 - For documentation-only changes, check text and command accuracy. Do not run runtime suites or Atlas analysis.
 
 ## Rust importer
+
+Use the fast suite during development. It excludes real integration contracts, not the full validation requirement:
+
+```sh
+cargo test --manifest-path atlas-rust/Cargo.toml --locked --lib --test unit -- --skip integration_tests
+```
+
+For one layer, use a library filter such as `--lib cli::` or `--lib parsing::`. For integration tests, use `--test integration` and an optional filter such as `services::`. Database and process tests that need private APIs remain in the library test binary; `--test integration` alone does not run every integration test.
+
+Run all checks before completion:
 
 ```sh
 cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets

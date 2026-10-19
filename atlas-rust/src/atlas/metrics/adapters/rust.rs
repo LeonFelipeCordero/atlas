@@ -319,5 +319,5 @@ pub fn module_bindings(ctx: &ImportBindings, file: &ParsedFile, source_length: u
 }
 
 #[cfg(test)]
-#[path = "rust_tests.rs"]
+#[path = "../../../../tests/unit/metrics/adapters/rust_tests.rs"]
 mod tests;

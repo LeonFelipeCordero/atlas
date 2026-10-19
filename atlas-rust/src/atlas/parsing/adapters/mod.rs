@@ -10,4 +10,5 @@ pub mod rust;
 pub mod typescript;
 pub use base::{LanguageAdapter, get_adapter};
 #[cfg(test)]
+#[path = "../../../../tests/unit/parsing/adapters/tests.rs"]
 mod tests;

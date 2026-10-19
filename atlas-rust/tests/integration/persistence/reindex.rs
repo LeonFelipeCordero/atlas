@@ -1,6 +1,5 @@
 //! Reindexing replaces saved facts instead of accumulating stale files and connections.
-#[path = "support/project.rs"]
-mod project;
+use crate::support::project;
 use atlas::bootstrap::{navigation_service, repository_service};
 use project::Project;
 use serde_json::json;

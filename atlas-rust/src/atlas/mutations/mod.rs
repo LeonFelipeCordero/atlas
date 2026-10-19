@@ -28,8 +28,17 @@ pub fn canonical_json(value: &Value) -> String {
 }
 
 #[cfg(test)]
-mod runner_process_tests;
+#[path = "../../../tests/integration/mutations/manifests.rs"]
+mod manifests_integration_tests;
 #[cfg(test)]
+#[path = "../../../tests/integration/mutations/runner.rs"]
+mod runner_integration_tests;
+#[cfg(test)]
+#[path = "../../../tests/integration/mutations/runner_process.rs"]
+mod runner_process_integration_tests;
+#[cfg(test)]
+#[path = "../../../tests/unit/mutations/runner.rs"]
 mod runner_tests;
 #[cfg(test)]
+#[path = "../../../tests/unit/mutations/tests.rs"]
 mod tests;

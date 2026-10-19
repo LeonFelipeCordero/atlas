@@ -24,139 +24,139 @@
       "entrypoints": {
         "sources": ["atlas-rust/src/atlas/*.rs", "atlas-rust/src/atlas/paths/*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "cli", "--test", "parity_pipeline", "--test", "reindex"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- cli::commands:: pipeline::parity_pipeline:: persistence::reindex::"],
         "timeoutSeconds": 300
       },
       "cli-commands": {
         "sources": ["atlas-rust/src/atlas/cli/commands.rs", "atlas-rust/src/atlas/cli/mod.rs", "atlas-rust/src/atlas/cli/options.rs", "atlas-rust/src/atlas/cli/schema.rs", "atlas-rust/src/atlas/cli/integers.rs"],
         "cwd": "atlas-rust",
-        "command": ["sh", "-c", "cargo test --locked --lib -- cli::options_tests:: cli::schema:: cli::integers:: && cargo test --locked --test cli --test cli_validation --test cli_numeric --test parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib -- cli:: && cargo test --locked --test integration -- cli:: pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "cli-graph": {
         "sources": ["atlas-rust/src/atlas/cli/graph*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_navigation", "--test", "navigation_budget", "--test", "cli_validation"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- services:: cli::cli_validation::"],
         "timeoutSeconds": 300
       },
       "cli-mutations": {
         "sources": ["atlas-rust/src/atlas/cli/mutations.rs", "atlas-rust/src/atlas/cli/mutation_targets.rs", "atlas-rust/src/atlas/cli/mutation_run.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "mutation_safety", "--test", "parity", "--test", "cli_validation"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- mutations:: pipeline::parity:: cli::cli_validation::"],
         "timeoutSeconds": 300
       },
       "domain-models": {
         "sources": ["atlas-rust/src/atlas/domain/mod.rs", "atlas-rust/src/atlas/domain/models.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       },
       "domain-navigation": {
         "sources": ["atlas-rust/src/atlas/domain/navigation.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_navigation", "--test", "navigation_budget"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- services::"],
         "timeoutSeconds": 300
       },
       "domain-repositories": {
         "sources": ["atlas-rust/src/atlas/domain/repositories.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_inventory"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- persistence::"],
         "timeoutSeconds": 300
       },
       "mutation-candidates": {
         "sources": ["atlas-rust/src/atlas/domain/mutation_candidates.rs", "atlas-rust/src/atlas/parsing/mutation_candidates.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "discovery": {
         "sources": ["atlas-rust/src/atlas/parsing/mod.rs", "atlas-rust/src/atlas/parsing/discovery*.rs", "atlas-rust/src/atlas/parsing/ignore_spec.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "discovery_failures", "--test", "parity_families"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- parsing:: pipeline::parity_families::"],
         "timeoutSeconds": 300
       },
       "parsing": {
         "sources": ["atlas-rust/src/atlas/parsing/parser.rs", "atlas-rust/src/atlas/parsing/structure.rs", "atlas-rust/src/atlas/parsing/syntax.rs", "atlas-rust/src/atlas/parsing/catalog.rs", "atlas-rust/src/atlas/parsing/inheritance.rs", "atlas-rust/src/atlas/parsing/queries.rs", "atlas-rust/src/atlas/parsing/adapters/*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_pipeline", "--test", "parity_families"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- pipeline::parity_pipeline:: pipeline::parity_families::"],
         "timeoutSeconds": 300
       },
       "persistence": {
         "sources": ["atlas-rust/src/atlas/persistence/*.rs", "atlas-rust/src/atlas/persistence/migrations/*.rs", "atlas-rust/src/atlas/persistence/migrations/versions/*.sql"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_navigation", "--test", "parity_inventory"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- persistence:: services::parity_navigation::"],
         "timeoutSeconds": 300
       },
       "repository-services": {
         "sources": ["atlas-rust/src/atlas/services/mod.rs", "atlas-rust/src/atlas/services/factories.rs", "atlas-rust/src/atlas/services/repositories.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "reindex", "--test", "parity_inventory", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- persistence:: pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "navigation-services": {
         "sources": ["atlas-rust/src/atlas/services/navigation*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_navigation", "--test", "navigation_budget"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- services::"],
         "timeoutSeconds": 300
       },
       "mutations": {
         "sources": ["atlas-rust/src/atlas/mutations/*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "mutation_safety", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- mutations:: pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "artifacts": {
         "sources": ["atlas-rust/src/atlas/metrics/mod.rs", "atlas-rust/src/atlas/metrics/artifact.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "callables": {
         "sources": ["atlas-rust/src/atlas/metrics/callables.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_families", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- pipeline::parity_families:: pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       },
       "complexity": {
         "sources": ["atlas-rust/src/atlas/metrics/complexity.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       },
       "checks": {
         "sources": ["atlas-rust/src/atlas/metrics/check.rs", "atlas-rust/src/atlas/metrics/config.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "dependency-metrics": {
         "sources": ["atlas-rust/src/atlas/metrics/cycles.rs", "atlas-rust/src/atlas/metrics/dependency_metrics.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       },
       "reports": {
         "sources": ["atlas-rust/src/atlas/metrics/report.rs", "atlas-rust/src/atlas/metrics/report_markdown.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics", "--test", "parity"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity::"],
         "timeoutSeconds": 300
       },
       "receivers": {
         "sources": ["atlas-rust/src/atlas/metrics/receiver_*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_families", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- pipeline::parity_families:: pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       },
       "resolution": {
         "sources": ["atlas-rust/src/atlas/metrics/resolver*.rs", "atlas-rust/src/atlas/metrics/resolution_*.rs", "atlas-rust/src/atlas/metrics/pattern_bindings.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "metrics_patterns", "--test", "parity_families", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib --test unit && cargo test --locked --test integration -- pipeline::parity_families:: pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       },
       "metric-adapters": {
         "sources": ["atlas-rust/src/atlas/metrics/adapters/*.rs"],
         "cwd": "atlas-rust",
-        "command": ["cargo", "test", "--locked", "--lib", "--test", "parity_families", "--test", "parity_pipeline"],
+        "command": ["sh", "-c", "cargo test --locked --lib && cargo test --locked --test integration -- pipeline::parity_families:: pipeline::parity_pipeline::"],
         "timeoutSeconds": 300
       }
     }
