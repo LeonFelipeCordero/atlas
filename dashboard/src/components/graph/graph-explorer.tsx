@@ -4,7 +4,7 @@ import { Network } from 'lucide-react'
 import { GraphSidebar } from './graph-sidebar'
 import { GraphNavigation } from './graph-navigation'
 import { GraphModeNavigation } from './graph-mode-navigation'
-import { GraphFileComplexity } from './graph-file-complexity'
+import { GraphReport } from './graph-report'
 import type { ComponentProps } from 'react'
 import type { Architecture, GraphView, ViewCycle } from '@/lib/graph-data'
 import type { GraphNode, GraphScope } from '@/lib/project-graph'
@@ -78,36 +78,24 @@ function GraphWorkspace({
   onCycle: (cycle: ViewCycle) => void
   onCycleScope: (cycle: ViewCycle) => void
 }) {
-  const { trail, graph, cycles, details } = view
+  const { trail, graph, details } = view
   const current = trail[trail.length - 1]
   return (
     <section className="explorer" aria-label="Project graph">
       <GraphModeNavigation mode={mode} onMode={onMode} />
       <GraphNavigation trail={trail} navigate={navigate} />
-      {mode === 'report' && (
-        <div className="report-intro">
-          <div>
-            <h2>Report</h2>
-            <p>
-              Inspect an item for complexity, size, and dependency metrics.
-              Circular dependencies show recorded file imports.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => onMode('explore')}>
-            Explore this scope
-          </Button>
-        </div>
-      )}
-      {mode === 'report' && current.scope.kind === 'file' && (
-        <GraphFileComplexity
-          sum={details.fileComplexities[current.scope.key]}
-          compact
+      {mode === 'report' ? (
+        <GraphReport
+          key={JSON.stringify(current.scope)}
+          view={view}
+          {...actions}
+          onExplore={(node) => {
+            if (node) actions.onOpen(node)
+            onMode('explore')
+          }}
         />
-      )}
-      <div
-        className={mode === 'explore' ? 'graph-workspace' : 'report-workspace'}
-      >
-        {mode === 'explore' && (
+      ) : (
+        <div className="graph-workspace">
           <div
             className="graph-canvas"
             role="region"
@@ -127,21 +115,18 @@ function GraphWorkspace({
               }
             />
           </div>
-        )}
-        <GraphSidebar
-          key={JSON.stringify(current.scope)}
-          graph={graph}
-          details={details}
-          scope={current.scope}
-          cycles={mode === 'report' ? cycles : undefined}
-          {...actions}
-          report={mode === 'report'}
-          onOpen={(node) => {
-            actions.onOpen(node)
-            onMode('explore')
-          }}
-        />
-      </div>
+          <GraphSidebar
+            key={JSON.stringify(current.scope)}
+            graph={graph}
+            details={details}
+            scope={current.scope}
+            cycles={undefined}
+            {...actions}
+            report={false}
+            onOpen={actions.onOpen}
+          />
+        </div>
+      )}
     </section>
   )
 }
