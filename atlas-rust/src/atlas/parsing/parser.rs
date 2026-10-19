@@ -13,6 +13,10 @@ use sha2::{Digest, Sha256};
 use tree_sitter::Node;
 use tree_sitter_language_pack::{ProcessConfig, StructureItem, process};
 
+#[cfg(test)]
+#[path = "../../../tests/unit/parsing/parser_tests.rs"]
+mod tests;
+
 /// Test whether the grammar defines any shared call/reference node kind, caching the result.
 ///
 /// # Errors

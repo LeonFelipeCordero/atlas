@@ -28,6 +28,21 @@ fn python_structure_calls_and_inheritance() -> Result<()> {
 }
 
 #[test]
+fn parse_files_preserves_input_order_duplicates_and_errors() -> Result<()> {
+    let mut first = source("python", "");
+    first.path = "z.py".into();
+    let mut second = source("python", "");
+    second.path = "a.py".into();
+    let repository = parse_files(vec![first.clone(), second, first.clone()])?;
+    assert_eq!(
+        repository.files.iter().map(|file| file.source.path.as_str()).collect::<Vec<_>>(),
+        ["z.py", "a.py", "z.py"]
+    );
+    assert!(parse_files(vec![first, source("not-a-grammar", "")]).is_err());
+    Ok(())
+}
+
+#[test]
 fn script_callbacks_and_jsx_references() -> Result<()> {
     let file = parse_file(source("tsx", "const run = ((x) => helper(x));\nconst view = <cards.CoffeeCard />;\n"))?;
     assert!(file.symbols.iter().any(|s| s.name == "run" && s.kind == "function"));
@@ -71,7 +86,8 @@ fn syntax_errors_and_invalid_utf8_preserve_hash_source() -> Result<()> {
     let file = parse_file(input.clone())?;
     assert_eq!(file.source.source, input.source);
     assert_eq!(file.calls[0].start_byte, 5);
-    assert_eq!(file.content_hash.len(), 64);
+    use sha2::{Digest, Sha256};
+    assert_eq!(file.content_hash, format!("{:x}", Sha256::digest(&input.source)));
     assert!(parse_files(vec![])?.files.is_empty());
     assert!(parse_file(source("c", "int main() {}")).is_err());
     Ok(())

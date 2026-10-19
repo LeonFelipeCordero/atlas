@@ -264,6 +264,10 @@ pub fn discover_files(root: &Path) -> Result<Vec<SourceFile>> {
 }
 
 #[cfg(test)]
+#[path = "../../../tests/unit/parsing/discovery_tests.rs"]
+mod policy_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

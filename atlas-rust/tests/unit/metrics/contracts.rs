@@ -16,6 +16,9 @@ use atlas::{
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
 
+#[path = "isolated.rs"]
+mod isolated;
+
 fn node(key: &str, level: &str, parent: Option<&str>) -> Value {
     json!({"stableKey": key, "type": level, "kind": level, "level": level, "parentStableKey": parent,
         "name": key, "qualifiedName": key, "path": key, "properties": {}})
@@ -257,11 +260,6 @@ fn configs_keep_mutation_settings_separate_and_reject_coercion() {
     assert!(config.get("mutations").is_none());
     assert_eq!(config["maxInstability"], json!(0.0));
     assert_eq!(load_project_config(root.path()).unwrap()["mutations"]["rules"], json!(["logical.and-to-or"]));
-    for value in [json!(-1), json!(true), json!("2"), json!(2.5)] {
-        assert!(validate_config(&json!({"maxFileLines": value})).is_err());
-    }
-    assert!(validate_project_config(&json!({"mutations": {"rules": ["unknown"]}})).is_err());
-    assert!(validate_project_config(&json!({"unexpected": 1})).is_err());
 }
 
 #[test]

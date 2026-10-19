@@ -452,7 +452,7 @@ pub fn implicit_receiver(resolver: &CallResolver, request: &ResolutionRequest<'_
 }
 
 #[cfg(test)]
-#[path = "script_adapter_tests.rs"]
+#[path = "../../../../tests/unit/metrics/adapters/script_adapter_tests.rs"]
 mod script_adapter_tests;
 
 #[cfg(test)]

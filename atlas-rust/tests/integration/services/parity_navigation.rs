@@ -1,6 +1,6 @@
 //! Replay all canonical navigation requests against freshly indexed native SQLite graphs.
 //! Goldens supply request filters only; no golden graph or response populates storage.
-mod support;
+use crate::support;
 use atlas::{
     bootstrap::{migrate_database, navigation_service, repository_service},
     cli::graph_output::graph_output,

@@ -1,26 +1,11 @@
 //! Exercise clap through the real binary without touching the caller's database.
-#[path = "support/cli.rs"]
-mod cli_support;
+use crate::support::cli as cli_support;
 use cli_support::invoke;
 
 #[test]
-fn all_commands_offer_generated_help_without_side_effects() {
-    for path in [
-        "",
-        "index",
-        "projects",
-        "report",
-        "check",
-        "mutations",
-        "graph",
-        "graph overview",
-        "graph find",
-        "graph show",
-        "graph children",
-        "graph context",
-        "graph path",
-        "graph source",
-    ] {
+fn representative_commands_offer_generated_help_without_side_effects() {
+    // The schema unit tests cover every command; keep process routing and stream checks here.
+    for path in ["", "mutations run", "graph source"] {
         let mut args: Vec<_> = path.split_whitespace().collect();
         args.push("--help");
         let result = invoke(&args);
@@ -36,16 +21,9 @@ fn all_commands_offer_generated_help_without_side_effects() {
 fn syntax_errors_exit_two_before_opening_a_database() {
     for args in [
         vec![],
-        vec!["graph"],
-        vec!["unknown"],
-        vec!["index", "--folder"],
-        vec!["projects", "extra"],
         vec!["check", "--format", "xml"],
-        vec!["graph", "show"],
-        vec!["graph", "path", "from"],
         vec!["graph", "find", "brew", "--limit", "0"],
         vec!["graph", "context", "brew", "--relations", "INVALID"],
-        vec!["graph", "source", "brew", "--max-lines", "501"],
     ] {
         let result = invoke(&args);
         assert_eq!(result.status.code(), Some(2), "{args:?}");

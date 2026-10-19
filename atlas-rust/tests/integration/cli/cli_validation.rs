@@ -1,6 +1,5 @@
 //! Native clap validation and runtime error regressions through the executable.
-#[path = "support/cli.rs"]
-mod cli_support;
+use crate::support::cli as cli_support;
 use cli_support::invoke;
 use std::process::Command;
 fn usage_error(args: &[&str], marker: &str) {
@@ -13,24 +12,10 @@ fn usage_error(args: &[&str], marker: &str) {
 }
 
 #[test]
-fn competing_invalid_options_and_argument_counts_fail_before_execution() {
-    for args in [
-        vec!["graph", "find", "brew", "--limit", "bad", "--bogus"],
-        vec!["graph", "find", "brew", "--bogus", "--limit", "bad"],
-        vec!["graph", "path", "--max-depth", "bad"],
-        vec!["graph", "overview", "extra", "--bogus"],
-        vec!["report", "--format", "yaml", "--bogus"],
-        vec!["graph", "context", "brew", "--depth", "bad", "--direction", "wrong"],
-    ] {
-        usage_error(&args, "error:");
-    }
-}
-
-#[test]
-fn repeated_options_use_last_value_and_still_require_arguments() {
+fn schema_and_handler_errors_render_usage_through_the_binary() {
+    // Full option matrices run in schema_tests and graph_options_tests without subprocesses.
+    usage_error(&["graph", "find", "brew", "--limit", "bad", "--bogus"], "error:");
     usage_error(&["graph", "context", "brew", "--depth", "2", "--depth=-1"], "-1 is not in the range");
-    usage_error(&["graph", "context", "brew", "--depth", "-1", "--direction", "bad", "--depth=2"], "--direction");
-    usage_error(&["graph", "find", "--limit", "0", "--limit=1"], "<QUERY>");
 }
 
 #[test]
@@ -43,12 +28,8 @@ fn help_bypasses_numeric_validation() {
 
 #[test]
 fn quoted_and_control_values_fail_safely() {
-    for value in ["a'b", "a\"b", "a\\b", "a\nb", "a\tb", "a\rb", "a\u{1b}b"] {
-        usage_error(&["report", "--format", value], "--format");
-        usage_error(&["check", "--format", value], "--format");
-        usage_error(&[value], "error:");
-        usage_error(&["graph", "find", "brew", "--limit", value], "--limit");
-    }
+    usage_error(&["report", "--format", "a\nb"], "--format");
+    usage_error(&["graph", "find", "brew", "--limit", "a'b"], "--limit");
 }
 
 #[test]

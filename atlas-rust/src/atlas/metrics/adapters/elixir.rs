@@ -252,5 +252,5 @@ impl ElixirModules {
 }
 
 #[cfg(test)]
-#[path = "elixir_tests.rs"]
+#[path = "../../../../tests/unit/metrics/adapters/elixir_tests.rs"]
 mod tests;

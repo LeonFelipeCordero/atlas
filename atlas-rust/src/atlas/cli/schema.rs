@@ -94,29 +94,3 @@ fn graph() -> Command {
                 .arg(format(&["json", "text"], "json")),
         )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn schema_is_consistent() {
-        cli().debug_assert();
-    }
-    #[test]
-    fn clap_handles_help_and_invalid_syntax() {
-        for args in [vec!["atlas", "--help"], vec!["atlas", "graph", "source", "--help"]] {
-            let error = cli().try_get_matches_from(args).unwrap_err();
-            assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
-            assert_eq!(error.exit_code(), 0);
-        }
-        for args in [
-            vec!["atlas", "unknown"],
-            vec!["atlas", "graph", "show"],
-            vec!["atlas", "check", "--unknown"],
-            vec!["atlas", "check", "--format", "xml"],
-            vec!["atlas", "projects", "extra"],
-        ] {
-            assert_eq!(cli().try_get_matches_from(args).unwrap_err().exit_code(), 2);
-        }
-    }
-}

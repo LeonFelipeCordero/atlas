@@ -1,6 +1,5 @@
 //! Traversal budgets count unseen edges, not previously visited adjacency rows.
-#[path = "support/project.rs"]
-mod project;
+use crate::support::project;
 use atlas::{
     bootstrap::navigation_service,
     domain::navigation::{PathRequest, TraversalRequest},

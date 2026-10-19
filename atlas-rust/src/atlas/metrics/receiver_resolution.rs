@@ -311,5 +311,5 @@ impl ReceiverInference<'_> {
 }
 
 #[cfg(test)]
-#[path = "receiver_tests.rs"]
+#[path = "../../../tests/unit/metrics/receiver_tests.rs"]
 mod tests;

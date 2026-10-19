@@ -272,5 +272,5 @@ fn macro_sites((node, traversal): (Node<'_>, &Traversal<'_>), visitor: &mut Call
 }
 
 #[cfg(test)]
-#[path = "rust_macro_tests.rs"]
+#[path = "../../../../tests/unit/parsing/adapters/rust_macro_tests.rs"]
 mod macro_tests;

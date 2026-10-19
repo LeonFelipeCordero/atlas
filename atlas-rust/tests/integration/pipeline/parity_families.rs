@@ -1,5 +1,5 @@
 //! Exact projections from the original standalone safety/member/JVM snapshot helpers.
-mod support;
+use crate::support;
 use atlas::{indexer::analyze_repository, parsing::discovery::discover_files};
 use serde_json::{Value, json};
 use std::{

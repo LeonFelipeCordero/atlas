@@ -13,7 +13,7 @@ fn scalar(db: &DatabaseConnection, sql: &str) -> String {
 }
 fn legacy(path: &Path, count: usize) -> DatabaseConnection {
     let db = create_engine(Some(path)).unwrap();
-    execute(&db, include_str!("migrations/alembic_version.sql"));
+    execute(&db, include_str!("../../../src/atlas/persistence/migrations/alembic_version.sql"));
     for &(_, sql) in &REVISIONS[..count] {
         execute(&db, sql);
     }
@@ -175,7 +175,7 @@ fn unknown_and_multiple_alembic_versions_leave_database_unchanged() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("bad.sqlite");
         let db = create_engine(Some(&path)).unwrap();
-        execute(&db, include_str!("migrations/alembic_version.sql"));
+        execute(&db, include_str!("../../../src/atlas/persistence/migrations/alembic_version.sql"));
         execute(&db, &format!("INSERT INTO alembic_version VALUES {versions}"));
         let before = scalar(&db, "SELECT group_concat(version_num) AS value FROM alembic_version");
         let error = migrate_database(Some(&path)).unwrap_err().to_string();
