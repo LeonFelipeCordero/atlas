@@ -7,6 +7,7 @@ export type CycleProps = {
   activeCycle: ViewCycle | null
   onCycle: (cycle: ViewCycle) => void
   onCycleScope: (cycle: ViewCycle) => void
+  onCycleMember?: (key: string) => void
 }
 
 export function GraphCycles({
@@ -15,6 +16,7 @@ export function GraphCycles({
   activeCycle,
   onCycle,
   onCycleScope,
+  onCycleMember,
 }: CycleProps & { item?: GraphNode }) {
   const linked = cycles?.filter(
     (cycle) => !item || cycle.linkedNodeIds.includes(item.id),
@@ -55,10 +57,22 @@ export function GraphCycles({
             </span>
           </button>
           {activeCycle?.group.id === cycle.group.id && (
-            <p className="sidebar-hint" role="status">
-              Member files and containing folders highlighted. Only recorded
-              cycle imports are emphasized.
-            </p>
+            <div className="cycle-members">
+              <p className="sidebar-hint" role="status">
+                Recorded member files
+              </p>
+              {cycle.group.nodeStableKeys.map((key) => (
+                <Button
+                  key={key}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onCycleMember?.(key)}
+                  disabled={!onCycleMember}
+                >
+                  Open {cycle.labels[key] ?? key}
+                </Button>
+              ))}
+            </div>
           )}
           {cycle.outsideCount > 0 && (
             <p className="sidebar-hint">

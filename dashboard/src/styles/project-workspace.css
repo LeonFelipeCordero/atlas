@@ -1,0 +1,311 @@
+.project-workspace {
+  display: grid;
+  grid-template-columns: 246px minmax(0, 1fr);
+  min-height: 650px;
+}
+.project-navigator {
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  background: var(--background);
+  min-width: 0;
+  overflow: auto;
+  max-height: 900px;
+  scrollbar-color: var(--border) transparent;
+}
+.navigator-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 6px 18px;
+}
+.navigator-heading h2 {
+  font-size: 0.875rem;
+}
+.navigator-heading > span,
+.navigator-note,
+.navigator-message {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+}
+.navigator-root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 8px;
+  margin-top: 12px;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.navigator-tree ul {
+  margin-left: 12px;
+  border-left: 1px solid var(--border);
+  padding-left: 4px;
+}
+.navigator-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  margin: 2px 0;
+}
+.navigator-row[data-current='true'],
+.navigator-root[aria-current] {
+  background: var(--secondary);
+  color: var(--primary);
+}
+.navigator-row:hover,
+.navigator-root:hover {
+  background: var(--secondary);
+}
+.navigator-toggle {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  min-height: 34px;
+  flex-shrink: 0;
+}
+.navigator-spacer {
+  width: 24px;
+  flex-shrink: 0;
+}
+.navigator-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-align: left;
+  padding: 8px 6px 8px 0;
+  min-width: 0;
+  flex: 1;
+  font-size: 0.75rem;
+}
+.navigator-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.navigator-item svg,
+.navigator-root svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.navigator-message {
+  padding: 8px;
+}
+.navigator-note {
+  margin: 28px 8px 0;
+  line-height: 1.7;
+}
+.scope-workspace {
+  min-width: 0;
+}
+.scope-location {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  min-height: 54px;
+}
+.scope-location .explorer-navigation {
+  border: 0;
+}
+.navigator-disclosure {
+  display: none;
+}
+.workspace-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.workspace-toolbar > p {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.workspace-switch {
+  display: flex;
+  gap: 4px;
+}
+.workspace-switch button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+.workspace-switch button:hover {
+  background: var(--background);
+}
+.workspace-switch button[aria-pressed='true'] {
+  background: var(--secondary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.map-area .graph-canvas {
+  height: max(460px, 58vh);
+  max-height: 760px;
+}
+.map-inspector {
+  border-top: 1px solid var(--border);
+}
+.map-inspector summary {
+  padding: 14px 22px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--primary);
+}
+.map-inspector .graph-sidebar {
+  border: 0;
+  max-height: 340px;
+  padding: 8px 22px 22px;
+}
+.map-inspector .open-selected {
+  width: auto;
+}
+.report-area {
+  padding: 26px 30px;
+  min-height: 560px;
+}
+.report-heading {
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.report-heading h2 {
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+.report-heading h2 span {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.report-heading p {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+  max-width: 65ch;
+  margin: 8px 0 14px;
+}
+.report-area .graph-sidebar {
+  border: 0;
+  padding: 24px 0;
+  max-height: none;
+}
+.report-area .scope-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 4px 22px;
+  margin-top: 14px;
+}
+.report-area .scope-item {
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+.report-area .node-complexity {
+  max-width: 540px;
+}
+.report-area .node-complexity dl > div {
+  font-size: 0.8rem;
+  padding: 7px 0;
+}
+.report-area .open-selected {
+  width: auto;
+}
+.report-area .connection-list {
+  max-width: 640px;
+}
+.report-area .cycle-select {
+  font-size: 0.8rem;
+}
+.cycle-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.cycle-members button {
+  white-space: normal;
+  height: auto;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.report-diagnostics {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  font-size: 0.8rem;
+}
+.report-diagnostics p {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+.project-workspace button:focus-visible,
+.project-workspace summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.project-workspace input {
+  caret-color: var(--primary);
+}
+.project-workspace ::selection {
+  color: var(--primary);
+  background: var(--secondary);
+}
+@media (max-width: 1000px) {
+  .project-workspace {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  .navigator-heading > span {
+    display: none;
+  }
+  .workspace-toolbar > p {
+    display: none;
+  }
+  .report-area {
+    padding: 22px;
+  }
+}
+@media (max-width: 700px) {
+  .project-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .navigator-disclosure {
+    display: inline-flex;
+    margin-left: 8px;
+  }
+  .project-navigator {
+    display: none;
+    max-height: 300px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .project-workspace[data-navigator-open='true'] .project-navigator {
+    display: block;
+  }
+  .scope-location {
+    flex-wrap: wrap;
+  }
+  .scope-location .explorer-navigation {
+    padding: 12px;
+  }
+  .workspace-toolbar {
+    padding: 8px 12px;
+  }
+  .map-area .graph-canvas {
+    height: 440px;
+    min-height: 0;
+  }
+  .report-area {
+    padding: 20px 16px;
+  }
+  .navigator-item {
+    min-height: 40px;
+  }
+  .navigator-toggle {
+    min-width: 32px;
+    min-height: 40px;
+  }
+}

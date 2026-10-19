@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 
 type Props = CycleProps & {
   graph: ProjectGraph
+  analysis?: boolean
   details: GraphDetails
   selected: string | null
   scope?: GraphScope
@@ -36,6 +37,7 @@ export function GraphSidebar({
   scope,
   onSelect,
   onOpen,
+  analysis = true,
   ...cycleProps
 }: Props) {
   const [search, setSearch] = useState('')
@@ -44,6 +46,7 @@ export function GraphSidebar({
     return (
       <NodeDetails
         {...cycleProps}
+        analysis={analysis}
         item={item}
         graph={graph}
         details={details}
@@ -64,9 +67,9 @@ export function GraphSidebar({
   )
   return (
     <aside className="graph-sidebar" aria-label="Graph contents">
-      {file && (
+      {analysis && file && (
         <div className="sidebar-file-summary">
-          <p className="eyebrow">{file.name}</p>
+          {scope?.kind !== 'file' && <h4>{file.name}</h4>}
           <GraphFileComplexity sum={details.fileComplexities[file.stableKey]} />
           <GraphSizeMetrics node={file} />
           <GraphDependencyMetrics node={file} />
@@ -102,7 +105,7 @@ export function GraphSidebar({
           </p>
         )}
       </div>
-      <GraphCycles {...cycleProps} />
+      {analysis && <GraphCycles {...cycleProps} />}
     </aside>
   )
 }
@@ -158,7 +161,9 @@ function NodeSummary({
   details,
   original,
   onOpen,
+  analysis,
 }: {
+  analysis: boolean
   item: GraphNode
   details: GraphDetails
   original: ArtifactNode | undefined
@@ -177,10 +182,10 @@ function NodeSummary({
           <ArrowRight />
         </Button>
       )}
-      {item.kind === 'file' && (
+      {analysis && item.kind === 'file' && (
         <GraphFileComplexity sum={details.fileComplexities[item.id]} />
       )}
-      <NodeMetrics node={original} />
+      {analysis && <NodeMetrics node={original} />}
     </>
   )
 }
@@ -206,6 +211,7 @@ function NodeDetails({
   details,
   onSelect,
   onOpen,
+  analysis = true,
   ...cycleProps
 }: Omit<Props, 'selected'> & { item: GraphNode }) {
   const original = details.nodes.find((node) => node.stableKey === item.id)
@@ -229,6 +235,7 @@ function NodeDetails({
         details={details}
         original={original}
         onOpen={onOpen}
+        analysis={analysis}
       />
       <div className="section-heading">
         <h4>Connections</h4>
@@ -258,7 +265,7 @@ function NodeDetails({
           </p>
         )}
       </div>
-      <GraphCycles item={item} {...cycleProps} />
+      {analysis && <GraphCycles item={item} {...cycleProps} />}
     </aside>
   )
 }

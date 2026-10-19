@@ -1,175 +1,39 @@
-import { Suspense, lazy, useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Network } from 'lucide-react'
-import { GraphSidebar } from './graph-sidebar'
-import { GraphNavigation } from './graph-navigation'
-import { GraphFileComplexity } from './graph-file-complexity'
-import type { ComponentProps } from 'react'
-import type { Architecture, GraphView, ViewCycle } from '@/lib/graph-data'
+import { GraphWorkspace } from './graph-workspace'
+import { scopeQuery } from './project-navigator'
+import type { GraphView } from '@/lib/graph-data'
 import type { GraphNode, GraphScope } from '@/lib/project-graph'
-import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-
-const GraphCanvas = lazy(() => import('./graph-canvas'))
-
-function EmptyGraph({ isFile, back }: { isFile: boolean; back?: () => void }) {
-  return (
-    <div className="empty-graph">
-      <Network size={32} />
-      <h3>
-        {isFile
-          ? 'No functions in this file'
-          : 'Nothing indexed in this folder'}
-      </h3>
-      <p>
-        {isFile
-          ? 'Configuration, styles, and documentation may not contain callable symbols.'
-          : 'Only items recorded in the saved index appear here.'}
-      </p>
-      {back && (
-        <Button variant="outline" onClick={back}>
-          Back to parent
-        </Button>
-      )}
-    </div>
-  )
-}
-
-function GraphViewport({
-  isFile,
-  back,
-  ...props
-}: ComponentProps<typeof GraphCanvas> & {
-  isFile: boolean
-  back?: () => void
-}) {
-  if (!props.graph.nodes.length)
-    return <EmptyGraph isFile={isFile} back={back} />
-  return (
-    <Suspense
-      fallback={
-        <div className="loading-state" role="status">
-          Drawing your graph…
-        </div>
-      }
-    >
-      <GraphCanvas {...props} />
-    </Suspense>
-  )
-}
-
-function GraphWorkspace({
-  view,
-  navigate,
-  ...actions
-}: {
-  view: GraphView
-  navigate: (index: number) => void
-  selected: string | null
-  focusId: string | null
-  activeCycle: ViewCycle | null
-  onSelect: (id: string | null) => void
-  onOpen: (node: GraphNode) => void
-  onCycle: (cycle: ViewCycle) => void
-  onCycleScope: (cycle: ViewCycle) => void
-}) {
-  const { trail, graph, cycles, details } = view
-  const current = trail[trail.length - 1]
-  return (
-    <section className="explorer" aria-label="Project graph">
-      <GraphNavigation trail={trail} navigate={navigate} />
-      {current.scope.kind === 'file' && (
-        <GraphFileComplexity
-          sum={details.fileComplexities[current.scope.key]}
-          compact
-        />
-      )}
-      <div className="graph-workspace">
-        <div
-          className="graph-canvas"
-          role="region"
-          aria-label={`${current.label} dependency graph`}
-        >
-          <GraphViewport
-            key={JSON.stringify(current.scope)}
-            graph={graph}
-            selected={actions.selected}
-            focusId={actions.focusId}
-            activeCycle={actions.activeCycle}
-            onSelect={actions.onSelect}
-            onOpen={actions.onOpen}
-            isFile={current.scope.kind === 'file'}
-            back={
-              trail.length > 1 ? () => navigate(trail.length - 2) : undefined
-            }
-          />
-        </div>
-        <GraphSidebar
-          key={JSON.stringify(current.scope)}
-          graph={graph}
-          details={details}
-          scope={current.scope}
-          cycles={cycles}
-          {...actions}
-        />
-      </div>
-    </section>
-  )
-}
 
 export function GraphExplorer({ initial }: { initial: GraphView }) {
   const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
   const [selected, setSelected] = useState<string | null>(null)
   const [cycleId, setCycleId] = useState<string | null>(null)
-  const view = useQuery({
-    queryKey: [
-      'graph-view',
-      initial.repositoryId,
-      initial.graphRevision,
-      scope,
-    ],
-    queryFn: () => {
-      const parameters = new URLSearchParams({
-        repositoryId: initial.repositoryId,
-        kind: scope.kind,
-      })
-      if (scope.kind !== 'repository') parameters.set('key', scope.key)
-      return api<Architecture | null>(`/api/architecture?${parameters}`)
-    },
-    initialData: scope.kind === 'repository' ? initial : undefined,
-    retry: false,
-  })
-  if (
+  const view = useQuery(scopeQuery(initial, scope))
+  const failed =
     view.error ||
     (view.data && view.data.state !== 'ready') ||
     view.data === null
-  )
-    return (
-      <div className="error-message" role="alert">
-        <p>{view.error?.message ?? 'This graph needs to be re-indexed.'}</p>
-        <Button
-          variant="outline"
-          onClick={() => {
-            void view.refetch()
-          }}
-        >
-          Try again
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setScope({ kind: 'repository' })}
-        >
-          Back to repository
-        </Button>
-      </div>
-    )
-  if (!view.data)
-    return (
-      <div className="loading-state" role="status">
-        Loading the repository graph…
-      </div>
-    )
-  const data = view.data
+  const status = failed ? (
+    <div className="error-message" role="alert">
+      <p>{view.error?.message ?? 'This graph needs to be re-indexed.'}</p>
+      <Button variant="outline" onClick={() => void view.refetch()}>
+        Try again
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => setScope({ kind: 'repository' })}
+      >
+        Back to repository
+      </Button>
+    </div>
+  ) : !view.data ? (
+    <div className="loading-state" role="status">
+      Loading the repository graph…
+    </div>
+  ) : null
+  const data = view.data?.state === 'ready' ? view.data : initial
   const activeCycle =
     data.cycles.find((cycle) => cycle.group.id === cycleId) ?? null
   const select = (id: string | null) => {
@@ -190,7 +54,14 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
   }
   return (
     <GraphWorkspace
+      initial={initial}
+      status={status}
+      requestedScope={scope}
       view={data}
+      onScope={(next) => {
+        setScope(next)
+        select(null)
+      }}
       navigate={navigate}
       selected={selected}
       focusId={cycleId !== null ? null : selected}

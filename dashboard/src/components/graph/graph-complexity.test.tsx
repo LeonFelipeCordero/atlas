@@ -61,13 +61,19 @@ function fixture(properties?: NodeComplexity): Artifact {
   }
 }
 
-function sidebar(artifact: Artifact, selected = 'run', file = true) {
+function sidebar(
+  artifact: Artifact,
+  selected = 'run',
+  file = true,
+  analysis = true,
+) {
   const graph = buildProjectGraph(
     artifact,
     file ? { kind: 'file', key: 'file' } : { kind: 'repository' },
   )
   return renderToStaticMarkup(
     <GraphSidebar
+      analysis={analysis}
       details={fixtureDetails(artifact)}
       graph={graph}
       selected={selected}
@@ -126,4 +132,20 @@ test('containers and constructors do not show complexity', () => {
   )
   artifact.nodes[2].type = artifact.nodes[2].kind = 'constructor'
   expect(sidebar(artifact)).not.toContain('aria-label="Weighted complexity"')
+})
+
+test('map inspector keeps connections and navigation without report metrics', () => {
+  const artifact = fixture(metrics)
+  for (const html of [
+    sidebar(artifact, 'run', true, false),
+    sidebar(artifact, 'file', false, false),
+    sidebar(artifact, '', false, false),
+  ]) {
+    expect(html).not.toContain('Weighted complexity')
+    expect(html).not.toContain('File complexity')
+    expect(html).not.toContain('Dependency metrics')
+    expect(html).not.toContain('Circular dependencies')
+  }
+  expect(sidebar(artifact, 'run', true, false)).toContain('Connections')
+  expect(sidebar(artifact, 'file', false, false)).toContain('Explore file')
 })
