@@ -55,10 +55,18 @@ export function GraphCycles({
             </span>
           </button>
           {activeCycle?.group.id === cycle.group.id && (
-            <p className="sidebar-hint" role="status">
-              Member files and containing folders highlighted. Only recorded
-              cycle imports are emphasized.
-            </p>
+            <div
+              className="cycle-members"
+              role="region"
+              aria-label="Cycle member files"
+            >
+              <p>Member files</p>
+              <ul>
+                {cycle.group.nodeStableKeys.map((key) => (
+                  <li key={key}>{cycle.labels[key] ?? key}</li>
+                ))}
+              </ul>
+            </div>
           )}
           {cycle.outsideCount > 0 && (
             <p className="sidebar-hint">
@@ -68,7 +76,7 @@ export function GraphCycles({
             </p>
           )}
           <Button variant="ghost" size="sm" onClick={() => onCycleScope(cycle)}>
-            Show full group
+            Report on full group
           </Button>
         </div>
       ))}

@@ -21,6 +21,7 @@ function sidebar(key: string, properties?: NodeSizeMetrics, selected = true) {
       : { kind: 'folder' as const, key: 'acme' }
   return renderToStaticMarkup(
     <GraphSidebar
+      report
       details={fixtureDetails(artifact)}
       graph={buildProjectGraph(artifact, scope)}
       scope={scope}

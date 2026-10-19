@@ -34,6 +34,7 @@ function sidebar(
         : { kind: 'repository' as const }
   return renderToStaticMarkup(
     <GraphSidebar
+      report
       details={fixtureDetails(artifact)}
       graph={buildProjectGraph(artifact, scope)}
       scope={scope}

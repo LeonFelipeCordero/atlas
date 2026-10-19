@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 type Props = CycleProps & {
+  report?: boolean
   graph: ProjectGraph
   details: GraphDetails
   selected: string | null
@@ -34,6 +35,7 @@ export function GraphSidebar({
   details,
   selected,
   scope,
+  report = false,
   onSelect,
   onOpen,
   ...cycleProps
@@ -44,6 +46,7 @@ export function GraphSidebar({
     return (
       <NodeDetails
         {...cycleProps}
+        report={report}
         item={item}
         graph={graph}
         details={details}
@@ -64,7 +67,7 @@ export function GraphSidebar({
   )
   return (
     <aside className="graph-sidebar" aria-label="Graph contents">
-      {file && (
+      {report && file && (
         <div className="sidebar-file-summary">
           <p className="eyebrow">{file.name}</p>
           <GraphFileComplexity sum={details.fileComplexities[file.stableKey]} />
@@ -73,7 +76,7 @@ export function GraphSidebar({
         </div>
       )}
       <div className="sidebar-heading">
-        <h3>In this view</h3>
+        <h3>{report ? 'Inspect an item' : 'In this view'}</h3>
         <span>{graph.nodes.length}</span>
       </div>
       <div className="search-field">
@@ -90,6 +93,7 @@ export function GraphSidebar({
           <ScopeItem
             key={node.id}
             node={node}
+            report={report}
             onSelect={onSelect}
             onOpen={onOpen}
           />
@@ -102,17 +106,19 @@ export function GraphSidebar({
           </p>
         )}
       </div>
-      <GraphCycles {...cycleProps} />
+      {report && <GraphCycles {...cycleProps} />}
     </aside>
   )
 }
 
 function ScopeItem({
   node,
+  report,
   onSelect,
   onOpen,
 }: {
   node: GraphNode
+  report: boolean
   onSelect: Props['onSelect']
   onOpen: Props['onOpen']
 }) {
@@ -139,7 +145,7 @@ function ScopeItem({
           variant="ghost"
           size="icon-sm"
           onClick={() => onOpen(node)}
-          aria-label={`Open ${node.path || node.label}`}
+          aria-label={`${report ? 'Explore' : 'Open'} ${node.path || node.label}`}
         >
           <ChevronRight />
         </Button>
@@ -158,10 +164,12 @@ function NodeSummary({
   details,
   original,
   onOpen,
+  report,
 }: {
   item: GraphNode
   details: GraphDetails
   original: ArtifactNode | undefined
+  report: boolean
   onOpen: Props['onOpen']
 }) {
   return (
@@ -171,16 +179,20 @@ function NodeSummary({
         {item.kind}
         {item.role === 'boundary' ? ' · Outside scope' : ''}
       </p>
-      {(item.scope || item.destination) && (
+      {(report || item.scope || item.destination) && (
         <Button className="open-selected" onClick={() => onOpen(item)}>
-          {item.destination ? 'Go to function' : `Explore ${item.kind}`}
+          {report
+            ? 'Explore this item'
+            : item.destination
+              ? 'Go to function'
+              : `Explore ${item.kind}`}
           <ArrowRight />
         </Button>
       )}
-      {item.kind === 'file' && (
+      {report && item.kind === 'file' && (
         <GraphFileComplexity sum={details.fileComplexities[item.id]} />
       )}
-      <NodeMetrics node={original} />
+      {report && <NodeMetrics node={original} />}
     </>
   )
 }
@@ -204,6 +216,7 @@ function NodeDetails({
   item,
   graph,
   details,
+  report = false,
   onSelect,
   onOpen,
   ...cycleProps
@@ -228,37 +241,48 @@ function NodeDetails({
         item={item}
         details={details}
         original={original}
+        report={report}
         onOpen={onOpen}
       />
-      <div className="section-heading">
-        <h4>Connections</h4>
-        <span>{connections.length}</span>
-      </div>
-      <div className="connection-list">
-        {connections.map((edge) => {
-          const outgoing = edge.source === item.id
-          const other = lookup.get(outgoing ? edge.target : edge.source)!
-          return (
-            <button
-              key={edge.id}
-              className="connection"
-              onClick={() => onSelect(other.id)}
-              title={other.path}
-            >
-              <span>
-                {outgoing ? <ArrowRight size={15} /> : <ArrowLeft size={15} />}
-                {outgoing ? 'Uses' : 'Used by'} <strong>{other.label}</strong>
-              </span>
-            </button>
-          )
-        })}
-        {!connections.length && (
-          <p className="sidebar-hint">
-            No connections recorded here. This doesn’t imply the item is unused.
-          </p>
-        )}
-      </div>
-      <GraphCycles item={item} {...cycleProps} />
+      {!report && (
+        <>
+          <div className="section-heading">
+            <h4>Connections</h4>
+            <span>{connections.length}</span>
+          </div>
+          <div className="connection-list">
+            {connections.map((edge) => {
+              const outgoing = edge.source === item.id
+              const other = lookup.get(outgoing ? edge.target : edge.source)!
+              return (
+                <button
+                  key={edge.id}
+                  className="connection"
+                  onClick={() => onSelect(other.id)}
+                  title={other.path}
+                >
+                  <span>
+                    {outgoing ? (
+                      <ArrowRight size={15} />
+                    ) : (
+                      <ArrowLeft size={15} />
+                    )}
+                    {outgoing ? 'Uses' : 'Used by'}{' '}
+                    <strong>{other.label}</strong>
+                  </span>
+                </button>
+              )
+            })}
+            {!connections.length && (
+              <p className="sidebar-hint">
+                No connections recorded here. This doesn’t imply the item is
+                unused.
+              </p>
+            )}
+          </div>
+        </>
+      )}
+      {report && <GraphCycles item={item} {...cycleProps} />}
     </aside>
   )
 }
