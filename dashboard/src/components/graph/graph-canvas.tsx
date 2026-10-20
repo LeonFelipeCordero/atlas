@@ -12,6 +12,7 @@ import {
 } from '@xyflow/react'
 import { ArrowRight, Braces, FileCode2, Folder } from 'lucide-react'
 import { layoutGraph } from './graph-layout'
+import { getGraphEdgeHandles } from './graph-edge-routing'
 import type { ProjectedCycle } from '@/lib/graph-cycles'
 import type { Node, NodeProps } from '@xyflow/react'
 import type { GraphEdge, GraphNode, ProjectGraph } from '@/lib/project-graph'
@@ -54,13 +55,15 @@ function CodeGraphNode({ data, selected }: NodeProps<CodeNode>) {
     <div
       className={`code-node ${selected ? 'is-selected' : ''} ${data.muted ? 'is-muted' : ''} ${data.item.role === 'boundary' ? 'is-boundary' : ''}`}
     >
-      <Handle type="target" position={Position.Left} />
+      <Handle id="target-top" type="target" position={Position.Top} />
+      <Handle id="target-left" type="target" position={Position.Left} />
       <div className="code-node-heading">
         <Icon size={18} />
         <strong title={data.item.label}>{data.item.label}</strong>
       </div>
       <CodeNodeAction item={data.item} open={data.open} />
-      <Handle type="source" position={Position.Right} />
+      <Handle id="source-right" type="source" position={Position.Right} />
+      <Handle id="source-bottom" type="source" position={Position.Bottom} />
     </div>
   )
 }
@@ -79,6 +82,7 @@ function canvasEdges(
   graph: ProjectGraph,
   selected: string | null,
   cycle: ProjectedCycle | null,
+  positions: ReturnType<typeof layoutGraph>,
 ) {
   const highlighted = new Set(cycle?.edges.map((edge) => edge.id))
   const edges = [...graph.edges]
@@ -92,6 +96,10 @@ function canvasEdges(
       : edge.source === selected || edge.target === selected
     return canvasEdge({
       edge,
+      handles: getGraphEdgeHandles(
+        positions.get(edge.source),
+        positions.get(edge.target),
+      ),
       active,
       cycleImport: Boolean(cycle && active),
       hasSelection: Boolean(cycle || selected),
@@ -106,6 +114,7 @@ function edgeLabel(edge: GraphEdge, cycleImport: boolean) {
 
 type CanvasEdgeOptions = {
   edge: GraphEdge
+  handles: ReturnType<typeof getGraphEdgeHandles>
   active: boolean
   cycleImport: boolean
   hasSelection: boolean
@@ -113,6 +122,7 @@ type CanvasEdgeOptions = {
 
 function canvasEdge({
   edge,
+  handles,
   active,
   cycleImport,
   hasSelection,
@@ -122,7 +132,8 @@ function canvasEdge({
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    type: 'default',
+    ...handles,
+    type: 'smoothstep',
     markerEnd: { type: MarkerType.ArrowClosed, color },
     label: edgeLabel(edge, cycleImport),
     labelStyle: { fill: 'var(--muted-foreground)', fontSize: 11 },
@@ -224,8 +235,8 @@ function Canvas({
     [graph, positions, onOpen, selected, related, activeCycle],
   )
   const edges = useMemo(
-    () => canvasEdges(graph, selected, activeCycle),
-    [graph, selected, activeCycle],
+    () => canvasEdges(graph, selected, activeCycle, positions),
+    [graph, selected, activeCycle, positions],
   )
   return (
     <ReactFlow
