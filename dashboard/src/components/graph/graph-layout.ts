@@ -1,41 +1,48 @@
-import dagre from '@dagrejs/dagre'
-import type { ProjectGraph } from '@/lib/project-graph'
+import type { GraphNode, ProjectGraph } from '@/lib/project-graph'
 
-export function layoutGraph(graph: ProjectGraph) {
-  const connected = new Set(
-    graph.edges.flatMap((edge) => [edge.source, edge.target]),
-  )
-  const layout = new dagre.graphlib.Graph()
-    .setGraph({
-      rankdir: 'LR',
-      nodesep: 30,
-      ranksep: 100,
-      marginx: 30,
-      marginy: 30,
-    })
-    .setDefaultEdgeLabel(() => ({}))
-  for (const node of graph.nodes) {
-    if (connected.has(node.id))
-      layout.setNode(node.id, { width: 220, height: 78 })
+const compareNodes = (first: GraphNode, second: GraphNode) =>
+  first.label.localeCompare(second.label) || first.id.localeCompare(second.id)
+
+export function layoutGraph({ nodes, edges }: ProjectGraph) {
+  const nodeIds = new Set(nodes.map((node) => node.id))
+  const outgoing = new Map<string, Array<string>>()
+  const incoming = new Set<string>()
+  for (const edge of edges) {
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) continue
+    outgoing.set(edge.source, [
+      ...(outgoing.get(edge.source) ?? []),
+      edge.target,
+    ])
+    incoming.add(edge.target)
   }
-  for (const edge of graph.edges) layout.setEdge(edge.source, edge.target)
-  dagre.layout(layout)
-  const positions = new Map<string, { x: number; y: number }>()
-  for (const id of connected) {
-    const node = layout.node(id)
-    positions.set(id, { x: node.x - 110, y: node.y - 39 })
+  const sorted = [...nodes].sort(compareNodes)
+  const roots = sorted.filter((node) => !incoming.has(node.id))
+  const ranks = new Map(roots.map((node) => [node.id, 0]))
+  const queue = roots.map((node) => node.id)
+  const visit = (start: number) => {
+    for (let index = start; index < queue.length; index += 1) {
+      const source = queue[index]
+      for (const target of outgoing.get(source) ?? []) {
+        if (ranks.has(target)) continue
+        ranks.set(target, ranks.get(source)! + 1)
+        queue.push(target)
+      }
+    }
   }
-  const bottom = Math.max(
-    0,
-    ...Array.from(positions.values(), (position) => position.y + 128),
-  )
-  const isolated = graph.nodes.filter((node) => !connected.has(node.id))
-  const columns = Math.max(2, Math.ceil(Math.sqrt(isolated.length)))
-  isolated.forEach((node, index) =>
-    positions.set(node.id, {
-      x: (index % columns) * 260 + 30,
-      y: bottom + Math.floor(index / columns) * 113 + 30,
+  visit(0)
+  for (const node of sorted) {
+    if (ranks.has(node.id)) continue
+    ranks.set(node.id, 0)
+    queue.push(node.id)
+    visit(queue.length - 1)
+  }
+  const rows = new Map<number, number>()
+  return new Map(
+    sorted.map((node) => {
+      const rank = ranks.get(node.id)!
+      const row = rows.get(rank) ?? 0
+      rows.set(rank, row + 1)
+      return [node.id, { x: 32 + rank * 272, y: 32 + row * 118 }]
     }),
   )
-  return positions
 }
