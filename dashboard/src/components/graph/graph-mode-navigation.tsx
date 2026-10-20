@@ -1,3 +1,4 @@
+import { FileText, Network } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export type WorkspaceMode = 'explore' | 'report'
@@ -16,19 +17,19 @@ export function GraphModeNavigation({
         aria-pressed={mode === 'explore'}
         onClick={() => onMode('explore')}
       >
-        Explore
+        <Network size={16} aria-hidden="true" /> Explore
       </Button>
       <Button
         variant={mode === 'report' ? 'default' : 'ghost'}
         aria-pressed={mode === 'report'}
         onClick={() => onMode('report')}
       >
-        Report
+        <FileText size={16} aria-hidden="true" /> Report
       </Button>
       <p>
         {mode === 'explore'
-          ? 'Structure and connections'
-          : 'Analysis from the saved index'}
+          ? 'Explore structure and connections'
+          : 'Review findings and measurements'}
       </p>
     </div>
   )

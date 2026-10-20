@@ -135,7 +135,7 @@ test('Report distinguishes no findings from unavailable metrics', () => {
   expect(html).toContain('No diagnostics recorded')
   expect(html).toContain('No file-import cycles recorded')
   expect(html).toContain('Not available')
-  expect(html).toContain('not included in this saved graph response')
+  expect(html).toContain('pass/fail results are not available')
 })
 
 test('Explore remains structural even with metrics and cycles available', () => {
@@ -196,10 +196,10 @@ test('Report search, type filter, disclosure and explicit navigation work', () =
     const group = walk(tree, e => e.props.title === 'In this scope')
     const record = group.type(group.props).props.children[1][0]
     let detail = record.type(record.props)
-    detail.props.children[0].props.onClick({ preventDefault() {} })
+    detail.props.children[0].props.children[0].props.onClick({ preventDefault() {} })
     if (selected !== 'run') throw Error('Disclosure failed')
     detail = record.type({ ...record.props, selected })
-    const reportItem = detail.props.children[1].props.children[0]
+    const reportItem = detail.props.children[0].props.children[1].props.children[0]
     const itemTree = reportItem.type(reportItem.props)
     walk(itemTree, e => e.props.onClick)?.props.onClick()
     if (explored !== 'run') throw Error('Explore link failed')

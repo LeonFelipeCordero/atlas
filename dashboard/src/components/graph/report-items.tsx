@@ -1,3 +1,10 @@
+import {
+  ArrowUpRight,
+  Braces,
+  ChevronRight,
+  FileCode2,
+  Folder,
+} from 'lucide-react'
 import { useState } from 'react'
 import { ReportItem } from './report-item'
 import type { ArtifactNode } from '@/lib/architecture-artifact'
@@ -37,10 +44,16 @@ export function ReportItems(props: ReportItemProps) {
   )
   return (
     <section aria-label="Item measurements" className="report-measurements">
-      <h3>Item measurements</h3>
+      <div className="report-section-heading">
+        <h3>Item measurements</h3>
+        <span>
+          {view.details.nodes.length}{' '}
+          {view.details.nodes.length === 1 ? 'item' : 'items'} indexed
+        </span>
+      </div>
       <p className="sidebar-hint">
-        Open an item for actual values, source location, and connections. Use
-        its report link to inspect the next level without opening the graph.
+        Select an item to inspect measurements and evidence. Open its report to
+        go one level deeper.
       </p>
       <div className="report-controls">
         <label>
@@ -110,43 +123,108 @@ function ItemRecord({
   const item = view.graph.nodes.find((entry) => entry.id === node.stableKey)
   const expanded = selected === node.stableKey
   return (
-    <details className="report-record" open={expanded}>
-      <summary
-        onClick={(event) => {
-          event.preventDefault()
-          onSelect(expanded ? null : node.stableKey)
-        }}
-      >
-        <strong>{node.name}</strong>
-        <span>{node.path || node.qualifiedName || node.kind}</span>
-        <small>
-          {node.kind}
-          {node.properties?.cyclomaticComplexity !== undefined &&
-            ` · Weighted complexity ${node.properties.cyclomaticComplexity}`}
-          {node.properties?.lineCount !== undefined &&
-            ` · ${node.properties.lineCount} lines`}
-        </small>
-      </summary>
-      {expanded && (
-        <>
-          <ReportItem
-            node={node}
-            item={item}
-            view={view}
-            onExplore={onExplore}
+    <div className={`report-record${expanded ? ' is-expanded' : ''}`}>
+      <details open={expanded}>
+        <summary
+          onClick={(event) => {
+            event.preventDefault()
+            onSelect(expanded ? null : node.stableKey)
+          }}
+        >
+          <ChevronRight
+            className="report-row-chevron"
+            size={16}
+            aria-hidden="true"
           />
-          {item?.scope && (
-            <Button
-              className="report-drill"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpen(item)}
-            >
-              Report on {node.name}
-            </Button>
-          )}
-        </>
+          <span className="report-item-icon" aria-hidden="true">
+            {node.level === 'module' ? (
+              <Folder size={19} />
+            ) : node.level === 'file' ? (
+              <FileCode2 size={19} />
+            ) : (
+              <Braces size={19} />
+            )}
+          </span>
+          <span className="report-row-name">
+            <strong>{node.name}</strong>
+            <span>{node.path || node.qualifiedName || node.kind}</span>
+          </span>
+          <span className="report-row-measurements">
+            {node.properties?.cyclomaticComplexity != null && (
+              <span>
+                <strong>{String(node.properties.cyclomaticComplexity)}</strong>{' '}
+                Weighted complexity
+              </span>
+            )}
+            {node.properties?.lineCount != null && (
+              <span>
+                <strong>{String(node.properties.lineCount)}</strong> lines
+              </span>
+            )}
+            <small>{node.kind}</small>
+          </span>
+        </summary>
+        {expanded && (
+          <>
+            <ReportItem
+              node={node}
+              item={item}
+              view={view}
+              onExplore={onExplore}
+            />
+            {item?.scope && (
+              <Button
+                className="report-drill"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpen(item)}
+              >
+                Report on {node.name}{' '}
+                <ChevronRight size={14} aria-hidden="true" />
+              </Button>
+            )}
+          </>
+        )}
+      </details>
+      {!expanded && item?.scope && (
+        <ItemActions
+          item={item}
+          name={node.name}
+          onOpen={onOpen}
+          onExplore={onExplore}
+        />
       )}
-    </details>
+    </div>
+  )
+}
+
+function ItemActions({
+  item,
+  name,
+  onOpen,
+  onExplore,
+}: Pick<ReportItemProps, 'onOpen' | 'onExplore'> & {
+  item: GraphNode
+  name: string
+}) {
+  return (
+    <div className="report-row-actions">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onOpen(item)}
+        aria-label={`Open report for ${name}`}
+      >
+        Open report <ChevronRight size={14} aria-hidden="true" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onExplore(item)}
+        aria-label={`View in graph: ${name}`}
+      >
+        View in graph <ArrowUpRight size={14} aria-hidden="true" />
+      </Button>
+    </div>
   )
 }

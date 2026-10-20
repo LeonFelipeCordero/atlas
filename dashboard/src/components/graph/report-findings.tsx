@@ -1,3 +1,4 @@
+import { AlertTriangle, CircleAlert, CircleCheck, Info } from 'lucide-react'
 import type { GraphView, ViewCycle } from '@/lib/graph-data'
 import { Button } from '@/components/ui/button'
 
@@ -11,23 +12,33 @@ export function ReportFindings({
   return (
     <section className="report-findings" aria-label="Recorded findings">
       <h3>Recorded findings</h3>
-      <p>
+      <p className="report-finding-count">
         {view.cycles.length} import cycle{' '}
         {view.cycles.length === 1 ? 'group' : 'groups'} touching this scope ·{' '}
         {view.diagnostics.length} repository{' '}
         {view.diagnostics.length === 1 ? 'diagnostic' : 'diagnostics'}
       </p>
-      <p className="sidebar-hint">
-        Configured thresholds and check violations are not included in this
-        saved graph response. Metric values below are measurements, not
-        pass/fail results.
-      </p>
-      {view.cycles.length === 0 && (
-        <p className="sidebar-hint">
-          No file-import cycles recorded for this scope. This is not a clean
-          bill of health.
-        </p>
-      )}
+      <div
+        className={`report-cycle-status ${view.cycles.length ? 'report-warning' : 'report-neutral'}`}
+      >
+        {view.cycles.length ? (
+          <AlertTriangle size={18} aria-hidden="true" />
+        ) : (
+          <CircleCheck size={18} aria-hidden="true" />
+        )}
+        <div>
+          <strong>
+            {view.cycles.length
+              ? 'Circular imports need review'
+              : 'No import cycles recorded'}
+          </strong>
+          <p>
+            {view.cycles.length
+              ? 'These files depend on each other. Inspect the groups below.'
+              : 'No file-import cycles recorded for this scope. Other issues may still exist.'}
+          </p>
+        </div>
+      </div>
       {view.cycles.map((cycle) => (
         <CycleFinding
           key={cycle.group.id}
@@ -44,12 +55,23 @@ export function ReportFindings({
         {view.diagnostics.length ? (
           <ul className="report-connections">
             {view.diagnostics.map((diagnostic, index) => (
-              <li key={index}>
-                <strong>
-                  {diagnostic.severity} · {diagnostic.path}
-                </strong>
+              <li
+                key={index}
+                className={`report-diagnostic report-${diagnostic.severity === 'error' ? 'error' : diagnostic.severity === 'warning' ? 'warning' : 'neutral'}`}
+              >
+                <div className="report-diagnostic-label">
+                  {diagnostic.severity === 'error' ? (
+                    <CircleAlert size={16} aria-hidden="true" />
+                  ) : diagnostic.severity === 'warning' ? (
+                    <AlertTriangle size={16} aria-hidden="true" />
+                  ) : (
+                    <Info size={16} aria-hidden="true" />
+                  )}
+                  <strong>{diagnostic.severity}</strong>
+                </div>
+                <p>{diagnostic.message}</p>
                 <span>
-                  {diagnostic.language} · {diagnostic.message}
+                  {diagnostic.path} · {diagnostic.language}
                 </span>
               </li>
             ))}
@@ -74,7 +96,7 @@ function CycleFinding({
 }) {
   const label = (key: string) => cycle.labels[key] ?? key
   return (
-    <details className="report-source">
+    <details className="report-source report-cycle-finding">
       <summary>
         {cycle.group.nodeStableKeys.length} files in import cycle ·{' '}
         {label(cycle.group.nodeStableKeys[0])}
