@@ -87,6 +87,7 @@ function selectedFile({
 }: SidebarSelection) {
   return renderToStaticMarkup(
     <GraphSidebar
+      report
       details={fixtureDetails(artifact)}
       graph={graph}
       selected={selected}
@@ -151,7 +152,7 @@ test('unselected inside-file sidebar shows the current file sum', () => {
   })
   expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
-  expect(html).toContain('In this view')
+  expect(html).toContain('Inspect an item')
 })
 
 test('single local file preview ignores boundary nodes, multiple files have no implicit sum', () => {

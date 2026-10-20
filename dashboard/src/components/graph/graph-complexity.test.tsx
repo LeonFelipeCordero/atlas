@@ -61,13 +61,19 @@ function fixture(properties?: NodeComplexity): Artifact {
   }
 }
 
-function sidebar(artifact: Artifact, selected = 'run', file = true) {
+function sidebar(
+  artifact: Artifact,
+  selected = 'run',
+  file = true,
+  report = true,
+) {
   const graph = buildProjectGraph(
     artifact,
     file ? { kind: 'file', key: 'file' } : { kind: 'repository' },
   )
   return renderToStaticMarkup(
     <GraphSidebar
+      report={report}
       details={fixtureDetails(artifact)}
       graph={graph}
       selected={selected}
@@ -80,6 +86,19 @@ function sidebar(artifact: Artifact, selected = 'run', file = true) {
     />,
   )
 }
+
+test('Explore keeps connections without analysis, Report keeps analysis without connections', () => {
+  const artifact = fixture(metrics)
+  const explore = sidebar(artifact, 'run', true, false)
+  expect(explore).toContain('Connections')
+  expect(explore).not.toContain('Weighted complexity')
+  expect(explore).not.toContain('Circular dependencies')
+  expect(explore).not.toContain('Dependency metrics')
+  const report = sidebar(artifact)
+  expect(report).toContain('Weighted complexity')
+  expect(report).toContain('Explore this item')
+  expect(report).not.toContain('<h4>Connections</h4>')
+})
 
 test('imported complexity survives graph projection and displays its breakdown', () => {
   const artifact = fixture(metrics)

@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Network } from 'lucide-react'
 import { GraphSidebar } from './graph-sidebar'
 import { GraphNavigation } from './graph-navigation'
-import { GraphFileComplexity } from './graph-file-complexity'
+import { GraphModeNavigation } from './graph-mode-navigation'
+import { GraphReport } from './graph-report'
 import type { ComponentProps } from 'react'
 import type { Architecture, GraphView, ViewCycle } from '@/lib/graph-data'
 import type { GraphNode, GraphScope } from '@/lib/project-graph'
@@ -61,9 +62,13 @@ function GraphViewport({
 function GraphWorkspace({
   view,
   navigate,
+  mode,
+  onMode,
   ...actions
 }: {
   view: GraphView
+  mode: 'explore' | 'report'
+  onMode: (mode: 'explore' | 'report') => void
   navigate: (index: number) => void
   selected: string | null
   focusId: string | null
@@ -73,55 +78,61 @@ function GraphWorkspace({
   onCycle: (cycle: ViewCycle) => void
   onCycleScope: (cycle: ViewCycle) => void
 }) {
-  const { trail, graph, cycles, details } = view
+  const { trail, graph, details } = view
   const current = trail[trail.length - 1]
   return (
     <section className="explorer" aria-label="Project graph">
+      <GraphModeNavigation mode={mode} onMode={onMode} />
       <GraphNavigation trail={trail} navigate={navigate} />
-      {current.scope.kind === 'file' && (
-        <GraphFileComplexity
-          sum={details.fileComplexities[current.scope.key]}
-          compact
+      {mode === 'report' ? (
+        <GraphReport
+          key={JSON.stringify(current.scope)}
+          view={view}
+          {...actions}
+          onExplore={(node) => {
+            if (node) actions.onOpen(node)
+            onMode('explore')
+          }}
         />
-      )}
-      <div className="graph-workspace">
-        <div
-          className="graph-canvas"
-          role="region"
-          aria-label={`${current.label} dependency graph`}
-        >
-          <GraphViewport
+      ) : (
+        <div className="graph-workspace">
+          <div
+            className="graph-canvas"
+            role="region"
+            aria-label={`${current.label} dependency graph`}
+          >
+            <GraphViewport
+              key={JSON.stringify(current.scope)}
+              graph={graph}
+              selected={actions.selected}
+              focusId={actions.focusId}
+              activeCycle={null}
+              onSelect={actions.onSelect}
+              onOpen={actions.onOpen}
+              isFile={current.scope.kind === 'file'}
+              back={
+                trail.length > 1 ? () => navigate(trail.length - 2) : undefined
+              }
+            />
+          </div>
+          <GraphSidebar
             key={JSON.stringify(current.scope)}
             graph={graph}
-            selected={actions.selected}
-            focusId={actions.focusId}
-            activeCycle={actions.activeCycle}
-            onSelect={actions.onSelect}
+            details={details}
+            scope={current.scope}
+            cycles={undefined}
+            {...actions}
+            report={false}
             onOpen={actions.onOpen}
-            isFile={current.scope.kind === 'file'}
-            back={
-              trail.length > 1 ? () => navigate(trail.length - 2) : undefined
-            }
           />
         </div>
-        <GraphSidebar
-          key={JSON.stringify(current.scope)}
-          graph={graph}
-          details={details}
-          scope={current.scope}
-          cycles={cycles}
-          {...actions}
-        />
-      </div>
+      )}
     </section>
   )
 }
 
-export function GraphExplorer({ initial }: { initial: GraphView }) {
-  const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
-  const [selected, setSelected] = useState<string | null>(null)
-  const [cycleId, setCycleId] = useState<string | null>(null)
-  const view = useQuery({
+function useGraphView(initial: GraphView, scope: GraphScope) {
+  return useQuery({
     queryKey: [
       'graph-view',
       initial.repositoryId,
@@ -139,6 +150,14 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
     initialData: scope.kind === 'repository' ? initial : undefined,
     retry: false,
   })
+}
+
+export function GraphExplorer({ initial }: { initial: GraphView }) {
+  const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
+  const [selected, setSelected] = useState<string | null>(null)
+  const [cycleId, setCycleId] = useState<string | null>(null)
+  const [mode, setMode] = useState<'explore' | 'report'>('explore')
+  const view = useGraphView(initial, scope)
   if (
     view.error ||
     (view.data && view.data.state !== 'ready') ||
@@ -192,8 +211,10 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
     <GraphWorkspace
       view={data}
       navigate={navigate}
+      mode={mode}
+      onMode={setMode}
       selected={selected}
-      focusId={cycleId !== null ? null : selected}
+      focusId={selected}
       activeCycle={activeCycle}
       onSelect={select}
       onOpen={open}

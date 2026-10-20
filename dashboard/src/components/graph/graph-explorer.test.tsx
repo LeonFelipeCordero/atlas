@@ -40,8 +40,17 @@ function explorerStates() {
       return props
     }
     let actions = render()
+    if (actions.mode !== 'explore') throw new Error('Explore must be the default')
     actions.onSelect('run')
     actions = render()
+    actions.onMode('report')
+    cursor = 0
+    const report = GraphExplorer({ initial }).props
+    if (report.mode !== 'report' || report.selected !== 'run') throw new Error('Report lost selection')
+    report.onMode('explore')
+    cursor = 0
+    const explore = GraphExplorer({ initial }).props
+    if (explore.mode !== 'explore' || explore.selected !== 'run') throw new Error('Explore lost selection')
     actions.onCycle(cycle)
     actions = render()
     showCycle = false
@@ -77,8 +86,8 @@ test('selection, cycles, boundary destinations and breadcrumbs retain focus beha
   expect(explorerStates()).toEqual([
     { selected: null, focusId: null, cycle: null, scope: repository },
     { selected: 'run', focusId: 'run', cycle: null, scope: repository },
-    { selected: 'run', focusId: null, cycle: 'cycle', scope: repository },
-    { selected: 'run', focusId: null, cycle: null, scope: repository },
+    { selected: 'run', focusId: 'run', cycle: 'cycle', scope: repository },
+    { selected: 'run', focusId: 'run', cycle: null, scope: repository },
     {
       selected: 'stop',
       focusId: 'stop',
