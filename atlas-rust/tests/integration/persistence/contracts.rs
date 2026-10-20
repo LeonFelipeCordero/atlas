@@ -1,3 +1,6 @@
+#[path = "writes.rs"]
+mod writes;
+
 use super::database::run;
 use super::{
     database::migrate_database,

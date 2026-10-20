@@ -1,4 +1,5 @@
 pub mod database;
+mod graph_inserts;
 pub mod graph_metadata;
 pub mod graph_queries;
 pub mod graph_records;

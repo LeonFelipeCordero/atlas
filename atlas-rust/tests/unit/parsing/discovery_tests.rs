@@ -1,8 +1,44 @@
 //! Rule-policy tests need paths and ignore specs, not a filesystem or parser.
 use super::*;
 
-fn rules(base: &str, text: &str) -> Rules {
-    Rules { base: base.into(), spec: IgnoreSpec::new(text).unwrap() }
+fn rules(base: &str, text: &str) -> Rc<Rules> {
+    Rc::new(Rules { base: base.into(), spec: IgnoreSpec::new(text).unwrap() })
+}
+
+#[test]
+fn child_contexts_share_rules_without_leaking_local_overrides() {
+    let parent = DirectoryContext {
+        base: "/repo".into(),
+        git: vec![rules("/repo", "*.py\n")],
+        atlas: vec![rules("/repo", "blocked.py\n")],
+        use_gitignore: true,
+    };
+    let mut child = DirectoryContext { base: "/repo/src".into(), ..parent.clone() };
+    assert!(Rc::ptr_eq(&parent.git[0], &child.git[0]));
+    assert!(Rc::ptr_eq(&parent.atlas[0], &child.atlas[0]));
+    child.git.push(rules("/repo/src", "!keep.py\n!blocked.py\n"));
+    let sibling = DirectoryContext { base: "/repo/other".into(), ..parent.clone() };
+    assert!(child.include_file(Path::new("/repo/src/keep.py")));
+    assert!(!child.include_file(Path::new("/repo/src/blocked.py")));
+    assert!(!parent.include_file(Path::new("/repo/keep.py")));
+    assert!(!sibling.include_file(Path::new("/repo/other/keep.py")));
+}
+
+#[test]
+#[ignore = "focused repeatable timing; run with --ignored --nocapture --test-threads=1"]
+fn benchmark_inherited_rule_cloning() {
+    let patterns = (0..32).map(|i| format!("ignored-{i}/\n!keep-{i}.py\n")).collect::<String>();
+    let context = DirectoryContext {
+        base: "/repo/src".into(),
+        git: (0..4).map(|_| rules("/repo", &patterns)).collect(),
+        atlas: vec![rules("/repo", &patterns)],
+        use_gitignore: true,
+    };
+    let start = std::time::Instant::now();
+    for _ in 0..500 {
+        std::hint::black_box(std::hint::black_box(&context).clone());
+    }
+    eprintln!("500 directory-context clones, 320 patterns: {:?}", start.elapsed());
 }
 
 #[test]

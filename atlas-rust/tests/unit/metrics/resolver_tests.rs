@@ -60,6 +60,57 @@ fn resolver(file: ParsedFile) -> CallResolver {
     CallResolver::new(&ParsedRepository { files: vec![file] })
 }
 
+fn full_walk_import<'a>(syntax: &'a Syntax, line: usize, query: Option<&str>) -> Option<Node<'a>> {
+    let mut candidates: Vec<_> = syntax
+        .nodes()
+        .into_iter()
+        .filter(|node| {
+            node.start_position().row + 1 == line && syntax.adapter.is_import_node_with_source(*node, &syntax.source)
+        })
+        .collect();
+    if let Some(query) = query {
+        let exact: Vec<_> = candidates
+            .iter()
+            .copied()
+            .filter(|node| syntax.text(*node).trim().trim_end_matches(';') == query.trim().trim_end_matches(';'))
+            .collect();
+        if !exact.is_empty() {
+            candidates = exact;
+        }
+    }
+    if candidates.len() == 1 { Some(candidates[0]) } else { None }
+}
+
+fn assert_import_lookup_matches_walk(syntax: &Syntax, language: &str, line: usize) {
+    let candidates: Vec<_> = syntax
+        .nodes()
+        .into_iter()
+        .filter(|node| {
+            node.start_position().row + 1 == line && syntax.adapter.is_import_node_with_source(*node, &syntax.source)
+        })
+        .collect();
+    let spellings: Vec<_> = candidates.iter().map(|node| syntax.text(*node)).collect();
+    for query in [None, Some("unknown import")].into_iter().chain(spellings.iter().map(|s| Some(s.as_str()))) {
+        let expected = full_walk_import(syntax, line, query);
+        assert_eq!(syntax.import_node(line, query), expected, "{language}:{line}:{query:?}");
+    }
+}
+
+#[test]
+fn indexed_import_lookup_matches_full_walk_including_ambiguity_and_missing_lines() {
+    for (language, source) in [
+        ("python", "import first; import second\ndef f():\n import nested\n"),
+        ("javascript", "import { x } from 'first';\nconst y = require('second');\n"),
+        ("rust", "use first::{x, y};\nmod nested { use second::z; }\n"),
+        ("elixir", "alias First\nimport Second\nrequire Third\n"),
+    ] {
+        let mut parsed = file(source, vec![]);
+        parsed.source.language = language.into();
+        let syntax = Syntax::new(&parsed, get_resolution_adapter(language));
+        (0..=source.lines().count() + 1).for_each(|line| assert_import_lookup_matches_walk(&syntax, language, line));
+    }
+}
+
 #[test]
 fn enclosing_owner_includes_exact_boundaries_and_uses_narrowest_span() {
     let resolver = resolver(file(

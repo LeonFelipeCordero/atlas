@@ -186,7 +186,7 @@ async fn replace_graph(connection: &impl ConnectionTrait, id: &str, artifact: &V
         .exec(connection)
         .await?;
     for (ordinal, n) in collection(artifact, "nodes").iter().enumerate() {
-        graph_nodes::Entity::insert(node_record(id, ordinal, n)?.into_active_model()).exec(connection).await?;
+        super::graph_inserts::node(connection, node_record(id, ordinal, n)?).await?;
     }
     for n in collection(artifact, "nodes") {
         insert_node_details(connection, id, n).await?;

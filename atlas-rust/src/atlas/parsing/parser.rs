@@ -55,7 +55,7 @@ pub fn syntax_error(root: Node<'_>) -> Option<String> {
                 point.column + 1
             ));
         }
-        pending.extend(children(node).into_iter().rev());
+        pending.extend(children(node).into_iter().rev().filter(|child| child.has_error() || child.is_missing()));
     }
     None
 }

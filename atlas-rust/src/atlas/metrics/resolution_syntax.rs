@@ -125,6 +125,7 @@ struct SyntaxCache {
     tree: OnceLock<Option<Tree>>,
     index: OnceLock<NodeIndex>,
     imports: OnceLock<Vec<(String, NodeRef)>>,
+    import_nodes: OnceLock<BTreeMap<usize, Vec<NodeRef>>>,
     bindings: OnceLock<BindingIndex>,
     #[cfg(test)]
     dereferences: std::sync::atomic::AtomicUsize,
@@ -327,11 +328,17 @@ impl Syntax {
     /// Find one import on a one-based `line`, preferring normalized matches to optional `source`.
     /// Return `None` if no unique candidate remains.
     pub fn import_node(&self, line: usize, source: Option<&str>) -> Option<Node<'_>> {
-        let mut candidates: Vec<_> = self
-            .nodes()
-            .into_iter()
-            .filter(|n| n.start_position().row + 1 == line && self.adapter.is_import_node_with_source(*n, &self.source))
-            .collect();
+        let index = self.cache.import_nodes.get_or_init(|| {
+            let mut index: BTreeMap<usize, Vec<NodeRef>> = BTreeMap::new();
+            for node in self.nodes() {
+                if self.adapter.is_import_node_with_source(node, &self.source) {
+                    index.entry(node.start_position().row + 1).or_default().push(self.reference(node));
+                }
+            }
+            index
+        });
+        let mut candidates: Vec<_> =
+            index.get(&line).into_iter().flatten().filter_map(|node| self.dereference(node)).collect();
         if let Some(source) = source {
             let exact: Vec<_> = candidates
                 .iter()
@@ -542,6 +549,12 @@ mod tests {
         assert!(syntax.import_node(1, Some("import unknown")).is_none());
         assert_eq!(syntax.text(syntax.import_node(1, Some(" import first; ")).unwrap()), "import first");
         assert_eq!(syntax.import_scope(2, None), syntax.root());
+        let cloned = syntax.clone();
+        assert!(std::ptr::eq(syntax.cache.import_nodes.get().unwrap(), cloned.cache.import_nodes.get().unwrap()));
+        assert_eq!(cloned.import_node(1, Some("import second")), syntax.import_node(1, Some("import second")));
+        syntax.cache.dereferences.store(0, std::sync::atomic::Ordering::Relaxed);
+        assert!(syntax.import_node(500, None).is_none());
+        assert_eq!(syntax.cache.dereferences.load(std::sync::atomic::Ordering::Relaxed), 0);
     }
     #[test]
     fn nearest_parent_scope_and_half_open_visibility() {

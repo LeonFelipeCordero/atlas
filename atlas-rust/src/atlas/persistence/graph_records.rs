@@ -1,6 +1,6 @@
-use super::models::*;
+use super::{graph_inserts, models::*};
 use anyhow::{Result, anyhow, ensure};
-use sea_orm::{ConnectionTrait, EntityTrait, IntoActiveModel};
+use sea_orm::ConnectionTrait;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
@@ -105,10 +105,10 @@ pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n:
             byte_count: n["properties"]["bytes"].as_i64(),
             sha256: text(&n["properties"], "sha256"),
         };
-        graph_files::Entity::insert(row.into_active_model()).exec(connection).await?;
+        graph_inserts::file(connection, row).await?;
     }
     if is_symbol(n) {
-        graph_symbols::Entity::insert(symbol_record(id, &key, n).into_active_model()).exec(connection).await?;
+        graph_inserts::symbol(connection, symbol_record(id, &key, n)).await?;
         for (ordinal, decorator) in collection(&n["properties"], "decorators").iter().enumerate() {
             let row = GraphNodeDecoratorRow {
                 repository_id: id.into(),
@@ -116,11 +116,11 @@ pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n:
                 ordinal: ordinal as i64,
                 decorator: decorator.as_str().ok_or_else(|| anyhow!("Graph decorators must contain strings"))?.into(),
             };
-            graph_node_decorators::Entity::insert(row.into_active_model()).exec(connection).await?;
+            graph_inserts::decorator(connection, row).await?;
         }
     }
     if METRIC_NAMES.iter().any(|name| n["properties"].get(name).is_some()) {
-        graph_node_metrics::Entity::insert(metric_record(id, &key, n).into_active_model()).exec(connection).await?;
+        graph_inserts::metric(connection, metric_record(id, &key, n)).await?;
     }
     Ok(())
 }
@@ -141,7 +141,7 @@ pub async fn insert_edges(connection: &impl ConnectionTrait, id: &str, artifact:
             line: e["line"].as_i64(),
             type_only: e["typeOnly"] == true,
         };
-        graph_edges::Entity::insert(row.into_active_model()).exec(connection).await?;
+        graph_inserts::edge(connection, row).await?;
     }
     Ok(())
 }
@@ -157,7 +157,7 @@ pub async fn insert_diagnostics(connection: &impl ConnectionTrait, id: &str, art
             language: required(d, "language")?,
             message: required(d, "message")?,
         };
-        graph_diagnostics::Entity::insert(row.into_active_model()).exec(connection).await?;
+        graph_inserts::diagnostic(connection, row).await?;
     }
     Ok(())
 }
@@ -184,7 +184,7 @@ pub async fn insert_candidates(connection: &impl ConnectionTrait, id: &str, arti
             operator: text(c, "operator"),
             payload: serde_json::to_string(c)?,
         };
-        graph_mutation_candidates::Entity::insert(row.into_active_model()).exec(connection).await?;
+        graph_inserts::candidate(connection, row).await?;
     }
     Ok(())
 }
