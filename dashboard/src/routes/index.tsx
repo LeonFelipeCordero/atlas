@@ -9,21 +9,6 @@ import { RepositoryForm } from '@/components/repository-form'
 
 export const Route = createFileRoute('/')({ component: RepositoriesPage })
 
-function AddRepositoryButton({
-  showForm,
-  toggle,
-}: {
-  showForm: boolean
-  toggle: () => void
-}) {
-  return (
-    <Button variant={showForm ? 'outline' : 'default'} onClick={toggle}>
-      {showForm ? <X /> : <Plus />}
-      {showForm ? 'Cancel' : 'Add repository'}
-    </Button>
-  )
-}
-
 function RepositoriesPage() {
   const repositories = useQuery(repositoriesQuery)
   const [showForm, setShowForm] = useState(false)
@@ -42,10 +27,13 @@ function RepositoriesPage() {
             Your repositories <span>{repositories.data?.length ?? ''}</span>
           </h1>
           {!isEmpty && (
-            <AddRepositoryButton
-              showForm={showForm}
-              toggle={() => setShowForm(!showForm)}
-            />
+            <Button
+              variant={showForm ? 'outline' : 'default'}
+              onClick={() => setShowForm(!showForm)}
+            >
+              {showForm ? <X /> : <Plus />}
+              {showForm ? 'Cancel' : 'Add repository'}
+            </Button>
           )}
         </div>
         {repositories.isPending && (

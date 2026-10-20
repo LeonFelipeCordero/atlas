@@ -12,18 +12,12 @@ function complexityHint(
   return `Sum of weighted complexity across ${sum.functions} ${sum.functions === 1 ? 'function/method' : 'functions/methods'} in this file.`
 }
 
-export function GraphFileComplexity({
-  sum,
-  compact = false,
-}: {
-  sum: FileComplexitySum
-  compact?: boolean
-}) {
+export function GraphFileComplexity({ sum }: { sum: FileComplexitySum }) {
   const unavailable = sum.functions > 0 && sum.measured === 0
   const partial = sum.measured < sum.functions
   return (
     <section
-      className={`file-complexity ${compact ? 'file-complexity-bar' : 'node-complexity'}`}
+      className="file-complexity node-complexity"
       aria-label="File weighted complexity sum"
     >
       <h4>Weighted complexity sum</h4>

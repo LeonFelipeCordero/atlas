@@ -72,10 +72,8 @@ function GraphWorkspace({
   navigate: (index: number) => void
   selected: string | null
   focusId: string | null
-  activeCycle: ViewCycle | null
   onSelect: (id: string | null) => void
   onOpen: (node: GraphNode) => void
-  onCycle: (cycle: ViewCycle) => void
   onCycleScope: (cycle: ViewCycle) => void
 }) {
   const { trail, graph, details } = view
@@ -106,7 +104,6 @@ function GraphWorkspace({
               graph={graph}
               selected={actions.selected}
               focusId={actions.focusId}
-              activeCycle={null}
               onSelect={actions.onSelect}
               onOpen={actions.onOpen}
               isFile={current.scope.kind === 'file'}
@@ -119,10 +116,8 @@ function GraphWorkspace({
             key={JSON.stringify(current.scope)}
             graph={graph}
             details={details}
-            scope={current.scope}
-            cycles={undefined}
-            {...actions}
-            report={false}
+            selected={actions.selected}
+            onSelect={actions.onSelect}
             onOpen={actions.onOpen}
           />
         </div>
@@ -155,7 +150,6 @@ function useGraphView(initial: GraphView, scope: GraphScope) {
 export function GraphExplorer({ initial }: { initial: GraphView }) {
   const [scope, setScope] = useState<GraphScope>({ kind: 'repository' })
   const [selected, setSelected] = useState<string | null>(null)
-  const [cycleId, setCycleId] = useState<string | null>(null)
   const [mode, setMode] = useState<'explore' | 'report'>('explore')
   const view = useGraphView(initial, scope)
   if (
@@ -189,23 +183,16 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
       </div>
     )
   const data = view.data
-  const activeCycle =
-    data.cycles.find((cycle) => cycle.group.id === cycleId) ?? null
-  const select = (id: string | null) => {
-    setCycleId(null)
-    setSelected(id)
-  }
   const open = (node: GraphNode) => {
     const destination = node.destination
     const nextScope = destination?.scope ?? node.scope
     if (!nextScope) return
     setScope(nextScope)
-    setCycleId(null)
     setSelected(destination?.focusId ?? null)
   }
   const navigate = (index: number) => {
     setScope(data.trail[index].scope)
-    select(null)
+    setSelected(null)
   }
   return (
     <GraphWorkspace
@@ -215,16 +202,11 @@ export function GraphExplorer({ initial }: { initial: GraphView }) {
       onMode={setMode}
       selected={selected}
       focusId={selected}
-      activeCycle={activeCycle}
-      onSelect={select}
+      onSelect={setSelected}
       onOpen={open}
-      onCycle={(cycle) => {
-        setCycleId(cycle.group.id)
-      }}
       onCycleScope={(cycle) => {
         setScope(cycle.scope)
         setSelected(null)
-        setCycleId(cycle.group.id)
       }}
     />
   )

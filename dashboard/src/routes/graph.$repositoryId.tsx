@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, Network, RefreshCw } from 'lucide-react'
-import type { UseQueryResult } from '@tanstack/react-query'
 import type { ImportedGraph } from '@/lib/api'
 import { api, formatDate, repositoriesQuery } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -51,29 +50,6 @@ function GraphPage() {
           </Button>
         </div>
       </div>
-      <GraphContent
-        graph={graph}
-        repositoryId={repositoryId}
-        repositoryName={repository?.name}
-        refresh={refresh}
-      />
-    </main>
-  )
-}
-
-function GraphContent({
-  graph,
-  repositoryId,
-  repositoryName,
-  refresh,
-}: {
-  graph: UseQueryResult<ImportedGraph | null>
-  repositoryId: string
-  repositoryName: string | undefined
-  refresh: () => void
-}) {
-  return (
-    <>
       {graph.isPending && (
         <div className="loading-state graph-loading" role="status">
           Loading the repository graph…
@@ -88,7 +64,7 @@ function GraphContent({
           </Button>
         </div>
       )}
-      {graph.data === null && !graph.error && repositoryName && (
+      {graph.data === null && !graph.error && repository?.name && (
         <WaitingForImport />
       )}
       {graph.data?.state === 'needsReindex' && (
@@ -109,7 +85,7 @@ function GraphContent({
           />
         </>
       )}
-    </>
+    </main>
   )
 }
 

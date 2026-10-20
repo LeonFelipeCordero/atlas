@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { GraphSidebar } from './graph-sidebar'
+import { GraphReport } from './graph-report'
+import { reportView } from './graph-report-test.helpers'
 import type { Artifact, NodeComplexity } from '@/lib/architecture-artifact'
-import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { buildProjectGraph } from '@/lib/project-graph'
 
 const metrics = {
@@ -61,50 +62,49 @@ function fixture(properties?: NodeComplexity): Artifact {
   }
 }
 
-function sidebar(
-  artifact: Artifact,
-  selected = 'run',
-  file = true,
-  report = true,
-) {
-  const graph = buildProjectGraph(
-    artifact,
-    file ? { kind: 'file', key: 'file' } : { kind: 'repository' },
-  )
+function report(artifact: Artifact, selected = 'run', file = true) {
   return renderToStaticMarkup(
-    <GraphSidebar
-      report={report}
-      details={fixtureDetails(artifact)}
-      graph={graph}
+    <GraphReport
+      view={reportView(
+        artifact,
+        file ? { kind: 'file', key: 'file' } : { kind: 'repository' },
+      )}
       selected={selected}
       onSelect={() => {}}
       onOpen={() => {}}
-      cycles={undefined}
-      activeCycle={null}
-      onCycle={() => {}}
+      onExplore={() => {}}
       onCycleScope={() => {}}
     />,
   )
 }
 
-test('Explore keeps connections without analysis, Report keeps analysis without connections', () => {
+test('Explore keeps connections without analysis, Report shows measurements and an explore action', () => {
   const artifact = fixture(metrics)
-  const explore = sidebar(artifact, 'run', true, false)
+  const view = reportView(artifact, { kind: 'file', key: 'file' })
+  const explore = renderToStaticMarkup(
+    <GraphSidebar
+      graph={view.graph}
+      details={view.details}
+      selected="run"
+      onSelect={() => {}}
+      onOpen={() => {}}
+    />,
+  )
   expect(explore).toContain('Connections')
   expect(explore).not.toContain('Weighted complexity')
   expect(explore).not.toContain('Circular dependencies')
   expect(explore).not.toContain('Dependency metrics')
-  const report = sidebar(artifact)
-  expect(report).toContain('Weighted complexity')
-  expect(report).toContain('Explore this item')
-  expect(report).not.toContain('<h4>Connections</h4>')
+  const html = report(artifact)
+  expect(html).toContain('Weighted complexity')
+  expect(html).toContain('Explore run')
+  expect(html).not.toContain('<h4>Connections</h4>')
 })
 
 test('imported complexity survives graph projection and displays its breakdown', () => {
   const artifact = fixture(metrics)
   const graph = buildProjectGraph(artifact, { kind: 'file', key: 'file' })
   expect(graph.nodes[0].properties).toEqual(metrics)
-  const html = sidebar(artifact)
+  const html = report(artifact)
   expect(html).toContain('aria-label="Weighted complexity"')
   expect(html).toContain('<h4>Weighted complexity</h4>')
   expect(html).not.toContain('aria-label="Cyclomatic complexity"')
@@ -121,7 +121,7 @@ test('imported complexity survives graph projection and displays its breakdown',
 
 test('zero penalties display, missing metrics never become zero', () => {
   expect(
-    sidebar(
+    report(
       fixture({
         ...metrics,
         nestedCyclomaticComplexity: 0,
@@ -129,20 +129,20 @@ test('zero penalties display, missing metrics never become zero', () => {
       }),
     ),
   ).toContain('<dt>Nested loops extra</dt><dd>0</dd>')
-  const legacy = sidebar(fixture())
+  const legacy = report(fixture())
   expect(legacy).toContain('Not available. Re-index this repository')
   expect(legacy).toContain('<h4>Weighted complexity</h4>')
   expect(legacy).not.toContain('<dt>Total</dt>')
-  const partial = sidebar(fixture({ cyclomaticComplexity: 1 }))
+  const partial = report(fixture({ cyclomaticComplexity: 1 }))
   expect(partial).toContain('<dt>Total</dt><dd>1</dd>')
   expect(partial).not.toContain('Nested loops extra')
 })
 
 test('containers and constructors do not show complexity', () => {
   const artifact = fixture(metrics)
-  expect(sidebar(artifact, 'file', false)).not.toContain(
+  expect(report(artifact, 'file', false)).not.toContain(
     'aria-label="Weighted complexity"',
   )
   artifact.nodes[2].type = artifact.nodes[2].kind = 'constructor'
-  expect(sidebar(artifact)).not.toContain('aria-label="Weighted complexity"')
+  expect(report(artifact)).not.toContain('aria-label="Weighted complexity"')
 })

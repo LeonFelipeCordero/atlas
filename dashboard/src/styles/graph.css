@@ -167,14 +167,6 @@
 .node-complexity {
   margin: 20px 0;
 }
-.file-complexity-bar {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  padding: 12px 22px;
-  border-bottom: 1px solid var(--border);
-}
 .file-complexity h4 {
   font-size: 0.8rem;
 }
@@ -188,9 +180,6 @@
 .file-complexity-value span {
   font-size: 0.7rem;
   color: var(--muted-foreground);
-}
-.file-complexity-bar .sidebar-hint {
-  margin: 0;
 }
 .node-complexity h4 {
   font-size: 0.8rem;
@@ -410,41 +399,6 @@
   display: grid;
   justify-items: center;
   gap: 20px;
-}
-.graph-cycles {
-  margin-top: 28px;
-}
-.graph-cycles .section-heading {
-  font-size: 0.8rem;
-  gap: 8px;
-}
-.cycle-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.cycle-select {
-  display: grid;
-  gap: 6px;
-  width: 100%;
-  padding: 8px;
-  border-radius: 7px;
-  text-align: left;
-  overflow-wrap: anywhere;
-  font-size: 0.7rem;
-}
-.cycle-select span {
-  color: var(--muted-foreground);
-}
-.cycle-select:hover,
-.cycle-select[aria-pressed='true'] {
-  background: var(--secondary);
-}
-.cycle-select[aria-pressed='true'] strong {
-  color: var(--primary);
-}
-.cycle-select:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
 }
 .refreshing {
   animation: rotate 1s linear infinite;
