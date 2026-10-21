@@ -10,6 +10,7 @@ use std::{
     collections::HashSet,
     fs,
     path::{Path, PathBuf},
+    rc::Rc,
     sync::OnceLock,
 };
 
@@ -110,7 +111,6 @@ pub fn detect_language(path: &Path) -> Option<String> {
     is_supported_language(language).then(|| language.to_owned())
 }
 
-#[derive(Clone)]
 struct Rules {
     base: PathBuf,
     spec: IgnoreSpec,
@@ -127,17 +127,16 @@ fn metadata(path: &Path) -> Result<Option<fs::Metadata>> {
     }
 }
 
-fn directory_rules(base: &Path, inherited: &[Rules], filename: &str) -> Result<Vec<Rules>> {
-    let mut rules = inherited.to_vec();
+fn directory_rules(base: &Path, rules: &mut Vec<Rc<Rules>>, filename: &str) -> Result<()> {
     let path = base.join(filename);
     if metadata(&path)?.is_some_and(|info| info.is_file()) {
         let content = fs::read_to_string(&path)?;
-        rules.push(Rules { base: base.to_owned(), spec: IgnoreSpec::new(&content)? });
+        rules.push(Rc::new(Rules { base: base.to_owned(), spec: IgnoreSpec::new(&content)? }));
     }
-    Ok(rules)
+    Ok(())
 }
 
-fn is_ignored(path: &Path, rules: &[Rules], is_dir: bool) -> bool {
+fn is_ignored(path: &Path, rules: &[Rc<Rules>], is_dir: bool) -> bool {
     let mut ignored = false;
     for rule in rules {
         let relative = path.strip_prefix(&rule.base).unwrap_or(path).to_string_lossy();
@@ -152,8 +151,8 @@ fn is_ignored(path: &Path, rules: &[Rules], is_dir: bool) -> bool {
 #[derive(Clone)]
 struct DirectoryContext {
     base: PathBuf,
-    git: Vec<Rules>,
-    atlas: Vec<Rules>,
+    git: Vec<Rc<Rules>>,
+    atlas: Vec<Rc<Rules>>,
     use_gitignore: bool,
 }
 
@@ -175,9 +174,9 @@ impl DirectoryContext {
     }
     fn load_rules(&mut self) -> Result<()> {
         if self.use_gitignore {
-            self.git = directory_rules(&self.base, &self.git, ".gitignore")?;
+            directory_rules(&self.base, &mut self.git, ".gitignore")?;
         }
-        self.atlas = directory_rules(&self.base, &self.atlas, ".atlasignore")?;
+        directory_rules(&self.base, &mut self.atlas, ".atlasignore")?;
         Ok(())
     }
 }

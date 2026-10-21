@@ -85,6 +85,59 @@ fn call_evidence_limits_characters_not_utf8_bytes() -> Result<()> {
     Ok(())
 }
 
+fn first_error_full_walk(root: tree_sitter::Node<'_>) -> Option<tree_sitter::Node<'_>> {
+    let mut pending = vec![root];
+    while let Some(node) = pending.pop() {
+        if node.is_error() || node.is_missing() {
+            return Some(node);
+        }
+        pending.extend(children(node).into_iter().rev());
+    }
+    None
+}
+
+#[test]
+fn syntax_diagnostic_matches_full_walk_for_nested_errors_and_missing_tokens() -> Result<()> {
+    let mut saw_missing = false;
+    for (language, text) in [
+        ("python", "def valid():\n    helper()\n\ndef broken():\n    é = ;\nother = ;\n"),
+        ("python", "def brew()\n    pass\n"),
+        ("rust", "fn main() { let value = 1 }"),
+        ("javascript", "function brew() { helper(); let value = ; }\nother = ;"),
+    ] {
+        let tree = syntax::parse(language, text.as_bytes())?;
+        let first = first_error_full_walk(tree.root_node()).expect("fixture must contain an error or missing token");
+        saw_missing |= first.is_missing();
+        let point = first.start_position();
+        assert_eq!(
+            syntax_error(tree.root_node()),
+            Some(format!(
+                "Syntax error at line {}, column {}; analysis may be incomplete.",
+                point.row + 1,
+                point.column + 1
+            )),
+            "{language}: {text}"
+        );
+    }
+    assert!(saw_missing, "fixtures must exercise a missing token");
+    Ok(())
+}
+
+#[test]
+#[ignore = "focused repeatable timing; run with --ignored --nocapture --test-threads=1"]
+fn benchmark_late_syntax_error() -> Result<()> {
+    let text = format!("{}broken = ;\n", "value = helper()\n".repeat(10_000));
+    let tree = syntax::parse("python", text.as_bytes())?;
+    let expected = "Syntax error at line 10001, column 9; analysis may be incomplete.";
+    assert_eq!(syntax_error(tree.root_node()).as_deref(), Some(expected));
+    let start = std::time::Instant::now();
+    for _ in 0..100 {
+        std::hint::black_box(syntax_error(std::hint::black_box(tree.root_node())));
+    }
+    eprintln!("100 diagnostics after 10,000 valid statements: {:?}", start.elapsed());
+    Ok(())
+}
+
 #[test]
 fn syntax_diagnostic_uses_first_error_and_one_based_byte_column() -> Result<()> {
     let text = "é = ;\nother = ;\n";

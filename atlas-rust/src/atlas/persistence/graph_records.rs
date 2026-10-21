@@ -1,6 +1,6 @@
-use super::models::*;
+use super::{graph_inserts, models::*};
 use anyhow::{Result, anyhow, ensure};
-use sea_orm::{ConnectionTrait, EntityTrait, IntoActiveModel};
+use sea_orm::ConnectionTrait;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
@@ -93,43 +93,48 @@ fn metric_record(id: &str, key: &str, n: &Value) -> GraphNodeMetricRow {
         max_decision_depth: p["maxDecisionDepth"].as_i64(),
     }
 }
-/// Insert file, symbol, decorator, and metric rows for node `n` under repository `id`.
-/// Return errors for invalid keys/decorators or failed writes. The caller must supply
-/// a transaction for atomicity; this function neither commits nor rolls back.
-pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, n: &Value) -> Result<()> {
-    let key = required(n, "stableKey")?;
-    if n["level"] == "file" {
-        let row = GraphFileRow {
+/// Insert node details in foreign-key order with bounded batches.
+/// Return construction/write errors; the caller owns the transaction and rollback.
+pub async fn insert_node_details(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
+    let nodes = collection(artifact, "nodes");
+    let files = nodes.iter().filter(|n| n["level"] == "file").map(|n| {
+        Ok(GraphFileRow {
             repository_id: id.into(),
-            node_key: key.clone(),
+            node_key: required(n, "stableKey")?,
             byte_count: n["properties"]["bytes"].as_i64(),
             sha256: text(&n["properties"], "sha256"),
-        };
-        graph_files::Entity::insert(row.into_active_model()).exec(connection).await?;
-    }
-    if is_symbol(n) {
-        graph_symbols::Entity::insert(symbol_record(id, &key, n).into_active_model()).exec(connection).await?;
-        for (ordinal, decorator) in collection(&n["properties"], "decorators").iter().enumerate() {
-            let row = GraphNodeDecoratorRow {
+        })
+    });
+    graph_inserts::insert::<graph_files::Entity>(connection, files).await?;
+    let symbols = nodes.iter().filter(|n| is_symbol(n));
+    graph_inserts::insert::<graph_symbols::Entity>(
+        connection,
+        symbols.clone().map(|n| Ok(symbol_record(id, &required(n, "stableKey")?, n))),
+    )
+    .await?;
+    let decorators = symbols.flat_map(|n| {
+        collection(&n["properties"], "decorators").iter().enumerate().map(move |(ordinal, decorator)| {
+            Ok(GraphNodeDecoratorRow {
                 repository_id: id.into(),
-                node_key: key.clone(),
+                node_key: required(n, "stableKey")?,
                 ordinal: ordinal as i64,
                 decorator: decorator.as_str().ok_or_else(|| anyhow!("Graph decorators must contain strings"))?.into(),
-            };
-            graph_node_decorators::Entity::insert(row.into_active_model()).exec(connection).await?;
-        }
-    }
-    if METRIC_NAMES.iter().any(|name| n["properties"].get(name).is_some()) {
-        graph_node_metrics::Entity::insert(metric_record(id, &key, n).into_active_model()).exec(connection).await?;
-    }
-    Ok(())
+            })
+        })
+    });
+    graph_inserts::insert::<graph_node_decorators::Entity>(connection, decorators).await?;
+    let metrics = nodes
+        .iter()
+        .filter(|n| METRIC_NAMES.iter().any(|name| n["properties"].get(name).is_some()))
+        .map(|n| Ok(metric_record(id, &required(n, "stableKey")?, n)));
+    graph_inserts::insert::<graph_node_metrics::Entity>(connection, metrics).await
 }
 /// Insert `artifact` edges for repository `id` in artifact order.
 /// Return errors for required string fields or database failures; only literal `true`
 /// sets `type_only`. The caller owns the transaction and any rollback.
 pub async fn insert_edges(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
-    for (ordinal, e) in collection(artifact, "edges").iter().enumerate() {
-        let row = GraphEdgeRow {
+    let rows = collection(artifact, "edges").iter().enumerate().map(|(ordinal, e)| {
+        Ok(GraphEdgeRow {
             repository_id: id.into(),
             ordinal: ordinal as i64,
             source_key: required(e, "sourceStableKey")?,
@@ -140,26 +145,24 @@ pub async fn insert_edges(connection: &impl ConnectionTrait, id: &str, artifact:
             evidence: text(e, "evidence"),
             line: e["line"].as_i64(),
             type_only: e["typeOnly"] == true,
-        };
-        graph_edges::Entity::insert(row.into_active_model()).exec(connection).await?;
-    }
-    Ok(())
+        })
+    });
+    graph_inserts::insert::<graph_edges::Entity>(connection, rows).await
 }
 /// Insert `artifact` diagnostics for repository `id` in artifact order.
 /// Return errors for required string fields or failed writes; the caller owns the transaction.
 pub async fn insert_diagnostics(connection: &impl ConnectionTrait, id: &str, artifact: &Value) -> Result<()> {
-    for (ordinal, d) in collection(artifact, "diagnostics").iter().enumerate() {
-        let row = GraphDiagnosticRow {
+    let rows = collection(artifact, "diagnostics").iter().enumerate().map(|(ordinal, d)| {
+        Ok(GraphDiagnosticRow {
             repository_id: id.into(),
             ordinal: ordinal as i64,
             severity: required(d, "severity")?,
             path: required(d, "path")?,
             language: required(d, "language")?,
             message: required(d, "message")?,
-        };
-        graph_diagnostics::Entity::insert(row.into_active_model()).exec(connection).await?;
-    }
-    Ok(())
+        })
+    });
+    graph_inserts::insert::<graph_diagnostics::Entity>(connection, rows).await
 }
 /// Insert ordered mutation candidates and JSON payloads for repository `id`.
 /// Link each path to an artifact file node; fail for missing file matches, invalid
@@ -170,9 +173,9 @@ pub async fn insert_candidates(connection: &impl ConnectionTrait, id: &str, arti
         .filter(|n| n["level"] == "file")
         .map(|n| Ok((required(n, "path")?, required(n, "stableKey")?)))
         .collect::<Result<_>>()?;
-    for (ordinal, c) in collection(artifact, "mutationCandidates").iter().enumerate() {
+    let rows = collection(artifact, "mutationCandidates").iter().enumerate().map(|(ordinal, c)| {
         let path = required(c, "path")?;
-        let row = GraphMutationCandidateRow {
+        Ok(GraphMutationCandidateRow {
             repository_id: id.into(),
             candidate_id: required(c, "id")?,
             file_key: files.get(&path).ok_or_else(|| anyhow!("Candidate file not found: {path}"))?.clone(),
@@ -183,8 +186,7 @@ pub async fn insert_candidates(connection: &impl ConnectionTrait, id: &str, arti
             kind: required(c, "kind")?,
             operator: text(c, "operator"),
             payload: serde_json::to_string(c)?,
-        };
-        graph_mutation_candidates::Entity::insert(row.into_active_model()).exec(connection).await?;
-    }
-    Ok(())
+        })
+    });
+    graph_inserts::insert::<graph_mutation_candidates::Entity>(connection, rows).await
 }

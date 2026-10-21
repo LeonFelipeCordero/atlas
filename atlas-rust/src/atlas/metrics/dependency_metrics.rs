@@ -60,10 +60,7 @@ fn change_impact(adjacency: &Adjacency) -> BTreeMap<String, usize> {
     let mut offset = 0;
     for (index, group) in groups.iter().enumerate() {
         let mut reachable = pending.remove(&index).unwrap_or_default();
-        reachable.resize((offset + group.len()).div_ceil(64), 0);
-        mark_members(&mut reachable, offset..offset + group.len());
-        offset += group.len();
-        let count = reachable.iter().map(|bits| bits.count_ones() as usize).sum::<usize>() - 1;
+        let count = reachable.iter().map(|bits| bits.count_ones() as usize).sum::<usize>() + group.len() - 1;
         impact.extend(group.iter().map(|key| (key.clone(), count)));
         let targets: BTreeSet<_> = group
             .iter()
@@ -71,7 +68,13 @@ fn change_impact(adjacency: &Adjacency) -> BTreeMap<String, usize> {
             .map(|target| membership[target])
             .filter(|target| *target != index)
             .collect();
-        propagate(&reachable, targets, &mut pending);
+        if !targets.is_empty() {
+            // Only components with outgoing edges need bits for downstream impact counts.
+            reachable.resize((offset + group.len()).div_ceil(64), 0);
+            mark_members(&mut reachable, offset..offset + group.len());
+            offset += group.len();
+            propagate(&reachable, targets, &mut pending);
+        }
     }
     impact
 }

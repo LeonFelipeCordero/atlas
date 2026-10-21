@@ -185,12 +185,9 @@ async fn replace_graph(connection: &impl ConnectionTrait, id: &str, artifact: &V
         .filter(graph_diagnostics::Column::RepositoryId.eq(id))
         .exec(connection)
         .await?;
-    for (ordinal, n) in collection(artifact, "nodes").iter().enumerate() {
-        graph_nodes::Entity::insert(node_record(id, ordinal, n)?.into_active_model()).exec(connection).await?;
-    }
-    for n in collection(artifact, "nodes") {
-        insert_node_details(connection, id, n).await?;
-    }
+    let nodes = collection(artifact, "nodes").iter().enumerate().map(|(ordinal, n)| node_record(id, ordinal, n));
+    super::graph_inserts::insert::<graph_nodes::Entity>(connection, nodes).await?;
+    insert_node_details(connection, id, artifact).await?;
     insert_candidates(connection, id, artifact).await?;
     insert_edges(connection, id, artifact).await?;
     insert_diagnostics(connection, id, artifact).await
