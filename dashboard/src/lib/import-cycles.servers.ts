@@ -94,32 +94,6 @@ function cyclePath(start: string, parents: Map<string, string | null>) {
   return [start, ...path.reverse()]
 }
 
-type CycleSearch = {
-  node: string
-  targets: Array<string>
-  members: Set<string>
-  start: string
-  parents: Map<string, string | null>
-  pending: Array<string>
-}
-
-function cycleNeighbors({
-  node,
-  targets,
-  members,
-  start,
-  parents,
-  pending,
-}: CycleSearch) {
-  for (const target of targets) {
-    if (!members.has(target) || parents.has(target)) continue
-    parents.set(target, node)
-    if (target === start) return true
-    pending.push(target)
-  }
-  return false
-}
-
 function exampleCycle(
   group: Array<string>,
   adjacency: Adjacency,
@@ -133,17 +107,12 @@ function exampleCycle(
   const parents = new Map<string, string | null>([[first, null]])
   const pending = [first]
   for (const node of pending)
-    if (
-      cycleNeighbors({
-        node,
-        targets: adjacency.get(node)!,
-        members,
-        start,
-        parents,
-        pending,
-      })
-    )
-      return cyclePath(start, parents)
+    for (const target of adjacency.get(node)!) {
+      if (!members.has(target) || parents.has(target)) continue
+      parents.set(target, node)
+      if (target === start) return cyclePath(start, parents)
+      pending.push(target)
+    }
   throw new Error('Import component has no return path')
 }
 

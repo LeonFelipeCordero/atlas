@@ -122,6 +122,12 @@ function ItemRecord({
 }: ReportItemProps & { node: ArtifactNode }) {
   const item = view.graph.nodes.find((entry) => entry.id === node.stableKey)
   const expanded = selected === node.stableKey
+  const Icon =
+    node.level === 'module'
+      ? Folder
+      : node.level === 'file'
+        ? FileCode2
+        : Braces
   return (
     <div className={`report-record${expanded ? ' is-expanded' : ''}`}>
       <details open={expanded}>
@@ -137,13 +143,7 @@ function ItemRecord({
             aria-hidden="true"
           />
           <span className="report-item-icon" aria-hidden="true">
-            {node.level === 'module' ? (
-              <Folder size={19} />
-            ) : node.level === 'file' ? (
-              <FileCode2 size={19} />
-            ) : (
-              <Braces size={19} />
-            )}
+            <Icon size={19} />
           </span>
           <span className="report-row-name">
             <strong>{node.name}</strong>

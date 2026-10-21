@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { GraphFileComplexity } from './graph-file-complexity'
-import { GraphSidebar } from './graph-sidebar'
+import { GraphReport } from './graph-report'
+import { reportView } from './graph-report-test.helpers'
 import type { Artifact, ArtifactNode } from '@/lib/architecture-artifact'
 import type { GraphScope, ProjectGraph } from '@/lib/project-graph'
-import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { sumFileComplexity } from '@/lib/file-complexity'
 import { buildProjectGraph } from '@/lib/project-graph'
 
@@ -63,16 +63,13 @@ function fixture(): Artifact {
   }
 }
 
-function summary(artifact: Artifact, fileKey = 'file', compact = false) {
+function summary(artifact: Artifact, fileKey = 'file') {
   return renderToStaticMarkup(
-    <GraphFileComplexity
-      sum={sumFileComplexity(artifact, fileKey)}
-      compact={compact}
-    />,
+    <GraphFileComplexity sum={sumFileComplexity(artifact, fileKey)} />,
   )
 }
 
-type SidebarSelection = {
+type ReportSelection = {
   artifact: Artifact
   selected: string | null
   scope?: GraphScope
@@ -84,19 +81,14 @@ function selectedFile({
   selected,
   scope = { kind: 'repository' },
   graph = buildProjectGraph(artifact, scope),
-}: SidebarSelection) {
+}: ReportSelection) {
   return renderToStaticMarkup(
-    <GraphSidebar
-      report
-      details={fixtureDetails(artifact)}
-      graph={graph}
+    <GraphReport
+      view={{ ...reportView(artifact, scope), graph }}
       selected={selected}
-      scope={scope}
       onSelect={() => {}}
       onOpen={() => {}}
-      cycles={undefined}
-      activeCycle={null}
-      onCycle={() => {}}
+      onExplore={() => {}}
       onCycleScope={() => {}}
     />,
   )
@@ -121,11 +113,11 @@ test('sums owned functions and methods once, not classes, constructors, or depen
   ).toBeUndefined()
 })
 
-test('selected file and inside-file summary show the same sum', () => {
+test('selected file report and metric component show the same sum', () => {
   const artifact = fixture()
   for (const html of [
     selectedFile({ artifact, selected: 'file' }),
-    summary(artifact, 'file', true),
+    summary(artifact),
   ]) {
     expect(html).toContain('aria-label="File weighted complexity sum"')
     expect(html).toContain('<h4>Weighted complexity sum</h4>')
@@ -135,7 +127,6 @@ test('selected file and inside-file summary show the same sum', () => {
     )
     expect(html).not.toContain('Sum of total complexity')
   }
-  expect(summary(artifact, 'file', true)).toContain('file-complexity-bar')
   expect(selectedFile({ artifact, selected: 'empty' })).toContain(
     '<strong>0</strong>',
   )
@@ -144,18 +135,13 @@ test('selected file and inside-file summary show the same sum', () => {
   )
 })
 
-test('unselected inside-file sidebar shows the current file sum', () => {
-  const html = selectedFile({
-    artifact: fixture(),
-    selected: null,
-    scope: { kind: 'file', key: 'file' },
-  })
+test('file metric component retains the current file sum', () => {
+  const html = summary(fixture())
   expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
-  expect(html).toContain('Inspect an item')
 })
 
-test('single local file preview ignores boundary nodes, multiple files have no implicit sum', () => {
+test('report shows file sums only after selection, independent of boundary nodes', () => {
   const artifact = fixture()
   const graph = buildProjectGraph(artifact, { kind: 'repository' })
   expect(selectedFile({ artifact, selected: null })).not.toContain(
@@ -165,13 +151,13 @@ test('single local file preview ignores boundary nodes, multiple files have no i
   graph.nodes.find((node) => node.id === 'other-file')!.role = 'boundary'
   const html = selectedFile({
     artifact,
-    selected: null,
+    selected: 'file',
     scope: { kind: 'repository' },
     graph,
   })
   expect(html).toContain('Weighted complexity sum')
   expect(html).toContain('<strong>13</strong>')
-  expect(html).not.toContain('<strong>50</strong>')
+  expect(html).not.toContain('file-complexity-value"><strong>50</strong>')
 })
 
 test('outside-scope file inspector uses the target file sum', () => {

@@ -53,26 +53,6 @@ function finishOrder(adjacency: Adjacency): Array<string> {
   return finished
 }
 
-function addReverseEdges(
-  source: string,
-  targets: Array<string>,
-  reverse: Adjacency,
-) {
-  for (const target of targets) reverse.get(target)!.push(source)
-}
-
-function enqueueUnvisited(
-  targets: Array<string>,
-  visited: Set<string>,
-  pending: Array<string>,
-) {
-  for (const target of targets) {
-    if (visited.has(target)) continue
-    visited.add(target)
-    pending.push(target)
-  }
-}
-
 function reverseGroup(root: string, reverse: Adjacency, visited: Set<string>) {
   const group: Array<string> = []
   const pending = [root]
@@ -80,7 +60,11 @@ function reverseGroup(root: string, reverse: Adjacency, visited: Set<string>) {
   while (pending.length) {
     const node = pending.pop()!
     group.push(node)
-    enqueueUnvisited(reverse.get(node)!, visited, pending)
+    for (const target of reverse.get(node)!) {
+      if (visited.has(target)) continue
+      visited.add(target)
+      pending.push(target)
+    }
   }
   return group.sort(compareKeys)
 }
@@ -91,7 +75,7 @@ export function components(adjacency: Adjacency): Array<Array<string>> {
     [...adjacency.keys()].map((key) => [key, []]),
   )
   for (const [source, targets] of adjacency)
-    addReverseEdges(source, targets, reverse)
+    for (const target of targets) reverse.get(target)!.push(source)
   const visited = new Set<string>()
   const groups: Array<Array<string>> = []
   for (const root of finishOrder(adjacency).reverse()) {
@@ -163,18 +147,15 @@ function levelAdjacency(
   )
 }
 
-function countIncoming(targets: Array<string>, incoming: Map<string, number>) {
-  for (const target of targets)
-    incoming.set(target, (incoming.get(target) ?? 0) + 1)
-}
-
 function addLevelMetrics(
   adjacency: Adjacency,
   metrics: Map<string, NodeDependencyMetrics>,
 ) {
   const impact = impactCounts(adjacency)
   const incoming = new Map<string, number>()
-  for (const targets of adjacency.values()) countIncoming(targets, incoming)
+  for (const targets of adjacency.values())
+    for (const target of targets)
+      incoming.set(target, (incoming.get(target) ?? 0) + 1)
   for (const [key, targets] of adjacency) {
     const fanIn = incoming.get(key) ?? 0
     const fanOut = targets.length

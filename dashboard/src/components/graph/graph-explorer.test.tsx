@@ -7,7 +7,6 @@ function explorerStates() {
     const React = { ...await import('react') }
     const values = []
     let cursor = 0
-    let showCycle = true
     const cycle = { group: { id: 'cycle' }, scope: { kind: 'folder', key: 'app' } }
     const initial = {
       state: 'ready', repositoryId: 'repo', graphRevision: 'revision',
@@ -25,7 +24,7 @@ function explorerStates() {
     }))
     mock.module('@tanstack/react-query', () => ({
       useQuery: (options) => ({
-        data: { ...initial, scope: options.queryKey.at(-1), cycles: showCycle ? [cycle] : [] },
+        data: { ...initial, scope: options.queryKey.at(-1) },
       }),
     }))
     const { GraphExplorer } = await import('./src/components/graph/graph-explorer')
@@ -35,7 +34,7 @@ function explorerStates() {
       const props = GraphExplorer({ initial }).props
       states.push({
         selected: props.selected, focusId: props.focusId,
-        cycle: props.activeCycle?.group.id ?? null, scope: props.view.scope,
+        scope: props.view.scope,
       })
       return props
     }
@@ -51,13 +50,8 @@ function explorerStates() {
     cursor = 0
     const explore = GraphExplorer({ initial }).props
     if (explore.mode !== 'explore' || explore.selected !== 'run') throw new Error('Explore lost selection')
-    actions.onCycle(cycle)
-    actions = render()
-    showCycle = false
-    actions = render()
     actions.onOpen({ destination: { scope: { kind: 'file', key: 'service' }, focusId: 'stop' } })
     actions = render()
-    showCycle = true
     actions.onCycleScope(cycle)
     actions = render()
     actions.navigate(0)
@@ -75,34 +69,29 @@ function explorerStates() {
   return JSON.parse(result.stdout.toString()) as Array<{
     selected: string | null
     focusId: string | null
-    cycle: string | null
     scope: { kind: string; key?: string }
   }>
 }
 
-test('selection, cycles, boundary destinations and breadcrumbs retain focus behavior', () => {
+test('selection, report cycle scope, boundary destinations and breadcrumbs retain focus behavior', () => {
   const repository = { kind: 'repository' }
   const folder = { kind: 'folder', key: 'lib' }
   expect(explorerStates()).toEqual([
-    { selected: null, focusId: null, cycle: null, scope: repository },
-    { selected: 'run', focusId: 'run', cycle: null, scope: repository },
-    { selected: 'run', focusId: 'run', cycle: 'cycle', scope: repository },
-    { selected: 'run', focusId: 'run', cycle: null, scope: repository },
+    { selected: null, focusId: null, scope: repository },
+    { selected: 'run', focusId: 'run', scope: repository },
     {
       selected: 'stop',
       focusId: 'stop',
-      cycle: null,
       scope: { kind: 'file', key: 'service' },
     },
     {
       selected: null,
       focusId: null,
-      cycle: 'cycle',
       scope: { kind: 'folder', key: 'app' },
     },
-    { selected: null, focusId: null, cycle: null, scope: repository },
-    { selected: null, focusId: null, cycle: null, scope: folder },
-    { selected: 'lib-file', focusId: 'lib-file', cycle: null, scope: folder },
-    { selected: null, focusId: null, cycle: null, scope: folder },
+    { selected: null, focusId: null, scope: repository },
+    { selected: null, focusId: null, scope: folder },
+    { selected: 'lib-file', focusId: 'lib-file', scope: folder },
+    { selected: null, focusId: null, scope: folder },
   ])
 })

@@ -369,18 +369,6 @@
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
-.cycle-members {
-  font-size: 0.8rem;
-  margin: 12px 0;
-}
-.cycle-members ul {
-  padding-left: 20px;
-  list-style: disc;
-}
-.cycle-members li {
-  overflow-wrap: anywhere;
-  margin-top: 6px;
-}
 @media (max-width: 1000px) {
   .report-record {
     grid-template-columns: minmax(0, 1fr);

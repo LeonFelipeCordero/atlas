@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { GraphReport } from './graph-report'
 import { GraphSidebar } from './graph-sidebar'
+import { ReportFindings } from './report-findings'
 import type { GraphView } from '@/lib/graph-data'
 import { fixtureDetails } from '@/lib/graph-details-test.helpers'
 import { fixtureNodes } from '@/lib/project-graph-fixture'
@@ -124,6 +125,28 @@ test('Report renders actual measurements, source evidence and honest coverage', 
   expect(html).not.toContain('dependency graph')
 })
 
+test('report cycle disclosure keeps full-group navigation separate from selection', () => {
+  const view = fixture()
+  let scoped: GraphView['cycles'][number] | undefined
+  const findings = ReportFindings({
+    view,
+    onCycleScope: (cycle) => {
+      scoped = cycle
+    },
+  })
+  const cycles = findings.props.children[3]
+  const disclosure = cycles[0].type(cycles[0].props)
+  expect(disclosure.type).toBe('details')
+  expect(disclosure.props.open).toBeUndefined()
+  const html = renderToStaticMarkup(disclosure)
+  expect(html).toContain('2 files in import cycle')
+  expect(html).toContain('Import evidence · 1')
+  expect(html).toContain('service.py → other.py → service.py')
+  expect(scoped).toBeUndefined()
+  disclosure.props.children.at(-1).props.onClick()
+  expect(scoped).toBe(view.cycles[0])
+})
+
 test('Report distinguishes no findings from unavailable metrics', () => {
   const view = fixture()
   view.cycles = []
@@ -147,10 +170,6 @@ test('Explore remains structural even with metrics and cycles available', () => 
       selected="run"
       onSelect={actions.onSelect}
       onOpen={actions.onOpen}
-      cycles={view.cycles}
-      activeCycle={null}
-      onCycle={() => {}}
-      onCycleScope={actions.onCycleScope}
     />,
   )
   expect(html).toContain('Connections')
