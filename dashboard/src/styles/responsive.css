@@ -72,8 +72,8 @@
   }
   .graph-workspace {
     grid-template-columns: 1fr;
-    height: auto;
-    max-height: none;
+    flex: none;
+    min-height: 0;
   }
   .graph-canvas {
     height: 440px;

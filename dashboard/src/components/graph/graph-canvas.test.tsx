@@ -45,7 +45,7 @@ function canvasStates() {
   return JSON.parse(result.stdout.toString())
 }
 
-test('canvas wires historical handles and smoothstep edges into React Flow', () => {
+test('canvas wires top-to-bottom handles and smoothstep edges into React Flow', () => {
   const { edges, handles } = canvasStates()
   expect(handles).toEqual([
     { id: 'target-top', type: 'target', position: 'top' },
@@ -66,20 +66,20 @@ test('canvas wires historical handles and smoothstep edges into React Flow', () 
     {
       id: 'ab',
       type: 'smoothstep',
-      sourceHandle: 'source-right',
-      targetHandle: 'target-left',
+      sourceHandle: 'source-bottom',
+      targetHandle: 'target-top',
     },
     {
       id: 'bc',
       type: 'smoothstep',
-      sourceHandle: 'source-right',
-      targetHandle: 'target-left',
+      sourceHandle: 'source-bottom',
+      targetHandle: 'target-top',
     },
     {
       id: 'ca',
       type: 'smoothstep',
-      sourceHandle: 'source-right',
-      targetHandle: 'target-top',
+      sourceHandle: 'source-bottom',
+      targetHandle: 'target-left',
     },
   ])
   expect(
