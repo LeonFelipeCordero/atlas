@@ -50,22 +50,22 @@ test('layout retains cyclic and disconnected nodes with finite non-overlapping p
   }
 })
 
-test('restores sorted columns and left-to-right dependency ranks', () => {
+test('lays out sorted rows and top-to-bottom dependency ranks', () => {
   const positions = layoutGraph({ ...graph, edges: graph.edges.slice(0, 2) })
   expect(Object.fromEntries(positions)).toEqual({
     a: { x: 32, y: 32 },
-    b: { x: 304, y: 32 },
-    c: { x: 576, y: 32 },
-    isolated: { x: 32, y: 150 },
+    b: { x: 32, y: 150 },
+    c: { x: 32, y: 268 },
+    isolated: { x: 304, y: 32 },
   })
 })
 
 test('cycles use a sorted root and do not move when input order changes', () => {
   const expected = {
     a: { x: 32, y: 32 },
-    b: { x: 304, y: 32 },
-    c: { x: 576, y: 32 },
-    isolated: { x: 32, y: 150 },
+    b: { x: 32, y: 150 },
+    c: { x: 32, y: 268 },
+    isolated: { x: 304, y: 32 },
   }
   expect(Object.fromEntries(layoutGraph(graph))).toEqual(expected)
   expect(
@@ -90,18 +90,18 @@ test('shared dependencies keep the first breadth-first rank', () => {
     target,
   }))
   const positions = layoutGraph({ ...graph, edges })
-  expect(positions.get('b')).toEqual({ x: 304, y: 32 })
+  expect(positions.get('b')).toEqual({ x: 32, y: 150 })
   expect(positions.get('c')).toEqual({ x: 304, y: 150 })
 })
 
-test('columns sort equal labels by id without changing the graph', () => {
+test('rows sort equal labels by id without changing the graph', () => {
   const nodes = graph.nodes
     .map((node) => ({ ...node, label: 'same' }))
     .reverse()
   const input = structuredClone(nodes)
   const positions = layoutGraph({ nodes, edges: [] })
   expect(positions.get('a')).toEqual({ x: 32, y: 32 })
-  expect(positions.get('isolated')).toEqual({ x: 32, y: 386 })
+  expect(positions.get('isolated')).toEqual({ x: 848, y: 32 })
   expect(nodes).toEqual(input)
 })
 

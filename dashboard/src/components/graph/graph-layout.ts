@@ -36,13 +36,13 @@ export function layoutGraph({ nodes, edges }: ProjectGraph) {
     queue.push(node.id)
     visit(queue.length - 1)
   }
-  const rows = new Map<number, number>()
+  const columns = new Map<number, number>()
   return new Map(
     sorted.map((node) => {
       const rank = ranks.get(node.id)!
-      const row = rows.get(rank) ?? 0
-      rows.set(rank, row + 1)
-      return [node.id, { x: 32 + rank * 272, y: 32 + row * 118 }]
+      const column = columns.get(rank) ?? 0
+      columns.set(rank, column + 1)
+      return [node.id, { x: 32 + column * 272, y: 32 + rank * 118 }]
     }),
   )
 }
