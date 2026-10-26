@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import {
   Background,
   BackgroundVariant,
+  BaseEdge,
   Controls,
   Handle,
   MarkerType,
@@ -11,9 +12,18 @@ import {
   useReactFlow,
 } from '@xyflow/react'
 import { ArrowRight, Braces, FileCode2, Folder } from 'lucide-react'
-import { layoutGraph } from './graph-layout'
-import { getGraphEdgeHandles } from './graph-edge-routing'
-import type { Node, NodeProps } from '@xyflow/react'
+import {
+  GRAPH_NODE_HEIGHT,
+  GRAPH_NODE_WIDTH,
+  layoutGraph,
+} from './graph-layout'
+import {
+  getGraphEdgeChannels,
+  getGraphEdgeHandles,
+  getGraphEdgePath,
+} from './graph-edge-routing'
+import type { EdgeChannels } from './graph-edge-routing'
+import type { Edge, EdgeProps, Node, NodeProps } from '@xyflow/react'
 import type { GraphEdge, GraphNode, ProjectGraph } from '@/lib/project-graph'
 import '@xyflow/react/dist/style.css'
 
@@ -67,7 +77,29 @@ function CodeGraphNode({ data, selected }: NodeProps<CodeNode>) {
   )
 }
 
+function CodeGraphEdge(props: EdgeProps<Edge<EdgeChannels>>) {
+  if (!props.data) return null
+  const path = getGraphEdgePath(
+    { x: props.sourceX, y: props.sourceY },
+    { x: props.targetX, y: props.targetY },
+    props.sourcePosition,
+    props.targetPosition,
+    props.data,
+  )
+  return (
+    <BaseEdge
+      id={props.id}
+      path={path}
+      markerEnd={props.markerEnd}
+      style={props.style}
+    />
+  )
+}
+
 const nodeTypes = { code: CodeGraphNode }
+const edgeTypes = { code: CodeGraphEdge }
+// Include the 40 px outer corridors at the maximum 1.6 zoom.
+const fitViewOptions = { padding: '72px' as const }
 type Props = {
   graph: ProjectGraph
   selected: string | null
@@ -89,6 +121,11 @@ function canvasEdges(
         positions.get(edge.source),
         positions.get(edge.target),
       ),
+      channels: getGraphEdgeChannels(
+        positions.get(edge.source)!,
+        positions.get(edge.target)!,
+        positions,
+      ),
       active,
       hasSelection: Boolean(selected),
     })
@@ -98,6 +135,7 @@ function canvasEdges(
 type CanvasEdgeOptions = {
   edge: GraphEdge
   handles: ReturnType<typeof getGraphEdgeHandles>
+  channels: EdgeChannels
   active: boolean
   hasSelection: boolean
 }
@@ -105,6 +143,7 @@ type CanvasEdgeOptions = {
 function canvasEdge({
   edge,
   handles,
+  channels,
   active,
   hasSelection,
 }: CanvasEdgeOptions) {
@@ -114,11 +153,9 @@ function canvasEdge({
     source: edge.source,
     target: edge.target,
     ...handles,
-    type: 'smoothstep',
+    type: 'code',
+    data: channels,
     markerEnd: { type: MarkerType.ArrowClosed, color },
-    label: edge.count > 1 ? String(edge.count) : undefined,
-    labelStyle: { fill: 'var(--muted-foreground)', fontSize: 11 },
-    labelBgStyle: { fill: 'var(--background)' },
     style: {
       stroke: color,
       strokeWidth: active ? 2.5 : 1.4,
@@ -174,10 +211,14 @@ function Canvas({ graph, selected, focusId, onSelect, onOpen }: Props) {
   useEffect(() => {
     const position = focusId ? positions.get(focusId) : undefined
     if (position) {
-      void setCenter(position.x + 110, position.y + 39, { zoom: 1 })
+      void setCenter(
+        position.x + GRAPH_NODE_WIDTH / 2,
+        position.y + GRAPH_NODE_HEIGHT / 2,
+        { zoom: 1 },
+      )
       return
     }
-    void fitView({ padding: 0.15 })
+    void fitView(fitViewOptions)
   }, [focusId, positions, setCenter, fitView])
   const nodes = useMemo(
     () =>
@@ -201,8 +242,9 @@ function Canvas({ graph, selected, focusId, onSelect, onOpen }: Props) {
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       fitView
-      fitViewOptions={{ padding: 0.15 }}
+      fitViewOptions={fitViewOptions}
       minZoom={0.03}
       maxZoom={1.6}
       nodesDraggable={false}

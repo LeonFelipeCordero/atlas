@@ -1,5 +1,8 @@
 import type { GraphNode, ProjectGraph } from '@/lib/project-graph'
 
+export const GRAPH_NODE_WIDTH = 220
+export const GRAPH_NODE_HEIGHT = 78
+
 const compareNodes = (first: GraphNode, second: GraphNode) =>
   first.label.localeCompare(second.label) || first.id.localeCompare(second.id)
 

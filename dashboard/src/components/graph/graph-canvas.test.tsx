@@ -8,7 +8,7 @@ function canvasStates() {
     const centers = [], fits = []
     mock.module('react', () => ({ ...React, useMemo: (fn) => fn(), useEffect: (fn) => fn() }))
     mock.module('@xyflow/react', () => ({
-      Background: 'background', BackgroundVariant: { Dots: 'dots' }, Controls: 'controls',
+      Background: 'background', BackgroundVariant: { Dots: 'dots' }, Controls: 'controls', BaseEdge: 'base-edge',
       Handle: 'handle', MarkerType: { ArrowClosed: 'arrowclosed' },
       Position: { Top: 'top', Left: 'left', Right: 'right', Bottom: 'bottom' },
       ReactFlow: 'flow', ReactFlowProvider: 'provider',
@@ -38,6 +38,10 @@ function canvasStates() {
       nodes: selected.nodes.map(({ id, selected, data }) => ({ id, selected, muted: data.muted })),
       normalNodes: normal.nodes.map(({ selected, data }) => ({ selected, muted: data.muted })),
       centers, fits,
+      renderedEdge: normal.edgeTypes.code({
+        ...normal.edges[0], sourceX: 142, sourceY: 110, targetX: 142, targetY: 150,
+        sourcePosition: 'bottom', targetPosition: 'top',
+      }).props,
     }))
   `
   const result = Bun.spawnSync(['bun', '--eval', script])
@@ -45,7 +49,7 @@ function canvasStates() {
   return JSON.parse(result.stdout.toString())
 }
 
-test('canvas wires top-to-bottom handles and smoothstep edges into React Flow', () => {
+test('canvas wires top-to-bottom handles and right-angle edges into React Flow', () => {
   const { edges, handles } = canvasStates()
   expect(handles).toEqual([
     { id: 'target-top', type: 'target', position: 'top' },
@@ -65,29 +69,39 @@ test('canvas wires top-to-bottom handles and smoothstep edges into React Flow', 
   ).toEqual([
     {
       id: 'ab',
-      type: 'smoothstep',
+      type: 'code',
       sourceHandle: 'source-bottom',
       targetHandle: 'target-top',
     },
     {
       id: 'bc',
-      type: 'smoothstep',
+      type: 'code',
       sourceHandle: 'source-bottom',
       targetHandle: 'target-top',
     },
     {
       id: 'ca',
-      type: 'smoothstep',
+      type: 'code',
       sourceHandle: 'source-bottom',
       targetHandle: 'target-left',
     },
   ])
   expect(
     edges.every(
-      (edge: { label: string; markerEnd: { type: string } }) =>
-        edge.label === '2' && edge.markerEnd.type === 'arrowclosed',
+      (edge: { label?: string; markerEnd: { type: string } }) =>
+        edge.label === undefined && edge.markerEnd.type === 'arrowclosed',
     ),
   ).toBe(true)
+})
+
+test('canvas renders the shared route with its arrowhead and highlight style', () => {
+  const { edges, renderedEdge } = canvasStates()
+  expect(renderedEdge).toEqual({
+    id: 'ab',
+    path: 'M142 110L142 130L142 130L142 150',
+    markerEnd: edges[0].markerEnd,
+    style: edges[0].style,
+  })
 })
 
 test('selection retains node and edge highlighting and focuses the selected node', () => {
@@ -101,7 +115,6 @@ test('selection retains node and edge highlighting and focuses the selected node
   expect(
     selected.find((edge: { id: string }) => edge.id === 'bc'),
   ).toMatchObject({
-    label: '2',
     ariaLabel: '2 relationships from b to c',
     style: { strokeWidth: 2.5, opacity: 0.75 },
   })
@@ -115,5 +128,5 @@ test('selection retains node and edge highlighting and focuses the selected node
   expect(centers).toEqual([
     [expect.any(Number), expect.any(Number), { zoom: 1 }],
   ])
-  expect(fits).toEqual([{ padding: 0.15 }])
+  expect(fits).toEqual([{ padding: '72px' }])
 })
