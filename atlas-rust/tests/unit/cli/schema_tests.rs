@@ -7,6 +7,17 @@ fn schema_is_consistent() {
 }
 
 #[test]
+fn version_reports_package_version_without_a_command() {
+    for flag in ["--version", "-V"] {
+        let error = cli().try_get_matches_from(["atlas", flag]).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::DisplayVersion);
+        assert_eq!(error.exit_code(), 0);
+        assert!(!error.use_stderr());
+        assert_eq!(error.to_string(), format!("atlas {}\n", env!("CARGO_PKG_VERSION")));
+    }
+}
+
+#[test]
 fn all_commands_offer_generated_help() {
     for path in [
         "",
