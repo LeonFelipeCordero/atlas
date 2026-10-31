@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/scripts/**
+      - .github/workflows/release.yml
+
+permissions:
+  contents: read
+
+jobs:
+  version-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s .github/scripts -p 'test_*.py'
+
+  release:
+    if: github.event_name == 'push'
+    needs: version-tests
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    # Serialize version selection and publication. Do not cancel a running release.
+    concurrency:
+      group: atlas-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: atlas-rust
+      - name: Select and stamp release version
+        id: version
+        run: |
+          version=$(python .github/scripts/release_version.py)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - run: cargo fmt --manifest-path atlas-rust/Cargo.toml --check
+      - run: cargo test --manifest-path atlas-rust/Cargo.toml --locked --all-targets
+      - run: cargo clippy --manifest-path atlas-rust/Cargo.toml --locked --all-targets -- -D warnings
+      - run: cargo build --manifest-path atlas-rust/Cargo.toml --release --locked --bins
+      - name: Check repository and binary version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          test "$(atlas-rust/target/release/atlas --version)" = "atlas $VERSION"
+          atlas-rust/target/release/atlas check --f .
+      - name: Package binaries
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir dist
+          tar -czf "dist/atlas-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            -C atlas-rust/target/release atlas atlas-migrate \
+            -C "$GITHUB_WORKSPACE" LICENSE
+          cd dist
+          sha256sum *.tar.gz > SHA256SUMS
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          published=$(gh release view "$tag" --json isDraft --jq '.isDraft' 2>/dev/null || true)
+          if [ "$published" = false ]; then
+            echo "$tag is already published; leaving its assets unchanged."
+            exit 0
+          fi
+          if ! git rev-parse --verify "refs/tags/$tag" >/dev/null 2>&1; then
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+          fi
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --verify-tag --draft --title "$tag" --generate-notes
+          fi
+          gh release upload "$tag" dist/* --clobber
+          gh release edit "$tag" --draft=false

@@ -16,13 +16,25 @@ use std::{
     time::Instant,
 };
 
+#[cfg(test)]
+#[path = "../../../tests/integration/mutations/project_lock.rs"]
+mod project_lock_integration_tests;
+
 static RUN_LOCK: Mutex<()> = Mutex::new(());
+
+struct ProjectLock(File);
+impl Drop for ProjectLock {
+    fn drop(&mut self) {
+        // Closing alone can retain the lock in a descriptor inherited by a concurrent fork.
+        let _ = self.0.unlock();
+    }
+}
 
 pub struct MutationRunner<'a> {
     root: PathBuf,
     config: &'a MutationConfig,
     directories: Vec<PathBuf>,
-    _project_locks: Vec<File>,
+    _project_locks: Vec<ProjectLock>,
 }
 impl<'a> MutationRunner<'a> {
     /// Validate configuration, resolve working directories, and lock the project.
@@ -45,7 +57,7 @@ impl<'a> MutationRunner<'a> {
             // Shared ancestors allow siblings; the exclusive root excludes nested campaigns.
             let result = if index == 0 { lock.try_lock() } else { lock.try_lock_shared() };
             result.context("Mutation project is locked or filesystem locking is unavailable")?;
-            project_locks.push(lock);
+            project_locks.push(ProjectLock(lock));
         }
         let directories = working_directories(&root, config)?;
         Ok(Self { root, config, directories, _project_locks: project_locks })

@@ -39,6 +39,7 @@ fn traversal(name: &'static str, depth: &'static str, default: &'static str) -> 
 /// relation selections receive additional validation after parsing.
 pub fn cli() -> Command {
     command("atlas", "Analyze repositories and store their graphs in SQLite")
+        .version(env!("CARGO_PKG_VERSION"))
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(command("index", "Analyze a folder and save its graph in SQLite").arg(folder()))
