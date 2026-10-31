@@ -17,7 +17,7 @@ pub const LIMITS: [&str; 9] = [
 
 /// Return default check limits; null limits disable change-impact and instability checks.
 pub fn default_config() -> Value {
-    json!({"maxFileLines": 600, "maxFunctionLines": 100, "maxParameters": 3, "maxWeightedComplexity": 8,
+    json!({"maxFileLines": 700, "maxFunctionLines": 150, "maxParameters": 3, "maxWeightedComplexity": 8,
         "maxDecisionDepth": 3, "maxNestedLoops": 0, "maxCircularImportGroups": 0,
         "maxChangeImpact": null, "maxInstability": null})
 }
