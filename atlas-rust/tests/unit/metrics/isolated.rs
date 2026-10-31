@@ -2,6 +2,16 @@
 use super::*;
 
 #[test]
+fn config_line_limits_use_defaults_and_preserve_overrides() {
+    let config = validate_config(&json!({})).unwrap();
+    assert_eq!(config["maxFileLines"], 700);
+    assert_eq!(config["maxFunctionLines"], 150);
+    let config = validate_config(&json!({"maxFileLines": 500, "maxFunctionLines": 80})).unwrap();
+    assert_eq!(config["maxFileLines"], 500);
+    assert_eq!(config["maxFunctionLines"], 80);
+}
+
+#[test]
 fn config_validation_rejects_coercion_without_reading_a_project() {
     for value in [json!(-1), json!(true), json!("2"), json!(2.5)] {
         assert!(validate_config(&json!({"maxFileLines": value})).is_err(), "{value}");
